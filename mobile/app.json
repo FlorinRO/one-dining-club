@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "One Dining Club",
+    "slug": "one-dining-club",
+    "scheme": "onediningclub",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#050505"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "club.onedining.customer",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "One Dining Club foloseste locatia pentru restaurante si livrare."
+      }
+    },
+    "android": {
+      "package": "club.onedining.customer",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "POST_NOTIFICATIONS"]
+    },
+    "plugins": [
+      "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "One Dining Club foloseste locatia pentru restaurante si livrare."
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "http://127.0.0.1:8000/api"
+    }
+  }
+}
+
