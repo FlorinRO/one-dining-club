@@ -10,8 +10,11 @@ export type AuthStackParamList = {
 
 export type HomeStackParamList = {
   Home: undefined;
+  Favorites: undefined;
+  SectionRestaurants: { mode: "nearby" | "recommended"; title: string };
   RestaurantDetails: { restaurant: Restaurant };
   ProductDetails: { restaurant: Restaurant; product: Product };
+  CartFlow: NavigatorScreenParams<CartStackParamList>;
 };
 
 export type CartStackParamList = {
@@ -32,9 +35,8 @@ export type ProfileStackParamList = {
 
 export type MainTabsParamList = {
   HomeTab: NavigatorScreenParams<HomeStackParamList>;
-  SearchTab: undefined;
+  SearchTab: { category?: string } | undefined;
   CartTab: NavigatorScreenParams<CartStackParamList>;
   OrdersTab: NavigatorScreenParams<OrdersStackParamList>;
   ProfileTab: NavigatorScreenParams<ProfileStackParamList>;
 };
-

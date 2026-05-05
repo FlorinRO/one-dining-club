@@ -27,11 +27,11 @@ export function CartScreen({ navigation }: Props) {
   return (
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Cos</Text>
+        <Text style={styles.title}>Coș</Text>
         {!items.length ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>Cosul este gol</Text>
-            <Text style={styles.emptyText}>Alege un restaurant si adauga preparatele preferate.</Text>
+            <Text style={styles.emptyTitle}>Coșul este gol</Text>
+            <Text style={styles.emptyText}>Alege un restaurant și adaugă preparatele preferate.</Text>
           </View>
         ) : (
           <>
@@ -66,7 +66,7 @@ export function CartScreen({ navigation }: Props) {
             <TextInput
               value={promoCode}
               onChangeText={setPromoCode}
-              placeholder="Cod promotional"
+              placeholder="Cod promoțional"
               placeholderTextColor={colors.muted}
               autoCapitalize="characters"
               style={styles.input}
@@ -84,7 +84,7 @@ export function CartScreen({ navigation }: Props) {
       </ScrollView>
       {!!items.length && (
         <View style={styles.footer}>
-          <PrimaryButton title="Continua comanda" onPress={() => navigation.navigate("Checkout")} />
+          <PrimaryButton title="Continuă comanda" onPress={() => navigation.navigate("Checkout")} />
         </View>
       )}
     </Screen>
@@ -229,4 +229,3 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
 });
-

@@ -11,7 +11,7 @@ type Props = {
 
 export function Screen({ children, padded = true }: Props) {
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={["top", "left", "right"]} style={styles.safe}>
       <View style={[styles.container, padded && styles.padded]}>{children}</View>
     </SafeAreaView>
   );
@@ -27,7 +27,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   padded: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 22,
   },
 });
-

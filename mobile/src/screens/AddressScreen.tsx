@@ -12,7 +12,7 @@ export function AddressScreen() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [label, setLabel] = useState("Birou");
   const [line1, setLine1] = useState("");
-  const [city, setCity] = useState("Bucuresti");
+  const [city, setCity] = useState("București");
 
   useEffect(() => {
     addressesApi.list().then(setAddresses);
@@ -50,7 +50,7 @@ export function AddressScreen() {
               <View style={styles.addressInfo}>
                 <View style={styles.row}>
                   <Text style={styles.addressLabel}>{address.label}</Text>
-                  {address.is_default && <Text style={styles.defaultBadge}>Default</Text>}
+                  {address.is_default && <Text style={styles.defaultBadge}>Implicită</Text>}
                 </View>
                 <Text style={styles.addressText}>{address.address_line_1}</Text>
                 <Text style={styles.addressMuted}>{address.city}</Text>
@@ -62,12 +62,12 @@ export function AddressScreen() {
         <View style={styles.form}>
           <View style={styles.formHeader}>
             <Plus size={20} stroke={colors.lime} />
-            <Text style={styles.formTitle}>Adauga adresa</Text>
+            <Text style={styles.formTitle}>Adaugă adresă</Text>
           </View>
           <TextInput value={label} onChangeText={setLabel} placeholder="Eticheta" placeholderTextColor={colors.muted} style={styles.input} />
-          <TextInput value={line1} onChangeText={setLine1} placeholder="Strada, numar, bloc" placeholderTextColor={colors.muted} style={styles.input} />
-          <TextInput value={city} onChangeText={setCity} placeholder="Oras" placeholderTextColor={colors.muted} style={styles.input} />
-          <PrimaryButton title="Salveaza adresa" onPress={addLocalAddress} />
+          <TextInput value={line1} onChangeText={setLine1} placeholder="Stradă, număr, bloc" placeholderTextColor={colors.muted} style={styles.input} />
+          <TextInput value={city} onChangeText={setCity} placeholder="Oraș" placeholderTextColor={colors.muted} style={styles.input} />
+          <PrimaryButton title="Salvează adresa" onPress={addLocalAddress} />
         </View>
       </ScrollView>
     </Screen>
@@ -158,4 +158,3 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-

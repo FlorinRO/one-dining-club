@@ -87,7 +87,7 @@ export function CheckoutScreen({ navigation }: Props) {
     } finally {
       clearCart();
       setLoading(false);
-      Alert.alert("Comanda plasata", "Statusul comenzii este disponibil in tab-ul Orders.");
+      Alert.alert("Comandă plasată", "Statusul comenzii este disponibil în tab-ul Orders.");
       navigation.getParent()?.navigate("OrdersTab", { screen: "OrdersHome" });
     }
   };
@@ -99,7 +99,7 @@ export function CheckoutScreen({ navigation }: Props) {
         <View style={styles.panel}>
           <View style={styles.panelHeader}>
             <Home size={20} stroke={colors.lime} />
-            <Text style={styles.panelTitle}>Adresa livrare</Text>
+            <Text style={styles.panelTitle}>Adresă livrare</Text>
           </View>
           {selectedAddress ? (
             <Pressable onPress={() => navigation.navigate("Address")} style={styles.addressCard}>
@@ -108,14 +108,14 @@ export function CheckoutScreen({ navigation }: Props) {
               <Text style={styles.addressMuted}>{selectedAddress.city}</Text>
             </Pressable>
           ) : (
-            <PrimaryButton title="Adauga adresa" variant="ghost" onPress={() => navigation.navigate("Address")} />
+            <PrimaryButton title="Adaugă adresă" variant="ghost" onPress={() => navigation.navigate("Address")} />
           )}
         </View>
 
         <View style={styles.panel}>
           <View style={styles.panelHeader}>
             <CreditCard size={20} stroke={colors.lime} />
-            <Text style={styles.panelTitle}>Metoda plata</Text>
+            <Text style={styles.panelTitle}>Metodă plată</Text>
           </View>
           <View style={styles.methodGrid}>
             {(["cash", "card", "apple_pay", "google_pay"] as PaymentMethod[]).map((method) => (
@@ -140,7 +140,7 @@ export function CheckoutScreen({ navigation }: Props) {
           <TextInput
             value={note}
             onChangeText={setNote}
-            placeholder="Ex: fara ceapa, suna la sosire"
+            placeholder="Ex: fără ceapă, sună la sosire"
             placeholderTextColor={colors.muted}
             style={styles.note}
             multiline
@@ -156,7 +156,7 @@ export function CheckoutScreen({ navigation }: Props) {
         </View>
       </ScrollView>
       <View style={styles.footer}>
-        <PrimaryButton title={loading ? "Se plaseaza..." : "Plaseaza comanda"} onPress={submit} disabled={loading || !selectedAddress} />
+        <PrimaryButton title={loading ? "Se plasează..." : "Plasează comanda"} onPress={submit} disabled={loading || !selectedAddress} />
       </View>
     </Screen>
   );

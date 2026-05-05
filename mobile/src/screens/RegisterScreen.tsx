@@ -43,7 +43,7 @@ export function RegisterScreen({ navigation }: Props) {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.container}>
         <View>
           <Text style={styles.eyebrow}>Cont client</Text>
-          <Text style={styles.title}>Creeaza cont</Text>
+          <Text style={styles.title}>Creează cont</Text>
         </View>
         <View style={styles.form}>
           <View style={styles.row}>
@@ -52,9 +52,9 @@ export function RegisterScreen({ navigation }: Props) {
           </View>
           <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor={colors.muted} style={styles.input} />
           <TextInput value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="Telefon" placeholderTextColor={colors.muted} style={styles.input} />
-          <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Parola" placeholderTextColor={colors.muted} style={styles.input} />
-          <PrimaryButton title={loading ? "Se creeaza..." : "Creeaza cont"} onPress={submit} disabled={loading || !email || password.length < 8} />
-          <PrimaryButton title="Ai deja cont? Intra" variant="ghost" onPress={() => navigation.navigate("Login")} />
+          <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Parolă" placeholderTextColor={colors.muted} style={styles.input} />
+          <PrimaryButton title={loading ? "Se creează..." : "Creează cont"} onPress={submit} disabled={loading || !email || password.length < 8} />
+          <PrimaryButton title="Ai deja cont? Intră" variant="ghost" onPress={() => navigation.navigate("Login")} />
         </View>
       </KeyboardAvoidingView>
     </Screen>
@@ -99,4 +99,3 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-

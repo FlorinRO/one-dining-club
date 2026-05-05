@@ -11,12 +11,12 @@ import { OrderStatus } from "../types/models";
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrderDetails">;
 
 const timeline: Array<{ status: OrderStatus; label: string }> = [
-  { status: "pending", label: "Comanda plasata" },
-  { status: "accepted", label: "Acceptata" },
-  { status: "preparing", label: "In preparare" },
+  { status: "pending", label: "Comandă plasată" },
+  { status: "accepted", label: "Acceptată" },
+  { status: "preparing", label: "În preparare" },
   { status: "ready_for_pickup", label: "Gata de ridicare" },
-  { status: "on_the_way", label: "In livrare" },
-  { status: "delivered", label: "Livrata" },
+  { status: "on_the_way", label: "În livrare" },
+  { status: "delivered", label: "Livrată" },
 ];
 
 const progressRank: Record<OrderStatus, number> = {
@@ -39,7 +39,7 @@ export function OrderDetailsScreen({ route }: Props) {
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View>
-          <Text style={styles.title}>Comanda #{order.id}</Text>
+          <Text style={styles.title}>Comandă #{order.id}</Text>
           <Text style={styles.subtitle}>{order.restaurant_name} · {shortDate(order.created_at)}</Text>
         </View>
         <StatusPill status={order.order_status} />
@@ -75,7 +75,7 @@ export function OrderDetailsScreen({ route }: Props) {
         <View style={styles.panel}>
           <Text style={styles.panelTitle}>Adresa</Text>
           <Text style={styles.addressText}>
-            {typeof order.address === "object" ? order.address.address_line_1 : "Adresa salvata"}
+            {typeof order.address === "object" ? order.address.address_line_1 : "Adresă salvată"}
           </Text>
         </View>
       </ScrollView>
@@ -213,4 +213,3 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
-

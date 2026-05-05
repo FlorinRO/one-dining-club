@@ -32,6 +32,10 @@ export type Restaurant = {
   estimated_delivery_time_min: number;
   estimated_delivery_time_max: number;
   rating: string | number;
+  reviews_count?: number;
+  has_offer?: boolean;
+  supports_pickup?: boolean;
+  distance_km?: number;
   is_open: boolean;
   categories?: RestaurantCategory[];
 };
@@ -130,4 +134,3 @@ export type Order = {
   }>;
   address?: Address | number;
 };
-

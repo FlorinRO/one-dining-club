@@ -6,6 +6,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { PrimaryButton } from "../components/PrimaryButton";
 import { QuantityStepper } from "../components/QuantityStepper";
 import { money } from "../lib/format";
+import { FALLBACK_PRODUCT_IMAGE, resolveImageUri } from "../lib/images";
 import { HomeStackParamList } from "../navigation/types";
 import { useCartStore } from "../store/cartStore";
 import { colors } from "../theme/colors";
@@ -47,7 +48,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View>
-          <Image source={{ uri: product.image ?? undefined }} style={styles.image} />
+          <Image source={{ uri: resolveImageUri(product.image, FALLBACK_PRODUCT_IMAGE) }} style={styles.image} />
           <Pressable onPress={() => navigation.goBack()} style={styles.close}>
             <X size={22} stroke={colors.text} />
           </Pressable>
@@ -64,7 +65,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
               <View>
                 <Text style={styles.groupTitle}>{group.name}</Text>
                 <Text style={styles.groupHint}>
-                  {group.is_required ? "Necesar" : "Optional"} · alege maxim {group.max_select}
+                  {group.is_required ? "Necesar" : "Opțional"} · alege maxim {group.max_select}
                 </Text>
               </View>
               {group.options.map((option) => {
@@ -96,7 +97,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
         </View>
       </ScrollView>
       <View style={styles.footer}>
-        <PrimaryButton title={`Adauga in cos · ${money(total)}`} onPress={submit} />
+        <PrimaryButton title={`Adaugă în coș · ${money(total)}`} onPress={submit} />
       </View>
     </View>
   );
@@ -208,4 +209,3 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
 });
-

@@ -3,6 +3,7 @@ import { ImageBackground, StyleSheet, Text, View } from "react-native";
 
 import { AuthStackParamList } from "../navigation/types";
 import { PrimaryButton } from "../components/PrimaryButton";
+import { FALLBACK_HERO_IMAGE } from "../lib/images";
 import { useAuthStore } from "../store/authStore";
 import { colors } from "../theme/colors";
 
@@ -14,7 +15,7 @@ export function WelcomeScreen({ navigation }: Props) {
   return (
     <ImageBackground
       source={{
-        uri: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1400&auto=format&fit=crop",
+        uri: FALLBACK_HERO_IMAGE,
       }}
       style={styles.background}
       imageStyle={styles.image}
@@ -23,12 +24,12 @@ export function WelcomeScreen({ navigation }: Props) {
       <View style={styles.content}>
         <View>
           <Text style={styles.brand}>One Dining Club</Text>
-          <Text style={styles.title}>Food delivery pentru seri bune si pranzuri rapide.</Text>
+          <Text style={styles.title}>Food delivery pentru seri bune și prânzuri rapide.</Text>
         </View>
         <View style={styles.actions}>
-          <PrimaryButton title="Intra in cont" onPress={() => navigation.navigate("Login")} />
-          <PrimaryButton title="Creeaza cont" variant="ghost" onPress={() => navigation.navigate("Register")} />
-          <PrimaryButton title="Continua demo" variant="lime" onPress={continueAsGuest} />
+          <PrimaryButton title="Intră în cont" onPress={() => navigation.navigate("Login")} />
+          <PrimaryButton title="Creează cont" variant="ghost" onPress={() => navigation.navigate("Register")} />
+          <PrimaryButton title="Continuă demo" variant="lime" onPress={continueAsGuest} />
         </View>
       </View>
     </ImageBackground>
@@ -71,4 +72,3 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 });
-

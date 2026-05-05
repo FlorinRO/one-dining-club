@@ -1,6 +1,7 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { money } from "../lib/format";
+import { FALLBACK_PRODUCT_IMAGE, resolveImageUri } from "../lib/images";
 import { colors } from "../theme/colors";
 import { Product } from "../types/models";
 
@@ -28,7 +29,7 @@ export function ProductCard({ product, onPress }: Props) {
           {hasDiscount && <Text style={styles.oldPrice}>{money(product.price)}</Text>}
         </View>
       </View>
-      <Image source={{ uri: product.image ?? undefined }} style={styles.image} />
+      <Image source={{ uri: resolveImageUri(product.image, FALLBACK_PRODUCT_IMAGE) }} style={styles.image} />
     </Pressable>
   );
 }
@@ -36,18 +37,18 @@ export function ProductCard({ product, onPress }: Props) {
 const styles = StyleSheet.create({
   card: {
     minHeight: 118,
-    padding: 12,
+    padding: 14,
     borderRadius: 22,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     flexDirection: "row",
-    gap: 12,
+    gap: 14,
   },
   content: {
     flex: 1,
     justifyContent: "space-between",
-    gap: 8,
+    gap: 10,
   },
   titleRow: {
     flexDirection: "row",
@@ -67,7 +68,7 @@ const styles = StyleSheet.create({
   },
   description: {
     color: colors.muted,
-    lineHeight: 19,
+    lineHeight: 21,
   },
   priceRow: {
     flexDirection: "row",
@@ -90,4 +91,3 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardSoft,
   },
 });
-

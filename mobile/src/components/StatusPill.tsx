@@ -4,15 +4,15 @@ import { colors } from "../theme/colors";
 import { OrderStatus } from "../types/models";
 
 const labels: Record<OrderStatus, string> = {
-  pending: "Plasata",
-  accepted: "Acceptata",
-  preparing: "In preparare",
+  pending: "Plasată",
+  accepted: "Acceptată",
+  preparing: "În preparare",
   ready_for_pickup: "Gata",
-  picked_up: "Ridicata",
-  on_the_way: "In livrare",
-  delivered: "Livrata",
-  cancelled: "Anulata",
-  rejected: "Respinsa",
+  picked_up: "Ridicată",
+  on_the_way: "În livrare",
+  delivered: "Livrată",
+  cancelled: "Anulată",
+  rejected: "Respinsă",
 };
 
 export function StatusPill({ status }: { status: OrderStatus }) {
@@ -48,4 +48,3 @@ const styles = StyleSheet.create({
     color: colors.red,
   },
 });
-

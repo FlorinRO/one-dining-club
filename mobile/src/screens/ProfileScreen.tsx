@@ -17,7 +17,7 @@ export function ProfileScreen({ navigation }: Props) {
   return (
     <Screen>
       <View style={styles.container}>
-        <Text style={styles.title}>Profile</Text>
+        <Text style={styles.title}>Profil</Text>
         <View style={styles.card}>
           <View style={styles.avatar}>
             <UserRound stroke={colors.background} size={30} />
@@ -106,4 +106,3 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
 });
-

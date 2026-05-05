@@ -36,8 +36,8 @@ export function PrimaryButton({ title, onPress, disabled, icon, variant = "prima
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 54,
-    paddingHorizontal: 18,
+    minHeight: 58,
+    paddingHorizontal: 20,
     borderRadius: 18,
     backgroundColor: colors.red,
     alignItems: "center",
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   text: {
     color: colors.white,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "800",
   },
   ghostText: {
@@ -71,4 +71,3 @@ const styles = StyleSheet.create({
     color: colors.background,
   },
 });
-

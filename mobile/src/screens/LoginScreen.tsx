@@ -35,7 +35,7 @@ export function LoginScreen({ navigation }: Props) {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.container}>
         <View>
           <Text style={styles.eyebrow}>Bine ai revenit</Text>
-          <Text style={styles.title}>Intra in cont</Text>
+          <Text style={styles.title}>Intră în cont</Text>
         </View>
         <View style={styles.form}>
           <TextInput
@@ -51,12 +51,12 @@ export function LoginScreen({ navigation }: Props) {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            placeholder="Parola"
+            placeholder="Parolă"
             placeholderTextColor={colors.muted}
             style={styles.input}
           />
-          <PrimaryButton title={loading ? "Se conecteaza..." : "Continua"} onPress={submit} disabled={loading} />
-          <PrimaryButton title="Nu ai cont? Creeaza unul" variant="ghost" onPress={() => navigation.navigate("Register")} />
+          <PrimaryButton title={loading ? "Se conectează..." : "Continuă"} onPress={submit} disabled={loading} />
+          <PrimaryButton title="Nu ai cont? Creează unul" variant="ghost" onPress={() => navigation.navigate("Register")} />
         </View>
       </KeyboardAvoidingView>
     </Screen>
@@ -94,4 +94,3 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-

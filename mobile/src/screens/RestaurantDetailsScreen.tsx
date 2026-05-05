@@ -6,6 +6,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { restaurantsApi } from "../api/restaurantsApi";
 import { CategoryChip } from "../components/CategoryChip";
 import { FloatingCartBar } from "../components/FloatingCartBar";
+import { FALLBACK_RESTAURANT_IMAGE, resolveImageUri } from "../lib/images";
 import { MapPreview } from "../components/MapPreview";
 import { ProductCard } from "../components/ProductCard";
 import { HomeStackParamList } from "../navigation/types";
@@ -38,7 +39,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View>
-          <Image source={{ uri: restaurant.cover_image ?? undefined }} style={styles.hero} />
+          <Image source={{ uri: resolveImageUri(restaurant.cover_image, FALLBACK_RESTAURANT_IMAGE) }} style={styles.hero} />
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
             <ArrowLeft stroke={colors.text} size={22} />
           </Pressable>
@@ -89,7 +90,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
           </View>
         </View>
       </ScrollView>
-      <FloatingCartBar onPress={() => navigation.getParent()?.navigate("CartTab" as never)} />
+      <FloatingCartBar onPress={() => navigation.navigate("CartFlow", { screen: "CartHome" })} />
     </View>
   );
 }
@@ -169,4 +170,3 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 });
-
