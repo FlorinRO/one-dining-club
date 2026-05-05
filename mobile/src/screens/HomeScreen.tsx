@@ -206,8 +206,12 @@ export function HomeScreen({ navigation }: Props) {
           contentContainerStyle={styles.chips}
         />
 
-        <View style={styles.sectionBlock}>
-          <SectionTitle title="Aproape de tine" />
+        <View style={[styles.sectionBlock, styles.firstSectionBlock]}>
+          <SectionHeader
+            title="Aproape de tine"
+            actionLabel="Toate >"
+            onPressAction={() => navigation.navigate("SectionRestaurants", { mode: "nearby", title: "Aproape de tine" })}
+          />
           <FlatList
             horizontal
             data={filtered}
@@ -221,7 +225,11 @@ export function HomeScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.sectionBlock}>
-          <SectionTitle title="Recomandate" />
+          <SectionHeader
+            title="Recomandate"
+            actionLabel="Toate >"
+            onPressAction={() => navigation.navigate("SectionRestaurants", { mode: "recommended", title: "Recomandate" })}
+          />
           <FlatList
             horizontal
             data={filtered}
@@ -235,7 +243,7 @@ export function HomeScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.sectionBlock}>
-          <SectionTitle title="Toate restaurantele" />
+          <SectionHeader title="Toate restaurantele" />
           <View style={styles.allRestaurantsList}>
             {filtered.map((restaurant) => (
               <RestaurantCard
@@ -252,8 +260,17 @@ export function HomeScreen({ navigation }: Props) {
   );
 }
 
-function SectionTitle({ title }: { title: string }) {
-  return <Text style={styles.sectionTitle}>{title}</Text>;
+function SectionHeader({ title, actionLabel, onPressAction }: { title: string; actionLabel?: string; onPressAction?: () => void }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {actionLabel && onPressAction ? (
+        <Pressable onPress={onPressAction} hitSlop={8}>
+          <Text style={styles.sectionAction}>{actionLabel}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -346,7 +363,18 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  sectionAction: {
+    color: colors.red,
+    fontSize: 14,
     fontWeight: "700",
   },
   allRestaurantsList: {
@@ -355,5 +383,8 @@ const styles = StyleSheet.create({
   sectionBlock: {
     gap: 12,
     marginTop: 22,
+  },
+  firstSectionBlock: {
+    marginTop: 0,
   },
 });

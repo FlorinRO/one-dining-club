@@ -25,20 +25,24 @@ export function RestaurantCard({ restaurant, onPress, compact, small, smallImage
       <View style={styles.mediaWrap}>
         <Image
           source={{ uri: resolveImageUri(restaurant.cover_image, FALLBACK_RESTAURANT_IMAGE) }}
-          style={[styles.image, (small || smallImageOnly) && styles.smallImage]}
+          style={[styles.image, small && styles.smallImage, smallImageOnly && styles.smallImageOnly]}
         />
         <Pressable
           onPress={(event) => {
             event.stopPropagation();
             toggleRestaurant(restaurant.id);
           }}
-          style={[styles.favoriteButton, isFavorite && styles.favoriteButtonActive]}
+          style={[styles.favoriteButton, smallImageOnly && styles.smallImageOnlyFavoriteButton, isFavorite && styles.favoriteButtonActive]}
         >
-          <Heart size={18} stroke={isFavorite ? colors.red : colors.white} fill={isFavorite ? colors.red : "transparent"} />
+          <Heart
+            size={smallImageOnly ? 15 : 18}
+            stroke={isFavorite ? colors.red : colors.white}
+            fill={isFavorite ? colors.red : "transparent"}
+          />
         </Pressable>
-        <View style={[styles.ratingBadge, small && styles.smallRatingBadge]}>
-          <Star size={small ? 12 : 14} stroke={colors.red} fill={colors.red} />
-          <Text style={[styles.ratingBadgeText, small && styles.smallRatingBadgeText]}>
+        <View style={[styles.ratingBadge, (small || smallImageOnly) && styles.smallRatingBadge]}>
+          <Star size={small || smallImageOnly ? 12 : 14} stroke={colors.red} fill={colors.red} />
+          <Text style={[styles.ratingBadgeText, (small || smallImageOnly) && styles.smallRatingBadgeText]}>
             {Number(restaurant.rating).toFixed(1)} ({restaurant.reviews_count ?? 0})
           </Text>
         </View>
@@ -50,20 +54,20 @@ export function RestaurantCard({ restaurant, onPress, compact, small, smallImage
       </View>
       <View style={[styles.body, small && styles.smallBody]}>
         <View style={styles.row}>
-          <Text style={[styles.name, small && styles.smallName]} numberOfLines={1}>
+          <Text style={[styles.name, (small || smallImageOnly) && styles.smallName]} numberOfLines={1}>
             {restaurant.name}
           </Text>
         </View>
         <View style={[styles.metaRow, small && styles.smallMetaRow]}>
           <View style={styles.metaItem}>
-            <Clock3 size={small ? 13 : 15} stroke={colors.muted} />
-            <Text style={[styles.metaText, small && styles.smallMetaText]}>
+            <Clock3 size={small || smallImageOnly ? 13 : 15} stroke={colors.muted} />
+            <Text style={[styles.metaText, (small || smallImageOnly) && styles.smallMetaText]}>
               {deliveryWindow(restaurant.estimated_delivery_time_min, restaurant.estimated_delivery_time_max)}
             </Text>
           </View>
           <View style={styles.metaItem}>
-            <Truck size={small ? 13 : 15} stroke={colors.muted} />
-            <Text style={[styles.metaText, small && styles.smallMetaText]}>{money(restaurant.delivery_fee)}</Text>
+            <Truck size={small || smallImageOnly ? 13 : 15} stroke={colors.muted} />
+            <Text style={[styles.metaText, (small || smallImageOnly) && styles.smallMetaText]}>{money(restaurant.delivery_fee)}</Text>
           </View>
         </View>
       </View>
@@ -85,7 +89,7 @@ const styles = StyleSheet.create({
     width: 256,
   },
   mediumCard: {
-    width: 276,
+    width: 206,
   },
   image: {
     height: 180,
@@ -94,6 +98,9 @@ const styles = StyleSheet.create({
   },
   smallImage: {
     height: 144,
+  },
+  smallImageOnly: {
+    height: 112,
   },
   mediaWrap: {
     borderRadius: 16,
@@ -120,6 +127,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.34)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  smallImageOnlyFavoriteButton: {
+    top: 10,
+    right: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 11,
   },
   favoriteButtonActive: {
     backgroundColor: colors.white,
@@ -179,10 +193,10 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 22,
+    gap: 10,
   },
   smallMetaRow: {
-    gap: 12,
+    gap: 6,
   },
   metaItem: {
     flexDirection: "row",
