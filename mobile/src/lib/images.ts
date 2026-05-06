@@ -27,5 +27,10 @@ export function resolveImageUri(uri: string | null | undefined, fallback: string
     return `${apiOrigin}${uri}`;
   }
 
+  // Accept relative media paths like "media/products/file.jpg"
+  if (uri.startsWith("media/")) {
+    return `${apiOrigin}/${uri}`;
+  }
+
   return fallback;
 }

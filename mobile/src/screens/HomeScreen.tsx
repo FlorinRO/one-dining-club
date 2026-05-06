@@ -139,6 +139,10 @@ export function HomeScreen({ navigation }: Props) {
     lastScrollY.current = currentY;
   };
 
+  const openSearchWithFocus = () => {
+    navigation.getParent()?.navigate("SearchTab", { focusSearch: true });
+  };
+
   return (
     <Screen>
       <Animated.View
@@ -151,28 +155,30 @@ export function HomeScreen({ navigation }: Props) {
               {
                 translateY: stickyAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [-14, 0],
+                  outputRange: [0, 0],
                 }),
               },
             ],
           },
         ]}
       >
-        {showStickySearch ? (
-          <View style={styles.searchBar}>
-            <Search size={23} stroke={colors.text} strokeWidth={2.6} />
+        <Pressable style={styles.searchBar} onPress={openSearchWithFocus}>
+          <Search size={23} stroke={colors.text} strokeWidth={2.6} />
+          <View style={styles.searchInputProxy} pointerEvents="none">
             <TextInput
               value={search}
               onChangeText={setSearch}
               placeholder="Caută restaurante sau preparate"
               placeholderTextColor={colors.muted}
               style={styles.searchInput}
+              editable={false}
+              showSoftInputOnFocus={false}
             />
-            <Pressable hitSlop={8} onPress={() => navigation.getParent()?.navigate("SearchTab", { openFilters: true })}>
-              <SlidersHorizontal size={22} stroke={colors.text} strokeWidth={2.7} />
-            </Pressable>
           </View>
-        ) : null}
+          <Pressable hitSlop={8} onPress={() => navigation.getParent()?.navigate("SearchTab", { openFilters: true })}>
+            <SlidersHorizontal size={22} stroke={colors.text} strokeWidth={2.7} />
+          </Pressable>
+        </Pressable>
       </Animated.View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} onScroll={handleScroll} scrollEventThrottle={16}>
@@ -189,19 +195,23 @@ export function HomeScreen({ navigation }: Props) {
             setSearchBarY(event.nativeEvent.layout.y);
           }}
         >
-          <View style={styles.searchBar}>
+          <Pressable style={styles.searchBar} onPress={openSearchWithFocus}>
             <Search size={23} stroke={colors.text} strokeWidth={2.6} />
-            <TextInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Caută restaurante sau preparate"
-              placeholderTextColor={colors.muted}
-              style={styles.searchInput}
-            />
+            <View style={styles.searchInputProxy} pointerEvents="none">
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Caută restaurante sau preparate"
+                placeholderTextColor={colors.muted}
+                style={styles.searchInput}
+                editable={false}
+                showSoftInputOnFocus={false}
+              />
+            </View>
             <Pressable hitSlop={8} onPress={() => navigation.getParent()?.navigate("SearchTab", { openFilters: true })}>
               <SlidersHorizontal size={22} stroke={colors.text} strokeWidth={2.7} />
             </Pressable>
-          </View>
+          </Pressable>
         </View>
 
         <FlatList
@@ -359,6 +369,9 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.text,
     fontSize: 17,
+  },
+  searchInputProxy: {
+    flex: 1,
   },
   chips: {
     paddingVertical: 4,

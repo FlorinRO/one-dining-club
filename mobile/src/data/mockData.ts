@@ -310,9 +310,209 @@ export const mockRestaurants: Restaurant[] = [
     is_open: true,
     categories: [{ id: 15, name: "Breakfast", icon: "breakfast" }],
   },
+  {
+    id: 16,
+    name: "Mexa Barrio",
+    slug: "mexa-barrio",
+    description: "Tacos, quesadilla și bowl-uri mexicane cu sosuri fresh.",
+    cover_image: "https://images.unsplash.com/photo-1565299585323-38174c4a6471?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Strada Tunari 51",
+    delivery_fee: 6.2,
+    minimum_order: 27,
+    estimated_delivery_time_min: 20,
+    estimated_delivery_time_max: 31,
+    rating: 4.6,
+    reviews_count: 133,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 2.3,
+    is_open: true,
+    categories: [{ id: 16, name: "Mexican", icon: "taco" }],
+  },
+  {
+    id: 17,
+    name: "Levantine Table",
+    slug: "levantine-table",
+    description: "Hummus, kebab și mezze orientale pentru sharing.",
+    cover_image: "https://images.unsplash.com/photo-1541518763669-27fef9a8afbe?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Strada Căderea Bastiliei 35",
+    delivery_fee: 7.1,
+    minimum_order: 31,
+    estimated_delivery_time_min: 24,
+    estimated_delivery_time_max: 37,
+    rating: 4.7,
+    reviews_count: 159,
+    has_offer: false,
+    supports_pickup: true,
+    distance_km: 2.8,
+    is_open: true,
+    categories: [{ id: 17, name: "Middle Eastern", icon: "kebab" }],
+  },
+  {
+    id: 18,
+    name: "Balkan Platter Co",
+    slug: "balkan-platter-co",
+    description: "Platouri balcanice, grill mixt și salate tradiționale.",
+    cover_image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Strada Foișorului 14",
+    delivery_fee: 5.9,
+    minimum_order: 29,
+    estimated_delivery_time_min: 19,
+    estimated_delivery_time_max: 30,
+    rating: 4.5,
+    reviews_count: 117,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 1.9,
+    is_open: true,
+    categories: [{ id: 18, name: "Balkan", icon: "grill" }],
+  },
+  {
+    id: 19,
+    name: "Pho Pulse",
+    slug: "pho-pulse",
+    description: "Pho, noodle bowls și preparate vietnameze aromate.",
+    cover_image: "https://images.unsplash.com/photo-1555126634-323283e090fa?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Strada Viitorului 62",
+    delivery_fee: 8.4,
+    minimum_order: 34,
+    estimated_delivery_time_min: 27,
+    estimated_delivery_time_max: 41,
+    rating: 4.8,
+    reviews_count: 171,
+    has_offer: false,
+    supports_pickup: false,
+    distance_km: 3.7,
+    is_open: true,
+    categories: [{ id: 19, name: "Vietnamese", icon: "noodles" }],
+  },
+  {
+    id: 20,
+    name: "Kebab Dock",
+    slug: "kebab-dock",
+    description: "Shaorma, kebab și box-uri rapide pentru prânz.",
+    cover_image: "https://images.unsplash.com/photo-1529006557810-274b9b2fc783?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Bd. Carol I 73",
+    delivery_fee: 4.8,
+    minimum_order: 21,
+    estimated_delivery_time_min: 15,
+    estimated_delivery_time_max: 25,
+    rating: 4.4,
+    reviews_count: 92,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 1.5,
+    is_open: true,
+    categories: [{ id: 20, name: "Kebab", icon: "wrap" }],
+  },
+  {
+    id: 21,
+    name: "Ravioli Atelier",
+    slug: "ravioli-atelier",
+    description: "Ravioli artizanali, sosuri fine și deserturi italiene.",
+    cover_image: "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Strada Eremia Grigorescu 12",
+    delivery_fee: 8.2,
+    minimum_order: 36,
+    estimated_delivery_time_min: 25,
+    estimated_delivery_time_max: 38,
+    rating: 4.9,
+    reviews_count: 207,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 3.0,
+    is_open: true,
+    categories: [{ id: 21, name: "Italian", icon: "pasta" }],
+  },
+  {
+    id: 22,
+    name: "Seoul Crunch",
+    slug: "seoul-crunch",
+    description: "Korean fried chicken, bibimbap și kimchi house-made.",
+    cover_image: "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Strada Schitu Măgureanu 6",
+    delivery_fee: 9.1,
+    minimum_order: 39,
+    estimated_delivery_time_min: 29,
+    estimated_delivery_time_max: 44,
+    rating: 4.7,
+    reviews_count: 149,
+    has_offer: false,
+    supports_pickup: true,
+    distance_km: 4.2,
+    is_open: true,
+    categories: [{ id: 22, name: "Korean", icon: "chicken" }],
+  },
+  {
+    id: 23,
+    name: "Pita Garden",
+    slug: "pita-garden",
+    description: "Pita wraps, falafel și sosuri mediteraneene.",
+    cover_image: "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Strada Plantelor 18",
+    delivery_fee: 5.1,
+    minimum_order: 23,
+    estimated_delivery_time_min: 16,
+    estimated_delivery_time_max: 26,
+    rating: 4.5,
+    reviews_count: 111,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 1.7,
+    is_open: true,
+    categories: [{ id: 23, name: "Mediterranean", icon: "salad" }],
+  },
+  {
+    id: 24,
+    name: "Ocean Bento",
+    slug: "ocean-bento",
+    description: "Seafood bowls, sushi sets și bento japonez.",
+    cover_image: "https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Strada Argentina 29",
+    delivery_fee: 10.2,
+    minimum_order: 42,
+    estimated_delivery_time_min: 31,
+    estimated_delivery_time_max: 47,
+    rating: 4.8,
+    reviews_count: 198,
+    has_offer: false,
+    supports_pickup: false,
+    distance_km: 5.0,
+    is_open: true,
+    categories: [{ id: 24, name: "Seafood", icon: "fish" }],
+  },
+  {
+    id: 25,
+    name: "Firewood BBQ",
+    slug: "firewood-bbq",
+    description: "Coaste, brisket și garnituri afumate lent.",
+    cover_image: "https://images.unsplash.com/photo-1529692236671-f1dc49a41cb1?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Șoseaua Colentina 144",
+    delivery_fee: 7.7,
+    minimum_order: 33,
+    estimated_delivery_time_min: 23,
+    estimated_delivery_time_max: 35,
+    rating: 4.6,
+    reviews_count: 126,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 2.6,
+    is_open: true,
+    categories: [{ id: 25, name: "BBQ", icon: "grill" }],
+  },
 ];
 
-export const mockCategories: ProductCategory[] = [
+const baseMockCategories: ProductCategory[] = [
   { id: 1, restaurant: 1, name: "Popular", sort_order: 1, is_active: true },
   { id: 2, restaurant: 1, name: "Pizza", sort_order: 2, is_active: true },
   { id: 3, restaurant: 1, name: "Pasta", sort_order: 3, is_active: true },
@@ -322,7 +522,7 @@ export const mockCategories: ProductCategory[] = [
   { id: 7, restaurant: 3, name: "Ramen", sort_order: 2, is_active: true },
 ];
 
-export const mockProducts: Product[] = [
+const baseMockProducts: Product[] = [
   {
     id: 101,
     restaurant: 1,
@@ -432,6 +632,72 @@ export const mockProducts: Product[] = [
     allergens: "Gluten, ou, soia",
   },
 ];
+
+const generatedCategoryNames = ["Signature", "Main", "Sides", "Dessert"];
+const generatedProductStyles = ["Classic", "Spicy", "Smoky", "Crispy"];
+const generatedProductBaseNames = [
+  "Burger", "Pizza", "Pasta", "Ramen", "Bowl", "Wrap", "Salad", "Taco", "Quesadilla", "Soup",
+  "Sandwich", "Schnitzel", "Rice Box", "Noodle Box", "Bao", "Dumplings", "Sushi Roll", "Poke",
+  "Steak", "Wings", "Halloumi", "Falafel", "Shawarma", "Risotto", "Gnocchi", "Lasagna", "Kebab",
+  "Burrito", "Udon", "Pho", "Maki", "Nigiri", "Bibimbap", "Curry", "Brisket", "Ribs",
+];
+const generatedProductImagePool = [
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1526318896980-cf78c088247c?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?q=80&w=1000&auto=format&fit=crop",
+];
+
+const generatedCategories: ProductCategory[] = mockRestaurants.flatMap((restaurant, restaurantIndex) =>
+  generatedCategoryNames.map((name, categoryIndex) => ({
+    id: 1000 + restaurantIndex * 10 + categoryIndex + 1,
+    restaurant: restaurant.id,
+    name,
+    sort_order: categoryIndex + 1,
+    is_active: true,
+  })),
+);
+
+const generatedProducts: Product[] = mockRestaurants.flatMap((restaurant, restaurantIndex) => {
+  const restaurantCategories = generatedCategories.filter((category) => category.restaurant === restaurant.id);
+
+  return restaurantCategories.flatMap((category, categoryIndex) =>
+    generatedProductStyles.map((style, productIndex) => {
+      const sequence = categoryIndex * generatedProductStyles.length + productIndex + 1;
+      const globalSequence = restaurantIndex * (generatedCategoryNames.length * generatedProductStyles.length) + sequence;
+      const dishIndex = (globalSequence * 7 + restaurant.id * 3) % generatedProductBaseNames.length;
+      const basePrice = 24 + restaurantIndex + categoryIndex * 4 + productIndex * 3;
+      const hasDiscount = sequence % 3 === 0;
+      const discountPrice = hasDiscount ? Math.max(basePrice - 5, 10) : null;
+      const productName = `${style} ${generatedProductBaseNames[dishIndex]} ${restaurant.id}-${sequence}`;
+
+      return {
+        id: 10000 + restaurant.id * 100 + sequence,
+        restaurant: restaurant.id,
+        restaurant_name: restaurant.name,
+        category: category.id,
+        category_name: category.name,
+        name: productName,
+        description: `Produs demo distinct pentru ${restaurant.name}, categoria ${category.name.toLowerCase()}, util la testare search și filtre.`,
+        image: generatedProductImagePool[globalSequence % generatedProductImagePool.length],
+        price: basePrice,
+        discount_price: discountPrice,
+        effective_price: discountPrice ?? basePrice,
+        is_available: sequence % 7 !== 0,
+        is_popular: sequence % 2 === 0,
+        preparation_time: 10 + ((restaurantIndex + categoryIndex + productIndex) % 16),
+        allergens: sequence % 4 === 0 ? "Gluten, lactoza" : "Fără alergeni majori",
+      };
+    }),
+  );
+});
+
+export const mockCategories: ProductCategory[] = [...baseMockCategories, ...generatedCategories];
+export const mockProducts: Product[] = [...baseMockProducts, ...generatedProducts];
 
 export const mockAddresses: Address[] = [
   {

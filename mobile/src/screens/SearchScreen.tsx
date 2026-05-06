@@ -14,16 +14,17 @@ import {
   Tag,
   X,
 } from "lucide-react-native";
-import { ComponentType, ReactNode, useEffect, useMemo, useState } from "react";
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ComponentType, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Easing, FlatList, Image, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
-import { RestaurantCard } from "../components/RestaurantCard";
 import { Screen } from "../components/Screen";
+import { deliveryWindow } from "../lib/format";
+import { FALLBACK_PRODUCT_IMAGE, FALLBACK_RESTAURANT_IMAGE, resolveImageUri } from "../lib/images";
 import { MainTabsParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
-import { Restaurant } from "../types/models";
+import { Product, Restaurant } from "../types/models";
 
 type FilterKey = "sort" | "offers" | "rating" | "deliveryFee" | "deliveryTime" | "pickup" | "distance" | "categories";
 type ActiveSheetKey = FilterKey | "allFilters";
@@ -145,11 +146,16 @@ function getCategoryEmoji(label: string) {
   return match?.emoji ?? "🍽️";
 }
 
+function formatRon(value: string | number) {
+  return `${Number(value).toFixed(2).replace(".", ",")} RON`;
+}
+
 export function SearchScreen() {
   const navigation = useNavigation<NavigationProp<MainTabsParamList>>();
   const route = useRoute<RouteProp<MainTabsParamList, "SearchTab">>();
   const insets = useSafeAreaInsets();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortValue>("relevant");
   const [offersOnly, setOffersOnly] = useState(false);
@@ -161,9 +167,28 @@ export function SearchScreen() {
   const [activeCategories, setActiveCategories] = useState<string[]>(route.params?.category ? [route.params.category] : []);
   const [activeSheet, setActiveSheet] = useState<ActiveSheetKey | null>(null);
   const [recentSearches, setRecentSearches] = useState(["Star", "Kapsa", "Smash"]);
+  const [isFocusedFromHome, setIsFocusedFromHome] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
+  const entryAnimation = useRef(new Animated.Value(1)).current;
+  const focusAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    restaurantsApi.list().then(setRestaurants);
+    let isMounted = true;
+
+    async function loadSearchData() {
+      const nextRestaurants = await restaurantsApi.list();
+      const productGroups = await Promise.all(nextRestaurants.map((restaurant) => restaurantsApi.products(restaurant.id)));
+
+      if (!isMounted) return;
+      setRestaurants(nextRestaurants);
+      setProducts(productGroups.flat());
+    }
+
+    loadSearchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -181,18 +206,78 @@ export function SearchScreen() {
     }
   }, [navigation, route.params?.openFilters]);
 
+  useEffect(() => {
+    if (!route.params?.focusSearch) return;
+
+    setIsFocusedFromHome(true);
+    entryAnimation.setValue(0);
+    Animated.timing(entryAnimation, {
+      toValue: 1,
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        searchInputRef.current?.focus();
+      }
+    });
+    navigation.setParams({ focusSearch: undefined });
+  }, [entryAnimation, navigation, route.params?.focusSearch]);
+
+  useEffect(() => {
+    Animated.timing(focusAnimation, {
+      toValue: isFocusedFromHome ? 1 : 0,
+      duration: 260,
+      easing: Easing.bezier(0.22, 1, 0.36, 1),
+      useNativeDriver: false,
+    }).start();
+  }, [focusAnimation, isFocusedFromHome]);
+
+  useEffect(() => {
+    const subscription = Keyboard.addListener("keyboardDidHide", () => {
+      searchInputRef.current?.blur();
+      setIsFocusedFromHome(false);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   const hasSearchIntent = query.trim().length > 0 || activeCategories.length > 0;
+  const availableProducts = useMemo(() => products.filter((product) => product.is_available), [products]);
+
+  const productMatchesSearchContext = (product: Product, queryText: string) => {
+    const productHaystack = `${product.name} ${product.description} ${product.restaurant_name ?? ""} ${product.category_name ?? ""}`.toLowerCase();
+    const matchesQuery = !queryText || productHaystack.includes(queryText);
+    const matchesCategory =
+      activeCategories.length === 0 || activeCategories.some((category) => productHaystack.includes(category.toLowerCase()));
+
+    return matchesQuery && matchesCategory;
+  };
+
+  const getRestaurantProductsForSearch = (restaurant: Restaurant) => {
+    const queryText = query.trim().toLowerCase();
+    const restaurantProducts = availableProducts.filter((product) => product.restaurant === restaurant.id);
+    const matchingProducts = restaurantProducts.filter((product) => productMatchesSearchContext(product, queryText));
+
+    return matchingProducts.length > 0 ? matchingProducts : restaurantProducts;
+  };
 
   const filtered = useMemo(() => {
     if (!hasSearchIntent) return [];
+    const queryText = query.trim().toLowerCase();
 
     return restaurants
       .filter((restaurant) => {
-        const haystack = `${restaurant.name} ${restaurant.description} ${(restaurant.categories ?? []).map((c) => c.name).join(" ")}`.toLowerCase();
-        const queryText = query.trim().toLowerCase();
-        const matchesQuery = !queryText || haystack.includes(queryText);
+        const restaurantHaystack = `${restaurant.name} ${restaurant.description} ${(restaurant.categories ?? []).map((c) => c.name).join(" ")}`.toLowerCase();
+        const restaurantProducts = availableProducts.filter((product) => product.restaurant === restaurant.id);
+        const hasMatchingProducts = restaurantProducts.some((product) => productMatchesSearchContext(product, queryText));
+        const matchesQuery = !queryText || restaurantHaystack.includes(queryText) || hasMatchingProducts;
         const matchesCategory =
-          activeCategories.length === 0 || activeCategories.some((category) => haystack.includes(category.toLowerCase()));
+          activeCategories.length === 0 ||
+          activeCategories.some((category) => restaurantHaystack.includes(category.toLowerCase())) ||
+          hasMatchingProducts;
         const matchesOffers = !offersOnly || !!restaurant.has_offer;
         const matchesPickup = !pickupOnly || !!restaurant.supports_pickup;
         const matchesRating = minimumRating === null || Number(restaurant.rating) >= minimumRating;
@@ -218,7 +303,7 @@ export function SearchScreen() {
         if (sort === "rating") return Number(b.rating) - Number(a.rating);
         return Number(b.is_open) - Number(a.is_open) || Number(b.rating) - Number(a.rating);
       });
-  }, [activeCategories, hasSearchIntent, maximumDeliveryFee, maximumDeliveryTime, maximumDistance, minimumRating, offersOnly, pickupOnly, query, restaurants, sort]);
+  }, [activeCategories, availableProducts, hasSearchIntent, maximumDeliveryFee, maximumDeliveryTime, maximumDistance, minimumRating, offersOnly, pickupOnly, query, restaurants, sort]);
 
   const commitRecentSearch = () => {
     const value = query.trim();
@@ -317,28 +402,75 @@ export function SearchScreen() {
 
   return (
     <Screen>
-      <View style={styles.container}>
-        <View style={styles.searchBar}>
-          <Search size={23} stroke={colors.text} strokeWidth={2.6} />
-          <TextInput
-            value={query}
-            onChangeText={(text) => {
-              setQuery(text);
-              if (text.length > 0) setActiveCategories([]);
-            }}
-            onSubmitEditing={commitRecentSearch}
-            placeholder="Caută restaurante sau preparate"
-            placeholderTextColor={colors.muted}
-            style={styles.searchInput}
-          />
-          <Pressable hitSlop={8} onPress={() => setActiveSheet("allFilters")}>
-            <SlidersHorizontal size={22} stroke={colors.text} strokeWidth={2.7} />
-            {activeFiltersCount > 0 ? (
-              <View style={styles.searchFilterBadge}>
-                <Text style={styles.searchFilterBadgeText}>{activeFiltersCount}</Text>
-              </View>
+      <Animated.View
+        style={[
+          styles.container,
+          {
+            opacity: entryAnimation,
+            transform: [
+              {
+                translateY: entryAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [34, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <View style={styles.searchRow}>
+          <View style={[styles.searchBar, isFocusedFromHome && styles.searchBarFocused]}>
+            <Search size={23} stroke={colors.text} strokeWidth={2.6} />
+            <TextInput
+              ref={searchInputRef}
+              value={query}
+              onFocus={() => {
+                setIsFocusedFromHome(true);
+              }}
+              onChangeText={(text) => {
+                setQuery(text);
+                if (text.length > 0) setActiveCategories([]);
+              }}
+              onSubmitEditing={commitRecentSearch}
+              returnKeyType="search"
+              placeholder="Caută restaurante sau preparate"
+              placeholderTextColor={colors.muted}
+              style={styles.searchInput}
+            />
+            {!isFocusedFromHome ? (
+              <Pressable hitSlop={8} onPress={() => setActiveSheet("allFilters")}>
+                <SlidersHorizontal size={22} stroke={colors.text} strokeWidth={2.7} />
+                {activeFiltersCount > 0 ? (
+                  <View style={styles.searchFilterBadge}>
+                    <Text style={styles.searchFilterBadgeText}>{activeFiltersCount}</Text>
+                  </View>
+                ) : null}
+              </Pressable>
             ) : null}
-          </Pressable>
+          </View>
+          <Animated.View
+            style={[
+              styles.cancelWrap,
+              {
+                width: focusAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 62],
+                }),
+                opacity: focusAnimation,
+              },
+            ]}
+            pointerEvents={isFocusedFromHome ? "auto" : "none"}
+          >
+            <Pressable
+              hitSlop={8}
+              onPress={() => {
+                setIsFocusedFromHome(false);
+                searchInputRef.current?.blur();
+              }}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </Pressable>
+          </Animated.View>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersRow}>
@@ -384,21 +516,28 @@ export function SearchScreen() {
               </View>
             )}
             <FlatList
+              key="search-results-list"
               data={filtered}
               keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => (
-                <RestaurantCard
-                  compact
+                <SearchRestaurantResult
                   restaurant={item}
+                  products={getRestaurantProductsForSearch(item)}
                   onPress={() =>
                     navigation.navigate("HomeTab", {
                       screen: "RestaurantDetails",
                       params: { restaurant: item },
                     })
                   }
+                  onProductPress={(product) =>
+                    navigation.navigate("HomeTab", {
+                      screen: "ProductDetails",
+                      params: { restaurant: item, product },
+                    })
+                  }
                 />
               )}
-              ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
+              ItemSeparatorComponent={() => <View style={{ height: 34 }} />}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.list}
               ListEmptyComponent={
@@ -414,6 +553,7 @@ export function SearchScreen() {
           </>
         ) : (
           <FlatList
+            key="search-discovery-list"
             data={discoveryCategories}
             keyExtractor={(item) => item.label}
             showsVerticalScrollIndicator={false}
@@ -443,7 +583,7 @@ export function SearchScreen() {
             )}
           />
         )}
-      </View>
+      </Animated.View>
 
       <Modal transparent visible={!!activeSheet} animationType="fade" onRequestClose={() => setActiveSheet(null)}>
         <Pressable style={styles.modalOverlay} onPress={() => setActiveSheet(null)} />
@@ -611,6 +751,77 @@ export function SearchScreen() {
   );
 }
 
+function SearchRestaurantResult({
+  restaurant,
+  products,
+  onPress,
+  onProductPress,
+}: {
+  restaurant: Restaurant;
+  products: Product[];
+  onPress: () => void;
+  onProductPress: (product: Product) => void;
+}) {
+  return (
+    <View style={styles.resultBlock}>
+      <Pressable style={styles.resultHeader} onPress={onPress}>
+        <Image source={{ uri: resolveImageUri(restaurant.cover_image, FALLBACK_RESTAURANT_IMAGE) }} style={styles.resultAvatar} />
+        <View style={styles.resultHeaderBody}>
+          <View style={styles.resultTitleRow}>
+            <Text style={styles.resultRestaurantName} numberOfLines={1}>
+              {restaurant.name}
+            </Text>
+          </View>
+          <View style={styles.resultMetaRow}>
+            <View style={styles.resultMetaItem}>
+              <Bike size={18} stroke={colors.text} strokeWidth={2.4} />
+              <Text style={[styles.resultMetaText, styles.resultDeliveryFee]}>{formatRon(restaurant.delivery_fee)}</Text>
+            </View>
+            <View style={styles.resultMetaItem}>
+              <Clock3 size={18} stroke={colors.text} strokeWidth={2.4} />
+              <Text style={styles.resultMetaText}>
+                {deliveryWindow(restaurant.estimated_delivery_time_min, restaurant.estimated_delivery_time_max)}
+              </Text>
+            </View>
+            <View style={styles.resultMetaItem}>
+              <Star size={18} stroke={colors.warning} fill={colors.warning} strokeWidth={2.4} />
+              <Text style={styles.resultMetaText}>
+                {Number(restaurant.rating).toFixed(1)} ({restaurant.reviews_count ?? 0})
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Pressable>
+
+      <FlatList
+        horizontal
+        data={products}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={({ item }) => <SearchProductCard product={item} onPress={() => onProductPress(item)} />}
+        ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.resultProductsRow}
+      />
+    </View>
+  );
+}
+
+function SearchProductCard({ product, onPress }: { product: Product; onPress: () => void }) {
+  const effectivePrice = product.effective_price ?? product.discount_price ?? product.price;
+
+  return (
+    <Pressable style={styles.searchProductCard} onPress={onPress}>
+      <View style={styles.searchProductImageWrap}>
+        <Image source={{ uri: resolveImageUri(product.image, FALLBACK_PRODUCT_IMAGE) }} style={styles.searchProductImage} />
+      </View>
+      <Text style={styles.searchProductPrice}>{formatRon(effectivePrice)}</Text>
+      <Text style={styles.searchProductName} numberOfLines={2}>
+        {product.name}
+      </Text>
+    </Pressable>
+  );
+}
+
 function FilterChip({
   label,
   icon: Icon,
@@ -665,6 +876,12 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     gap: 8,
   },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    minHeight: 50,
+  },
   searchBar: {
     height: 50,
     borderRadius: 13,
@@ -673,6 +890,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 14,
     gap: 8,
+    flex: 1,
+  },
+  searchBarFocused: {
+    borderWidth: 1.5,
+    borderColor: colors.red,
+    backgroundColor: colors.white,
   },
   searchInput: {
     flex: 1,
@@ -680,20 +903,30 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "500",
   },
+  cancelText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  cancelWrap: {
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "flex-end",
+    height: 50,
+  },
   filtersRow: {
     gap: 7,
     paddingRight: 22,
-    paddingVertical: 2,
+    paddingVertical: 8,
   },
   filterChip: {
-    height: 34,
-    paddingHorizontal: 10,
+    height: 38,
+    paddingHorizontal: 12,
     borderRadius: 11,
     backgroundColor: "#F0F2F3",
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    overflow: "hidden",
+    gap: 7,
   },
   filterChipActive: {
     backgroundColor: "#E4F2EA",
@@ -703,11 +936,91 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     color: colors.text,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
   },
   list: {
     paddingBottom: 110,
+  },
+  resultBlock: {
+    gap: 14,
+  },
+  resultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  resultAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 10,
+    backgroundColor: colors.cardSoft,
+  },
+  resultHeaderBody: {
+    flex: 1,
+    minWidth: 0,
+    gap: 5,
+  },
+  resultTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  resultRestaurantName: {
+    flexShrink: 1,
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  resultMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 13,
+    flexWrap: "wrap",
+  },
+  resultMetaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  resultMetaText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  resultDeliveryFee: {
+    color: colors.text,
+    fontWeight: "400",
+  },
+  resultProductsRow: {
+    paddingRight: 22,
+  },
+  searchProductCard: {
+    width: 128,
+  },
+  searchProductImageWrap: {
+    width: 128,
+    height: 128,
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: colors.cardSoft,
+    marginBottom: 7,
+  },
+  searchProductImage: {
+    width: "100%",
+    height: "100%",
+  },
+  searchProductPrice: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 1,
+  },
+  searchProductName: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "500",
+    lineHeight: 16,
   },
   activeCategoryPill: {
     backgroundColor: colors.cardSoft,
@@ -735,8 +1048,8 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   resultsHeader: {
-    marginTop: 14,
-    marginBottom: 12,
+    marginTop: 22,
+    marginBottom: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
