@@ -35,7 +35,7 @@ export type ProfileStackParamList = {
 
 export type MainTabsParamList = {
   HomeTab: NavigatorScreenParams<HomeStackParamList>;
-  SearchTab: { category?: string } | undefined;
+  SearchTab: { category?: string; openFilters?: boolean } | undefined;
   CartTab: NavigatorScreenParams<CartStackParamList>;
   OrdersTab: NavigatorScreenParams<OrdersStackParamList>;
   ProfileTab: NavigatorScreenParams<ProfileStackParamList>;

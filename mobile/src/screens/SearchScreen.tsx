@@ -62,7 +62,6 @@ const discoveryCategories: DiscoveryCategory[] = [
   { label: "Bakery", emoji: "🥐" },
   { label: "Groceries", emoji: "🛒" },
   { label: "Healthy", emoji: "🥑" },
-  { label: "Middle Eastern", emoji: "🥗" },
   { label: "Thai", emoji: "🍜" },
   { label: "Salads", emoji: "🥙" },
   { label: "Ramen", emoji: "🍜" },
@@ -174,6 +173,13 @@ export function SearchScreen() {
       navigation.setParams({ category: undefined });
     }
   }, [navigation, route.params?.category]);
+
+  useEffect(() => {
+    if (route.params?.openFilters) {
+      setActiveSheet("allFilters");
+      navigation.setParams({ openFilters: undefined });
+    }
+  }, [navigation, route.params?.openFilters]);
 
   const hasSearchIntent = query.trim().length > 0 || activeCategories.length > 0;
 
@@ -575,7 +581,7 @@ export function SearchScreen() {
               </Pressable>
             </View>
 
-            <View style={styles.optionList}>
+            <View style={styles.singleSheetOptionList}>
               {sheetConfig.options.map((option, index) => {
                 const selected = isOptionSelected(activeSheet, option.value);
                 return (
@@ -660,9 +666,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   searchBar: {
-    height: 54,
+    height: 50,
     borderRadius: 13,
-    backgroundColor: "#E3E6E6",
+    backgroundColor: "#F0F2F3",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
@@ -677,15 +683,17 @@ const styles = StyleSheet.create({
   filtersRow: {
     gap: 7,
     paddingRight: 22,
+    paddingVertical: 2,
   },
   filterChip: {
     height: 34,
     paddingHorizontal: 10,
     borderRadius: 11,
-    backgroundColor: "#E3E6E6",
+    backgroundColor: "#F0F2F3",
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    overflow: "hidden",
   },
   filterChipActive: {
     backgroundColor: "#E4F2EA",
@@ -776,7 +784,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   discoveryList: {
-    paddingTop: 10,
+    paddingTop: 14,
     paddingBottom: 110,
   },
   discoveryHeader: {
@@ -786,7 +794,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingVertical: 10,
+    paddingVertical: 14,
   },
   recentItemBorder: {
     borderBottomWidth: 1,
@@ -794,15 +802,15 @@ const styles = StyleSheet.create({
   },
   recentText: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "500",
   },
   sectionTitle: {
     color: colors.text,
     fontSize: 20,
     fontWeight: "600",
-    marginTop: 20,
-    marginBottom: 12,
+    marginTop: 30,
+    marginBottom: 0,
   },
   inspirationItem: {
     flexDirection: "row",
@@ -837,9 +845,10 @@ const styles = StyleSheet.create({
     maxHeight: 540,
     paddingHorizontal: 10,
     paddingTop: 10,
+    backgroundColor: "#EAECEC",
   },
   filtersSectionCard: {
-    backgroundColor: "#F1F3F3",
+    backgroundColor: colors.background,
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 14,
@@ -877,6 +886,9 @@ const styles = StyleSheet.create({
   },
   optionList: {
     paddingHorizontal: 2,
+  },
+  singleSheetOptionList: {
+    paddingHorizontal: 20,
   },
   optionRow: {
     minHeight: 54,
@@ -919,11 +931,12 @@ const styles = StyleSheet.create({
   },
   choiceChip: {
     minHeight: 36,
-    borderRadius: 10,
-    backgroundColor: "#E3E6E6",
+    borderRadius: 12,
+    backgroundColor: "#EAECEC",
     paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
   choiceChipActive: {
     backgroundColor: colors.red,

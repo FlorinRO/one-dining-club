@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Filter, MapPin, Search, SearchX } from "lucide-react-native";
+import { MapPin, Search, SearchX, SlidersHorizontal } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -44,7 +44,6 @@ const baseProductCarousel: CarouselItem[] = [
   { label: "Bakery", emoji: "🥐" },
   { label: "Groceries", emoji: "🛒" },
   { label: "Healthy", emoji: "🥑" },
-  { label: "Middle Eastern", emoji: "🥗" },
   { label: "Thai", emoji: "🍜" },
   { label: "Salads", emoji: "🥙" },
   { label: "Ramen", emoji: "🍜" },
@@ -161,7 +160,7 @@ export function HomeScreen({ navigation }: Props) {
       >
         {showStickySearch ? (
           <View style={styles.searchBar}>
-            <Search size={20} stroke={colors.muted} />
+            <Search size={23} stroke={colors.text} strokeWidth={2.6} />
             <TextInput
               value={search}
               onChangeText={setSearch}
@@ -169,8 +168,8 @@ export function HomeScreen({ navigation }: Props) {
               placeholderTextColor={colors.muted}
               style={styles.searchInput}
             />
-            <Pressable style={styles.filterButton}>
-              <Filter size={18} stroke={colors.text} />
+            <Pressable hitSlop={8} onPress={() => navigation.getParent()?.navigate("SearchTab", { openFilters: true })}>
+              <SlidersHorizontal size={22} stroke={colors.text} strokeWidth={2.7} />
             </Pressable>
           </View>
         ) : null}
@@ -191,7 +190,7 @@ export function HomeScreen({ navigation }: Props) {
           }}
         >
           <View style={styles.searchBar}>
-            <Search size={20} stroke={colors.muted} />
+            <Search size={23} stroke={colors.text} strokeWidth={2.6} />
             <TextInput
               value={search}
               onChangeText={setSearch}
@@ -199,8 +198,8 @@ export function HomeScreen({ navigation }: Props) {
               placeholderTextColor={colors.muted}
               style={styles.searchInput}
             />
-            <Pressable style={styles.filterButton}>
-              <Filter size={18} stroke={colors.text} />
+            <Pressable hitSlop={8} onPress={() => navigation.getParent()?.navigate("SearchTab", { openFilters: true })}>
+              <SlidersHorizontal size={22} stroke={colors.text} strokeWidth={2.7} />
             </Pressable>
           </View>
         </View>
@@ -332,26 +331,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
   },
-  filterButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
   searchBar: {
-    height: 54,
-    borderRadius: 18,
-    backgroundColor: colors.cardSoft,
-    borderWidth: 1,
-    borderColor: colors.border,
+    height: 50,
+    borderRadius: 13,
+    backgroundColor: "#F0F2F3",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
-    gap: 10,
+    gap: 8,
   },
   searchStickyWrap: {
     backgroundColor: colors.background,
@@ -371,7 +358,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     color: colors.text,
-    fontSize: 16,
+    fontSize: 17,
   },
   chips: {
     paddingVertical: 4,
