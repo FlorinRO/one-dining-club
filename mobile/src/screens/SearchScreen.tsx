@@ -1,26 +1,166 @@
 import { NavigationProp, RouteProp, useNavigation, useRoute } from "@react-navigation/native";
-import { Clock3, Search } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ArrowUpDown,
+  Bike,
+  Check,
+  ChevronDown,
+  Clock3,
+  Footprints,
+  Route,
+  Search,
+  SearchX,
+  SlidersHorizontal,
+  Star,
+  Tag,
+  X,
+} from "lucide-react-native";
+import { ComponentType, ReactNode, useEffect, useMemo, useState } from "react";
+import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
-import { CategoryChip } from "../components/CategoryChip";
 import { RestaurantCard } from "../components/RestaurantCard";
 import { Screen } from "../components/Screen";
 import { MainTabsParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
 import { Restaurant } from "../types/models";
 
-const filters = ["Sort", "Offers", "Rating", "Delivery fee", "Delivery time"];
-const inspirationCategories = ["Pizza", "Shawarma", "Burgers", "Kebab", "Sushi", "Asian", "Fast-food"];
+type FilterKey = "sort" | "offers" | "rating" | "deliveryFee" | "deliveryTime" | "pickup" | "distance" | "categories";
+type ActiveSheetKey = FilterKey | "allFilters";
+type SortValue = "relevant" | "closest" | "deliveryFee" | "deliveryTime" | "rating";
+type FilterOption = { label: string; value: string | number | boolean };
+type SheetConfig = { title: string; type: "single" | "multi"; options: FilterOption[] };
+type ChipIcon = ComponentType<{ size?: number; stroke?: string; strokeWidth?: number }>;
+
+type DiscoveryCategory = {
+  label: string;
+  emoji: string;
+};
+
+const filters: Array<{ key: FilterKey; label: string; icon: ChipIcon; dropdown?: boolean }> = [
+  { key: "sort", label: "Sort", icon: ArrowUpDown, dropdown: true },
+  { key: "offers", label: "Offers", icon: Tag },
+  { key: "rating", label: "Rating", icon: Star, dropdown: true },
+  { key: "deliveryFee", label: "Delivery fee", icon: Bike, dropdown: true },
+  { key: "deliveryTime", label: "Delivery time", icon: Clock3, dropdown: true },
+  { key: "pickup", label: "Pickup", icon: Footprints },
+  { key: "distance", label: "Distance", icon: Route, dropdown: true },
+  { key: "categories", label: "Categories", icon: SlidersHorizontal, dropdown: true },
+];
+
+const discoveryCategories: DiscoveryCategory[] = [
+  { label: "Italian", emoji: "🇮🇹" },
+  { label: "Pizza", emoji: "🍕" },
+  { label: "Burgers", emoji: "🍔" },
+  { label: "Asian", emoji: "🥡" },
+  { label: "Sushi", emoji: "🍣" },
+  { label: "Kebab", emoji: "🥙" },
+  { label: "Wraps", emoji: "🌯" },
+  { label: "Chicken", emoji: "🍗" },
+  { label: "Sandwich", emoji: "🥪" },
+  { label: "Japanese", emoji: "🍤" },
+  { label: "Bakery", emoji: "🥐" },
+  { label: "Groceries", emoji: "🛒" },
+  { label: "Healthy", emoji: "🥑" },
+  { label: "Middle Eastern", emoji: "🥗" },
+  { label: "Thai", emoji: "🍜" },
+  { label: "Salads", emoji: "🥙" },
+  { label: "Ramen", emoji: "🍜" },
+  { label: "Seafood", emoji: "🦐" },
+  { label: "Desserts", emoji: "🧁" },
+  { label: "Indian", emoji: "🇮🇳" },
+  { label: "Breakfast", emoji: "🍳" },
+  { label: "Pasta", emoji: "🍝" },
+  { label: "Coffee", emoji: "☕" },
+  { label: "BBQ", emoji: "🍖" },
+  { label: "Soup", emoji: "🍲" },
+];
+
+const sheetConfigs: Record<FilterKey, SheetConfig> = {
+  sort: {
+    title: "Sortare",
+    type: "single",
+    options: [
+      { label: "Cele mai relevante", value: "relevant" },
+      { label: "Cele mai apropiate", value: "closest" },
+      { label: "Cel mai mic cost de livrare", value: "deliveryFee" },
+      { label: "Cea mai rapidă livrare", value: "deliveryTime" },
+      { label: "Cel mai bun rating", value: "rating" },
+    ],
+  },
+  offers: {
+    title: "Oferte",
+    type: "single",
+    options: [{ label: "Doar restaurante cu oferte", value: true }],
+  },
+  rating: {
+    title: "Rating",
+    type: "single",
+    options: [
+      { label: "4.3 sau mai mare", value: 4.3 },
+      { label: "4.5 sau mai mare", value: 4.5 },
+      { label: "4.7 sau mai mare", value: 4.7 },
+    ],
+  },
+  deliveryFee: {
+    title: "Taxă de livrare",
+    type: "single",
+    options: [
+      { label: "Gratuit", value: 0 },
+      { label: "3,50 RON sau mai puțin", value: 3.5 },
+      { label: "5,00 RON sau mai puțin", value: 5 },
+    ],
+  },
+  deliveryTime: {
+    title: "Timp de livrare",
+    type: "single",
+    options: [
+      { label: "20 min sau mai puțin", value: 20 },
+      { label: "30 min sau mai puțin", value: 30 },
+      { label: "45 min sau mai puțin", value: 45 },
+    ],
+  },
+  pickup: {
+    title: "Ridicare",
+    type: "single",
+    options: [{ label: "Ridicare disponibilă", value: true }],
+  },
+  distance: {
+    title: "Distanță",
+    type: "single",
+    options: [
+      { label: "1 km sau mai puțin", value: 1 },
+      { label: "2 km sau mai puțin", value: 2 },
+      { label: "3 km sau mai puțin", value: 3 },
+    ],
+  },
+  categories: {
+    title: "Categorii",
+    type: "multi",
+    options: discoveryCategories.map((item) => ({ label: `${item.emoji} ${item.label}`, value: item.label })),
+  },
+};
+
+function getCategoryEmoji(label: string) {
+  const match = discoveryCategories.find((item) => item.label.toLowerCase() === label.toLowerCase());
+  return match?.emoji ?? "🍽️";
+}
 
 export function SearchScreen() {
   const navigation = useNavigation<NavigationProp<MainTabsParamList>>();
   const route = useRoute<RouteProp<MainTabsParamList, "SearchTab">>();
+  const insets = useSafeAreaInsets();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [query, setQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState("Sort");
-  const [activeCategory, setActiveCategory] = useState<string | null>(route.params?.category ?? null);
+  const [sort, setSort] = useState<SortValue>("relevant");
+  const [offersOnly, setOffersOnly] = useState(false);
+  const [pickupOnly, setPickupOnly] = useState(false);
+  const [minimumRating, setMinimumRating] = useState<number | null>(null);
+  const [maximumDeliveryFee, setMaximumDeliveryFee] = useState<number | null>(null);
+  const [maximumDeliveryTime, setMaximumDeliveryTime] = useState<number | null>(null);
+  const [maximumDistance, setMaximumDistance] = useState<number | null>(null);
+  const [activeCategories, setActiveCategories] = useState<string[]>(route.params?.category ? [route.params.category] : []);
+  const [activeSheet, setActiveSheet] = useState<ActiveSheetKey | null>(null);
   const [recentSearches, setRecentSearches] = useState(["Star", "Kapsa", "Smash"]);
 
   useEffect(() => {
@@ -29,12 +169,13 @@ export function SearchScreen() {
 
   useEffect(() => {
     if (route.params?.category) {
-      setActiveCategory(route.params.category);
+      setActiveCategories([route.params.category]);
       setQuery("");
+      navigation.setParams({ category: undefined });
     }
-  }, [route.params?.category]);
+  }, [navigation, route.params?.category]);
 
-  const hasSearchIntent = query.trim().length > 0 || !!activeCategory;
+  const hasSearchIntent = query.trim().length > 0 || activeCategories.length > 0;
 
   const filtered = useMemo(() => {
     if (!hasSearchIntent) return [];
@@ -43,19 +184,35 @@ export function SearchScreen() {
       .filter((restaurant) => {
         const haystack = `${restaurant.name} ${restaurant.description} ${(restaurant.categories ?? []).map((c) => c.name).join(" ")}`.toLowerCase();
         const queryText = query.trim().toLowerCase();
-        const categoryText = activeCategory?.toLowerCase() ?? "";
-
         const matchesQuery = !queryText || haystack.includes(queryText);
-        const matchesCategory = !categoryText || haystack.includes(categoryText);
-        return matchesQuery && matchesCategory;
+        const matchesCategory =
+          activeCategories.length === 0 || activeCategories.some((category) => haystack.includes(category.toLowerCase()));
+        const matchesOffers = !offersOnly || !!restaurant.has_offer;
+        const matchesPickup = !pickupOnly || !!restaurant.supports_pickup;
+        const matchesRating = minimumRating === null || Number(restaurant.rating) >= minimumRating;
+        const matchesDeliveryFee = maximumDeliveryFee === null || Number(restaurant.delivery_fee) <= maximumDeliveryFee;
+        const matchesDeliveryTime = maximumDeliveryTime === null || restaurant.estimated_delivery_time_min <= maximumDeliveryTime;
+        const matchesDistance = maximumDistance === null || Number(restaurant.distance_km ?? 99) <= maximumDistance;
+
+        return (
+          matchesQuery &&
+          matchesCategory &&
+          matchesOffers &&
+          matchesPickup &&
+          matchesRating &&
+          matchesDeliveryFee &&
+          matchesDeliveryTime &&
+          matchesDistance
+        );
       })
       .sort((a, b) => {
-        if (activeFilter === "Rating") return Number(b.rating) - Number(a.rating);
-        if (activeFilter === "Delivery fee") return Number(a.delivery_fee) - Number(b.delivery_fee);
-        if (activeFilter === "Delivery time") return a.estimated_delivery_time_min - b.estimated_delivery_time_min;
-        return Number(b.is_open) - Number(a.is_open);
+        if (sort === "closest") return Number(a.distance_km ?? 99) - Number(b.distance_km ?? 99);
+        if (sort === "deliveryFee") return Number(a.delivery_fee) - Number(b.delivery_fee);
+        if (sort === "deliveryTime") return a.estimated_delivery_time_min - b.estimated_delivery_time_min;
+        if (sort === "rating") return Number(b.rating) - Number(a.rating);
+        return Number(b.is_open) - Number(a.is_open) || Number(b.rating) - Number(a.rating);
       });
-  }, [activeCategory, activeFilter, hasSearchIntent, query, restaurants]);
+  }, [activeCategories, hasSearchIntent, maximumDeliveryFee, maximumDeliveryTime, maximumDistance, minimumRating, offersOnly, pickupOnly, query, restaurants, sort]);
 
   const commitRecentSearch = () => {
     const value = query.trim();
@@ -65,42 +222,160 @@ export function SearchScreen() {
 
   const clearSearchContext = () => {
     setQuery("");
-    setActiveCategory(null);
+    setActiveCategories([]);
+  };
+
+  const resetFilter = (key: FilterKey) => {
+    if (key === "sort") setSort("relevant");
+    if (key === "offers") setOffersOnly(false);
+    if (key === "rating") setMinimumRating(null);
+    if (key === "deliveryFee") setMaximumDeliveryFee(null);
+    if (key === "deliveryTime") setMaximumDeliveryTime(null);
+    if (key === "pickup") setPickupOnly(false);
+    if (key === "distance") setMaximumDistance(null);
+    if (key === "categories") setActiveCategories([]);
+  };
+
+  const isFilterActive = (key: FilterKey) => {
+    if (key === "sort") return sort !== "relevant";
+    if (key === "offers") return offersOnly;
+    if (key === "rating") return minimumRating !== null;
+    if (key === "deliveryFee") return maximumDeliveryFee !== null;
+    if (key === "deliveryTime") return maximumDeliveryTime !== null;
+    if (key === "pickup") return pickupOnly;
+    if (key === "distance") return maximumDistance !== null;
+    return activeCategories.length > 0;
+  };
+
+  const isOptionSelected = (key: FilterKey, value: FilterOption["value"]) => {
+    if (key === "sort") return sort === value;
+    if (key === "offers") return offersOnly === value;
+    if (key === "rating") return minimumRating === value;
+    if (key === "deliveryFee") return maximumDeliveryFee === value;
+    if (key === "deliveryTime") return maximumDeliveryTime === value;
+    if (key === "pickup") return pickupOnly === value;
+    if (key === "distance") return maximumDistance === value;
+    return activeCategories.includes(String(value));
+  };
+
+  const selectOption = (key: FilterKey, value: FilterOption["value"]) => {
+    if (key === "sort") setSort(value as SortValue);
+    if (key === "offers") setOffersOnly((current) => !current);
+    if (key === "rating") setMinimumRating((current) => (current === value ? null : Number(value)));
+    if (key === "deliveryFee") setMaximumDeliveryFee((current) => (current === value ? null : Number(value)));
+    if (key === "deliveryTime") setMaximumDeliveryTime((current) => (current === value ? null : Number(value)));
+    if (key === "pickup") setPickupOnly((current) => !current);
+    if (key === "distance") setMaximumDistance((current) => (current === value ? null : Number(value)));
+    if (key === "categories") {
+      const category = String(value);
+      setActiveCategories((current) => (current.includes(category) ? current.filter((item) => item !== category) : [...current, category]));
+    }
+  };
+
+  const emptyQueryLabel = query.trim() || activeCategories.join(", ") || "selecția curentă";
+  const sheetConfig = activeSheet && activeSheet !== "allFilters" ? sheetConfigs[activeSheet] : null;
+  const activeFiltersCount =
+    (sort !== "relevant" ? 1 : 0) +
+    (offersOnly ? 1 : 0) +
+    (pickupOnly ? 1 : 0) +
+    (minimumRating !== null ? 1 : 0) +
+    (maximumDeliveryFee !== null ? 1 : 0) +
+    (maximumDeliveryTime !== null ? 1 : 0) +
+    (maximumDistance !== null ? 1 : 0) +
+    (activeCategories.length > 0 ? 1 : 0);
+
+  const onFilterChipPress = (key: FilterKey) => {
+    if (key === "offers") {
+      setOffersOnly((current) => !current);
+      return;
+    }
+
+    if (key === "pickup") {
+      setPickupOnly((current) => !current);
+      return;
+    }
+
+    setActiveSheet(key);
+  };
+
+  const resetAllFilters = () => {
+    setSort("relevant");
+    setOffersOnly(false);
+    setPickupOnly(false);
+    setMinimumRating(null);
+    setMaximumDeliveryFee(null);
+    setMaximumDeliveryTime(null);
+    setMaximumDistance(null);
+    setActiveCategories([]);
   };
 
   return (
     <Screen>
       <View style={styles.container}>
-        <Text style={styles.title}>Search</Text>
         <View style={styles.searchBar}>
-          <Search size={20} stroke={colors.muted} />
+          <Search size={23} stroke={colors.text} strokeWidth={2.6} />
           <TextInput
             value={query}
             onChangeText={(text) => {
               setQuery(text);
-              if (text.length > 0) setActiveCategory(null);
+              if (text.length > 0) setActiveCategories([]);
             }}
             onSubmitEditing={commitRecentSearch}
-            placeholder="Food, restaurants, stores..."
+            placeholder="Caută restaurante sau preparate"
             placeholderTextColor={colors.muted}
             style={styles.searchInput}
           />
+          <Pressable hitSlop={8} onPress={() => setActiveSheet("allFilters")}>
+            <SlidersHorizontal size={22} stroke={colors.text} strokeWidth={2.7} />
+            {activeFiltersCount > 0 ? (
+              <View style={styles.searchFilterBadge}>
+                <Text style={styles.searchFilterBadgeText}>{activeFiltersCount}</Text>
+              </View>
+            ) : null}
+          </Pressable>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersRow}>
           {filters.map((item) => (
-            <View key={item} style={styles.filterChipWrap}>
-              <CategoryChip label={item} active={item === activeFilter} onPress={() => setActiveFilter(item)} />
-            </View>
+            <FilterChip
+              key={item.key}
+              label={item.label}
+              icon={item.icon}
+              active={isFilterActive(item.key)}
+              redActive={item.key === "offers" || item.key === "pickup"}
+              dropdown={item.dropdown}
+              onPress={() => onFilterChipPress(item.key)}
+            />
           ))}
         </ScrollView>
 
         {hasSearchIntent ? (
           <>
-            {!!activeCategory && (
-              <Pressable style={styles.activeCategoryPill} onPress={clearSearchContext}>
-                <Text style={styles.activeCategoryText}>Categorie: {activeCategory} · reset</Text>
-              </Pressable>
+            {activeCategories.length > 0 && (
+              <View style={styles.activeCategoryPillRow}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeCategoriesRow}>
+                  {activeCategories.map((category) => (
+                    <View key={category} style={styles.activeCategoryPill}>
+                      <Text style={styles.activeCategoryEmoji}>{getCategoryEmoji(category)}</Text>
+                      <Text style={styles.activeCategoryText}>{category}</Text>
+                      <Pressable
+                        hitSlop={8}
+                        onPress={() => setActiveCategories((current) => current.filter((item) => item !== category))}
+                      >
+                        <X size={14} stroke={colors.text} strokeWidth={2.4} />
+                      </Pressable>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            {filtered.length > 0 && (
+              <View style={styles.resultsHeader}>
+                <Text style={styles.resultsCountText}>{filtered.length} rezultate</Text>
+                <Pressable style={styles.resetResultsButton} onPress={clearSearchContext}>
+                  <Text style={styles.resetResultsText}>Reset</Text>
+                </Pressable>
+              </View>
             )}
             <FlatList
               data={filtered}
@@ -120,41 +395,261 @@ export function SearchScreen() {
               ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.list}
-              ListEmptyComponent={<Text style={styles.emptyText}>Nu am găsit restaurante pentru selecția curentă.</Text>}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyIconWrap}>
+                    <SearchX size={24} stroke={colors.muted} />
+                  </View>
+                  <Text style={styles.emptyTitle}>Niciun rezultat</Text>
+                  <Text style={styles.emptyText}>Nu există rezultate pentru „{emptyQueryLabel}”.</Text>
+                </View>
+              }
             />
           </>
         ) : (
           <FlatList
-            data={inspirationCategories}
-            keyExtractor={(item) => item}
+            data={discoveryCategories}
+            keyExtractor={(item) => item.label}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.discoveryList}
             ListHeaderComponent={
               <View style={styles.discoveryHeader}>
-                {recentSearches.map((item) => (
+                {recentSearches.map((item, index) => (
                   <Pressable
                     key={item}
-                    style={styles.recentItem}
+                    style={[styles.recentItem, index < recentSearches.length - 1 && styles.recentItemBorder]}
                     onPress={() => {
                       setQuery(item);
                     }}
                   >
-                    <Clock3 size={18} stroke={colors.muted} />
+                    <Clock3 size={20} stroke={colors.muted} strokeWidth={1.8} />
                     <Text style={styles.recentText}>{item}</Text>
                   </Pressable>
                 ))}
-                <Text style={styles.sectionTitle}>Find some inspiration</Text>
+                <Text style={styles.sectionTitle}>Tipuri de produse</Text>
               </View>
             }
             renderItem={({ item }) => (
-              <Pressable style={styles.inspirationItem} onPress={() => setActiveCategory(item)}>
-                <Text style={styles.inspirationText}>{item}</Text>
+              <Pressable style={styles.inspirationItem} onPress={() => setActiveCategories([item.label])}>
+                <Text style={styles.inspirationEmoji}>{item.emoji}</Text>
+                <Text style={styles.inspirationText}>{item.label}</Text>
               </Pressable>
             )}
           />
         )}
       </View>
+
+      <Modal transparent visible={!!activeSheet} animationType="fade" onRequestClose={() => setActiveSheet(null)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setActiveSheet(null)} />
+        {activeSheet === "allFilters" ? (
+          <View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom, 18) + 14 }]}>
+            <View style={styles.sheetHeader}>
+              <Pressable hitSlop={10} onPress={() => setActiveSheet(null)}>
+                <X size={24} stroke={colors.text} strokeWidth={2.5} />
+              </Pressable>
+              <Text style={styles.sheetTitle}>Filtre</Text>
+              <Pressable hitSlop={10} onPress={resetAllFilters}>
+                <Text style={styles.resetText}>Reset</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.allFiltersScroll} showsVerticalScrollIndicator={false}>
+              <FilterSection title="Sortare" icon={ArrowUpDown}>
+                {sheetConfigs.sort.options.map((option, index) => {
+                  const selected = isOptionSelected("sort", option.value);
+                  return (
+                    <Pressable
+                      key={option.label}
+                      style={[styles.optionRow, index < sheetConfigs.sort.options.length - 1 && styles.optionBorder]}
+                      onPress={() => selectOption("sort", option.value)}
+                    >
+                      <Text style={styles.optionText}>{option.label}</Text>
+                      <View style={[styles.radio, selected && styles.radioSelected]}>{selected ? <View style={styles.radioInner} /> : null}</View>
+                    </Pressable>
+                  );
+                })}
+              </FilterSection>
+
+              <FilterSection title="Oferte" icon={Tag}>
+                <Pressable style={styles.toggleRow} onPress={() => setOffersOnly((current) => !current)}>
+                  <Text style={styles.toggleText}>Doar restaurante cu oferte</Text>
+                  <View style={[styles.checkbox, offersOnly && styles.checkboxSelected]}>
+                    {offersOnly ? <Check size={14} stroke={colors.white} strokeWidth={3} /> : null}
+                  </View>
+                </Pressable>
+              </FilterSection>
+
+              <FilterSection title="Rating" icon={Star}>
+                <View style={styles.choiceWrap}>
+                  {sheetConfigs.rating.options.map((option) => {
+                    const selected = isOptionSelected("rating", option.value);
+                    return (
+                      <Pressable key={option.label} style={[styles.choiceChip, selected && styles.choiceChipActive]} onPress={() => selectOption("rating", option.value)}>
+                        <Text style={[styles.choiceText, selected && styles.choiceTextActive]}>{option.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </FilterSection>
+
+              <FilterSection title="Taxă de livrare" icon={Bike}>
+                <View style={styles.choiceWrap}>
+                  {sheetConfigs.deliveryFee.options.map((option) => {
+                    const selected = isOptionSelected("deliveryFee", option.value);
+                    return (
+                      <Pressable key={option.label} style={[styles.choiceChip, selected && styles.choiceChipActive]} onPress={() => selectOption("deliveryFee", option.value)}>
+                        <Text style={[styles.choiceText, selected && styles.choiceTextActive]}>{option.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </FilterSection>
+
+              <FilterSection title="Timp de livrare" icon={Clock3}>
+                <View style={styles.choiceWrap}>
+                  {sheetConfigs.deliveryTime.options.map((option) => {
+                    const selected = isOptionSelected("deliveryTime", option.value);
+                    return (
+                      <Pressable key={option.label} style={[styles.choiceChip, selected && styles.choiceChipActive]} onPress={() => selectOption("deliveryTime", option.value)}>
+                        <Text style={[styles.choiceText, selected && styles.choiceTextActive]}>{option.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </FilterSection>
+
+              <FilterSection title="Ridicare" icon={Footprints}>
+                <Pressable style={styles.toggleRow} onPress={() => setPickupOnly((current) => !current)}>
+                  <Text style={styles.toggleText}>Doar locații cu ridicare disponibilă</Text>
+                  <View style={[styles.checkbox, pickupOnly && styles.checkboxSelected]}>
+                    {pickupOnly ? <Check size={14} stroke={colors.white} strokeWidth={3} /> : null}
+                  </View>
+                </Pressable>
+              </FilterSection>
+
+              <FilterSection title="Distanță" icon={Route}>
+                <View style={styles.choiceWrap}>
+                  {sheetConfigs.distance.options.map((option) => {
+                    const selected = isOptionSelected("distance", option.value);
+                    return (
+                      <Pressable key={option.label} style={[styles.choiceChip, selected && styles.choiceChipActive]} onPress={() => selectOption("distance", option.value)}>
+                        <Text style={[styles.choiceText, selected && styles.choiceTextActive]}>{option.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </FilterSection>
+
+              <FilterSection title="Categorii" icon={SlidersHorizontal}>
+                <View style={styles.categoryList}>
+                  {discoveryCategories.map((item, index) => {
+                    const selected = activeCategories.includes(item.label);
+                    return (
+                      <Pressable key={item.label} style={[styles.categoryRow, index < discoveryCategories.length - 1 && styles.optionBorder]} onPress={() => selectOption("categories", item.label)}>
+                        <Text style={styles.categoryRowText}>{item.emoji} {item.label}</Text>
+                        <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+                          {selected ? <Check size={14} stroke={colors.white} strokeWidth={3} /> : null}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </FilterSection>
+            </ScrollView>
+
+            <View style={styles.applyWrap}>
+              <Pressable style={styles.applyButton} onPress={() => setActiveSheet(null)}>
+                <Text style={styles.applyText}>Aplică</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : activeSheet && sheetConfig ? (
+          <View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom, 18) + 14 }]}>
+            <View style={styles.sheetHeader}>
+              <Pressable hitSlop={10} onPress={() => setActiveSheet(null)}>
+                <X size={24} stroke={colors.text} strokeWidth={2.5} />
+              </Pressable>
+              <Text style={styles.sheetTitle}>{sheetConfig.title}</Text>
+              <Pressable hitSlop={10} onPress={() => resetFilter(activeSheet)}>
+                <Text style={styles.resetText}>Reset</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.optionList}>
+              {sheetConfig.options.map((option, index) => {
+                const selected = isOptionSelected(activeSheet, option.value);
+                return (
+                  <Pressable
+                    key={option.label}
+                    style={[styles.optionRow, index < sheetConfig.options.length - 1 && styles.optionBorder]}
+                    onPress={() => selectOption(activeSheet, option.value)}
+                  >
+                    <Text style={styles.optionText}>{option.label}</Text>
+                    <View style={[styles.radio, selected && styles.radioSelected]}>
+                      {selected ? <View style={styles.radioInner} /> : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={styles.applyWrap}>
+              <Pressable style={styles.applyButton} onPress={() => setActiveSheet(null)}>
+                <Text style={styles.applyText}>Aplică</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+      </Modal>
     </Screen>
+  );
+}
+
+function FilterChip({
+  label,
+  icon: Icon,
+  active,
+  redActive,
+  dropdown,
+  onPress,
+}: {
+  label: string;
+  icon: ChipIcon;
+  active: boolean;
+  redActive?: boolean;
+  dropdown?: boolean;
+  onPress: () => void;
+}) {
+  const useRedActive = active && redActive;
+  const iconColor = useRedActive ? colors.white : colors.text;
+  const textColor = useRedActive ? colors.white : colors.text;
+
+  return (
+    <Pressable style={[styles.filterChip, active && (useRedActive ? styles.filterChipActiveRed : styles.filterChipActive)]} onPress={onPress}>
+      <Icon size={16} stroke={iconColor} strokeWidth={2.2} />
+      <Text style={[styles.filterChipText, { color: textColor }]}>{label}</Text>
+      {dropdown ? <ChevronDown size={15} stroke={iconColor} strokeWidth={2.3} /> : null}
+    </Pressable>
+  );
+}
+
+function FilterSection({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: ChipIcon;
+  children: ReactNode;
+}) {
+  return (
+    <View style={styles.filtersSectionCard}>
+      <View style={styles.filtersSectionTitleRow}>
+        <Icon size={18} stroke={colors.text} strokeWidth={2.3} />
+        <Text style={styles.filtersSectionTitle}>{title}</Text>
+      </View>
+      {children}
+    </View>
   );
 }
 
@@ -162,63 +657,130 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 14,
-    gap: 16,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 32,
-    fontWeight: "900",
+    gap: 8,
   },
   searchBar: {
     height: 54,
-    borderRadius: 18,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 13,
+    backgroundColor: "#E3E6E6",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
-    gap: 10,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
     color: colors.text,
-    fontSize: 16,
+    fontSize: 17,
+    fontWeight: "500",
   },
   filtersRow: {
-    paddingRight: 6,
+    gap: 7,
+    paddingRight: 22,
   },
-  filterChipWrap: {
-    marginRight: 10,
+  filterChip: {
+    height: 34,
+    paddingHorizontal: 10,
+    borderRadius: 11,
+    backgroundColor: "#E3E6E6",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  filterChipActive: {
+    backgroundColor: "#E4F2EA",
+  },
+  filterChipActiveRed: {
+    backgroundColor: colors.red,
+  },
+  filterChipText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "600",
   },
   list: {
     paddingBottom: 110,
   },
   activeCategoryPill: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderWidth: 1,
+    backgroundColor: colors.cardSoft,
     borderRadius: 999,
     alignSelf: "flex-start",
     paddingHorizontal: 12,
     paddingVertical: 7,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  activeCategoryPillRow: {
+    marginTop: 2,
+  },
+  activeCategoriesRow: {
+    gap: 8,
+    paddingRight: 10,
+  },
+  activeCategoryEmoji: {
+    fontSize: 14,
   },
   activeCategoryText: {
     color: colors.text,
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  resultsHeader: {
+    marginTop: 14,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  resultsCountText: {
+    color: colors.text,
+    fontSize: 18,
     fontWeight: "700",
+  },
+  resetResultsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  resetResultsText: {
+    color: colors.red,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    paddingTop: 28,
+    gap: 8,
+  },
+  emptyIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 2,
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "800",
   },
   emptyText: {
     color: colors.muted,
     fontSize: 14,
-    marginTop: 12,
+    textAlign: "center",
   },
   discoveryList: {
+    paddingTop: 10,
     paddingBottom: 110,
   },
   discoveryHeader: {
-    gap: 8,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   recentItem: {
     flexDirection: "row",
@@ -226,22 +788,229 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 10,
   },
+  recentItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
   recentText: {
     color: colors.text,
     fontSize: 16,
+    fontWeight: "500",
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 30,
-    fontWeight: "900",
-    marginTop: 8,
+    fontSize: 20,
+    fontWeight: "600",
+    marginTop: 20,
+    marginBottom: 12,
   },
   inspirationItem: {
-    paddingVertical: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    paddingVertical: 12,
+  },
+  inspirationEmoji: {
+    fontSize: 18,
+    width: 23,
   },
   inspirationText: {
     color: colors.text,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.48)",
+  },
+  bottomSheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    backgroundColor: colors.background,
+    overflow: "hidden",
+  },
+  allFiltersScroll: {
+    maxHeight: 540,
+    paddingHorizontal: 10,
+    paddingTop: 10,
+  },
+  filtersSectionCard: {
+    backgroundColor: "#F1F3F3",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 10,
+  },
+  filtersSectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+  },
+  filtersSectionTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  sheetHeader: {
+    height: 58,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  sheetTitle: {
+    color: colors.text,
     fontSize: 18,
+    fontWeight: "500",
+  },
+  resetText: {
+    color: colors.red,
+    fontSize: 17,
+    fontWeight: "500",
+  },
+  optionList: {
+    paddingHorizontal: 2,
+  },
+  optionRow: {
+    minHeight: 54,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 14,
+  },
+  optionBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  optionText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "400",
+  },
+  radio: {
+    width: 23,
+    height: 23,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#9AA3A0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioSelected: {
+    borderColor: colors.red,
+  },
+  radioInner: {
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: colors.red,
+  },
+  choiceWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  choiceChip: {
+    minHeight: 36,
+    borderRadius: 10,
+    backgroundColor: "#E3E6E6",
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  choiceChipActive: {
+    backgroundColor: colors.red,
+  },
+  choiceText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  choiceTextActive: {
+    color: colors.white,
+  },
+  toggleRow: {
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  toggleText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "400",
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: "#9AA3A0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxSelected: {
+    borderColor: colors.red,
+    backgroundColor: colors.red,
+  },
+  categoryList: {
+    borderTopWidth: 1,
+    borderTopColor: "#E0E3E3",
+    marginTop: 2,
+  },
+  categoryRow: {
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  categoryRowText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "400",
+  },
+  applyWrap: {
+    paddingHorizontal: 20,
+    paddingTop: 18,
+  },
+  applyButton: {
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: colors.red,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  applyText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  searchFilterBadge: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.red,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  searchFilterBadgeText: {
+    color: colors.white,
+    fontSize: 10,
     fontWeight: "700",
+    lineHeight: 12,
   },
 });

@@ -46,11 +46,11 @@ class Command(BaseCommand):
             defaults={
                 "owner": owner,
                 "name": "Luna Rossa Kitchen",
-                "description": "Paste proaspete, pizza napoletana si deserturi facute in casa.",
+                "description": "Paste proaspete, pizza napoletană și deserturi făcute în casă.",
                 "phone": "+40722222222",
                 "email": "hello@lunarossa.test",
                 "address": "Strada Frumoasa 12",
-                "city": "Bucuresti",
+                "city": "București",
                 "latitude": Decimal("44.441000"),
                 "longitude": Decimal("26.096000"),
                 "delivery_fee": Decimal("9.99"),
@@ -80,7 +80,7 @@ class Command(BaseCommand):
             name="Pizza Diavola",
             defaults={
                 "category": pizza_category,
-                "description": "Sos San Marzano, mozzarella, salam picant, ardei iute si busuioc.",
+                "description": "Sos San Marzano, mozzarella, salam picant, ardei iute și busuioc.",
                 "price": Decimal("46.00"),
                 "discount_price": Decimal("39.00"),
                 "is_available": True,
@@ -94,7 +94,7 @@ class Command(BaseCommand):
             name="Tagliatelle Tartufo",
             defaults={
                 "category": pasta_category,
-                "description": "Tagliatelle, crema de parmezan, ciuperci si ulei de trufe.",
+                "description": "Tagliatelle, cremă de parmezan, ciuperci și ulei de trufe.",
                 "price": Decimal("52.00"),
                 "is_available": True,
                 "is_popular": True,
@@ -126,7 +126,7 @@ class Command(BaseCommand):
                 "full_name": "Client Demo",
                 "phone": customer.phone,
                 "address_line_1": "Strada General Berthelot 24",
-                "city": "Bucuresti",
+                "city": "București",
                 "postcode": "010164",
                 "latitude": Decimal("44.444000"),
                 "longitude": Decimal("26.091000"),
@@ -153,4 +153,3 @@ class Command(BaseCommand):
         )
 
         self.stdout.write(self.style.SUCCESS("Demo data ready."))
-

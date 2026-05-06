@@ -63,7 +63,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
               <Text style={styles.metaText}>{Number(restaurant.delivery_fee).toFixed(2)} lei</Text>
             </View>
           </View>
-          <Text style={styles.type}>{categoryName} · 1.8 km · comanda minima {Number(restaurant.minimum_order).toFixed(0)} lei</Text>
+          <Text style={styles.type}>{categoryName} · 1.8 km · comandă minimă {Number(restaurant.minimum_order).toFixed(0)} lei</Text>
           <View style={styles.promo}>
             <Text style={styles.promoText}>Promo activ: 10% reducere cu FIRSTCLUB</Text>
           </View>

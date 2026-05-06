@@ -14,7 +14,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "club.onedining.customer",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "One Dining Club foloseste locatia pentru restaurante si livrare."
+        "NSLocationWhenInUseUsageDescription": "One Dining Club folosește locația pentru restaurante și livrare."
       }
     },
     "android": {
@@ -26,7 +26,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "One Dining Club foloseste locatia pentru restaurante si livrare."
+          "locationWhenInUsePermission": "One Dining Club folosește locația pentru restaurante și livrare."
         }
       ]
     ],

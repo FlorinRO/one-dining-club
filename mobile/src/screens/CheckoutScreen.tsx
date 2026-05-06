@@ -87,7 +87,7 @@ export function CheckoutScreen({ navigation }: Props) {
     } finally {
       clearCart();
       setLoading(false);
-      Alert.alert("Comandă plasată", "Statusul comenzii este disponibil în tab-ul Orders.");
+      Alert.alert("Comandă plasată", "Statusul comenzii este disponibil în tabul Orders.");
       navigation.getParent()?.navigate("OrdersTab", { screen: "OrdersHome" });
     }
   };
@@ -135,7 +135,7 @@ export function CheckoutScreen({ navigation }: Props) {
         <View style={styles.panel}>
           <View style={styles.panelHeader}>
             <MessageSquareText size={20} stroke={colors.lime} />
-            <Text style={styles.panelTitle}>Nota restaurant</Text>
+            <Text style={styles.panelTitle}>Notă restaurant</Text>
           </View>
           <TextInput
             value={note}
@@ -156,7 +156,7 @@ export function CheckoutScreen({ navigation }: Props) {
         </View>
       </ScrollView>
       <View style={styles.footer}>
-        <PrimaryButton title={loading ? "Se plasează..." : "Plasează comanda"} onPress={submit} disabled={loading || !selectedAddress} />
+        <PrimaryButton title={loading ? "Se plasează..." : "Plasează comandă"} onPress={submit} disabled={loading || !selectedAddress} />
       </View>
     </Screen>
   );

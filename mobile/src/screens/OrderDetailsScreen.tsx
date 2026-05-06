@@ -73,7 +73,7 @@ export function OrderDetailsScreen({ route }: Props) {
           <SummaryRow label="Total" value={money(order.total)} total />
         </View>
         <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Adresa</Text>
+          <Text style={styles.panelTitle}>Adresă</Text>
           <Text style={styles.addressText}>
             {typeof order.address === "object" ? order.address.address_line_1 : "Adresă salvată"}
           </Text>

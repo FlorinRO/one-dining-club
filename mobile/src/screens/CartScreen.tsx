@@ -84,7 +84,7 @@ export function CartScreen({ navigation }: Props) {
       </ScrollView>
       {!!items.length && (
         <View style={styles.footer}>
-          <PrimaryButton title="Continuă comanda" onPress={() => navigation.navigate("Checkout")} />
+          <PrimaryButton title="Continuă comandă" onPress={() => navigation.navigate("Checkout")} />
         </View>
       )}
     </Screen>

@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Filter, MapPin, Search } from "lucide-react-native";
+import { Filter, MapPin, Search, SearchX } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -58,6 +58,8 @@ const baseProductCarousel: CarouselItem[] = [
   { label: "Soup", emoji: "🍲" },
 ];
 
+const sectionShuffle = (id: number, seed: number) => ((id * 37 + seed * 17) % 97) / 97;
+
 export function HomeScreen({ navigation }: Props) {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [search, setSearch] = useState("");
@@ -88,6 +90,30 @@ export function HomeScreen({ navigation }: Props) {
       return matchesSearch && matchesCategory;
     });
   }, [restaurants, search, activeCategory]);
+
+  const nearbyRestaurants = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const distanceA = Number(a.distance_km ?? 99);
+      const distanceB = Number(b.distance_km ?? 99);
+      if (distanceA !== distanceB) return distanceA - distanceB;
+      return sectionShuffle(a.id, 1) - sectionShuffle(b.id, 1);
+    });
+  }, [filtered]);
+
+  const recommendedRestaurants = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const scoreA = Number(a.rating) + Number(a.reviews_count ?? 0) * 0.001 + (a.has_offer ? 0.25 : 0);
+      const scoreB = Number(b.rating) + Number(b.reviews_count ?? 0) * 0.001 + (b.has_offer ? 0.25 : 0);
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      return sectionShuffle(a.id, 2) - sectionShuffle(b.id, 2);
+    });
+  }, [filtered]);
+
+  const allRestaurants = useMemo(() => {
+    return [...filtered].sort((a, b) => sectionShuffle(a.id, 3) - sectionShuffle(b.id, 3));
+  }, [filtered]);
+  const hasSearchQuery = search.trim().length > 0;
+  const showEmptySearchState = hasSearchQuery && filtered.length === 0;
 
   const carouselItems = useMemo(() => {
     if (favoriteRestaurantIds.length === 0) {
@@ -139,7 +165,7 @@ export function HomeScreen({ navigation }: Props) {
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder="Cauta restaurante sau preparate"
+              placeholder="Caută restaurante sau preparate"
               placeholderTextColor={colors.muted}
               style={styles.searchInput}
             />
@@ -154,7 +180,7 @@ export function HomeScreen({ navigation }: Props) {
         <View style={styles.header}>
           <View style={styles.locationRow}>
             <MapPin size={18} stroke={colors.lime} />
-            <Text style={styles.location}>Bucuresti, centru</Text>
+            <Text style={styles.location}>București, centru</Text>
           </View>
         </View>
 
@@ -169,7 +195,7 @@ export function HomeScreen({ navigation }: Props) {
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder="Cauta restaurante sau preparate"
+              placeholder="Caută restaurante sau preparate"
               placeholderTextColor={colors.muted}
               style={styles.searchInput}
             />
@@ -206,55 +232,67 @@ export function HomeScreen({ navigation }: Props) {
           contentContainerStyle={styles.chips}
         />
 
-        <View style={[styles.sectionBlock, styles.firstSectionBlock]}>
-          <SectionHeader
-            title="Aproape de tine"
-            actionLabel="Toate >"
-            onPressAction={() => navigation.navigate("SectionRestaurants", { mode: "nearby", title: "Aproape de tine" })}
-          />
-          <FlatList
-            horizontal
-            data={filtered}
-            keyExtractor={(item) => `nearby-${item.id}`}
-            renderItem={({ item }) => (
-              <RestaurantCard medium smallImageOnly restaurant={item} onPress={() => navigation.navigate("RestaurantDetails", { restaurant: item })} />
-            )}
-            showsHorizontalScrollIndicator={false}
-            ItemSeparatorComponent={() => <View style={{ width: 14 }} />}
-          />
-        </View>
-
-        <View style={styles.sectionBlock}>
-          <SectionHeader
-            title="Recomandate"
-            actionLabel="Toate >"
-            onPressAction={() => navigation.navigate("SectionRestaurants", { mode: "recommended", title: "Recomandate" })}
-          />
-          <FlatList
-            horizontal
-            data={filtered}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={({ item }) => (
-              <RestaurantCard medium smallImageOnly restaurant={item} onPress={() => navigation.navigate("RestaurantDetails", { restaurant: item })} />
-            )}
-            showsHorizontalScrollIndicator={false}
-            ItemSeparatorComponent={() => <View style={{ width: 14 }} />}
-          />
-        </View>
-
-        <View style={styles.sectionBlock}>
-          <SectionHeader title="Toate restaurantele" />
-          <View style={styles.allRestaurantsList}>
-            {filtered.map((restaurant) => (
-              <RestaurantCard
-                key={`all-${restaurant.id}`}
-                compact
-                restaurant={restaurant}
-                onPress={() => navigation.navigate("RestaurantDetails", { restaurant })}
-              />
-            ))}
+        {showEmptySearchState ? (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconWrap}>
+              <SearchX size={24} stroke={colors.muted} />
+            </View>
+            <Text style={styles.emptyTitle}>Niciun rezultat</Text>
+            <Text style={styles.emptyText}>Nu există rezultate pentru „{search.trim()}”.</Text>
           </View>
-        </View>
+        ) : (
+          <>
+            <View style={[styles.sectionBlock, styles.firstSectionBlock]}>
+              <SectionHeader
+                title="Aproape de tine"
+                actionLabel="Toate >"
+                onPressAction={() => navigation.navigate("SectionRestaurants", { mode: "nearby", title: "Aproape de tine" })}
+              />
+              <FlatList
+                horizontal
+                data={nearbyRestaurants}
+                keyExtractor={(item) => `nearby-${item.id}`}
+                renderItem={({ item }) => (
+                  <RestaurantCard medium smallImageOnly restaurant={item} onPress={() => navigation.navigate("RestaurantDetails", { restaurant: item })} />
+                )}
+                showsHorizontalScrollIndicator={false}
+                ItemSeparatorComponent={() => <View style={{ width: 14 }} />}
+              />
+            </View>
+
+            <View style={styles.sectionBlock}>
+              <SectionHeader
+                title="Recomandate"
+                actionLabel="Toate >"
+                onPressAction={() => navigation.navigate("SectionRestaurants", { mode: "recommended", title: "Recomandate" })}
+              />
+              <FlatList
+                horizontal
+                data={recommendedRestaurants}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={({ item }) => (
+                  <RestaurantCard medium smallImageOnly restaurant={item} onPress={() => navigation.navigate("RestaurantDetails", { restaurant: item })} />
+                )}
+                showsHorizontalScrollIndicator={false}
+                ItemSeparatorComponent={() => <View style={{ width: 14 }} />}
+              />
+            </View>
+
+            <View style={styles.sectionBlock}>
+              <SectionHeader title="Toate restaurantele" />
+              <View style={styles.allRestaurantsList}>
+                {allRestaurants.map((restaurant) => (
+                  <RestaurantCard
+                    key={`all-${restaurant.id}`}
+                    compact
+                    restaurant={restaurant}
+                    onPress={() => navigation.navigate("RestaurantDetails", { restaurant })}
+                  />
+                ))}
+              </View>
+            </View>
+          </>
+        )}
       </ScrollView>
     </Screen>
   );
@@ -377,8 +415,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 30,
+    gap: 8,
+  },
+  emptyIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 2,
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  emptyText: {
+    color: colors.muted,
+    fontSize: 14,
+    textAlign: "center",
+  },
   allRestaurantsList: {
-    gap: 14,
+    gap: 28,
   },
   sectionBlock: {
     gap: 12,

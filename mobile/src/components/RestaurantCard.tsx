@@ -54,20 +54,20 @@ export function RestaurantCard({ restaurant, onPress, compact, small, smallImage
       </View>
       <View style={[styles.body, small && styles.smallBody]}>
         <View style={styles.row}>
-          <Text style={[styles.name, (small || smallImageOnly) && styles.smallName]} numberOfLines={1}>
+          <Text style={[styles.name, compact && styles.compactName, (small || smallImageOnly) && styles.smallName]} numberOfLines={1}>
             {restaurant.name}
           </Text>
         </View>
         <View style={[styles.metaRow, small && styles.smallMetaRow]}>
           <View style={styles.metaItem}>
             <Clock3 size={small || smallImageOnly ? 13 : 15} stroke={colors.muted} />
-            <Text style={[styles.metaText, (small || smallImageOnly) && styles.smallMetaText]}>
+            <Text style={[styles.metaText, compact && styles.compactMetaText, (small || smallImageOnly) && styles.smallMetaText]}>
               {deliveryWindow(restaurant.estimated_delivery_time_min, restaurant.estimated_delivery_time_max)}
             </Text>
           </View>
           <View style={styles.metaItem}>
             <Truck size={small || smallImageOnly ? 13 : 15} stroke={colors.muted} />
-            <Text style={[styles.metaText, (small || smallImageOnly) && styles.smallMetaText]}>{money(restaurant.delivery_fee)}</Text>
+            <Text style={[styles.metaText, compact && styles.compactMetaText, (small || smallImageOnly) && styles.smallMetaText]}>{money(restaurant.delivery_fee)}</Text>
           </View>
         </View>
       </View>
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     height: 112,
   },
   mediaWrap: {
-    borderRadius: 16,
+    borderRadius: 10,
     overflow: "hidden",
   },
   closedOverlay: {
@@ -187,6 +187,9 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
   },
+  compactName: {
+    fontSize: 15,
+  },
   smallName: {
     fontSize: 14,
   },
@@ -207,6 +210,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: "500",
     fontSize: 14,
+  },
+  compactMetaText: {
+    fontSize: 12,
   },
   smallMetaText: {
     fontSize: 11,
