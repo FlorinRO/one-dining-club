@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
-from users.serializers import LoginSerializer, RegisterSerializer, UserSerializer
+from users.serializers import LoginSerializer, RegisterSerializer, SocialLoginSerializer, UserSerializer
 
 
 class RegisterView(generics.CreateAPIView):
@@ -20,6 +20,15 @@ class LoginView(APIView):
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.validated_data)
+
+
+class SocialLoginView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        serializer = SocialLoginSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data)
 
@@ -44,4 +53,3 @@ class MeView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
-

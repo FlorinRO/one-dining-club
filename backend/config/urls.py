@@ -9,7 +9,7 @@ from couriers.views import CourierOrderViewSet, CourierProfileView
 from orders.views import OrderViewSet, RestaurantOwnerOrderViewSet
 from products.views import ProductViewSet, RestaurantOwnerProductViewSet
 from restaurants.views import RestaurantViewSet
-from users.views import LoginView, LogoutView, MeView, RegisterView
+from users.views import LoginView, LogoutView, MeView, RegisterView, SocialLoginView
 
 
 router = DefaultRouter()
@@ -33,6 +33,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/register/", RegisterView.as_view(), name="auth-register"),
     path("api/auth/login/", LoginView.as_view(), name="auth-login"),
+    path("api/auth/social/", SocialLoginView.as_view(), name="auth-social"),
     path("api/auth/logout/", LogoutView.as_view(), name="auth-logout"),
     path("api/auth/me/", MeView.as_view(), name="auth-me"),
     path("api/courier/location/", CourierProfileView.as_view(), name="courier-location"),
@@ -41,4 +42,3 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-

@@ -1,10 +1,31 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useState } from "react";
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronDown,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  Mail,
+  LogIn,
+} from "lucide-react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import LottieView from "lottie-react-native";
 
 import { authApi } from "../api/authApi";
-import { PrimaryButton } from "../components/PrimaryButton";
-import { Screen } from "../components/Screen";
+import { useSocialAuth } from "../lib/socialAuth";
 import { AuthStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { colors } from "../theme/colors";
@@ -16,81 +37,584 @@ export function LoginScreen({ navigation }: Props) {
   const continueAsGuest = useAuthStore((state) => state.continueAsGuest);
   const [email, setEmail] = useState("demo@onedining.club");
   const [password, setPassword] = useState("password123");
+  const [rememberMe, setRememberMe] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const sheetProgress = useRef(new Animated.Value(0)).current;
+
+  const goToHome = () => {
+    continueAsGuest();
+  };
+
+  const handleSocialSuccess = useCallback(
+    (session: Awaited<ReturnType<typeof authApi.socialLogin>>) => setSession(session),
+    [setSession],
+  );
+
+  const handleSocialError = useCallback((message: string) => setError(message), []);
+
+  const { loadingProvider: socialLoading, startSocialLogin } = useSocialAuth({
+    onSuccess: handleSocialSuccess,
+    onError: handleSocialError,
+  });
 
   const submit = async () => {
+    if (!email || !password) {
+      setError("Completează emailul și parola.");
+      return;
+    }
+
     setLoading(true);
+    setError(null);
+
     try {
-      const session = await authApi.login(email, password);
+      const session = await authApi.login(email.trim(), password);
       setSession(session);
     } catch {
-      continueAsGuest();
+      setError("Emailul sau parola nu sunt corecte.");
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    Animated.spring(sheetProgress, {
+      toValue: sheetOpen ? 1 : 0,
+      damping: 22,
+      mass: 0.9,
+      stiffness: 190,
+      useNativeDriver: true,
+    }).start();
+  }, [sheetOpen, sheetProgress]);
+
+  const sheetTranslateY = sheetProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [620, 0],
+  });
+
   return (
-    <Screen>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.container}>
-        <View>
-          <Text style={styles.eyebrow}>Bine ai revenit</Text>
-          <Text style={styles.title}>Intră în cont</Text>
-        </View>
-        <View style={styles.form}>
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            placeholder="Email"
-            placeholderTextColor={colors.muted}
-            style={styles.input}
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
+      <View style={styles.screen}>
+        <View style={styles.hero}>
+          <Pressable style={styles.backButton} onPress={goToHome}>
+            <ArrowLeft color={colors.red} size={24} strokeWidth={2.3} />
+          </Pressable>
+
+          <Image
+            source={require("../../assets/one-dining-logo.png")}
+            defaultSource={require("../../assets/one-dining-logo.png")}
+            fadeDuration={0}
+            style={styles.heroLogo}
+            resizeMode="contain"
           />
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholder="Parolă"
-            placeholderTextColor={colors.muted}
-            style={styles.input}
-          />
-          <PrimaryButton title={loading ? "Se conectează..." : "Continuă"} onPress={submit} disabled={loading} />
-          <PrimaryButton title="Nu ai cont? Creează unul" variant="ghost" onPress={() => navigation.navigate("Register")} />
+
+          <View style={styles.animationWrap} pointerEvents="none">
+            <LottieView
+              source={require("../../assets/man-delivery.lottie")}
+              autoPlay
+              loop
+              style={styles.lottieAnimation}
+            />
+          </View>
+
+          <View style={styles.heroBubbleLarge} />
+          <View style={styles.heroBubbleSmall} />
+
+          <Pressable
+            style={({ pressed }) => [styles.openSheetButton, pressed && styles.openSheetButtonPressed]}
+            onPress={() => setSheetOpen(true)}
+          >
+            <View style={styles.openSheetIconBubble}>
+              <LogIn color={colors.red} size={20} strokeWidth={2.4} />
+            </View>
+            <View style={styles.openSheetTextGroup}>
+              <Text style={styles.openSheetLabel}>Continuă</Text>
+              <Text style={styles.openSheetHint}>Deschide autentificarea</Text>
+            </View>
+            <ChevronDown color={colors.white} size={22} strokeWidth={2.6} />
+          </Pressable>
         </View>
-      </KeyboardAvoidingView>
-    </Screen>
+
+        {sheetOpen && <Pressable style={styles.overlay} onPress={() => setSheetOpen(false)} />}
+
+        <Animated.View
+          pointerEvents={sheetOpen ? "auto" : "none"}
+          style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }] }]}
+        >
+          <Pressable style={styles.sheetHandle} onPress={() => setSheetOpen(false)}>
+            <View style={styles.handleBar} />
+            <ChevronDown color={colors.red} size={22} strokeWidth={2.6} />
+          </Pressable>
+
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetContent}>
+            <View style={styles.card}>
+              <Text style={styles.title}>Intră în cont</Text>
+              <Text style={styles.subtitle}>Bine ai revenit. Alege metoda preferată pentru autentificare.</Text>
+
+              <View style={styles.socialRow}>
+                <SocialButton
+                  label="G"
+                  title="Google"
+                  color="#FFFFFF"
+                  textColor="#DB4437"
+                  loading={socialLoading === "google"}
+                  onPress={() => {
+                    setError(null);
+                    startSocialLogin("google");
+                  }}
+                />
+
+                <SocialButton
+                  label="f"
+                  title="Facebook"
+                  color="#1877F2"
+                  textColor="#FFFFFF"
+                  loading={socialLoading === "facebook"}
+                  onPress={() => {
+                    setError(null);
+                    startSocialLogin("facebook");
+                  }}
+                />
+              </View>
+
+              <View style={styles.dividerRow}>
+                <View style={styles.divider} />
+                <Text style={styles.dividerText}>sau cu email</Text>
+                <View style={styles.divider} />
+              </View>
+
+              <View style={styles.form}>
+                <View style={styles.inputWrap}>
+                  <Mail color={colors.red} size={20} strokeWidth={2.2} />
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    placeholder="Email"
+                    placeholderTextColor="#A1A1AA"
+                    style={styles.input}
+                  />
+                </View>
+
+                <View style={styles.inputWrap}>
+                  <LockKeyhole color={colors.red} size={20} strokeWidth={2.2} />
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    placeholder="Parolă"
+                    placeholderTextColor="#A1A1AA"
+                    style={styles.input}
+                  />
+
+                  <Pressable onPress={() => setShowPassword((value) => !value)}>
+                    {showPassword ? <EyeOff color="#71717A" size={20} /> : <Eye color="#71717A" size={20} />}
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={styles.optionsRow}>
+                <Pressable style={styles.rememberRow} onPress={() => setRememberMe((value) => !value)}>
+                  <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
+                    {rememberMe && <CheckCircle2 color={colors.white} size={16} />}
+                  </View>
+                  <Text style={styles.optionText}>Ține-mă minte</Text>
+                </Pressable>
+
+                <Pressable>
+                  <Text style={styles.forgotText}>Ai uitat parola?</Text>
+                </Pressable>
+              </View>
+
+              {error && <Text style={styles.error}>{error}</Text>}
+
+              <Pressable
+                disabled={loading}
+                onPress={submit}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  pressed && !loading && styles.pressed,
+                  loading && styles.disabled,
+                ]}
+              >
+                <Text style={styles.primaryText}>{loading ? "Se conectează..." : "Intră în cont"}</Text>
+              </Pressable>
+
+              <Pressable style={styles.footerLink} onPress={() => navigation.navigate("Register")}>
+                <Text style={styles.footerText}>
+                  Nu ai cont? <Text style={styles.footerAccent}>Creează unul</Text>
+                </Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+type SocialButtonProps = {
+  label: string;
+  title: string;
+  color: string;
+  textColor: string;
+  loading: boolean;
+  onPress: () => void;
+};
+
+function SocialButton({ label, title, color, textColor, loading, onPress }: SocialButtonProps) {
+  return (
+    <Pressable onPress={onPress} disabled={loading} style={({ pressed }) => [styles.socialButton, pressed && styles.pressed]}>
+      <View style={[styles.socialIcon, { backgroundColor: color }]}>
+        <Text style={[styles.socialLetter, { color: textColor }]}>{label}</Text>
+      </View>
+      <Text style={styles.socialText}>{loading ? "Se deschide..." : title}</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  keyboard: {
     flex: 1,
-    justifyContent: "center",
-    gap: 34,
+    backgroundColor: colors.white,
   },
-  eyebrow: {
-    color: colors.lime,
-    fontWeight: "900",
+  screen: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  hero: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 56,
+    overflow: "hidden",
+    backgroundColor: colors.white,
+  },
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF1F1",
+  },
+  heroLogo: {
+    alignSelf: "center",
+    marginTop: 54,
+    width: 328,
+    height: 328,
+  },
+  brand: {
+    marginTop: 10,
+    textAlign: "center",
+    color: colors.red,
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 3,
     textTransform: "uppercase",
   },
-  title: {
+  heroTitle: {
     marginTop: 10,
-    color: colors.text,
-    fontSize: 34,
-    fontWeight: "900",
+    maxWidth: 310,
+    alignSelf: "center",
+    textAlign: "center",
+    color: "#18181B",
+    fontSize: 31,
+    lineHeight: 37,
+    fontWeight: "700",
+  },
+  heroSubtitle: {
+    marginTop: 12,
+    maxWidth: 310,
+    alignSelf: "center",
+    textAlign: "center",
+    color: "#71717A",
+    fontSize: 16,
+    lineHeight: 23,
+    fontWeight: "400",
+  },
+  animationWrap: {
+    position: "absolute",
+    left: 8,
+    right: 10,
+    bottom: 112,
+    height: 350,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lottieAnimation: {
+    width: 430,
+    height: 430,
+  },
+  heroBubbleLarge: {
+    position: "absolute",
+    right: -52,
+    top: 78,
+    width: 152,
+    height: 152,
+    borderRadius: 76,
+    backgroundColor: "#FFF1F1",
+  },
+  heroBubbleSmall: {
+    position: "absolute",
+    left: 38,
+    bottom: 118,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#FFE1E1",
+  },
+  openSheetButton: {
+    position: "absolute",
+    left: 24,
+    right: 24,
+    bottom: 38,
+    minHeight: 68,
+    borderRadius: 28,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.red,
+    shadowColor: "#B91C1C",
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  openSheetButtonPressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.92,
+  },
+  openSheetIconBubble: {
+    width: 46,
+    height: 46,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.white,
+  },
+  openSheetTextGroup: {
+    flex: 1,
+    paddingHorizontal: 14,
+  },
+  openSheetLabel: {
+    color: colors.white,
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  openSheetHint: {
+    marginTop: 2,
+    color: "#FFE1E1",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(24, 24, 27, 0.34)",
+  },
+
+  sheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    maxHeight: "74%",
+    borderTopLeftRadius: 38,
+    borderTopRightRadius: 38,
+    backgroundColor: colors.white,
+    shadowColor: "#18181B",
+    shadowOffset: { width: 0, height: -12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 14,
+  },
+  sheetHandle: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 10,
+    paddingBottom: 2,
+  },
+  handleBar: {
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: "#FFE1E1",
+  },
+  sheetContent: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 34,
+  },
+  card: {
+    backgroundColor: colors.white,
+  },
+  title: {
+    color: "#121212",
+    fontSize: 31,
+    fontWeight: "700",
+  },
+  subtitle: {
+    marginTop: 8,
+    color: "#71717A",
+    fontSize: 16,
+    lineHeight: 23,
+    fontWeight: "400",
+  },
+  socialRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 24,
+  },
+  socialButton: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 15,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: "#F6DADA",
+  },
+  socialIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  socialLetter: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  socialText: {
+    color: "#202124",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginVertical: 24,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#EFEFF1",
+  },
+  dividerText: {
+    color: "#A1A1AA",
+    fontSize: 13,
+    fontWeight: "600",
+    textTransform: "uppercase",
   },
   form: {
     gap: 12,
   },
-  input: {
-    height: 56,
-    borderRadius: 18,
+  inputWrap: {
+    minHeight: 60,
+    borderRadius: 20,
     paddingHorizontal: 16,
-    color: colors.text,
-    backgroundColor: colors.card,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#FAFAFA",
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "#F0F0F2",
+  },
+  input: {
+    flex: 1,
+    color: "#18181B",
     fontSize: 16,
+    fontWeight: "400",
+  },
+  optionsRow: {
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  rememberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: "#E4E4E7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxActive: {
+    backgroundColor: colors.red,
+    borderColor: colors.red,
+  },
+  optionText: {
+    color: "#3F3F46",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  forgotText: {
+    color: colors.red,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  error: {
+    marginTop: 16,
+    color: colors.redDark,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  primaryButton: {
+    alignSelf: "center",
+    marginTop: 22,
+    minWidth: 210,
+    minHeight: 52,
+    borderRadius: 18,
+    paddingHorizontal: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.red,
+    shadowColor: "#B91C1C",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+  primaryText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  footerLink: {
+    alignItems: "center",
+    paddingTop: 20,
+  },
+  footerText: {
+    color: "#71717A",
+    fontSize: 16,
+    fontWeight: "400",
+  },
+  footerAccent: {
+    color: colors.red,
+    fontWeight: "700",
+  },
+  pressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.9,
+  },
+  disabled: {
+    opacity: 0.55,
   },
 });

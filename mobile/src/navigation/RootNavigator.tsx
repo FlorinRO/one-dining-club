@@ -1,9 +1,12 @@
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { AuthStack } from "./AuthStack";
 import { MainTabs } from "./MainTabs";
 import { useAuthStore } from "../store/authStore";
 import { colors } from "../theme/colors";
+
+const Stack = createNativeStackNavigator();
 
 const theme = {
   ...DefaultTheme,
@@ -20,6 +23,15 @@ const theme = {
 export function RootNavigator() {
   const accessToken = useAuthStore((state) => state.accessToken);
 
-  return <NavigationContainer theme={theme}>{accessToken ? <MainTabs /> : <AuthStack />}</NavigationContainer>;
+  return (
+    <NavigationContainer theme={theme}>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {accessToken ? (
+          <Stack.Screen name="MainTabs" component={MainTabs} />
+        ) : (
+          <Stack.Screen name="Auth" component={AuthStack} />
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
 }
-

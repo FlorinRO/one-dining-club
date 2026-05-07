@@ -3,7 +3,9 @@ import { MapPin, Search, SearchX, SlidersHorizontal } from "lucide-react-native"
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Easing,
   FlatList,
+  Image,
   NativeSyntheticEvent,
   NativeScrollEvent,
   Pressable,
@@ -61,6 +63,9 @@ const sectionShuffle = (id: number, seed: number) => ((id * 37 + seed * 17) % 97
 
 export function HomeScreen({ navigation }: Props) {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [hasLoadedRestaurants, setHasLoadedRestaurants] = useState(false);
+  const [hasMetSplashTime, setHasMetSplashTime] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("Toate");
   const favoriteRestaurantIds = useFavoritesStore((state) => state.restaurantIds);
@@ -68,15 +73,81 @@ export function HomeScreen({ navigation }: Props) {
   const [searchBarY, setSearchBarY] = useState(0);
   const lastScrollY = useRef(0);
   const stickyAnim = useRef(new Animated.Value(0)).current;
+  const splashOpacity = useRef(new Animated.Value(1)).current;
+  const logoPulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    restaurantsApi.list().then(setRestaurants);
+    let isMounted = true;
+
+    restaurantsApi
+      .list()
+      .then((items) => {
+        if (isMounted) {
+          setRestaurants(items);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setHasLoadedRestaurants(true);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setHasMetSplashTime(true), 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoPulse, {
+          toValue: 1,
+          duration: 820,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoPulse, {
+          toValue: 0,
+          duration: 820,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    animation.start();
+
+    return () => animation.stop();
+  }, [logoPulse]);
+
+  useEffect(() => {
+    if (!hasLoadedRestaurants || !hasMetSplashTime) {
+      return;
+    }
+
+    Animated.timing(splashOpacity, {
+      toValue: 0,
+      duration: 420,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setShowSplash(false);
+      }
+    });
+  }, [hasLoadedRestaurants, hasMetSplashTime, splashOpacity]);
 
   useEffect(() => {
     Animated.timing(stickyAnim, {
       toValue: showStickySearch ? 1 : 0,
-      duration: 180,
+      duration: 140,
+      easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
   }, [showStickySearch, stickyAnim]);
@@ -123,17 +194,21 @@ export function HomeScreen({ navigation }: Props) {
   }, [favoriteRestaurantIds.length]);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const currentY = event.nativeEvent.contentOffset.y;
-    const isScrollingUp = currentY < lastScrollY.current - 4;
-    const isScrollingDown = currentY > lastScrollY.current + 4;
-    const hasReachedInlineSearch = currentY <= searchBarY;
+    const currentY = Math.max(0, event.nativeEvent.contentOffset.y);
+    const delta = currentY - lastScrollY.current;
+    const topHideThreshold = searchBarY + 10;
+    const showThreshold = searchBarY + 30;
 
-    if (hasReachedInlineSearch) {
-      setShowStickySearch(false);
-    } else if (isScrollingUp) {
-      setShowStickySearch(true);
-    } else if (isScrollingDown) {
-      setShowStickySearch(false);
+    if (currentY <= topHideThreshold) {
+      if (showStickySearch) setShowStickySearch(false);
+      lastScrollY.current = currentY;
+      return;
+    }
+
+    if (delta <= -1.5 && currentY > showThreshold) {
+      if (!showStickySearch) setShowStickySearch(true);
+    } else if (delta >= 1.5) {
+      if (showStickySearch) setShowStickySearch(false);
     }
 
     lastScrollY.current = currentY;
@@ -155,7 +230,7 @@ export function HomeScreen({ navigation }: Props) {
               {
                 translateY: stickyAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0, 0],
+                  outputRange: [-10, 0],
                 }),
               },
             ],
@@ -303,7 +378,41 @@ export function HomeScreen({ navigation }: Props) {
           </>
         )}
       </ScrollView>
+
+      {showSplash ? <HomeLoadingOverlay opacity={splashOpacity} pulse={logoPulse} /> : null}
     </Screen>
+  );
+}
+
+function HomeLoadingOverlay({ opacity, pulse }: { opacity: Animated.Value; pulse: Animated.Value }) {
+  const logoScale = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.96, 1.06],
+  });
+  const glowScale = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.9, 1.18],
+  });
+  const glowOpacity = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.25, 0.78],
+  });
+
+  return (
+    <Animated.View pointerEvents="auto" style={[styles.loadingOverlay, { opacity }]}>
+      <Animated.View
+        style={[
+          styles.logoGlow,
+          {
+            opacity: glowOpacity,
+            transform: [{ scale: glowScale }],
+          },
+        ]}
+      />
+      <Animated.View style={[styles.logoWrap, { transform: [{ scale: logoScale }] }]}>
+        <Image source={require("../../assets/one-dining-logo.png")} style={styles.loadingLogo} resizeMode="contain" />
+      </Animated.View>
+    </Animated.View>
   );
 }
 
@@ -451,5 +560,41 @@ const styles = StyleSheet.create({
   },
   firstSectionBlock: {
     marginTop: 0,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.background,
+  },
+  logoGlow: {
+    position: "absolute",
+    width: 224,
+    height: 224,
+    borderRadius: 112,
+    backgroundColor: colors.red,
+    shadowColor: colors.red,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.72,
+    shadowRadius: 30,
+    elevation: 18,
+  },
+  logoWrap: {
+    width: 172,
+    height: 172,
+    borderRadius: 86,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.background,
+    shadowColor: colors.red,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.36,
+    shadowRadius: 18,
+    elevation: 12,
+  },
+  loadingLogo: {
+    width: 146,
+    height: 146,
   },
 });

@@ -3,7 +3,6 @@ import { NavigatorScreenParams } from "@react-navigation/native";
 import { Order, Product, Restaurant } from "../types/models";
 
 export type AuthStackParamList = {
-  Welcome: undefined;
   Login: undefined;
   Register: undefined;
 };

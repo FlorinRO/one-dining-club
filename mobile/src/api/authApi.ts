@@ -13,6 +13,14 @@ export const authApi = {
     return data;
   },
 
+  async socialLogin(provider: "google" | "facebook", token: string, tokenType: "access_token" | "id_token" = "access_token") {
+    const { data } = await apiClient.post<AuthResponse>("/auth/social/", {
+      provider,
+      [tokenType]: token,
+    });
+    return data;
+  },
+
   async register(payload: {
     email: string;
     password: string;
@@ -33,4 +41,3 @@ export const authApi = {
     await apiClient.post("/auth/logout/", { refresh });
   },
 };
-

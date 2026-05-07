@@ -473,7 +473,12 @@ export function SearchScreen() {
           </Animated.View>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filtersScroll}
+          contentContainerStyle={styles.filtersRow}
+        >
           {filters.map((item) => (
             <FilterChip
               key={item.key}
@@ -489,36 +494,40 @@ export function SearchScreen() {
 
         {hasSearchIntent ? (
           <>
-            {activeCategories.length > 0 && (
-              <View style={styles.activeCategoryPillRow}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeCategoriesRow}>
-                  {activeCategories.map((category) => (
-                    <View key={category} style={styles.activeCategoryPill}>
-                      <Text style={styles.activeCategoryEmoji}>{getCategoryEmoji(category)}</Text>
-                      <Text style={styles.activeCategoryText}>{category}</Text>
-                      <Pressable
-                        hitSlop={8}
-                        onPress={() => setActiveCategories((current) => current.filter((item) => item !== category))}
-                      >
-                        <X size={14} stroke={colors.text} strokeWidth={2.4} />
-                      </Pressable>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-            {filtered.length > 0 && (
-              <View style={styles.resultsHeader}>
-                <Text style={styles.resultsCountText}>{filtered.length} rezultate</Text>
-                <Pressable style={styles.resetResultsButton} onPress={clearSearchContext}>
-                  <Text style={styles.resetResultsText}>Reset</Text>
-                </Pressable>
-              </View>
-            )}
             <FlatList
               key="search-results-list"
               data={filtered}
               keyExtractor={(item) => String(item.id)}
+              ListHeaderComponent={
+                <>
+                  {activeCategories.length > 0 && (
+                    <View style={styles.activeCategoryPillRow}>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeCategoriesRow}>
+                        {activeCategories.map((category) => (
+                          <View key={category} style={styles.activeCategoryPill}>
+                            <Text style={styles.activeCategoryEmoji}>{getCategoryEmoji(category)}</Text>
+                            <Text style={styles.activeCategoryText}>{category}</Text>
+                            <Pressable
+                              hitSlop={8}
+                              onPress={() => setActiveCategories((current) => current.filter((item) => item !== category))}
+                            >
+                              <X size={14} stroke={colors.text} strokeWidth={2.4} />
+                            </Pressable>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                  {filtered.length > 0 && (
+                    <View style={styles.resultsHeader}>
+                      <Text style={styles.resultsCountText}>{filtered.length} rezultate</Text>
+                      <Pressable style={styles.resetResultsButton} onPress={clearSearchContext}>
+                        <Text style={styles.resetResultsText}>Reset</Text>
+                      </Pressable>
+                    </View>
+                  )}
+                </>
+              }
               renderItem={({ item }) => (
                 <SearchRestaurantResult
                   restaurant={item}
@@ -919,6 +928,12 @@ const styles = StyleSheet.create({
     paddingRight: 22,
     paddingVertical: 8,
   },
+  filtersScroll: {
+    zIndex: 2,
+    elevation: 2,
+    backgroundColor: colors.background,
+    marginBottom: 8,
+  },
   filterChip: {
     height: 38,
     paddingHorizontal: 12,
@@ -1034,6 +1049,7 @@ const styles = StyleSheet.create({
   },
   activeCategoryPillRow: {
     marginTop: 2,
+    marginBottom: 4,
   },
   activeCategoriesRow: {
     gap: 8,
@@ -1048,7 +1064,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   resultsHeader: {
-    marginTop: 22,
+    marginTop: 14,
     marginBottom: 18,
     flexDirection: "row",
     alignItems: "center",
