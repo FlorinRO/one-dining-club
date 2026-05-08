@@ -1,11 +1,12 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { MapPin, Search, SearchX, SlidersHorizontal } from "lucide-react-native";
+import { MapPin, Search, SearchX, SlidersHorizontal, Star } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
   FlatList,
   Image,
+  Modal,
   NativeSyntheticEvent,
   NativeScrollEvent,
   Pressable,
@@ -13,8 +14,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
 import { RestaurantCard } from "../components/RestaurantCard";
@@ -59,14 +62,22 @@ const baseProductCarousel: CarouselItem[] = [
 ];
 
 const categoryBgPalette = ["#F8EBDD", "#F8F0CF", "#E6F4DD", "#ECE5F8", "#F9E4EA"];
+const promotedAds = [
+  { id: "ad-1", imageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80" },
+  { id: "ad-2", imageUrl: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=80" },
+  { id: "ad-3", imageUrl: "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1200&q=80" },
+  { id: "ad-4", imageUrl: "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=1200&q=80" },
+];
 
 const sectionShuffle = (id: number, seed: number) => ((id * 37 + seed * 17) % 97) / 97;
 
 export function HomeScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [hasLoadedRestaurants, setHasLoadedRestaurants] = useState(false);
   const [hasMetSplashTime, setHasMetSplashTime] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplashOverlay, setShowSplashOverlay] = useState(true);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("Toate");
   const favoriteRestaurantIds = useFavoritesStore((state) => state.restaurantIds);
@@ -75,7 +86,12 @@ export function HomeScreen({ navigation }: Props) {
   const lastScrollY = useRef(0);
   const stickyAnim = useRef(new Animated.Value(0)).current;
   const splashOpacity = useRef(new Animated.Value(1)).current;
-  const logoPulse = useRef(new Animated.Value(0)).current;
+  const splashSequence = useRef(new Animated.Value(0)).current;
+  const tabBarReveal = useRef(new Animated.Value(0)).current;
+  const promotedListRef = useRef<FlatList<{ id: string; imageUrl: string }> | null>(null);
+  const promotedIndexRef = useRef(0);
+  const promotedAutoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const promotedResumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -99,33 +115,25 @@ export function HomeScreen({ navigation }: Props) {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => setHasMetSplashTime(true), 2000);
+    const timer = setTimeout(() => setHasMetSplashTime(true), 2600);
 
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(logoPulse, {
-          toValue: 1,
-          duration: 820,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(logoPulse, {
-          toValue: 0,
-          duration: 820,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
+    const revealSequence = Animated.timing(splashSequence, {
+      toValue: 1,
+      duration: 1750,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+    revealSequence.start();
 
-    animation.start();
-
-    return () => animation.stop();
-  }, [logoPulse]);
+    return () => {
+      revealSequence.stop();
+      splashSequence.setValue(0);
+    };
+  }, [splashSequence]);
 
   useEffect(() => {
     if (!hasLoadedRestaurants || !hasMetSplashTime) {
@@ -134,15 +142,74 @@ export function HomeScreen({ navigation }: Props) {
 
     Animated.timing(splashOpacity, {
       toValue: 0,
-      duration: 420,
+      duration: 780,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start(({ finished }) => {
       if (finished) {
-        setShowSplash(false);
+        setShowSplashOverlay(false);
       }
     });
   }, [hasLoadedRestaurants, hasMetSplashTime, splashOpacity]);
+
+  useEffect(() => {
+    const tabsParent = navigation.getParent();
+    const baseTabBarStyle = {
+      height: 46 + insets.bottom,
+      backgroundColor: colors.surface,
+      borderTopColor: colors.border,
+      paddingTop: 6,
+      paddingBottom: 2 + insets.bottom,
+    };
+
+    if (!tabsParent) {
+      return;
+    }
+
+    if (showSplashOverlay) {
+      tabBarReveal.stopAnimation();
+      tabBarReveal.setValue(0);
+      tabsParent.setOptions({
+        tabBarStyle: { display: "none" },
+      });
+      return () => {
+        tabsParent.setOptions({
+          tabBarStyle: undefined,
+        });
+      };
+    }
+
+    const setAnimatedTabBarStyle = (progress: number) => {
+      tabsParent.setOptions({
+        tabBarStyle: [
+          baseTabBarStyle,
+          {
+            opacity: progress,
+            transform: [{ translateY: (1 - progress) * 22 }],
+          },
+        ],
+      });
+    };
+
+    setAnimatedTabBarStyle(0);
+    const listenerId = tabBarReveal.addListener(({ value }) => {
+      setAnimatedTabBarStyle(value);
+    });
+
+    Animated.timing(tabBarReveal, {
+      toValue: 1,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    return () => {
+      tabBarReveal.removeListener(listenerId);
+      tabsParent.setOptions({
+        tabBarStyle: undefined,
+      });
+    };
+  }, [insets.bottom, navigation, showSplashOverlay, tabBarReveal]);
 
   useEffect(() => {
     Animated.timing(stickyAnim, {
@@ -183,13 +250,68 @@ export function HomeScreen({ navigation }: Props) {
   const allRestaurants = useMemo(() => {
     return [...filtered].sort((a, b) => sectionShuffle(a.id, 3) - sectionShuffle(b.id, 3));
   }, [filtered]);
-  const promotedRestaurants = useMemo(() => {
-    const paid = filtered.filter((restaurant) => restaurant.has_offer);
-    if (paid.length >= 2) return paid.slice(0, 2);
-    return [...paid, ...recommendedRestaurants.filter((restaurant) => !paid.some((item) => item.id === restaurant.id))].slice(0, 2);
-  }, [filtered, recommendedRestaurants]);
   const hasSearchQuery = search.trim().length > 0;
   const showEmptySearchState = hasSearchQuery && filtered.length === 0;
+  const promotedCardWidth = Math.max(220, screenWidth - 44);
+  const promotedItemGap = 28;
+  const promotedItemSize = promotedCardWidth + promotedItemGap;
+  const promotedCarouselData = useMemo(
+    () =>
+      [...promotedAds, ...promotedAds, ...promotedAds].map((item, index) => ({
+        ...item,
+        id: `${item.id}-${index}`,
+      })),
+    [],
+  );
+  const promotedBaseLength = promotedAds.length;
+
+  useEffect(() => {
+    const startAutoScroll = () => {
+      if (promotedAutoTimerRef.current) {
+        clearInterval(promotedAutoTimerRef.current);
+      }
+      promotedAutoTimerRef.current = setInterval(() => {
+        const nextIndex = promotedIndexRef.current + 1;
+        promotedListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+        promotedIndexRef.current = nextIndex;
+      }, 4000);
+    };
+
+    const stopAutoScroll = () => {
+      if (promotedAutoTimerRef.current) {
+        clearInterval(promotedAutoTimerRef.current);
+        promotedAutoTimerRef.current = null;
+      }
+    };
+
+    const resumeAutoScroll = (delayMs: number) => {
+      if (promotedResumeTimerRef.current) {
+        clearTimeout(promotedResumeTimerRef.current);
+      }
+      promotedResumeTimerRef.current = setTimeout(() => {
+        startAutoScroll();
+      }, delayMs);
+    };
+
+    const pauseAutoScroll = () => {
+      stopAutoScroll();
+      resumeAutoScroll(2500);
+    };
+
+    const initialTimer = setTimeout(() => {
+      promotedIndexRef.current = promotedBaseLength;
+      promotedListRef.current?.scrollToIndex({ index: promotedBaseLength, animated: false });
+      startAutoScroll();
+    }, 500);
+
+    return () => {
+      clearTimeout(initialTimer);
+      stopAutoScroll();
+      if (promotedResumeTimerRef.current) {
+        clearTimeout(promotedResumeTimerRef.current);
+      }
+    };
+  }, [promotedBaseLength]);
 
   const carouselItems = useMemo(() => {
     if (favoriteRestaurantIds.length === 0) {
@@ -225,7 +347,7 @@ export function HomeScreen({ navigation }: Props) {
   };
 
   return (
-    <Screen>
+    <Screen padded={false}>
       <Animated.View
         pointerEvents={showStickySearch ? "auto" : "none"}
         style={[
@@ -265,7 +387,12 @@ export function HomeScreen({ navigation }: Props) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} onScroll={handleScroll} scrollEventThrottle={16}>
         <View style={styles.header}>
           <View style={styles.headerTextBlock}>
-            <Text style={styles.eyebrow}>ONE DINING CLUB</Text>
+            <View style={styles.eyebrowBadge}>
+              <View style={styles.eyebrowRow}>
+                <Text style={styles.eyebrow}>ONE DINING CLUB</Text>
+                <Star color={colors.white} fill={colors.white} size={11} strokeWidth={2} />
+              </View>
+            </View>
             <View style={styles.locationRow}>
               <MapPin size={16} stroke={colors.red} />
               <View style={styles.locationTextBlock}>
@@ -331,6 +458,7 @@ export function HomeScreen({ navigation }: Props) {
           )}
           showsHorizontalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ width: 4 }} />}
+          style={styles.fullBleedList}
           contentContainerStyle={styles.chips}
         />
 
@@ -344,33 +472,89 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         ) : (
           <>
-            {promotedRestaurants.length > 0 ? (
-              <View style={[styles.sectionBlock, styles.firstSectionBlock]}>
-                <SectionHeader title="Promovate" />
-                <View style={styles.promotedList}>
-                  {promotedRestaurants.map((restaurant) => (
-                    <Pressable
-                      key={`promo-${restaurant.id}`}
-                      style={styles.promotedBanner}
-                      onPress={() => navigation.navigate("RestaurantDetails", { restaurant })}
-                    >
-                      <Image source={{ uri: restaurant.cover_image || undefined }} style={styles.promotedBannerImage} resizeMode="cover" />
+            <View style={[styles.sectionBlock, styles.firstSectionBlock, styles.promotedCarouselBlock]}>
+              <View style={styles.promotedViewport}>
+                <FlatList
+                  ref={promotedListRef}
+                  horizontal
+                  data={promotedCarouselData}
+                  keyExtractor={(item) => item.id}
+                  initialScrollIndex={promotedBaseLength}
+                  renderItem={({ item }) => (
+                    <View style={[styles.promotedBanner, { width: promotedCardWidth }]}>
+                      <Image source={{ uri: item.imageUrl }} style={styles.promotedBannerImage} resizeMode="cover" />
                       <View style={styles.promotedOverlay}>
-                        <Text style={styles.promotedBadge}>Promovat</Text>
-                        <Text style={styles.promotedTitle} numberOfLines={1}>
-                          {restaurant.name}
-                        </Text>
-                        <Text style={styles.promotedSubtitle} numberOfLines={1}>
-                          {restaurant.description || "Descoperă oferta zilei"}
-                        </Text>
+                        <Text style={styles.promotedBadge}>SLOT DISPONIBIL</Text>
+                        <Text style={styles.promotedTitle}>Loc de reclamă</Text>
                       </View>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            ) : null}
+                    </View>
+                  )}
+                  showsHorizontalScrollIndicator={false}
+                  ItemSeparatorComponent={() => <View style={{ width: promotedItemGap }} />}
+                  contentContainerStyle={styles.promotedCarouselContent}
+                  snapToInterval={promotedItemSize}
+                  decelerationRate="fast"
+                  disableIntervalMomentum
+                  onScrollBeginDrag={(event) => {
+                    const index = Math.round(event.nativeEvent.contentOffset.x / promotedItemSize);
+                    promotedIndexRef.current = Number.isFinite(index) ? Math.max(0, Math.min(promotedCarouselData.length - 1, index)) : promotedBaseLength;
+                    if (promotedAutoTimerRef.current) {
+                      clearInterval(promotedAutoTimerRef.current);
+                      promotedAutoTimerRef.current = null;
+                    }
+                    if (promotedResumeTimerRef.current) {
+                      clearTimeout(promotedResumeTimerRef.current);
+                    }
+                  }}
+                  onMomentumScrollBegin={() => {
+                    if (promotedAutoTimerRef.current) {
+                      clearInterval(promotedAutoTimerRef.current);
+                      promotedAutoTimerRef.current = null;
+                    }
+                  }}
+                  onScrollEndDrag={(event) => {
+                    const index = Math.round(event.nativeEvent.contentOffset.x / promotedItemSize);
+                    promotedIndexRef.current = Number.isFinite(index) ? Math.max(0, Math.min(promotedCarouselData.length - 1, index)) : promotedBaseLength;
+                    if (promotedResumeTimerRef.current) {
+                      clearTimeout(promotedResumeTimerRef.current);
+                    }
+                    promotedResumeTimerRef.current = setTimeout(() => {
+                      if (promotedAutoTimerRef.current) {
+                        clearInterval(promotedAutoTimerRef.current);
+                      }
+                      promotedAutoTimerRef.current = setInterval(() => {
+                        const nextIndex = promotedIndexRef.current + 1;
+                        promotedListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+                        promotedIndexRef.current = nextIndex;
+                      }, 4000);
+                    }, 2500);
+                  }}
+                  onMomentumScrollEnd={(event) => {
+                    const index = Math.round(event.nativeEvent.contentOffset.x / promotedItemSize);
+                    let normalizedIndex = Number.isFinite(index) ? Math.max(0, Math.min(promotedCarouselData.length - 1, index)) : promotedBaseLength;
 
-            <View style={[styles.sectionBlock, promotedRestaurants.length > 0 ? null : styles.firstSectionBlock]}>
+                    if (normalizedIndex < promotedBaseLength) {
+                      normalizedIndex += promotedBaseLength;
+                      promotedListRef.current?.scrollToIndex({ index: normalizedIndex, animated: false });
+                    } else if (normalizedIndex >= promotedBaseLength * 2) {
+                      normalizedIndex -= promotedBaseLength;
+                      promotedListRef.current?.scrollToIndex({ index: normalizedIndex, animated: false });
+                    }
+
+                    promotedIndexRef.current = normalizedIndex;
+                  }}
+                  getItemLayout={(_, index) => ({ length: promotedItemSize, offset: promotedItemSize * index, index })}
+                  onScrollToIndexFailed={() => {
+                    promotedListRef.current?.scrollToOffset({
+                      offset: promotedItemSize * promotedIndexRef.current,
+                      animated: false,
+                    });
+                  }}
+                />
+              </View>
+            </View>
+
+            <View style={styles.sectionBlock}>
               <SectionHeader
                 title="Aproape de tine"
                 actionLabel="Toate >"
@@ -385,6 +569,8 @@ export function HomeScreen({ navigation }: Props) {
                 )}
                 showsHorizontalScrollIndicator={false}
                 ItemSeparatorComponent={() => <View style={{ width: 14 }} />}
+                style={styles.fullBleedList}
+                contentContainerStyle={styles.horizontalCardsContent}
               />
             </View>
 
@@ -403,6 +589,8 @@ export function HomeScreen({ navigation }: Props) {
                 )}
                 showsHorizontalScrollIndicator={false}
                 ItemSeparatorComponent={() => <View style={{ width: 14 }} />}
+                style={styles.fullBleedList}
+                contentContainerStyle={styles.horizontalCardsContent}
               />
             </View>
 
@@ -423,40 +611,148 @@ export function HomeScreen({ navigation }: Props) {
         )}
       </ScrollView>
 
-      {showSplash ? <HomeLoadingOverlay opacity={splashOpacity} pulse={logoPulse} /> : null}
+      {showSplashOverlay ? (
+        <HomeLoadingOverlay opacity={splashOpacity} progress={splashSequence} />
+      ) : null}
     </Screen>
   );
 }
 
-function HomeLoadingOverlay({ opacity, pulse }: { opacity: Animated.Value; pulse: Animated.Value }) {
-  const logoScale = pulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.96, 1.06],
+function HomeLoadingOverlay({
+  opacity,
+  progress,
+}: {
+  opacity: Animated.Value;
+  progress: Animated.Value;
+}) {
+  const textTranslateX = progress.interpolate({
+    inputRange: [0, 0.18, 0.38, 1],
+    outputRange: [22, 22, 0, 0],
   });
-  const glowScale = pulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.9, 1.18],
+  const textOpacity = progress.interpolate({
+    inputRange: [0, 0.2, 0.35, 1],
+    outputRange: [0, 0, 1, 1],
   });
-  const glowOpacity = pulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.25, 0.78],
+  const starOpacity = progress.interpolate({
+    inputRange: [0, 0.52, 0.74, 1],
+    outputRange: [0, 0, 1, 1],
+  });
+  const starScale = progress.interpolate({
+    inputRange: [0, 0.52, 0.72, 0.84, 1],
+    outputRange: [0.45, 0.45, 1.22, 0.96, 1],
+  });
+  const starRotate = progress.interpolate({
+    inputRange: [0, 0.52, 0.7, 0.84, 1],
+    outputRange: ["-45deg", "-45deg", "18deg", "-8deg", "0deg"],
+  });
+  const starTranslateY = progress.interpolate({
+    inputRange: [0, 0.52, 0.72, 0.84, 1],
+    outputRange: [28, 28, -5, 0, 0],
+  });
+  const starTranslateX = progress.interpolate({
+    inputRange: [0, 0.52, 0.72, 0.9, 1],
+    outputRange: [-10, -10, 2, 0, 0],
+  });
+  const starBurstOpacity = progress.interpolate({
+    inputRange: [0, 0.7, 0.82, 1],
+    outputRange: [0, 0, 1, 0],
+  });
+  const sparkTravelWaveOne = progress.interpolate({
+    inputRange: [0, 0.68, 0.9, 1],
+    outputRange: [0, 0, 1, 1],
+  });
+  const sparkTravelWaveTwo = progress.interpolate({
+    inputRange: [0, 0.8, 0.98, 1],
+    outputRange: [0, 0, 1, 1],
   });
 
   return (
-    <Animated.View pointerEvents="auto" style={[styles.loadingOverlay, { opacity }]}>
-      <Animated.View
-        style={[
-          styles.logoGlow,
-          {
-            opacity: glowOpacity,
-            transform: [{ scale: glowScale }],
-          },
-        ]}
-      />
-      <Animated.View style={[styles.logoWrap, { transform: [{ scale: logoScale }] }]}>
-        <Image source={require("../../assets/one-dining-logo.png")} style={styles.loadingLogo} resizeMode="contain" />
+    <Modal
+      animationType="none"
+      navigationBarTranslucent
+      onRequestClose={() => undefined}
+      presentationStyle="overFullScreen"
+      statusBarTranslucent
+      transparent
+      visible
+    >
+      <Animated.View pointerEvents="auto" style={[styles.loadingOverlay, { opacity }]}>
+        <View style={styles.loadingStage}>
+          <Animated.View style={[styles.loaderTitleRow, { opacity: textOpacity, transform: [{ translateX: textTranslateX }] }]}>
+            <Text style={styles.loaderTitle}>ONE DINING CLUB</Text>
+            <Animated.View
+              style={[
+                styles.loaderStarWrap,
+                {
+                  opacity: starOpacity,
+                  transform: [{ translateX: starTranslateX }, { translateY: starTranslateY }, { scale: starScale }, { rotate: starRotate }],
+                },
+              ]}
+            >
+              <Spark travel={sparkTravelWaveOne} opacity={starBurstOpacity} dx={0} dy={-26} delay={0.02} size={4} />
+              <Spark travel={sparkTravelWaveOne} opacity={starBurstOpacity} dx={20} dy={-16} delay={0.06} size={3} />
+              <Spark travel={sparkTravelWaveOne} opacity={starBurstOpacity} dx={24} dy={2} delay={0.09} size={4} />
+              <Spark travel={sparkTravelWaveOne} opacity={starBurstOpacity} dx={14} dy={20} delay={0.08} size={3} />
+              <Spark travel={sparkTravelWaveOne} opacity={starBurstOpacity} dx={-17} dy={18} delay={0.05} size={4} />
+              <Spark travel={sparkTravelWaveOne} opacity={starBurstOpacity} dx={-24} dy={-6} delay={0.04} size={3} />
+              <Spark travel={sparkTravelWaveTwo} opacity={starBurstOpacity} dx={0} dy={-34} delay={0.01} size={2} />
+              <Spark travel={sparkTravelWaveTwo} opacity={starBurstOpacity} dx={28} dy={-20} delay={0.03} size={2} />
+              <Spark travel={sparkTravelWaveTwo} opacity={starBurstOpacity} dx={33} dy={1} delay={0.05} size={2} />
+              <Spark travel={sparkTravelWaveTwo} opacity={starBurstOpacity} dx={20} dy={27} delay={0.04} size={2} />
+              <Spark travel={sparkTravelWaveTwo} opacity={starBurstOpacity} dx={-22} dy={25} delay={0.02} size={2} />
+              <Spark travel={sparkTravelWaveTwo} opacity={starBurstOpacity} dx={-31} dy={-9} delay={0.03} size={2} />
+              <Star size={20} color={colors.white} fill={colors.white} strokeWidth={2} />
+            </Animated.View>
+          </Animated.View>
+        </View>
       </Animated.View>
-    </Animated.View>
+    </Modal>
+  );
+}
+
+function Spark({
+  travel,
+  opacity,
+  dx,
+  dy,
+  delay = 0,
+  size = 4,
+}: {
+  travel: Animated.AnimatedInterpolation<number>;
+  opacity: Animated.AnimatedInterpolation<number>;
+  dx: number;
+  dy: number;
+  delay?: number;
+  size?: number;
+}) {
+  const delayedTravel = travel.interpolate({
+    inputRange: [0, Math.min(1, 0.12 + delay), 1],
+    outputRange: [0, 0, 1],
+  });
+  const sparkTranslateX = delayedTravel.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, dx],
+  });
+  const sparkTranslateY = delayedTravel.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, dy],
+  });
+  const sparkScale = delayedTravel.interpolate({
+    inputRange: [0, 0.25, 1],
+    outputRange: [0.2, 1, 0.5],
+  });
+
+  return (
+    <Animated.View
+      style={[
+        styles.spark,
+        { width: size, height: size },
+        {
+          opacity,
+          transform: [{ translateX: sparkTranslateX }, { translateY: sparkTranslateY }, { scale: sparkScale }],
+        },
+      ]}
+    />
   );
 }
 
@@ -475,6 +771,7 @@ function SectionHeader({ title, actionLabel, onPressAction }: { title: string; a
 
 const styles = StyleSheet.create({
   content: {
+    paddingHorizontal: 22,
     paddingTop: 18,
     paddingBottom: 120,
     gap: 14,
@@ -486,9 +783,23 @@ const styles = StyleSheet.create({
   },
   headerTextBlock: {
     gap: 7,
+    width: "100%",
+  },
+  eyebrowBadge: {
+    alignSelf: "stretch",
+    backgroundColor: colors.red,
+    marginHorizontal: -22,
+    paddingHorizontal: 22,
+    paddingVertical: 6,
+    borderRadius: 0,
+  },
+  eyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   eyebrow: {
-    color: colors.red,
+    color: colors.white,
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 1.2,
@@ -497,6 +808,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
+    marginTop: 4,
   },
   locationTextBlock: {
     gap: 2,
@@ -547,6 +859,13 @@ const styles = StyleSheet.create({
   },
   chips: {
     paddingVertical: 0,
+    paddingHorizontal: 22,
+  },
+  fullBleedList: {
+    marginHorizontal: -22,
+  },
+  horizontalCardsContent: {
+    paddingHorizontal: 22,
   },
   categoryTile: {
     width: 84,
@@ -636,14 +955,21 @@ const styles = StyleSheet.create({
   firstSectionBlock: {
     marginTop: 0,
   },
-  promotedList: {
-    gap: 12,
+  promotedCarouselBlock: {
+    marginTop: 8,
+  },
+  promotedCarouselContent: {
+    paddingHorizontal: 22,
+  },
+  promotedViewport: {
+    overflow: "visible",
+    marginHorizontal: -22,
   },
   promotedBanner: {
     height: 134,
     borderRadius: 14,
     overflow: "hidden",
-    backgroundColor: colors.cardSoft,
+    backgroundColor: "#B8162A",
   },
   promotedBannerImage: {
     ...StyleSheet.absoluteFillObject,
@@ -655,7 +981,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     padding: 12,
     gap: 4,
-    backgroundColor: "rgba(0,0,0,0.30)",
+    backgroundColor: "rgba(0,0,0,0.28)",
   },
   promotedBadge: {
     alignSelf: "flex-start",
@@ -679,39 +1005,42 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
     zIndex: 100,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.background,
-  },
-  logoGlow: {
-    position: "absolute",
-    width: 224,
-    height: 224,
-    borderRadius: 112,
     backgroundColor: colors.red,
-    shadowColor: colors.red,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.72,
-    shadowRadius: 30,
-    elevation: 18,
   },
-  logoWrap: {
-    width: 172,
-    height: 172,
-    borderRadius: 86,
+  loadingStage: {
+    width: "100%",
+    height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.background,
-    shadowColor: colors.red,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.36,
-    shadowRadius: 18,
-    elevation: 12,
+    overflow: "hidden",
   },
-  loadingLogo: {
-    width: 146,
-    height: 146,
+  loaderTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  loaderTitle: {
+    color: colors.white,
+    fontSize: 24,
+    fontWeight: "700",
+    letterSpacing: 1.8,
+  },
+  loaderStarWrap: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  spark: {
+    position: "absolute",
+    width: 4,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: colors.white,
   },
 });

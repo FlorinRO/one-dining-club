@@ -1,8 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, Phone, UserRound } from "lucide-react-native";
+import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, Phone, Star, UserRound } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import {
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -71,7 +70,12 @@ export function RegisterScreen({ navigation }: Props) {
             <ArrowLeft color={colors.red} size={24} strokeWidth={2.3} />
           </Pressable>
 
-          <Image source={require("../../assets/one-dining-logo.png")} style={styles.heroLogo} resizeMode="contain" />
+          <View style={styles.brandBar}>
+            <View style={styles.brandRow}>
+              <Text style={styles.brandText}>ONE DINING CLUB</Text>
+              <Star color={colors.white} fill={colors.white} size={11} strokeWidth={2} />
+            </View>
+          </View>
 
           <View style={styles.animationWrap} pointerEvents="none">
             <LottieView
@@ -82,8 +86,6 @@ export function RegisterScreen({ navigation }: Props) {
             />
           </View>
 
-          <View style={styles.heroBubbleLarge} />
-          <View style={styles.heroBubbleSmall} />
         </View>
 
         <View style={styles.sheet}>
@@ -184,12 +186,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#FFF1F1",
   },
-  heroLogo: {
+  brandBar: {
     position: "absolute",
-    alignSelf: "center",
-    bottom: "84%",
-    width: 146,
-    height: 146,
+    left: 0,
+    right: 0,
+    top: 136,
+    backgroundColor: colors.red,
+    paddingHorizontal: 22,
+    paddingVertical: 6,
+  },
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  brandText: {
+    color: colors.white,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
   },
   animationWrap: {
     position: "absolute",
@@ -201,8 +216,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   lottieAnimation: { width: 430, height: 430 },
-  heroBubbleLarge: { position: "absolute", right: -52, top: 78, width: 152, height: 152, borderRadius: 76, backgroundColor: "#FFF1F1" },
-  heroBubbleSmall: { position: "absolute", left: 38, bottom: 118, width: 28, height: 28, borderRadius: 14, backgroundColor: "#FFE1E1" },
   sheet: {
     position: "absolute",
     left: 0,

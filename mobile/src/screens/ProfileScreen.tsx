@@ -33,6 +33,8 @@ export function ProfileScreen({ navigation }: Props) {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
+  const handleLogout = () => logout();
+
   const displayName = user?.full_name || `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "Client";
   const initials = displayName
     .split(" ")
@@ -126,7 +128,7 @@ export function ProfileScreen({ navigation }: Props) {
           ))}
         </View>
 
-        <PrimaryButton title="Delogare" variant="ghost" icon={<LogOut size={18} stroke={colors.text} />} onPress={logout} />
+        <PrimaryButton title="Delogare" variant="ghost" icon={<LogOut size={18} stroke={colors.text} />} onPress={handleLogout} />
 
         <View style={styles.bottomNote}>
           <UserRound size={15} color={colors.muted} strokeWidth={2.1} />

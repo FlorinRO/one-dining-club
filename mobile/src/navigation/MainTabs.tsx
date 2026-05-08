@@ -16,6 +16,7 @@ export function MainTabs() {
 
   return (
     <Tab.Navigator
+      id="MainTabs"
       screenOptions={{
         headerShown: false,
         tabBarStyle: {

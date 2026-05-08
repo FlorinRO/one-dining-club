@@ -8,11 +8,11 @@ import {
   LockKeyhole,
   Mail,
   LogIn,
+  Star,
 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -99,16 +99,31 @@ export function LoginScreen({ navigation }: Props) {
       <View style={styles.screen}>
         <View style={styles.hero}>
           <Pressable style={styles.backButton} onPress={goToHome}>
-            <ArrowLeft color={colors.red} size={24} strokeWidth={2.3} />
+            <ArrowLeft color={colors.white} size={24} strokeWidth={2.3} />
           </Pressable>
 
-          <Image
-            source={require("../../assets/one-dining-logo.png")}
-            defaultSource={require("../../assets/one-dining-logo.png")}
-            fadeDuration={0}
-            style={styles.heroLogo}
-            resizeMode="contain"
-          />
+          <View style={styles.heroBrandRow}>
+            <View style={styles.heroBrandTopRow}>
+              <Text style={styles.heroBrand}>ONE DINING CLUB</Text>
+              <View style={styles.brandStarWrap}>
+                <Star color={colors.white} fill={colors.white} size={11} strokeWidth={2} />
+              </View>
+            </View>
+          </View>
+          <View style={styles.heroHeadlineWrap}>
+            <View style={styles.heroHeadlineAccent} />
+            <Text style={styles.heroHeadline}>
+              Mâncarea ta preferată
+              {"\n"}la un <Text style={styles.heroHeadlineHighlight}>login</Text> distanță
+            </Text>
+            <Text style={styles.heroHeadlineSub}>Rapid, simplu și gata de comandă în câteva secunde.</Text>
+          </View>
+          <View style={styles.heroBottomBrandBar}>
+            <View style={styles.heroBottomBrandRow}>
+              <Text style={styles.heroBottomBrandText}>ONE DINING CLUB</Text>
+              <Star color={colors.red} fill={colors.red} size={11} strokeWidth={2} />
+            </View>
+          </View>
 
           <View style={styles.animationWrap} pointerEvents="none">
             <LottieView
@@ -119,7 +134,6 @@ export function LoginScreen({ navigation }: Props) {
             />
           </View>
 
-          <View style={styles.heroBubbleLarge} />
           <View style={styles.heroBubbleSmall} />
 
           <Pressable
@@ -293,27 +307,96 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   backButton: {
+    position: "absolute",
+    top: 56,
+    left: 24,
+    zIndex: 40,
     width: 42,
     height: 42,
     borderRadius: 21,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFF1F1",
+    backgroundColor: colors.red,
   },
-  heroLogo: {
-    alignSelf: "center",
-    marginTop: 54,
-    width: 328,
-    height: 328,
+  heroBrandRow: {
+    position: "absolute",
+    top: 136,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 22,
+    paddingVertical: 6,
+    backgroundColor: colors.red,
   },
-  brand: {
-    marginTop: 10,
-    textAlign: "center",
+  heroBrandTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  heroBrand: {
+    color: colors.white,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+  },
+  brandStarWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroHeadlineWrap: {
+    position: "absolute",
+    top: 178,
+    left: 24,
+    right: 24,
+    zIndex: 12,
+    paddingLeft: 14,
+  },
+  heroHeadlineAccent: {
+    position: "absolute",
+    left: 0,
+    top: 4,
+    bottom: 10,
+    width: 5,
+    borderRadius: 999,
+    backgroundColor: colors.red,
+  },
+  heroHeadline: {
+    color: "#121212",
+    fontSize: 32,
+    lineHeight: 38,
+    fontWeight: "900",
+    letterSpacing: -0.7,
+    maxWidth: 330,
+  },
+  heroHeadlineHighlight: {
     color: colors.red,
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: 3,
-    textTransform: "uppercase",
+  },
+  heroHeadlineSub: {
+    marginTop: 8,
+    color: "#52525B",
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "500",
+    maxWidth: 300,
+  },
+  heroBottomBrandBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 350,
+    paddingHorizontal: 22,
+    paddingVertical: 6,
+    backgroundColor: colors.red,
+  },
+  heroBottomBrandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  heroBottomBrandText: {
+    color: colors.red,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
   },
   heroTitle: {
     marginTop: 10,
@@ -347,15 +430,6 @@ const styles = StyleSheet.create({
   lottieAnimation: {
     width: 430,
     height: 430,
-  },
-  heroBubbleLarge: {
-    position: "absolute",
-    right: -52,
-    top: 78,
-    width: 152,
-    height: 152,
-    borderRadius: 76,
-    backgroundColor: "#FFF1F1",
   },
   heroBubbleSmall: {
     position: "absolute",
