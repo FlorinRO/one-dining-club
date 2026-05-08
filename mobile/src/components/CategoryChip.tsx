@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleProp, StyleSheet, Text, TextStyle, ViewStyle } from "react-native";
 
 import { colors } from "../theme/colors";
 
@@ -6,12 +6,39 @@ type Props = {
   label: string;
   active?: boolean;
   onPress?: () => void;
+  style?: StyleProp<ViewStyle>;
+  activeStyle?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
+  activeTextStyle?: StyleProp<TextStyle>;
+  stabilizeWidthOnActive?: boolean;
 };
 
-export function CategoryChip({ label, active, onPress }: Props) {
+export function CategoryChip({
+  label,
+  active,
+  onPress,
+  style,
+  activeStyle,
+  textStyle,
+  activeTextStyle,
+  stabilizeWidthOnActive,
+}: Props) {
   return (
-    <Pressable onPress={onPress} style={[styles.chip, active && styles.active]}>
-      <Text style={[styles.text, active && styles.activeText]}>{label}</Text>
+    <Pressable onPress={onPress} style={[styles.chip, style, active && styles.active, active && activeStyle]}>
+      {stabilizeWidthOnActive ? (
+        <Text style={[styles.text, textStyle, styles.ghostBoldText, activeTextStyle]}>{label}</Text>
+      ) : null}
+      <Text
+        style={[
+          styles.text,
+          textStyle,
+          active && styles.activeText,
+          active && activeTextStyle,
+          stabilizeWidthOnActive && styles.stabilizedVisibleText,
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -38,5 +65,11 @@ const styles = StyleSheet.create({
   activeText: {
     color: colors.background,
   },
+  ghostBoldText: {
+    opacity: 0,
+    fontWeight: "700",
+  },
+  stabilizedVisibleText: {
+    position: "absolute",
+  },
 });
-

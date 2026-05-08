@@ -1,8 +1,4 @@
-import Constants from "expo-constants";
-
-const extra = Constants.expoConfig?.extra as { apiUrl?: string } | undefined;
-const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL ?? extra?.apiUrl ?? "http://127.0.0.1:8000/api";
-const apiOrigin = apiBaseUrl.replace(/\/api\/?$/, "");
+import { API_ORIGIN } from "../config/api";
 
 export const FALLBACK_RESTAURANT_IMAGE =
   "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?q=80&w=1400&auto=format&fit=crop";
@@ -24,12 +20,12 @@ export function resolveImageUri(uri: string | null | undefined, fallback: string
   }
 
   if (uri.startsWith("/")) {
-    return `${apiOrigin}${uri}`;
+    return `${API_ORIGIN}${uri}`;
   }
 
   // Accept relative media paths like "media/products/file.jpg"
   if (uri.startsWith("media/")) {
-    return `${apiOrigin}/${uri}`;
+    return `${API_ORIGIN}/${uri}`;
   }
 
   return fallback;

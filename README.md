@@ -18,7 +18,7 @@ cp .env.example .env
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py seed_demo
-python manage.py runserver
+python manage.py runserver 0.0.0.0:8000
 ```
 
 Useful demo users after `seed_demo`:
@@ -34,16 +34,16 @@ The backend defaults to SQLite if `DATABASE_URL` is not set. For the intended MV
 cd mobile
 nvm use
 npm install
-npm run start
+npx expo start -c --lan
 ```
 
 Set `EXPO_PUBLIC_API_URL` when the app needs a different backend URL:
 
 ```bash
-EXPO_PUBLIC_API_URL=http://localhost:8000/api npm run start
+EXPO_PUBLIC_API_URL=http://192.168.0.141:8000/api npx expo start -c --lan
 ```
 
-On a physical phone, use the computer LAN IP instead of `localhost`.
+On a physical phone, use the computer LAN IP instead of `localhost`/`127.0.0.1`.
 
 ## MVP API
 

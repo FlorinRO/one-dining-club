@@ -28,36 +28,37 @@ type Props = NativeStackScreenProps<HomeStackParamList, "Home">;
 
 type CarouselItem = {
   label: string;
-  emoji: string;
+  hint: string;
+  iconUrl?: string;
   action?: "favorites";
 };
 
 const baseProductCarousel: CarouselItem[] = [
-  { label: "Italian", emoji: "🇮🇹" },
-  { label: "Pizza", emoji: "🍕" },
-  { label: "Burgers", emoji: "🍔" },
-  { label: "Asian", emoji: "🥡" },
-  { label: "Sushi", emoji: "🍣" },
-  { label: "Kebab", emoji: "🥙" },
-  { label: "Wraps", emoji: "🌯" },
-  { label: "Chicken", emoji: "🍗" },
-  { label: "Sandwich", emoji: "🥪" },
-  { label: "Japanese", emoji: "🍤" },
-  { label: "Bakery", emoji: "🥐" },
-  { label: "Groceries", emoji: "🛒" },
-  { label: "Healthy", emoji: "🥑" },
-  { label: "Thai", emoji: "🍜" },
-  { label: "Salads", emoji: "🥙" },
-  { label: "Ramen", emoji: "🍜" },
-  { label: "Seafood", emoji: "🦐" },
-  { label: "Desserts", emoji: "🧁" },
-  { label: "Indian", emoji: "🇮🇳" },
-  { label: "Breakfast", emoji: "🍳" },
-  { label: "Pasta", emoji: "🍝" },
-  { label: "Coffee", emoji: "☕" },
-  { label: "BBQ", emoji: "🍖" },
-  { label: "Soup", emoji: "🍲" },
+  { label: "Kebab", hint: "Wrap & platou", iconUrl: "https://em-content.zobj.net/source/apple/391/burrito_1f32f.png" },
+  { label: "Pizza", hint: "Cuptor pe vatră", iconUrl: "https://em-content.zobj.net/source/apple/391/pizza_1f355.png" },
+  { label: "Burgers", hint: "Smash & classic", iconUrl: "https://em-content.zobj.net/source/apple/391/hamburger_1f354.png" },
+  { label: "Asian", hint: "Wok & noodles", iconUrl: "https://em-content.zobj.net/source/apple/391/steaming-bowl_1f35c.png" },
+  { label: "Sushi", hint: "Nigiri & rolls", iconUrl: "https://em-content.zobj.net/source/apple/391/sushi_1f363.png" },
+  { label: "Italian", hint: "Paste & pizza", iconUrl: "https://em-content.zobj.net/source/apple/391/spaghetti_1f35d.png" },
+  { label: "Wraps", hint: "Rapid & fresh", iconUrl: "https://em-content.zobj.net/source/apple/391/taco_1f32e.png" },
+  { label: "Chicken", hint: "Crispy & grilled", iconUrl: "https://em-content.zobj.net/source/apple/391/poultry-leg_1f357.png" },
+  { label: "Sandwich", hint: "Toasted & deli", iconUrl: "https://em-content.zobj.net/source/apple/391/sandwich_1f96a.png" },
+  { label: "Japanese", hint: "Ramen-tempura", iconUrl: "https://em-content.zobj.net/source/apple/391/bento-box_1f371.png" },
+  { label: "Bakery", hint: "Artizanale", iconUrl: "https://em-content.zobj.net/source/apple/391/croissant_1f950.png" },
+  { label: "Healthy", hint: "Fresh & fit", iconUrl: "https://em-content.zobj.net/source/apple/391/green-salad_1f957.png" },
+  { label: "Thai", hint: "Spicy Thai", iconUrl: "https://em-content.zobj.net/source/apple/391/hot-pepper_1f336-fe0f.png" },
+  { label: "Salads", hint: "Light bowls", iconUrl: "https://em-content.zobj.net/source/apple/391/green-salad_1f957.png" },
+  { label: "Ramen", hint: "Slow broth", iconUrl: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f35c.png" },
+  { label: "Seafood", hint: "Ocean fresh", iconUrl: "https://em-content.zobj.net/source/apple/391/shrimp_1f990.png" },
+  { label: "Desserts", hint: "Sweet bites", iconUrl: "https://em-content.zobj.net/source/apple/391/shortcake_1f370.png" },
+  { label: "Indian", hint: "Curry & tandoor", iconUrl: "https://em-content.zobj.net/source/apple/391/curry-rice_1f35b.png" },
+  { label: "Breakfast", hint: "All day brunch", iconUrl: "https://em-content.zobj.net/source/apple/391/pancakes_1f95e.png" },
+  { label: "Coffee", hint: "Specialty roast", iconUrl: "https://em-content.zobj.net/source/apple/391/hot-beverage_2615.png" },
+  { label: "BBQ", hint: "Smoke & grill", iconUrl: "https://em-content.zobj.net/source/apple/391/cut-of-meat_1f969.png" },
+  { label: "Soup", hint: "Hot bowls", iconUrl: "https://em-content.zobj.net/source/apple/391/pot-of-food_1f372.png" },
 ];
+
+const categoryBgPalette = ["#F8EBDD", "#F8F0CF", "#E6F4DD", "#ECE5F8", "#F9E4EA"];
 
 const sectionShuffle = (id: number, seed: number) => ((id * 37 + seed * 17) % 97) / 97;
 
@@ -182,6 +183,11 @@ export function HomeScreen({ navigation }: Props) {
   const allRestaurants = useMemo(() => {
     return [...filtered].sort((a, b) => sectionShuffle(a.id, 3) - sectionShuffle(b.id, 3));
   }, [filtered]);
+  const promotedRestaurants = useMemo(() => {
+    const paid = filtered.filter((restaurant) => restaurant.has_offer);
+    if (paid.length >= 2) return paid.slice(0, 2);
+    return [...paid, ...recommendedRestaurants.filter((restaurant) => !paid.some((item) => item.id === restaurant.id))].slice(0, 2);
+  }, [filtered, recommendedRestaurants]);
   const hasSearchQuery = search.trim().length > 0;
   const showEmptySearchState = hasSearchQuery && filtered.length === 0;
 
@@ -190,7 +196,7 @@ export function HomeScreen({ navigation }: Props) {
       return baseProductCarousel;
     }
 
-    return [{ label: "Favourites", emoji: "❤️", action: "favorites" as const }, ...baseProductCarousel];
+    return [{ label: "Favourites", hint: "Locuri salvate", action: "favorites" as const }, ...baseProductCarousel];
   }, [favoriteRestaurantIds.length]);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -258,9 +264,15 @@ export function HomeScreen({ navigation }: Props) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} onScroll={handleScroll} scrollEventThrottle={16}>
         <View style={styles.header}>
-          <View style={styles.locationRow}>
-            <MapPin size={18} stroke={colors.lime} />
-            <Text style={styles.location}>București, centru</Text>
+          <View style={styles.headerTextBlock}>
+            <Text style={styles.eyebrow}>ONE DINING CLUB</Text>
+            <View style={styles.locationRow}>
+              <MapPin size={16} stroke={colors.red} />
+              <View style={styles.locationTextBlock}>
+                <Text style={styles.locationStreet}>Str. Baba Novac 12, Bl. B3, Sc. 1, Ap. 24</Text>
+                <Text style={styles.locationCity}>București, Sector 3</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -293,7 +305,7 @@ export function HomeScreen({ navigation }: Props) {
           horizontal
           data={carouselItems}
           keyExtractor={(item) => item.label}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <Pressable
               style={styles.categoryTile}
               onPress={() => {
@@ -305,14 +317,20 @@ export function HomeScreen({ navigation }: Props) {
                 navigation.getParent()?.navigate("SearchTab", { category: item.label });
               }}
             >
-              <View style={styles.categoryCircle}>
-                <Text style={styles.categoryEmoji}>{item.emoji}</Text>
+              <View style={[styles.categoryIconCard, { backgroundColor: categoryBgPalette[index % categoryBgPalette.length] }]}>
+                {item.iconUrl ? (
+                  <Image source={{ uri: item.iconUrl }} style={styles.categoryImage} resizeMode="contain" />
+                ) : (
+                  <View style={styles.categoryImageFallback}>
+                    <Text style={styles.categoryImageFallbackText}>★</Text>
+                  </View>
+                )}
               </View>
               <Text style={styles.categoryLabel}>{item.label}</Text>
             </Pressable>
           )}
           showsHorizontalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
+          ItemSeparatorComponent={() => <View style={{ width: 4 }} />}
           contentContainerStyle={styles.chips}
         />
 
@@ -326,7 +344,33 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         ) : (
           <>
-            <View style={[styles.sectionBlock, styles.firstSectionBlock]}>
+            {promotedRestaurants.length > 0 ? (
+              <View style={[styles.sectionBlock, styles.firstSectionBlock]}>
+                <SectionHeader title="Promovate" />
+                <View style={styles.promotedList}>
+                  {promotedRestaurants.map((restaurant) => (
+                    <Pressable
+                      key={`promo-${restaurant.id}`}
+                      style={styles.promotedBanner}
+                      onPress={() => navigation.navigate("RestaurantDetails", { restaurant })}
+                    >
+                      <Image source={{ uri: restaurant.cover_image || undefined }} style={styles.promotedBannerImage} resizeMode="cover" />
+                      <View style={styles.promotedOverlay}>
+                        <Text style={styles.promotedBadge}>Promovat</Text>
+                        <Text style={styles.promotedTitle} numberOfLines={1}>
+                          {restaurant.name}
+                        </Text>
+                        <Text style={styles.promotedSubtitle} numberOfLines={1}>
+                          {restaurant.description || "Descoperă oferta zilei"}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            <View style={[styles.sectionBlock, promotedRestaurants.length > 0 ? null : styles.firstSectionBlock]}>
               <SectionHeader
                 title="Aproape de tine"
                 actionLabel="Toate >"
@@ -431,37 +475,56 @@ function SectionHeader({ title, actionLabel, onPressAction }: { title: string; a
 
 const styles = StyleSheet.create({
   content: {
-    paddingTop: 14,
+    paddingTop: 18,
     paddingBottom: 120,
-    gap: 18,
+    gap: 14,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
+  headerTextBlock: {
+    gap: 7,
+  },
+  eyebrow: {
+    color: colors.red,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+  },
   locationRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+    alignItems: "flex-start",
+    gap: 8,
   },
-  location: {
+  locationTextBlock: {
+    gap: 2,
+  },
+  locationStreet: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
+  locationCity: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
   searchBar: {
-    height: 50,
-    borderRadius: 13,
-    backgroundColor: "#F0F2F3",
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: colors.cardSoft,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    gap: 8,
+    paddingHorizontal: 15,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   searchStickyWrap: {
     backgroundColor: colors.background,
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
   searchStickyOverlay: {
     position: "absolute",
@@ -483,35 +546,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   chips: {
-    paddingVertical: 4,
+    paddingVertical: 0,
   },
   categoryTile: {
+    width: 84,
     alignItems: "center",
-    gap: 8,
-    width: 74,
+    gap: 6,
   },
-  categoryCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.cardSoft,
-    borderWidth: 1,
-    borderColor: colors.border,
+  categoryIconCard: {
+    width: 84,
+    height: 74,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
-  categoryEmoji: {
-    fontSize: 24,
+  categoryImage: {
+    width: 48,
+    height: 48,
+  },
+  categoryImageFallback: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryImageFallbackText: {
+    color: colors.muted,
+    fontSize: 16,
+    fontWeight: "800",
   },
   categoryLabel: {
     color: colors.text,
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+    paddingHorizontal: 4,
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: -0.4,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -521,8 +596,8 @@ const styles = StyleSheet.create({
   },
   sectionAction: {
     color: colors.red,
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "800",
   },
   emptyState: {
     alignItems: "center",
@@ -552,14 +627,56 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   allRestaurantsList: {
-    gap: 28,
+    gap: 30,
   },
   sectionBlock: {
-    gap: 12,
-    marginTop: 22,
+    gap: 14,
+    marginTop: 24,
   },
   firstSectionBlock: {
     marginTop: 0,
+  },
+  promotedList: {
+    gap: 12,
+  },
+  promotedBanner: {
+    height: 134,
+    borderRadius: 14,
+    overflow: "hidden",
+    backgroundColor: colors.cardSoft,
+  },
+  promotedBannerImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+  },
+  promotedOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    padding: 12,
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.30)",
+  },
+  promotedBadge: {
+    alignSelf: "flex-start",
+    color: "#1A1A1A",
+    fontSize: 11,
+    fontWeight: "800",
+    backgroundColor: "#F9EDC3",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  promotedTitle: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  promotedSubtitle: {
+    color: "rgba(255,255,255,0.92)",
+    fontSize: 13,
+    fontWeight: "500",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
