@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  lottieAnimation: { width: 430, height: 430 },
+  lottieAnimation: { width: "100%", height: "100%" },
   sheet: {
     position: "absolute",
     left: 0,

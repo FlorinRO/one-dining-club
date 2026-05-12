@@ -17,21 +17,18 @@ import {
   Tag,
   UserRound,
   Wallet,
-  X,
 } from "lucide-react-native";
 import LottieView from "lottie-react-native";
-import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Appearance,
-  Image,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useColorScheme,
   View,
 } from "react-native";
@@ -79,24 +76,9 @@ export function ProfileScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [formError, setFormError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
-
-  useEffect(() => {
-    if (editing) return;
-    setFirstName(user?.first_name ?? "");
-    setLastName(user?.last_name ?? "");
-    setPhone(user?.phone ?? "");
-    setEmail(user?.email ?? "");
-  }, [editing, user?.email, user?.first_name, user?.last_name, user?.phone]);
 
   const displayName = useMemo(
     () => user?.full_name || `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || (isGuest ? "Oaspete" : "Client"),
@@ -154,35 +136,6 @@ export function ProfileScreen({ navigation }: Props) {
       loadAccount();
     }, [loadAccount]),
   );
-
-  const saveProfile = async () => {
-    if (isGuest || !accessToken) return;
-    if (!firstName.trim()) {
-      setFormError("Prenumele este obligatoriu.");
-      return;
-    }
-    if (!email.trim() || !email.includes("@")) {
-      setFormError("Folosește o adresă de email validă.");
-      return;
-    }
-
-    setSaving(true);
-    setFormError(null);
-    try {
-      const updatedUser = await authApi.updateMe({
-        email: email.trim(),
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        phone: phone.trim(),
-      });
-      setUser(updatedUser);
-      setEditing(false);
-    } catch {
-      setFormError("Nu am putut salva profilul. Verifică backend-ul și încearcă din nou.");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const sendPasswordReset = async () => {
     if (!user?.email || isGuest) return;
@@ -290,35 +243,31 @@ export function ProfileScreen({ navigation }: Props) {
 
         <SectionTitle title="Profil" />
         <View style={styles.profileList}>
-          <AccountRow icon={<UserRound size={22} color={colors.text} strokeWidth={2.4} />} action="Editează" onPress={() => setEditing(true)}>
+          <AccountRow
+            icon={<UserRound size={22} color={colors.text} strokeWidth={2.4} />}
+            action="Editează"
+            onPress={() => navigation.navigate("ProfileEdit", { field: "name" })}
+          >
             {displayName}
           </AccountRow>
           <Divider />
-          <AccountRow icon={<Phone size={22} color={colors.text} strokeWidth={2.4} />} action="Editează" onPress={() => setEditing(true)}>
+          <AccountRow
+            icon={<Phone size={22} color={colors.text} strokeWidth={2.4} />}
+            action="Editează"
+            onPress={() => navigation.navigate("ProfileEdit", { field: "phone" })}
+          >
             {user?.phone || "Adaugă număr"}
           </AccountRow>
           <Divider />
-          <AccountRow icon={<Mail size={22} color={colors.text} strokeWidth={2.4} />} action="Editează" showCheck onPress={() => setEditing(true)}>
+          <AccountRow
+            icon={<Mail size={22} color={colors.text} strokeWidth={2.4} />}
+            action="Editează"
+            showCheck
+            onPress={() => navigation.navigate("ProfileEdit", { field: "email" })}
+          >
             {user?.email ?? "Adaugă email"}
           </AccountRow>
         </View>
-
-        {editing && (
-          <View style={styles.editPanel}>
-            <View style={styles.editHeader}>
-              <Text style={styles.editTitle}>Editează profilul</Text>
-              <Pressable style={styles.editClose} onPress={() => setEditing(false)}>
-                <X size={20} color={colors.text} strokeWidth={2.6} />
-              </Pressable>
-            </View>
-            <ProfileInput label="Prenume" value={firstName} onChangeText={setFirstName} />
-            <ProfileInput label="Nume" value={lastName} onChangeText={setLastName} />
-            <ProfileInput label="Telefon" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-            <ProfileInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
-            {formError && <Text style={styles.formError}>{formError}</Text>}
-            <PrimaryButton title={saving ? "Se salvează..." : "Salvează modificările"} onPress={saveProfile} disabled={saving} />
-          </View>
-        )}
 
         <SectionTitle title="Temă" />
         <View style={styles.themeGrid}>
@@ -403,33 +352,6 @@ function AccountRow({ icon, children, action, showCheck, onPress }: AccountRowPr
   );
 }
 
-function ProfileInput({
-  label,
-  value,
-  onChangeText,
-  keyboardType,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (value: string) => void;
-  keyboardType?: "default" | "phone-pad" | "email-address";
-}) {
-  return (
-    <View style={styles.inputGroup}>
-      <Text style={styles.inputLabel}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType={keyboardType}
-        autoCapitalize={keyboardType === "email-address" ? "none" : "words"}
-        placeholder={label}
-        placeholderTextColor={colors.muted}
-        style={styles.input}
-      />
-    </View>
-  );
-}
-
 function ThemeOption({
   label,
   value,
@@ -503,9 +425,6 @@ function CourierCard({ defaultAddress }: { defaultAddress?: Address }) {
       </View>
       <View style={styles.deliveryVisual}>
         <LottieView source={require("../../assets/man-delivery.lottie")} autoPlay loop style={styles.deliveryLottie} />
-        <View style={styles.deliveryBag}>
-          <Image source={require("../../assets/one-dining-logo.png")} style={styles.deliveryLogo} />
-        </View>
       </View>
     </View>
   );
@@ -700,59 +619,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "400",
   },
-  editPanel: {
-    marginTop: 16,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    padding: 16,
-    gap: 12,
-  },
-  editHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  editTitle: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  editClose: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.cardSoft,
-  },
-  inputGroup: {
-    gap: 7,
-  },
-  inputLabel: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-  },
-  input: {
-    minHeight: 46,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    color: colors.text,
-    backgroundColor: colors.cardSoft,
-    borderWidth: 1,
-    borderColor: colors.border,
-    fontSize: 14,
-    fontWeight: "400",
-  },
-  formError: {
-    color: colors.redDark,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "500",
-  },
   themeGrid: {
     marginTop: 2,
     marginBottom: 8,
@@ -846,7 +712,7 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
   courierCard: {
-    minHeight: 116,
+    height: 116,
     marginTop: 24,
     borderRadius: 12,
     backgroundColor: "#FDE8E8",
@@ -892,31 +758,19 @@ const styles = StyleSheet.create({
   },
   deliveryVisual: {
     width: 124,
-    height: 116,
+    height: "100%",
+    borderTopLeftRadius: 26,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 22,
+    overflow: "hidden",
   },
   deliveryLottie: {
     position: "absolute",
-    right: -30,
-    bottom: -30,
+    right: 0,
+    top: 0,
+    bottom: 0,
     width: 144,
-    height: 144,
-  },
-  deliveryBag: {
-    position: "absolute",
-    right: 66,
-    bottom: 20,
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: colors.red,
-    alignItems: "center",
-    justifyContent: "center",
-    transform: [{ rotate: "10deg" }],
-  },
-  deliveryLogo: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    height: "100%",
   },
   logoutRow: {
     minHeight: 52,

@@ -16,6 +16,7 @@ export default function App() {
   const scheme = useColorScheme();
   useNotificationSetup();
   const accessToken = useAuthStore((state) => state.accessToken);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const continueAsGuest = useAuthStore((state) => state.continueAsGuest);
 
   useEffect(() => {
@@ -25,11 +26,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!accessToken && !hasAutoGuestBootstrapped) {
+    if (hasHydrated && !accessToken && !hasAutoGuestBootstrapped) {
       hasAutoGuestBootstrapped = true;
       continueAsGuest();
     }
-  }, [accessToken, continueAsGuest]);
+  }, [accessToken, continueAsGuest, hasHydrated]);
 
   return (
     <SafeAreaProvider>
