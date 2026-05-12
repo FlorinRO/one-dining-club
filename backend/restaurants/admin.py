@@ -24,13 +24,13 @@ class RestaurantAdmin(admin.ModelAdmin):
         "rating",
         "delivery_fee",
         "minimum_order",
+        "supports_pickup",
         "is_open",
         "is_active",
     )
-    list_filter = ("city", "is_open", "is_active", "categories")
+    list_filter = ("city", "supports_pickup", "is_open", "is_active", "categories")
     search_fields = ("name", "description", "address", "owner__email")
     prepopulated_fields = {"slug": ("name",)}
     filter_horizontal = ("categories",)
     autocomplete_fields = ("owner",)
     inlines = (RestaurantOpeningHoursInline,)
-

@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -42,6 +43,10 @@ export function LoginScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState(email);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState<string | null>(null);
   const sheetProgress = useRef(new Animated.Value(0)).current;
 
   const goToHome = () => {
@@ -72,10 +77,34 @@ export function LoginScreen({ navigation }: Props) {
     try {
       const session = await authApi.login(email.trim(), password);
       setSession(session);
-    } catch {
-      setError("Emailul sau parola nu sunt corecte.");
+    } catch (loginError) {
+      setError(getLoginErrorMessage(loginError));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openForgotPassword = () => {
+    setForgotEmail(email);
+    setForgotMessage(null);
+    setForgotOpen(true);
+  };
+
+  const submitForgotPassword = async () => {
+    if (!forgotEmail.trim()) {
+      setForgotMessage("Introdu emailul contului.");
+      return;
+    }
+
+    setForgotLoading(true);
+    setForgotMessage(null);
+    try {
+      await authApi.forgotPassword(forgotEmail.trim());
+      setForgotMessage("Dacă există un cont activ, vei primi instrucțiuni de resetare.");
+    } catch {
+      setForgotMessage("Nu am putut trimite cererea. Încearcă din nou.");
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -238,7 +267,7 @@ export function LoginScreen({ navigation }: Props) {
                   <Text style={styles.optionText}>Ține-mă minte</Text>
                 </Pressable>
 
-                <Pressable>
+                <Pressable onPress={openForgotPassword}>
                   <Text style={styles.forgotText}>Ai uitat parola?</Text>
                 </Pressable>
               </View>
@@ -265,6 +294,40 @@ export function LoginScreen({ navigation }: Props) {
             </View>
           </ScrollView>
         </Animated.View>
+
+        <Modal visible={forgotOpen} animationType="fade" transparent onRequestClose={() => setForgotOpen(false)}>
+          <View style={styles.modalBackdrop}>
+            <View style={styles.forgotCard}>
+              <Text style={styles.forgotTitle}>Resetare parolă</Text>
+              <Text style={styles.forgotSubtitle}>Primești un link pe email pentru setarea unei parole noi.</Text>
+              <View style={styles.forgotInputWrap}>
+                <Mail color={colors.red} size={20} strokeWidth={2.2} />
+                <TextInput
+                  value={forgotEmail}
+                  onChangeText={setForgotEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  placeholder="Email"
+                  placeholderTextColor="#A1A1AA"
+                  style={styles.input}
+                />
+              </View>
+              {forgotMessage && <Text style={styles.forgotMessage}>{forgotMessage}</Text>}
+              <View style={styles.forgotActions}>
+                <Pressable onPress={() => setForgotOpen(false)} style={styles.secondaryButton}>
+                  <Text style={styles.secondaryText}>Închide</Text>
+                </Pressable>
+                <Pressable
+                  disabled={forgotLoading}
+                  onPress={submitForgotPassword}
+                  style={[styles.forgotSubmitButton, forgotLoading && styles.disabled]}
+                >
+                  <Text style={styles.forgotSubmitText}>{forgotLoading ? "Se trimite..." : "Trimite"}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </KeyboardAvoidingView>
   );
@@ -288,6 +351,18 @@ function SocialButton({ label, title, color, textColor, loading, onPress }: Soci
       <Text style={styles.socialText}>{loading ? "Se deschide..." : title}</Text>
     </Pressable>
   );
+}
+
+function getLoginErrorMessage(error: unknown) {
+  const data = (error as { response?: { data?: unknown } }).response?.data;
+  if (typeof data === "string") return data;
+  if (data && typeof data === "object") {
+    for (const value of Object.values(data as Record<string, unknown>)) {
+      if (typeof value === "string") return value;
+      if (Array.isArray(value) && typeof value[0] === "string") return value[0];
+    }
+  }
+  return "Emailul sau parola nu sunt corecte.";
 }
 
 const styles = StyleSheet.create({
@@ -687,6 +762,77 @@ const styles = StyleSheet.create({
   pressed: {
     transform: [{ scale: 0.98 }],
     opacity: 0.9,
+  },
+  modalBackdrop: {
+    flex: 1,
+    padding: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.38)",
+  },
+  forgotCard: {
+    width: "100%",
+    borderRadius: 24,
+    padding: 20,
+    backgroundColor: colors.white,
+    gap: 14,
+  },
+  forgotTitle: {
+    color: "#121212",
+    fontSize: 22,
+    fontWeight: "800",
+  },
+  forgotSubtitle: {
+    color: "#71717A",
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "500",
+  },
+  forgotInputWrap: {
+    minHeight: 56,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#FAFAFA",
+    borderWidth: 1,
+    borderColor: "#F0F0F2",
+  },
+  forgotMessage: {
+    color: "#3F3F46",
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "600",
+  },
+  forgotActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+  },
+  secondaryButton: {
+    minHeight: 46,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F4F4F5",
+  },
+  secondaryText: {
+    color: "#3F3F46",
+    fontWeight: "800",
+  },
+  forgotSubmitButton: {
+    minHeight: 46,
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.red,
+  },
+  forgotSubmitText: {
+    color: colors.white,
+    fontWeight: "800",
   },
   disabled: {
     opacity: 0.55,

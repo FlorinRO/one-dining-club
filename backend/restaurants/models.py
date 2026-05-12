@@ -39,6 +39,7 @@ class Restaurant(models.Model):
     estimated_delivery_time_min = models.PositiveIntegerField(default=25)
     estimated_delivery_time_max = models.PositiveIntegerField(default=45)
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    supports_pickup = models.BooleanField(default=False)
     is_open = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -93,4 +94,3 @@ class RestaurantOpeningHours(models.Model):
 
     def __str__(self):
         return f"{self.restaurant.name} - {self.get_day_of_week_display()}"
-

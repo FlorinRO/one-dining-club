@@ -1,24 +1,58 @@
+from django.db.models import Count, Exists, OuterRef
 from rest_framework import decorators, permissions, response, viewsets
 
 from menus.serializers import ProductCategorySerializer
+from products.models import Product
 from products.serializers import ProductSerializer
-from restaurants.models import Restaurant
-from restaurants.serializers import RestaurantDetailSerializer, RestaurantListSerializer
+from restaurants.filters import RestaurantFilter
+from restaurants.models import Restaurant, RestaurantCategory
+from restaurants.serializers import (
+    RestaurantCategorySerializer,
+    RestaurantDetailSerializer,
+    RestaurantListSerializer,
+)
+
+
+class RestaurantCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = RestaurantCategorySerializer
+    permission_classes = (permissions.AllowAny,)
+    pagination_class = None
+    search_fields = ("name",)
+    ordering_fields = ("name",)
+    ordering = ("name",)
+
+    def get_queryset(self):
+        return RestaurantCategory.objects.filter(is_active=True)
 
 
 class RestaurantViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (permissions.AllowAny,)
     lookup_field = "id"
-    filterset_fields = ("city", "is_open", "categories")
+    filterset_class = RestaurantFilter
     search_fields = ("name", "description", "city", "categories__name")
-    ordering_fields = ("rating", "delivery_fee", "minimum_order", "estimated_delivery_time_min")
+    ordering_fields = (
+        "rating",
+        "delivery_fee",
+        "minimum_order",
+        "estimated_delivery_time_min",
+        "reviews_count",
+    )
     ordering = ("name",)
 
     def get_queryset(self):
+        offer_products = Product.objects.filter(
+            restaurant=OuterRef("pk"),
+            is_available=True,
+            discount_price__isnull=False,
+        )
         return (
             Restaurant.objects.select_related("owner")
             .prefetch_related("categories", "opening_hours", "product_categories")
             .filter(is_active=True)
+            .annotate(
+                reviews_count=Count("reviews", distinct=True),
+                has_offer=Exists(offer_products),
+            )
         )
 
     def get_serializer_class(self):
@@ -47,4 +81,3 @@ class RestaurantViewSet(viewsets.ReadOnlyModelViewSet):
         categories = restaurant.product_categories.filter(is_active=True)
         serializer = ProductCategorySerializer(categories, many=True, context={"request": request})
         return response.Response(serializer.data)
-

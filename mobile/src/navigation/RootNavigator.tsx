@@ -22,11 +22,12 @@ const theme = {
 
 export function RootNavigator() {
   const accessToken = useAuthStore((state) => state.accessToken);
+  const isGuest = useAuthStore((state) => state.isGuest);
 
   return (
     <NavigationContainer theme={theme}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {accessToken ? (
+        {accessToken || isGuest ? (
           <Stack.Screen name="MainTabs" component={MainTabs} />
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />

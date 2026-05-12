@@ -101,11 +101,11 @@ export function useSocialAuth({ onSuccess, onError }: UseSocialAuthOptions) {
 
   const startSocialLogin = async (provider: SocialProvider) => {
     if (provider === "google" && (!hasGoogleClient || !googleRequest)) {
-      onError("Configurează googleWebClientId/googleIosClientId/googleAndroidClientId în app.json pentru login Google.");
+      onError("Configurează EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID sau EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID pentru login Google.");
       return;
     }
     if (provider === "facebook" && (!hasFacebookClient || !facebookRequest)) {
-      onError("Configurează facebookClientId în app.json pentru login Facebook.");
+      onError("Configurează EXPO_PUBLIC_FACEBOOK_CLIENT_ID pentru login Facebook.");
       return;
     }
 

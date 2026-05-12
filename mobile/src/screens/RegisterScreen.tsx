@@ -31,6 +31,9 @@ export function RegisterScreen({ navigation }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
   const handleSocialSuccess = useCallback((session: Awaited<ReturnType<typeof authApi.socialLogin>>) => setSession(session), [setSession]);
   const handleSocialError = useCallback((message: string) => setError(message), []);
   const { loadingProvider: socialLoading, startSocialLogin } = useSocialAuth({
@@ -47,18 +50,34 @@ export function RegisterScreen({ navigation }: Props) {
     setLoading(true);
     setError(null);
     try {
-      await authApi.register({
+      const result = await authApi.register({
         email: email.trim(),
         phone,
         password,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
       });
-      navigation.navigate("Login");
+      setPassword("");
+      setVerificationEmail(result.email || email.trim());
+      setResendMessage("Ți-am trimis un link de confirmare. Verifică Inbox și Spam.");
     } catch {
       setError("Nu am putut crea contul. Verifică dacă emailul nu este deja folosit.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resendVerification = async () => {
+    if (!verificationEmail) return;
+    setResendLoading(true);
+    setResendMessage(null);
+    try {
+      await authApi.resendEmailVerification(verificationEmail);
+      setResendMessage("Am retrimis linkul de confirmare.");
+    } catch {
+      setResendMessage("Nu am putut retrimite emailul. Încearcă din nou.");
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -91,57 +110,78 @@ export function RegisterScreen({ navigation }: Props) {
         <View style={styles.sheet}>
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetContent}>
             <View style={styles.card}>
-              <Text style={styles.title}>Creează cont</Text>
-              <Text style={styles.subtitle}>Salvăm adresele, comenzile și restaurantele preferate.</Text>
-
-              <View style={styles.socialRow}>
-                <SocialButton label="G" title="Google" color="#FFFFFF" textColor="#DB4437" loading={socialLoading === "google"} onPress={() => { setError(null); startSocialLogin("google"); }} />
-                <SocialButton label="f" title="Facebook" color="#1877F2" textColor="#FFFFFF" loading={socialLoading === "facebook"} onPress={() => { setError(null); startSocialLogin("facebook"); }} />
-              </View>
-
-              <View style={styles.dividerRow}>
-                <View style={styles.divider} />
-                <Text style={styles.dividerText}>sau cu email</Text>
-                <View style={styles.divider} />
-              </View>
-
-              <View style={styles.form}>
-                <View style={styles.nameRow}>
-                  <View style={[styles.inputWrap, styles.nameInput]}>
-                    <UserRound color={colors.muted} size={19} />
-                    <TextInput value={firstName} onChangeText={setFirstName} placeholder="Prenume" placeholderTextColor={colors.muted} style={styles.input} />
+              {verificationEmail ? (
+                <View style={styles.verificationBox}>
+                  <View style={styles.verificationIcon}>
+                    <Mail color={colors.red} size={26} strokeWidth={2.2} />
                   </View>
-                  <View style={[styles.inputWrap, styles.nameInput]}>
-                    <UserRound color={colors.muted} size={19} />
-                    <TextInput value={lastName} onChangeText={setLastName} placeholder="Nume" placeholderTextColor={colors.muted} style={styles.input} />
-                  </View>
-                </View>
-                <View style={styles.inputWrap}>
-                  <Mail color={colors.muted} size={20} />
-                  <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor={colors.muted} style={styles.input} />
-                </View>
-                <View style={styles.inputWrap}>
-                  <Phone color={colors.muted} size={20} />
-                  <TextInput value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="Telefon" placeholderTextColor={colors.muted} style={styles.input} />
-                </View>
-                <View style={styles.inputWrap}>
-                  <LockKeyhole color={colors.muted} size={20} />
-                  <TextInput value={password} onChangeText={setPassword} secureTextEntry={!showPassword} placeholder="Parolă" placeholderTextColor={colors.muted} style={styles.input} />
-                  <Pressable onPress={() => setShowPassword((value) => !value)}>
-                    {showPassword ? <EyeOff color={colors.muted} size={20} /> : <Eye color={colors.muted} size={20} />}
+                  <Text style={styles.title}>Confirmă emailul</Text>
+                  <Text style={styles.subtitle}>
+                    Am creat contul pentru {verificationEmail}. Deschide linkul primit pe email, apoi revino la autentificare.
+                  </Text>
+                  {resendMessage && <Text style={styles.successMessage}>{resendMessage}</Text>}
+                  <Pressable disabled={resendLoading} onPress={resendVerification} style={({ pressed }) => [styles.secondaryWideButton, pressed && !resendLoading && styles.pressed, resendLoading && styles.disabled]}>
+                    <Text style={styles.secondaryWideText}>{resendLoading ? "Se retrimite..." : "Retrimite emailul"}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => navigation.navigate("Login")} style={styles.primaryButton}>
+                    <Text style={styles.primaryText}>Am confirmat, intră în cont</Text>
                   </Pressable>
                 </View>
-              </View>
+              ) : (
+                <>
+                  <Text style={styles.title}>Creează cont</Text>
+                  <Text style={styles.subtitle}>Salvăm adresele, comenzile și restaurantele preferate după confirmarea emailului.</Text>
 
-              {error && <Text style={styles.error}>{error}</Text>}
+                  <View style={styles.socialRow}>
+                    <SocialButton label="G" title="Google" color="#FFFFFF" textColor="#DB4437" loading={socialLoading === "google"} onPress={() => { setError(null); startSocialLogin("google"); }} />
+                    <SocialButton label="f" title="Facebook" color="#1877F2" textColor="#FFFFFF" loading={socialLoading === "facebook"} onPress={() => { setError(null); startSocialLogin("facebook"); }} />
+                  </View>
 
-              <Pressable disabled={loading} onPress={submit} style={({ pressed }) => [styles.primaryButton, pressed && !loading && styles.pressed, loading && styles.disabled]}>
-                <Text style={styles.primaryText}>{loading ? "Se creează..." : "Creează cont"}</Text>
-              </Pressable>
+                  <View style={styles.dividerRow}>
+                    <View style={styles.divider} />
+                    <Text style={styles.dividerText}>sau cu email</Text>
+                    <View style={styles.divider} />
+                  </View>
 
-              <Pressable style={styles.footerLink} onPress={() => navigation.navigate("Login")}>
-                <Text style={styles.footerText}>Ai deja cont? <Text style={styles.footerAccent}>Intră în cont</Text></Text>
-              </Pressable>
+                  <View style={styles.form}>
+                    <View style={styles.nameRow}>
+                      <View style={[styles.inputWrap, styles.nameInput]}>
+                        <UserRound color={colors.muted} size={19} />
+                        <TextInput value={firstName} onChangeText={setFirstName} placeholder="Prenume" placeholderTextColor={colors.muted} style={styles.input} />
+                      </View>
+                      <View style={[styles.inputWrap, styles.nameInput]}>
+                        <UserRound color={colors.muted} size={19} />
+                        <TextInput value={lastName} onChangeText={setLastName} placeholder="Nume" placeholderTextColor={colors.muted} style={styles.input} />
+                      </View>
+                    </View>
+                    <View style={styles.inputWrap}>
+                      <Mail color={colors.muted} size={20} />
+                      <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor={colors.muted} style={styles.input} />
+                    </View>
+                    <View style={styles.inputWrap}>
+                      <Phone color={colors.muted} size={20} />
+                      <TextInput value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="Telefon" placeholderTextColor={colors.muted} style={styles.input} />
+                    </View>
+                    <View style={styles.inputWrap}>
+                      <LockKeyhole color={colors.muted} size={20} />
+                      <TextInput value={password} onChangeText={setPassword} secureTextEntry={!showPassword} placeholder="Parolă" placeholderTextColor={colors.muted} style={styles.input} />
+                      <Pressable onPress={() => setShowPassword((value) => !value)}>
+                        {showPassword ? <EyeOff color={colors.muted} size={20} /> : <Eye color={colors.muted} size={20} />}
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  {error && <Text style={styles.error}>{error}</Text>}
+
+                  <Pressable disabled={loading} onPress={submit} style={({ pressed }) => [styles.primaryButton, pressed && !loading && styles.pressed, loading && styles.disabled]}>
+                    <Text style={styles.primaryText}>{loading ? "Se creează..." : "Creează cont"}</Text>
+                  </Pressable>
+
+                  <Pressable style={styles.footerLink} onPress={() => navigation.navigate("Login")}>
+                    <Text style={styles.footerText}>Ai deja cont? <Text style={styles.footerAccent}>Intră în cont</Text></Text>
+                  </Pressable>
+                </>
+              )}
             </View>
           </ScrollView>
         </View>
@@ -237,8 +277,19 @@ const styles = StyleSheet.create({
   },
   sheetContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 34 },
   card: { backgroundColor: colors.white },
+  verificationBox: { alignItems: "center", paddingVertical: 10 },
+  verificationIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    backgroundColor: "#FFF1F1",
+  },
   title: { color: "#121212", fontSize: 31, fontWeight: "700" },
   subtitle: { marginTop: 8, color: "#71717A", fontSize: 16, lineHeight: 23, fontWeight: "400" },
+  successMessage: { marginTop: 16, color: colors.redDark, fontSize: 14, lineHeight: 20, fontWeight: "500", textAlign: "center" },
   socialRow: { flexDirection: "row", gap: 12, marginTop: 24 },
   socialButton: {
     flex: 1,
@@ -282,6 +333,20 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   primaryText: { color: colors.white, fontSize: 15, fontWeight: "700", letterSpacing: 0.3 },
+  secondaryWideButton: {
+    alignSelf: "center",
+    marginTop: 22,
+    minWidth: 210,
+    minHeight: 52,
+    borderRadius: 18,
+    paddingHorizontal: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF1F1",
+    borderWidth: 1,
+    borderColor: "#F6DADA",
+  },
+  secondaryWideText: { color: colors.redDark, fontSize: 15, fontWeight: "700" },
   footerLink: { alignItems: "center", paddingTop: 20 },
   footerText: { color: "#71717A", fontSize: 16, fontWeight: "400" },
   footerAccent: { color: colors.red, fontWeight: "700" },

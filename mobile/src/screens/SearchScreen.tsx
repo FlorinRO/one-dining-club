@@ -176,7 +176,25 @@ export function SearchScreen() {
     let isMounted = true;
 
     async function loadSearchData() {
-      const nextRestaurants = await restaurantsApi.list();
+      const ordering =
+        sort === "deliveryFee"
+          ? "delivery_fee"
+          : sort === "deliveryTime"
+            ? "estimated_delivery_time_min"
+            : sort === "rating"
+              ? "-rating"
+              : undefined;
+      const nextRestaurants = await restaurantsApi.list({
+        search: query.trim() || undefined,
+        category_name: activeCategories.length ? activeCategories.join(",") : undefined,
+        min_rating: minimumRating ?? undefined,
+        max_delivery_fee: maximumDeliveryFee ?? undefined,
+        max_delivery_time: maximumDeliveryTime ?? undefined,
+        max_distance_km: maximumDistance ?? undefined,
+        has_offer: offersOnly || undefined,
+        supports_pickup: pickupOnly || undefined,
+        ordering,
+      });
       const productGroups = await Promise.all(nextRestaurants.map((restaurant) => restaurantsApi.products(restaurant.id)));
 
       if (!isMounted) return;
@@ -189,7 +207,7 @@ export function SearchScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [activeCategories, maximumDeliveryFee, maximumDeliveryTime, maximumDistance, minimumRating, offersOnly, pickupOnly, query, sort]);
 
   useEffect(() => {
     if (route.params?.category) {

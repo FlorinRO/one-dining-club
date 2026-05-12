@@ -58,11 +58,15 @@ class Command(BaseCommand):
                 "estimated_delivery_time_min": 25,
                 "estimated_delivery_time_max": 40,
                 "rating": Decimal("4.80"),
+                "supports_pickup": True,
                 "is_open": True,
                 "is_active": True,
             },
         )
         restaurant.categories.add(italian)
+        if not restaurant.supports_pickup:
+            restaurant.supports_pickup = True
+            restaurant.save(update_fields=("supports_pickup",))
 
         pizza_category, _ = ProductCategory.objects.get_or_create(
             restaurant=restaurant,

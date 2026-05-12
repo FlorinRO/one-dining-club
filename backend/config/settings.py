@@ -101,6 +101,25 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "One Dining Club <no-reply@onedining.club>")
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
+)
+PASSWORD_RESET_CONFIRM_URL = os.getenv(
+    "PASSWORD_RESET_CONFIRM_URL",
+    "onediningclub://reset-password?uid={uid}&token={token}",
+)
+EMAIL_VERIFICATION_CONFIRM_URL = os.getenv(
+    "EMAIL_VERIFICATION_CONFIRM_URL",
+    "http://localhost:8000/api/auth/verify-email/confirm/?uid={uid}&token={token}",
+)
+EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "false").lower() == "true"
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() == "true"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

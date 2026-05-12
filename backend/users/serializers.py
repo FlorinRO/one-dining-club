@@ -3,8 +3,14 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from django.conf import settings
 from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
 from django.db import transaction
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -39,16 +45,61 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ("id", "email", "phone", "first_name", "last_name", "password")
         read_only_fields = ("id",)
 
+    def validate_email(self, value):
+        email = User.objects.normalize_email(value)
+        if User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return email
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
     @transaction.atomic
     def create(self, validated_data):
         password = validated_data.pop("password")
         user = User.objects.create_user(
             password=password,
             role=UserRole.CUSTOMER,
+            is_active=False,
             **validated_data,
         )
         CustomerProfile.objects.create(user=user, phone_number=user.phone)
+        self.verification = send_email_verification(user)
         return user
+
+
+def build_email_verification(user):
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    url = settings.EMAIL_VERIFICATION_CONFIRM_URL.format(uid=uid, token=token)
+    return {"uid": uid, "token": token, "url": url}
+
+
+def send_email_verification(user):
+    verification = build_email_verification(user)
+    send_mail(
+        subject="Confirma emailul pentru One Dining Club",
+        message=(
+            "Bun venit la One Dining Club.\n\n"
+            "Pentru a activa contul, deschide linkul de mai jos:\n"
+            f"{verification['url']}\n\n"
+            "Daca nu ai creat acest cont, poti ignora mesajul."
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
+    return verification if settings.DEBUG else None
+
+
+def build_auth_response(user, context=None):
+    refresh = RefreshToken.for_user(user)
+    return {
+        "refresh": str(refresh),
+        "access": str(refresh.access_token),
+        "user": UserSerializer(user, context=context or {}).data,
+    }
 
 
 class LoginSerializer(TokenObtainPairSerializer):
@@ -57,22 +108,21 @@ class LoginSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         email = attrs.get("email")
         password = attrs.get("password")
+        existing_user = User.objects.filter(email__iexact=email).first()
+        if existing_user and not existing_user.is_active and existing_user.check_password(password):
+            raise serializers.ValidationError("Confirma emailul inainte de autentificare.")
+
         user = authenticate(
             request=self.context.get("request"),
             username=email,
             password=password,
         )
         if not user:
-            raise serializers.ValidationError("Invalid email or password.")
+            raise serializers.ValidationError("Emailul sau parola nu sunt corecte.")
         if not user.is_active:
-            raise serializers.ValidationError("User account is disabled.")
+            raise serializers.ValidationError("Contul nu este activ.")
 
-        refresh = self.get_token(user)
-        return {
-            "refresh": str(refresh),
-            "access": str(refresh.access_token),
-            "user": UserSerializer(user, context=self.context).data,
-        }
+        return build_auth_response(user, self.context)
 
 
 class SocialLoginSerializer(serializers.Serializer):
@@ -100,18 +150,15 @@ class SocialLoginSerializer(serializers.Serializer):
             },
         )
         if created:
+            user.is_active = True
             user.set_unusable_password()
-            user.save(update_fields=["password"])
+            user.save(update_fields=["is_active", "password"])
         elif not user.is_active:
-            raise serializers.ValidationError("User account is disabled.")
+            user.is_active = True
+            user.save(update_fields=["is_active"])
         CustomerProfile.objects.get_or_create(user=user, defaults={"phone_number": user.phone})
 
-        refresh = RefreshToken.for_user(user)
-        return {
-            "refresh": str(refresh),
-            "access": str(refresh.access_token),
-            "user": UserSerializer(user, context=self.context).data,
-        }
+        return build_auth_response(user, self.context)
 
     def _fetch_profile(self, provider, token, is_id_token):
         if provider == "google":
@@ -151,3 +198,92 @@ class SocialLoginSerializer(serializers.Serializer):
                 return json.loads(response.read().decode("utf-8"))
         except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
             raise serializers.ValidationError("Could not verify the social login token.") from exc
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def save(self):
+        email = User.objects.normalize_email(self.validated_data["email"])
+        user = User.objects.filter(email__iexact=email, is_active=True).first()
+        if not user:
+            return None
+
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        reset_url = settings.PASSWORD_RESET_CONFIRM_URL.format(uid=uid, token=token)
+
+        send_mail(
+            subject="Resetare parola One Dining Club",
+            message=(
+                "Ai cerut resetarea parolei pentru contul One Dining Club.\n\n"
+                f"Deschide linkul pentru a seta o parola noua:\n{reset_url}\n\n"
+                "Daca nu ai cerut asta, poti ignora mesajul."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=True,
+        )
+        return {"uid": uid, "token": token} if settings.DEBUG else None
+
+
+class EmailVerificationConfirmSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+
+    def validate(self, attrs):
+        try:
+            user_id = force_str(urlsafe_base64_decode(attrs["uid"]))
+            user = User.objects.get(pk=user_id)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist) as exc:
+            raise serializers.ValidationError({"uid": "Linkul de confirmare nu este valid."}) from exc
+
+        if not default_token_generator.check_token(user, attrs["token"]):
+            raise serializers.ValidationError({"token": "Linkul de confirmare este invalid sau expirat."})
+
+        attrs["user"] = user
+        return attrs
+
+    def save(self):
+        user = self.validated_data["user"]
+        if not user.is_active:
+            user.is_active = True
+            user.save(update_fields=("is_active",))
+        return user
+
+
+class EmailVerificationRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def save(self):
+        email = User.objects.normalize_email(self.validated_data["email"])
+        user = User.objects.filter(email__iexact=email, is_active=False).first()
+        if not user:
+            return None
+        return send_email_verification(user)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, attrs):
+        try:
+            user_id = force_str(urlsafe_base64_decode(attrs["uid"]))
+            user = User.objects.get(pk=user_id, is_active=True)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist) as exc:
+            raise serializers.ValidationError({"uid": "Invalid password reset link."}) from exc
+
+        if not default_token_generator.check_token(user, attrs["token"]):
+            raise serializers.ValidationError({"token": "Invalid or expired password reset token."})
+
+        validate_password(attrs["new_password"], user)
+        attrs["user"] = user
+        return attrs
+
+    def save(self):
+        user = self.validated_data["user"]
+        user.set_password(self.validated_data["new_password"])
+        user.save(update_fields=("password",))
+        return user

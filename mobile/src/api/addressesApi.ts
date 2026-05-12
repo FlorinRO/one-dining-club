@@ -1,15 +1,10 @@
 import { apiClient } from "./client";
-import { mockAddresses } from "../data/mockData";
 import { Address } from "../types/models";
 
 export const addressesApi = {
   async list() {
-    try {
-      const { data } = await apiClient.get<Address[] | { results: Address[] }>("/addresses/");
-      return Array.isArray(data) ? data : data.results;
-    } catch {
-      return mockAddresses;
-    }
+    const { data } = await apiClient.get<Address[] | { results: Address[] }>("/addresses/");
+    return Array.isArray(data) ? data : data.results;
   },
 
   async create(payload: Omit<Address, "id">) {
@@ -31,4 +26,3 @@ export const addressesApi = {
     return data;
   },
 };
-

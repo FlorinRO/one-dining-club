@@ -7,7 +7,21 @@ type Paginated<T> = {
 };
 
 export const productsApi = {
-  async list(params?: { search?: string; restaurant?: number; category?: number }) {
+  async list(params?: {
+    search?: string;
+    restaurant?: number;
+    category?: number;
+    is_available?: boolean;
+    is_popular?: boolean;
+    min_price?: number;
+    max_price?: number;
+    has_discount?: boolean;
+    max_preparation_time?: number;
+    category_name?: string;
+    restaurant_city?: string;
+    exclude_allergens?: string;
+    ordering?: string;
+  }) {
     try {
       const { data } = await apiClient.get<Product[] | Paginated<Product>>("/products/", { params });
       return Array.isArray(data) ? data : data.results;
@@ -25,4 +39,3 @@ export const productsApi = {
     }
   },
 };
-

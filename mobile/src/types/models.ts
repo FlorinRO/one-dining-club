@@ -8,6 +8,7 @@ export type User = {
   last_name?: string;
   full_name?: string;
   role: UserRole;
+  date_joined?: string;
 };
 
 export type RestaurantCategory = {

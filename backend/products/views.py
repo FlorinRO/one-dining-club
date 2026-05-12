@@ -1,6 +1,7 @@
 from rest_framework import permissions, viewsets
 
 from core.permissions import IsRestaurantOwner
+from products.filters import ProductFilter
 from products.models import Product
 from products.serializers import ProductSerializer, RestaurantOwnerProductSerializer
 
@@ -8,7 +9,7 @@ from products.serializers import ProductSerializer, RestaurantOwnerProductSerial
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = (permissions.AllowAny,)
-    filterset_fields = ("restaurant", "category", "is_available", "is_popular")
+    filterset_class = ProductFilter
     search_fields = ("name", "description", "restaurant__name", "allergens")
     ordering_fields = ("name", "price", "created_at", "preparation_time")
     ordering = ("category__sort_order", "name")
@@ -33,4 +34,3 @@ class RestaurantOwnerProductViewSet(viewsets.ModelViewSet):
         return Product.objects.select_related("restaurant", "category").filter(
             restaurant__owner=self.request.user
         )
-

@@ -1,211 +1,260 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useEffect, useMemo } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { ArrowLeft, RotateCcw } from "lucide-react-native";
+import { ArrowLeft, ChevronRight, ListOrdered } from "lucide-react-native";
+import { useCallback, useState } from "react";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ordersApi } from "../api/ordersApi";
+import { StatusPill } from "../components/StatusPill";
 import { Screen } from "../components/Screen";
-import { mockRestaurants } from "../data/mockData";
-import { money } from "../lib/format";
-import { FALLBACK_RESTAURANT_IMAGE, resolveImageUri } from "../lib/images";
+import { money, shortDate } from "../lib/format";
 import { OrdersStackParamList } from "../navigation/types";
 import { useOrdersStore } from "../store/ordersStore";
 import { colors } from "../theme/colors";
-import { Order } from "../types/models";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrdersHome">;
 
 export function OrdersScreen({ navigation }: Props) {
   const orders = useOrdersStore((state) => state.orders);
   const setOrders = useOrdersStore((state) => state.setOrders);
-  const displayOrders = useMemo(() => buildDisplayOrders(orders), [orders]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    ordersApi.list().then(setOrders).catch(() => undefined);
-  }, [setOrders]);
+  const loadOrders = useCallback(
+    async (mode: "initial" | "refresh" = "initial") => {
+      if (mode === "refresh") {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      try {
+        const data = await ordersApi.list();
+        setOrders(data);
+      } catch {
+        setError("Nu am putut încărca comenzile din backend.");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [setOrders],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      loadOrders();
+    }, [loadOrders]),
+  );
 
   return (
     <Screen>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color={colors.text} strokeWidth={2} />
-        </Pressable>
-        <Text style={styles.title}>Comenzile mele</Text>
-        <View style={styles.list}>
-          {displayOrders.map((order) => (
-            <Pressable key={`${order.id}-${order.created_at}`} style={styles.order} onPress={() => navigation.navigate("OrderDetails", { order })}>
-                <View style={styles.row}>
-                <View style={styles.thumbCol}>
-                  <View style={styles.thumb}>
-                    <Image
-                      source={{
-                        uri: resolveImageUri(
-                          mockRestaurants.find((restaurant) => restaurant.id === order.restaurant)?.cover_image,
-                          FALLBACK_RESTAURANT_IMAGE
-                        ),
-                      }}
-                      style={styles.thumbImage}
-                    />
-                  </View>
-                  <Text style={styles.thumbDate}>{formatOrderDate(order.created_at)}</Text>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.red} onRefresh={() => loadOrders("refresh")} />}
+        contentContainerStyle={styles.content}
+      >
+        <View style={styles.header}>
+          <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+            <ArrowLeft size={22} color={colors.text} strokeWidth={2.2} />
+          </Pressable>
+          <View style={styles.headerCopy}>
+            <Text style={styles.title}>Comenzile mele</Text>
+            <Text style={styles.subtitle}>Istoric real sincronizat cu backend-ul</Text>
+          </View>
+        </View>
+
+        {error && <Text style={styles.errorBanner}>{error}</Text>}
+
+        {loading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator color={colors.red} />
+            <Text style={styles.mutedText}>Se încarcă comenzile...</Text>
+          </View>
+        ) : orders.length ? (
+          <View style={styles.list}>
+            {orders.map((order) => (
+              <Pressable key={order.id} style={({ pressed }) => [styles.order, pressed && styles.pressed]} onPress={() => navigation.navigate("OrderDetails", { order })}>
+                <View style={styles.orderIcon}>
+                  <Text style={styles.orderIconText}>{restaurantInitials(order.restaurant_name)}</Text>
                 </View>
                 <View style={styles.main}>
                   <Text style={styles.restaurant} numberOfLines={1}>
                     {order.restaurant_name}
                   </Text>
+                  <Text style={styles.meta}>{shortDate(order.created_at)}</Text>
+                  <View style={styles.statusWrap}>
+                    <StatusPill status={order.order_status} />
+                  </View>
+                </View>
+                <View style={styles.trailing}>
                   <Text style={styles.total}>{money(order.total)}</Text>
-                  <Text style={styles.meta}>{statusLabel(order.order_status)}</Text>
+                  <ChevronRight size={19} color={colors.muted} strokeWidth={2.2} />
                 </View>
-                <View style={styles.reorderButton}>
-                  <RotateCcw size={20} color={colors.text} strokeWidth={1.9} />
-                </View>
-              </View>
-            </Pressable>
-          ))}
-        </View>
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyBox}>
+            <ListOrdered size={28} color={colors.red} strokeWidth={2.2} />
+            <Text style={styles.emptyTitle}>Nu ai comenzi încă</Text>
+            <Text style={styles.emptyText}>După prima comandă plasată cu backend-ul, istoricul apare aici.</Text>
+          </View>
+        )}
       </ScrollView>
     </Screen>
   );
 }
 
+function restaurantInitials(name: string) {
+  return (
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "OD"
+  );
+}
+
 const styles = StyleSheet.create({
   content: {
-    paddingTop: 6,
+    paddingTop: 10,
     paddingBottom: 120,
+    gap: 16,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   backButton: {
-    width: 30,
-    height: 30,
-    alignItems: "flex-start",
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
     justifyContent: "center",
-    marginTop: 8,
-    marginBottom: 18,
+    backgroundColor: colors.cardSoft,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  headerCopy: {
+    flex: 1,
   },
   title: {
     color: colors.text,
     fontSize: 30,
-    fontWeight: "600",
-    letterSpacing: -0.2,
-    marginBottom: 56,
+    fontWeight: "900",
+  },
+  subtitle: {
+    marginTop: 3,
+    color: colors.muted,
+    fontWeight: "700",
+  },
+  errorBanner: {
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#FFF1F1",
+    color: colors.redDark,
+    padding: 12,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  loadingBox: {
+    minHeight: 140,
+    borderRadius: 22,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  mutedText: {
+    color: colors.muted,
+    fontWeight: "700",
   },
   list: {
-    gap: 0,
+    borderRadius: 24,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
   },
   order: {
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-  },
-  row: {
+    minHeight: 92,
+    padding: 14,
     flexDirection: "row",
+    alignItems: "center",
     gap: 12,
-    alignItems: "flex-start",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  thumbCol: {
-    width: 84,
-    gap: 6,
+  orderIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.red,
   },
-  thumb: {
-    width: 68,
-    height: 68,
-    borderRadius: 14,
-    backgroundColor: colors.cardSoft,
-  },
-  thumbImage: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 14,
-  },
-  thumbDate: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: "500",
-    lineHeight: 14,
+  orderIconText: {
+    color: colors.white,
+    fontWeight: "900",
+    fontSize: 16,
   },
   main: {
     flex: 1,
-    justifyContent: "center",
-    gap: 2,
+    gap: 4,
   },
   restaurant: {
     color: colors.text,
-    fontSize: 18,
-    fontWeight: "500",
-    letterSpacing: -0.3,
+    fontSize: 16,
+    fontWeight: "900",
   },
   meta: {
-    marginTop: 6,
     color: colors.muted,
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  statusWrap: {
+    alignSelf: "flex-start",
+    marginTop: 3,
+  },
+  trailing: {
+    alignItems: "flex-end",
+    gap: 8,
   },
   total: {
     color: colors.text,
-    fontSize: 17,
-    fontWeight: "500",
-    letterSpacing: -0.2,
+    fontSize: 14,
+    fontWeight: "900",
   },
-  reorderButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  emptyBox: {
+    minHeight: 190,
+    borderRadius: 24,
+    padding: 20,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.cardSoft,
+    gap: 9,
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontSize: 19,
+    fontWeight: "900",
+  },
+  emptyText: {
+    color: colors.muted,
+    textAlign: "center",
+    lineHeight: 21,
+    fontWeight: "700",
+  },
+  pressed: {
+    opacity: 0.86,
   },
 });
-
-function statusLabel(status: string) {
-  if (status === "preparing") return "În curs de preparare";
-  if (status === "delivered") return "Livrată";
-
-  return status
-    .split("_")
-    .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function formatOrderDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
-function buildDisplayOrders(orders: Order[]) {
-  if (orders.length === 0) return [];
-
-  const uniqueRestaurantIds = Array.from(
-    new Set(
-      orders
-        .map((order) => order.restaurant)
-        .filter((restaurantId): restaurantId is number => typeof restaurantId === "number")
-    )
-  );
-
-  const fallbackRestaurantIds = mockRestaurants.map((restaurant) => restaurant.id);
-  const restaurantIdsPool = Array.from(new Set([...uniqueRestaurantIds, ...fallbackRestaurantIds]));
-  const baseOrder = orders[0];
-
-  return restaurantIdsPool.slice(0, 14).map((restaurantId, index) => {
-    const restaurant = mockRestaurants.find((item) => item.id === restaurantId);
-    const createdAt = new Date(baseOrder.created_at);
-    createdAt.setDate(createdAt.getDate() - index * 6);
-    createdAt.setHours(12 + (index % 8), 5 + ((index * 7) % 50), 0, 0);
-
-    const orderStatus: Order["order_status"] = index % 3 === 0 ? "preparing" : "delivered";
-
-    return {
-      ...baseOrder,
-      id: 90000 + index,
-      restaurant: restaurantId,
-      restaurant_name: restaurant?.name ?? `Restaurant ${restaurantId}`,
-      total: Number(32 + index * 3.7).toFixed(2),
-      created_at: createdAt.toISOString(),
-      order_status: orderStatus,
-    };
-  });
-}

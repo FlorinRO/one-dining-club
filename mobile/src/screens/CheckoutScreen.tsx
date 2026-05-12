@@ -12,7 +12,7 @@ import { CartStackParamList } from "../navigation/types";
 import { useCartStore } from "../store/cartStore";
 import { useOrdersStore } from "../store/ordersStore";
 import { colors } from "../theme/colors";
-import { Address, Order, PaymentMethod } from "../types/models";
+import { Address, PaymentMethod } from "../types/models";
 
 type Props = NativeStackScreenProps<CartStackParamList, "Checkout">;
 
@@ -32,7 +32,7 @@ export function CheckoutScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    addressesApi.list().then(setAddresses);
+    addressesApi.list().then(setAddresses).catch(() => setAddresses([]));
   }, []);
 
   const selectedAddress = addresses.find((address) => address.is_default) ?? addresses[0];
@@ -55,40 +55,13 @@ export function CheckoutScreen({ navigation }: Props) {
         })),
       });
       addOrder(order);
-    } catch {
-      const fallbackOrder: Order = {
-        id: Date.now(),
-        restaurant: restaurant.id,
-        restaurant_name: restaurant.name,
-        subtotal,
-        delivery_fee: deliveryFee,
-        discount,
-        total,
-        payment_method: paymentMethod,
-        order_status: "pending",
-        created_at: new Date().toISOString(),
-        address: selectedAddress,
-        items: items.map((item, index) => ({
-          id: index + 1,
-          product: item.product.id,
-          product_name: item.product.name,
-          quantity: item.quantity,
-          unit_price: item.product.effective_price ?? item.product.discount_price ?? item.product.price,
-          total_price: Number(item.product.effective_price ?? item.product.discount_price ?? item.product.price) * item.quantity,
-          notes: item.notes,
-          options: item.selectedOptions.map((option) => ({
-            id: option.id,
-            option_name: option.name,
-            extra_price: option.extra_price,
-          })),
-        })),
-      };
-      addOrder(fallbackOrder);
-    } finally {
       clearCart();
-      setLoading(false);
       Alert.alert("Comandă plasată", "Statusul comenzii este disponibil în tabul Orders.");
       navigation.getParent()?.navigate("OrdersTab", { screen: "OrdersHome" });
+    } catch {
+      Alert.alert("Comanda nu a fost plasată", "Verifică adresa, restaurantul și conexiunea cu backend-ul, apoi încearcă din nou.");
+    } finally {
+      setLoading(false);
     }
   };
 

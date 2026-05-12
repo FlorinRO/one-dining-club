@@ -1,20 +1,24 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ArrowLeft, Bike, Clock3, Heart, Search, SearchX, Share2, Star, X } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Keyboard, LayoutChangeEvent, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { Animated, Image, Keyboard, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import { restaurantsApi } from "../api/restaurantsApi";
-import { CategoryChip } from "../components/CategoryChip";
 import { FloatingCartBar } from "../components/FloatingCartBar";
-import { FALLBACK_RESTAURANT_IMAGE, resolveImageUri } from "../lib/images";
-import { ProductCard } from "../components/ProductCard";
+import { money } from "../lib/format";
+import { FALLBACK_PRODUCT_IMAGE, FALLBACK_RESTAURANT_IMAGE, resolveImageUri } from "../lib/images";
 import { useFavoritesStore } from "../store/favoritesStore";
 import { HomeStackParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
-import { Product, ProductCategory, Restaurant } from "../types/models";
+import { Product, Restaurant } from "../types/models";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "RestaurantDetails">;
+
+const SHOWCASE_ZIG_ZAG_TOP_PATH =
+  "M0 0 H280 V8 L272 0 L264 8 L256 0 L248 8 L240 0 L232 8 L224 0 L216 8 L208 0 L200 8 L192 0 L184 8 L176 0 L168 8 L160 0 L152 8 L144 0 L136 8 L128 0 L120 8 L112 0 L104 8 L96 0 L88 8 L80 0 L72 8 L64 0 L56 8 L48 0 L40 8 L32 0 L24 8 L16 0 L8 8 L0 0 Z";
+const SHOWCASE_ZIG_ZAG_BOTTOM_PATH =
+  "M0 8 H280 V0 L272 8 L264 0 L256 8 L248 0 L240 8 L232 0 L224 8 L216 0 L208 8 L200 0 L192 8 L184 0 L176 8 L168 0 L160 8 L152 0 L144 8 L136 0 L128 8 L120 0 L112 8 L104 0 L96 8 L88 0 L80 8 L72 0 L64 8 L56 0 L48 8 L40 0 L32 8 L24 0 L16 8 L8 0 L0 8 Z";
 
 export function RestaurantDetailsScreen({ navigation, route }: Props) {
   const HERO_HEIGHT = 258;
@@ -23,50 +27,28 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
   const initialRestaurant = route.params.restaurant;
   const [restaurant, setRestaurant] = useState<Restaurant>(initialRestaurant);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
-  const [activeCategory, setActiveCategory] = useState<number | "all">("all");
   const [isRestaurantSearchOpen, setIsRestaurantSearchOpen] = useState(false);
   const [restaurantSearchQuery, setRestaurantSearchQuery] = useState("");
   const [isSearchInputFocused, setIsSearchInputFocused] = useState(false);
   const restaurantSearchInputRef = useRef<TextInput>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
-  const [categoryOffsets, setCategoryOffsets] = useState<Record<string, number>>({});
   const toggleRestaurant = useFavoritesStore((state) => state.toggleRestaurant);
   const isFavorite = useFavoritesStore((state) => state.isRestaurantFavorite(restaurant.id));
 
   useEffect(() => {
     restaurantsApi.detail(initialRestaurant.id).then(setRestaurant);
     restaurantsApi.products(initialRestaurant.id).then(setProducts);
-    restaurantsApi.categories(initialRestaurant.id).then(setCategories);
   }, [initialRestaurant.id]);
 
-  const sections = useMemo(() => {
-    const mapped = categories
-      .map((category) => ({
-        key: `category-${category.id}`,
-        id: category.id,
-        label: category.name,
-        products: products.filter((product) => product.category === category.id),
-      }))
-      .filter((section) => section.products.length > 0);
-    const knownCategoryIds = new Set(categories.map((category) => category.id));
-    const uncategorized = products.filter((product) => !knownCategoryIds.has(product.category));
-    if (uncategorized.length > 0) {
-      mapped.push({
-        key: "category-other",
-        id: -1,
-        label: "Altele",
-        products: uncategorized,
-      });
-    }
-    return mapped;
-  }, [categories, products]);
+  const selectedProducts = useMemo(() => products.slice(0, 5), [products]);
+
   const restaurantSearchResults = useMemo(() => {
     const query = restaurantSearchQuery.trim().toLowerCase();
     if (!query) return [];
-    return products.filter((product) => `${product.name} ${product.description} ${product.category_name ?? ""}`.toLowerCase().includes(query));
-  }, [products, restaurantSearchQuery]);
+    return selectedProducts.filter((product) =>
+      `${product.name} ${product.description} ${product.category_name ?? ""}`.toLowerCase().includes(query),
+    );
+  }, [selectedProducts, restaurantSearchQuery]);
   const hasSearchQuery = restaurantSearchQuery.trim().length > 0;
 
   const heroScale = scrollY.interpolate({
@@ -109,23 +91,6 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
     setRestaurantSearchQuery("");
     setIsSearchInputFocused(false);
   };
-  const setCategoryOffset = (key: string, event: LayoutChangeEvent) => {
-    const y = event.nativeEvent.layout.y;
-    setCategoryOffsets((prev) => (prev[key] === y ? prev : { ...prev, [key]: y }));
-  };
-  const scrollToCategory = (category: number | "all") => {
-    setActiveCategory(category);
-    if (!scrollViewRef.current) return;
-    if (category === "all") {
-      const topOffset = categoryOffsets.all ?? 0;
-      scrollViewRef.current.scrollTo({ y: Math.max(0, topOffset - 196), animated: true });
-      return;
-    }
-    const sectionOffset = categoryOffsets[`category-${category}`];
-    if (typeof sectionOffset === "number") {
-      scrollViewRef.current.scrollTo({ y: Math.max(0, sectionOffset - 196), animated: true });
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -146,7 +111,6 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
         </View>
       </Animated.View>
       <Animated.ScrollView
-        ref={scrollViewRef}
         style={styles.contentScroller}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
@@ -188,21 +152,26 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
                 </View>
               </View>
               <View style={styles.products}>
-                <View onLayout={(event) => setCategoryOffset("all", event)} />
-                {sections.map((section) => (
-                  <View key={section.key} onLayout={(event) => setCategoryOffset(section.key, event)} style={styles.sectionBlock}>
-                    <Text style={styles.sectionTitle}>{section.label}</Text>
-                    <View style={styles.sectionProducts}>
-                      {section.products.map((product) => (
-                        <ProductCard
-                          key={product.id}
-                          product={product}
-                          onPress={() => navigation.navigate("ProductDetails", { restaurant, product })}
-                        />
-                      ))}
+                <View style={styles.menuSeparator} />
+                <View style={styles.menuHeaderBlock}>
+                  <View style={styles.menuIntroLine}>
+                    <Text style={styles.menuIntroText}>Selecție </Text>
+                    <View style={styles.menuBrandMark}>
+                      <Text style={styles.menuBrandText}>ONE DINING CLUB</Text>
+                      <Star size={10} stroke={colors.red} fill={colors.red} />
                     </View>
+                    <Text style={styles.menuIntroText}> {restaurant.name}</Text>
                   </View>
-                ))}
+                </View>
+                <View style={styles.showcaseList}>
+                  {selectedProducts.map((product) => (
+                    <ShowcaseProductCard
+                      key={product.id}
+                      product={product}
+                      onPress={() => navigation.navigate("ProductDetails", { restaurant, product })}
+                    />
+                  ))}
+                </View>
               </View>
             </View>
           </View>
@@ -236,31 +205,11 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
         <Text numberOfLines={1} style={styles.stickyHeaderTitle}>
           {restaurant.name}
         </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stickyCategories}>
-          <CategoryChip
-            label="Toate"
-            active={activeCategory === "all"}
-            onPress={() => scrollToCategory("all")}
-            stabilizeWidthOnActive
-            style={styles.stickyCategoryChip}
-            activeStyle={styles.stickyCategoryChipActive}
-            textStyle={styles.stickyCategoryText}
-            activeTextStyle={styles.stickyCategoryTextActive}
-          />
-          {categories.map((category) => (
-            <CategoryChip
-              key={`sticky-${category.id}`}
-              label={category.name}
-              active={activeCategory === category.id}
-              onPress={() => scrollToCategory(category.id)}
-              stabilizeWidthOnActive
-              style={styles.stickyCategoryChip}
-              activeStyle={styles.stickyCategoryChipActive}
-              textStyle={styles.stickyCategoryText}
-              activeTextStyle={styles.stickyCategoryTextActive}
-            />
-          ))}
-        </ScrollView>
+        <View style={styles.stickyMenuMeta}>
+          <Text numberOfLines={1} style={styles.stickyMenuText}>
+            {restaurant.estimated_delivery_time_min}-{restaurant.estimated_delivery_time_max} min
+          </Text>
+        </View>
       </Animated.View>
       <FloatingCartBar onPress={() => navigation.navigate("CartFlow", { screen: "CartHome" })} />
       {isRestaurantSearchOpen && (
@@ -311,7 +260,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
                 ) : (
                   <View style={styles.searchResults}>
                     {restaurantSearchResults.map((product) => (
-                      <ProductCard
+                      <ShowcaseProductCard
                         key={product.id}
                         product={product}
                         onPress={() => {
@@ -328,6 +277,75 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
         </View>
       )}
     </View>
+  );
+}
+
+type ShowcaseProductCardProps = {
+  product: Product;
+  onPress: () => void;
+};
+
+function ShowcaseProductCard({ product, onPress }: ShowcaseProductCardProps) {
+  const effectivePrice = product.effective_price ?? product.discount_price ?? product.price;
+  const isUnavailable = product.is_available === false;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={isUnavailable}
+      style={({ pressed }) => [
+        styles.showcaseCard,
+        pressed && styles.showcaseCardPressed,
+        isUnavailable && styles.showcaseCardDisabled,
+      ]}
+    >
+      <View style={styles.showcaseImageFrame}>
+        <Image
+          source={{ uri: resolveImageUri(product.image, FALLBACK_PRODUCT_IMAGE) }}
+          style={styles.showcaseImage}
+          resizeMode="cover"
+        />
+        <View style={styles.showcaseImageOverlay} />
+        <ShowcaseImageZigZagEdge position="top" />
+        <ShowcaseImageZigZagEdge position="bottom" />
+      </View>
+      <View style={styles.showcaseContent}>
+        <View style={styles.showcaseTitleRow}>
+          <View style={styles.showcaseNameBadge}>
+            <Text numberOfLines={1} style={styles.showcaseName}>
+              {product.name}
+            </Text>
+          </View>
+          <View style={styles.showcasePriceCta}>
+            <View style={styles.showcasePriceRow}>
+              <Text style={styles.showcasePrice}>{money(effectivePrice)}</Text>
+            </View>
+          </View>
+        </View>
+        <Text numberOfLines={2} style={styles.showcaseDescription}>
+          {product.description}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+type ShowcaseImageZigZagEdgeProps = {
+  position: "top" | "bottom";
+};
+
+function ShowcaseImageZigZagEdge({ position }: ShowcaseImageZigZagEdgeProps) {
+  return (
+    <Svg
+      width="100%"
+      height={8}
+      viewBox="0 0 280 8"
+      preserveAspectRatio="none"
+      pointerEvents="none"
+      style={[styles.showcaseZigZagEdge, position === "top" ? styles.showcaseZigZagTop : styles.showcaseZigZagBottom]}
+    >
+      <Path d={position === "top" ? SHOWCASE_ZIG_ZAG_TOP_PATH : SHOWCASE_ZIG_ZAG_BOTTOM_PATH} fill={colors.card} />
+    </Svg>
   );
 }
 
@@ -375,7 +393,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 148,
+    height: 120,
     zIndex: 8,
     paddingHorizontal: 16,
     justifyContent: "flex-start",
@@ -393,29 +411,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "left",
   },
-  stickyCategories: {
-    marginTop: 104,
-    paddingHorizontal: 6,
-    gap: 10,
+  stickyMenuMeta: {
+    position: "absolute",
+    top: 91,
+    left: 72,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  stickyCategoryChip: {
-    backgroundColor: "transparent",
-    borderWidth: 0,
-    paddingHorizontal: 8,
-    height: 34,
-  },
-  stickyCategoryChipActive: {
-    backgroundColor: "transparent",
-    borderWidth: 0,
-  },
-  stickyCategoryText: {
-    fontSize: 16,
-    fontWeight: "400",
-    color: colors.text,
-  },
-  stickyCategoryTextActive: {
+  stickyMenuText: {
+    flexShrink: 1,
+    color: colors.muted,
+    fontSize: 13,
     fontWeight: "700",
-    color: colors.text,
   },
   iconButton: {
     width: 42,
@@ -488,16 +497,131 @@ const styles = StyleSheet.create({
     marginTop: 10,
     gap: 14,
   },
-  sectionBlock: {
-    gap: 10,
+  menuSeparator: {
+    height: 2,
+    marginHorizontal: -18,
+    backgroundColor: colors.border,
   },
-  sectionTitle: {
+  menuHeaderBlock: {
+    marginBottom: 2,
+  },
+  menuIntroLine: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
+  menuIntroText: {
     color: colors.text,
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "400",
   },
-  sectionProducts: {
-    gap: 12,
+  menuBrandMark: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  menuBrandText: {
+    color: colors.red,
+    fontSize: 11,
+    lineHeight: 18,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  showcaseList: {
+    gap: 22,
+  },
+  showcaseCard: {
+    overflow: "hidden",
+    borderRadius: 8,
+    backgroundColor: colors.card,
+    borderWidth: 0,
+  },
+  showcaseCardPressed: {
+    transform: [{ scale: 0.99 }],
+  },
+  showcaseCardDisabled: {
+    opacity: 0.58,
+  },
+  showcaseImageFrame: {
+    height: 184,
+    position: "relative",
+    backgroundColor: colors.cardSoft,
+  },
+  showcaseImage: {
+    width: "100%",
+    height: "100%",
+  },
+  showcaseImageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.16)",
+  },
+  showcaseZigZagEdge: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 2,
+  },
+  showcaseZigZagTop: {
+    top: 0,
+  },
+  showcaseZigZagBottom: {
+    bottom: 0,
+  },
+  showcaseContent: {
+    padding: 14,
+    gap: 13,
+  },
+  showcaseTitleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    alignSelf: "flex-start",
+    maxWidth: "100%",
+  },
+  showcaseName: {
+    flexShrink: 1,
+    color: colors.white,
+    fontFamily: "Georgia",
+    fontSize: 20,
+    lineHeight: 25,
+    fontStyle: "italic",
+    fontWeight: "400",
+  },
+  showcaseNameBadge: {
+    height: 36,
+    flexShrink: 1,
+    justifyContent: "center",
+    backgroundColor: colors.red,
+    paddingHorizontal: 8,
+  },
+  showcaseDescription: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: "500",
+  },
+  showcasePriceCta: {
+    height: 36,
+    borderWidth: 2,
+    borderRadius: 2,
+    borderColor: colors.red,
+    backgroundColor: colors.white,
+    paddingVertical: 4,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+  showcasePriceRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 8,
+  },
+  showcasePrice: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "500",
   },
   searchOverlay: {
     ...StyleSheet.absoluteFillObject,

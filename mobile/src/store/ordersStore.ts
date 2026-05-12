@@ -1,6 +1,5 @@
 import { create } from "zustand";
 
-import { mockOrders } from "../data/mockData";
 import { Order } from "../types/models";
 
 type OrdersState = {
@@ -11,7 +10,7 @@ type OrdersState = {
 };
 
 export const useOrdersStore = create<OrdersState>((set, get) => ({
-  orders: mockOrders,
+  orders: [],
   setOrders: (orders) => set({ orders }),
   addOrder: (order) => set({ orders: [order, ...get().orders] }),
   updateOrder: (order) =>
@@ -19,4 +18,3 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       orders: get().orders.map((item) => (item.id === order.id ? order : item)),
     }),
 }));
-
