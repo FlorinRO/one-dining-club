@@ -2,7 +2,6 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
   ArrowLeft,
   CheckCircle2,
-  ChevronDown,
   Eye,
   EyeOff,
   LockKeyhole,
@@ -11,19 +10,23 @@ import {
   Star,
 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
+import BottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetScrollView,
+  BottomSheetTextInput,
+} from "@gorhom/bottom-sheet";
 import {
-  Animated,
-  KeyboardAvoidingView,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
   StyleSheet,
-  ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
 import LottieView from "lottie-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { authApi } from "../api/authApi";
 import { useSocialAuth } from "../lib/socialAuth";
@@ -47,7 +50,10 @@ export function LoginScreen({ navigation }: Props) {
   const [forgotEmail, setForgotEmail] = useState(email);
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
-  const sheetProgress = useRef(new Animated.Value(0)).current;
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const snapPoints = useRef(["74%"]).current;
+  const insets = useSafeAreaInsets();
 
   const goToHome = () => {
     continueAsGuest();
@@ -64,6 +70,12 @@ export function LoginScreen({ navigation }: Props) {
     onSuccess: handleSocialSuccess,
     onError: handleSocialError,
   });
+  const renderBackdrop = useCallback(
+    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
+      <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.34} />
+    ),
+    [],
+  );
 
   const submit = async () => {
     if (!email || !password) {
@@ -109,23 +121,26 @@ export function LoginScreen({ navigation }: Props) {
   };
 
   useEffect(() => {
-    Animated.spring(sheetProgress, {
-      toValue: sheetOpen ? 1 : 0,
-      damping: 22,
-      mass: 0.9,
-      stiffness: 190,
-      useNativeDriver: true,
-    }).start();
-  }, [sheetOpen, sheetProgress]);
+    if (!bottomSheetRef.current) return;
+    if (sheetOpen) {
+      bottomSheetRef.current.snapToIndex(0);
+    } else {
+      bottomSheetRef.current.close();
+    }
+  }, [sheetOpen]);
 
-  const sheetTranslateY = sheetProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [620, 0],
-  });
+  useEffect(() => {
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const hideListener = Keyboard.addListener(hideEvent, () => {
+      if (sheetOpen) {
+        bottomSheetRef.current?.snapToIndex(0);
+      }
+    });
+    return () => hideListener.remove();
+  }, [sheetOpen]);
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
-      <View style={styles.screen}>
+    <View style={styles.screen}>
         <View style={styles.hero}>
           <Pressable style={styles.backButton} onPress={goToHome}>
             <ArrowLeft color={colors.white} size={24} strokeWidth={2.3} />
@@ -176,22 +191,28 @@ export function LoginScreen({ navigation }: Props) {
               <Text style={styles.openSheetLabel}>Continuă</Text>
               <Text style={styles.openSheetHint}>Deschide autentificarea</Text>
             </View>
-            <ChevronDown color={colors.white} size={22} strokeWidth={2.6} />
           </Pressable>
         </View>
 
-        {sheetOpen && <Pressable style={styles.overlay} onPress={() => setSheetOpen(false)} />}
-
-        <Animated.View
-          pointerEvents={sheetOpen ? "auto" : "none"}
-          style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }] }]}
+        <BottomSheet
+          ref={bottomSheetRef}
+          index={-1}
+          snapPoints={snapPoints}
+          enablePanDownToClose
+          onClose={() => setSheetOpen(false)}
+          style={styles.sheet}
+          backgroundStyle={styles.sheetBackground}
+          handleIndicatorStyle={styles.handleBar}
+          keyboardBehavior="interactive"
+          keyboardBlurBehavior="none"
+          android_keyboardInputMode="adjustResize"
+          backdropComponent={renderBackdrop}
         >
-          <Pressable style={styles.sheetHandle} onPress={() => setSheetOpen(false)}>
-            <View style={styles.handleBar} />
-            <ChevronDown color={colors.red} size={22} strokeWidth={2.6} />
-          </Pressable>
-
-          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetContent}>
+          <BottomSheetScrollView
+            keyboardShouldPersistTaps="always"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 24 }]}
+          >
             <View style={styles.card}>
               <Text style={styles.title}>Intră în cont</Text>
               <Text style={styles.subtitle}>Bine ai revenit. Alege metoda preferată pentru autentificare.</Text>
@@ -229,11 +250,13 @@ export function LoginScreen({ navigation }: Props) {
               </View>
 
               <View style={styles.form}>
-                <View style={styles.inputWrap}>
+                <View style={[styles.inputWrap, focusedField === "email" && styles.inputWrapFocused]}>
                   <Mail color={colors.red} size={20} strokeWidth={2.2} />
-                  <TextInput
+                  <BottomSheetTextInput
                     value={email}
                     onChangeText={setEmail}
+                    onFocus={() => setFocusedField("email")}
+                    onBlur={() => setFocusedField(null)}
                     autoCapitalize="none"
                     keyboardType="email-address"
                     placeholder="Email"
@@ -242,11 +265,13 @@ export function LoginScreen({ navigation }: Props) {
                   />
                 </View>
 
-                <View style={styles.inputWrap}>
+                <View style={[styles.inputWrap, focusedField === "password" && styles.inputWrapFocused]}>
                   <LockKeyhole color={colors.red} size={20} strokeWidth={2.2} />
-                  <TextInput
+                  <BottomSheetTextInput
                     value={password}
                     onChangeText={setPassword}
+                    onFocus={() => setFocusedField("password")}
+                    onBlur={() => setFocusedField(null)}
                     secureTextEntry={!showPassword}
                     placeholder="Parolă"
                     placeholderTextColor="#A1A1AA"
@@ -292,19 +317,21 @@ export function LoginScreen({ navigation }: Props) {
                 </Text>
               </Pressable>
             </View>
-          </ScrollView>
-        </Animated.View>
+          </BottomSheetScrollView>
+        </BottomSheet>
 
         <Modal visible={forgotOpen} animationType="fade" transparent onRequestClose={() => setForgotOpen(false)}>
           <View style={styles.modalBackdrop}>
             <View style={styles.forgotCard}>
               <Text style={styles.forgotTitle}>Resetare parolă</Text>
               <Text style={styles.forgotSubtitle}>Primești un link pe email pentru setarea unei parole noi.</Text>
-              <View style={styles.forgotInputWrap}>
+              <View style={[styles.forgotInputWrap, focusedField === "forgotEmail" && styles.forgotInputWrapFocused]}>
                 <Mail color={colors.red} size={20} strokeWidth={2.2} />
                 <TextInput
                   value={forgotEmail}
                   onChangeText={setForgotEmail}
+                  onFocus={() => setFocusedField("forgotEmail")}
+                  onBlur={() => setFocusedField(null)}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   placeholder="Email"
@@ -328,8 +355,7 @@ export function LoginScreen({ navigation }: Props) {
             </View>
           </View>
         </Modal>
-      </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -366,10 +392,6 @@ function getLoginErrorMessage(error: unknown) {
 }
 
 const styles = StyleSheet.create({
-  keyboard: {
-    flex: 1,
-    backgroundColor: colors.white,
-  },
   screen: {
     flex: 1,
     backgroundColor: colors.white,
@@ -566,25 +588,18 @@ const styles = StyleSheet.create({
   },
 
   sheet: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    maxHeight: "74%",
     borderTopLeftRadius: 38,
     borderTopRightRadius: 38,
-    backgroundColor: colors.white,
     shadowColor: "#18181B",
     shadowOffset: { width: 0, height: -12 },
     shadowOpacity: 0.08,
     shadowRadius: 24,
     elevation: 14,
   },
-  sheetHandle: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 10,
-    paddingBottom: 2,
+  sheetBackground: {
+    borderTopLeftRadius: 38,
+    borderTopRightRadius: 38,
+    backgroundColor: colors.white,
   },
   handleBar: {
     width: 48,
@@ -676,6 +691,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAFA",
     borderWidth: 1,
     borderColor: "#F0F0F2",
+  },
+  inputWrapFocused: {
+    borderColor: colors.red,
+    backgroundColor: colors.white,
   },
   input: {
     flex: 1,
@@ -798,6 +817,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAFA",
     borderWidth: 1,
     borderColor: "#F0F0F2",
+  },
+  forgotInputWrapFocused: {
+    borderColor: colors.red,
+    backgroundColor: colors.white,
   },
   forgotMessage: {
     color: "#3F3F46",

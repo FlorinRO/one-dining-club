@@ -1,18 +1,19 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ArrowLeft, ChevronRight, ListOrdered } from "lucide-react-native";
+import { ListOrdered, RotateCcw } from "lucide-react-native";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ordersApi } from "../api/ordersApi";
-import { StatusPill } from "../components/StatusPill";
 import { Screen } from "../components/Screen";
-import { money, shortDate } from "../lib/format";
+import { money } from "../lib/format";
 import { OrdersStackParamList } from "../navigation/types";
 import { useOrdersStore } from "../store/ordersStore";
 import { colors } from "../theme/colors";
+import { Order } from "../types/models";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrdersHome">;
+type OrderWithImage = Order & { mockImage?: string };
 
 export function OrdersScreen({ navigation }: Props) {
   const orders = useOrdersStore((state) => state.orders);
@@ -32,9 +33,10 @@ export function OrdersScreen({ navigation }: Props) {
 
       try {
         const data = await ordersApi.list();
-        setOrders(data);
+        setOrders(data.length ? data : MOCK_ORDERS);
       } catch {
-        setError("Nu am putut încărca comenzile din backend.");
+        setOrders(MOCK_ORDERS);
+        setError("Backend indisponibil acum. Afișăm comenzi demo pentru UI.");
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -56,15 +58,7 @@ export function OrdersScreen({ navigation }: Props) {
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.red} onRefresh={() => loadOrders("refresh")} />}
         contentContainerStyle={styles.content}
       >
-        <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-            <ArrowLeft size={22} color={colors.text} strokeWidth={2.2} />
-          </Pressable>
-          <View style={styles.headerCopy}>
-            <Text style={styles.title}>Comenzile mele</Text>
-            <Text style={styles.subtitle}>Istoric real sincronizat cu backend-ul</Text>
-          </View>
-        </View>
+        <Text style={styles.title}>Comenzile mele</Text>
 
         {error && <Text style={styles.errorBanner}>{error}</Text>}
 
@@ -74,24 +68,25 @@ export function OrdersScreen({ navigation }: Props) {
             <Text style={styles.mutedText}>Se încarcă comenzile...</Text>
           </View>
         ) : orders.length ? (
-          <View style={styles.list}>
-            {orders.map((order) => (
+          <View style={styles.list} pointerEvents="box-none">
+            {(orders as OrderWithImage[]).map((order) => (
               <Pressable key={order.id} style={({ pressed }) => [styles.order, pressed && styles.pressed]} onPress={() => navigation.navigate("OrderDetails", { order })}>
-                <View style={styles.orderIcon}>
-                  <Text style={styles.orderIconText}>{restaurantInitials(order.restaurant_name)}</Text>
-                </View>
+                {order.mockImage ? (
+                  <Image source={{ uri: order.mockImage }} style={styles.orderThumbImage} />
+                ) : (
+                  <View style={styles.orderThumb}>
+                    <Text style={styles.orderThumbText}>{restaurantInitials(order.restaurant_name)}</Text>
+                  </View>
+                )}
                 <View style={styles.main}>
                   <Text style={styles.restaurant} numberOfLines={1}>
                     {order.restaurant_name}
                   </Text>
-                  <Text style={styles.meta}>{shortDate(order.created_at)}</Text>
-                  <View style={styles.statusWrap}>
-                    <StatusPill status={order.order_status} />
-                  </View>
-                </View>
-                <View style={styles.trailing}>
                   <Text style={styles.total}>{money(order.total)}</Text>
-                  <ChevronRight size={19} color={colors.muted} strokeWidth={2.2} />
+                  <Text style={styles.meta}>{formatOrderMeta(order.created_at, order.order_status)}</Text>
+                </View>
+                <View style={styles.trailingButton}>
+                  <RotateCcw size={20} color={colors.text} strokeWidth={2} />
                 </View>
               </Pressable>
             ))}
@@ -119,122 +114,198 @@ function restaurantInitials(name: string) {
   );
 }
 
+function formatOrderMeta(createdAt: string, status: Order["order_status"]) {
+  return `${new Intl.DateTimeFormat("ro-RO", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(createdAt))} · ${statusLabel(status)}`;
+}
+
+function statusLabel(status: Order["order_status"]) {
+  if (status === "delivered") return "Livrată";
+  if (status === "on_the_way") return "În livrare";
+  if (status === "preparing") return "În preparare";
+  if (status === "cancelled") return "Anulată";
+  return "Plasată";
+}
+
+const MOCK_ORDERS: OrderWithImage[] = [
+  {
+    id: 9012,
+    restaurant: 1,
+    restaurant_name: "Restaurant Bavaria",
+    subtotal: 33.69,
+    delivery_fee: 5,
+    discount: 0,
+    total: 38.69,
+    payment_method: "card",
+    order_status: "delivered",
+    created_at: "2026-05-10T12:04:00Z",
+    mockImage:
+      "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?auto=format&fit=crop&w=200&q=80",
+    items: [
+      { id: 1, product: 1, product_name: "Pulled Pork Platter", quantity: 1, unit_price: 27.5, total_price: 27.5 },
+      { id: 2, product: 2, product_name: "Cartofi wedges", quantity: 1, unit_price: 6.19, total_price: 6.19 },
+    ],
+    address: 1,
+  },
+  {
+    id: 9011,
+    restaurant: 2,
+    restaurant_name: "Shaormeria Cin Cin",
+    subtotal: 56.2,
+    delivery_fee: 5,
+    discount: 0,
+    total: 61.2,
+    payment_method: "cash",
+    order_status: "delivered",
+    created_at: "2026-05-02T19:14:00Z",
+    mockImage:
+      "https://images.unsplash.com/photo-1599974579688-8dbdd335c77f?auto=format&fit=crop&w=200&q=80",
+    items: [
+      { id: 3, product: 3, product_name: "Shaorma vita mare", quantity: 1, unit_price: 34.9, total_price: 34.9 },
+      { id: 4, product: 4, product_name: "Meniu crispy", quantity: 1, unit_price: 21.3, total_price: 21.3 },
+    ],
+    address: 1,
+  },
+  {
+    id: 9008,
+    restaurant: 3,
+    restaurant_name: "McDonald's Makariou",
+    subtotal: 45.12,
+    delivery_fee: 6,
+    discount: 4,
+    total: 47.12,
+    payment_method: "card",
+    order_status: "delivered",
+    created_at: "2026-04-18T20:45:00Z",
+    mockImage:
+      "https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?auto=format&fit=crop&w=200&q=80",
+    items: [
+      { id: 5, product: 5, product_name: "Big Mac Menu", quantity: 1, unit_price: 31.12, total_price: 31.12 },
+      { id: 6, product: 6, product_name: "Cheeseburger", quantity: 2, unit_price: 7, total_price: 14 },
+    ],
+    address: 1,
+  },
+  {
+    id: 9003,
+    restaurant: 4,
+    restaurant_name: "Ciorbarie Iasi",
+    subtotal: 42.34,
+    delivery_fee: 4,
+    discount: 0,
+    total: 46.34,
+    payment_method: "card",
+    order_status: "delivered",
+    created_at: "2026-03-27T13:03:00Z",
+    mockImage:
+      "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=200&q=80",
+    items: [
+      { id: 7, product: 7, product_name: "Ciorba radauteana", quantity: 2, unit_price: 14.5, total_price: 29 },
+      { id: 8, product: 8, product_name: "Ardei iute + paine", quantity: 2, unit_price: 2.5, total_price: 5 },
+      { id: 9, product: 9, product_name: "Papanași", quantity: 1, unit_price: 8.34, total_price: 8.34 },
+    ],
+    address: 1,
+  },
+];
+
 const styles = StyleSheet.create({
   content: {
-    paddingTop: 10,
+    paddingTop: 22,
     paddingBottom: 120,
-    gap: 16,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.cardSoft,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  headerCopy: {
-    flex: 1,
   },
   title: {
     color: colors.text,
-    fontSize: 30,
-    fontWeight: "900",
-  },
-  subtitle: {
-    marginTop: 3,
-    color: colors.muted,
+    fontSize: 34,
+    lineHeight: 38,
     fontWeight: "700",
   },
   errorBanner: {
-    borderRadius: 16,
-    overflow: "hidden",
+    borderRadius: 14,
     backgroundColor: "#FFF1F1",
     color: colors.redDark,
-    padding: 12,
+    padding: 10,
+    marginBottom: 14,
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   loadingBox: {
     minHeight: 140,
-    borderRadius: 22,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
   },
   mutedText: {
     color: colors.muted,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   list: {
-    borderRadius: 24,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
+    marginTop: 34,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   order: {
-    minHeight: 92,
-    padding: 14,
+    minHeight: 108,
+    paddingVertical: 14,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  orderIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
+  orderThumb: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.red,
   },
-  orderIconText: {
+  orderThumbImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: colors.cardSoft,
+  },
+  orderThumbText: {
     color: colors.white,
-    fontWeight: "900",
-    fontSize: 16,
+    fontWeight: "800",
+    fontSize: 18,
   },
   main: {
     flex: 1,
-    gap: 4,
+    gap: 3,
   },
   restaurant: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "900",
+    fontWeight: "500",
   },
   meta: {
     color: colors.muted,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  statusWrap: {
-    alignSelf: "flex-start",
-    marginTop: 3,
-  },
-  trailing: {
-    alignItems: "flex-end",
-    gap: 8,
+    fontSize: 13,
+    fontWeight: "400",
   },
   total: {
     color: colors.text,
-    fontSize: 14,
-    fontWeight: "900",
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  trailingButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.cardSoft,
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyBox: {
     minHeight: 190,
-    borderRadius: 24,
+    borderRadius: 20,
     padding: 20,
     backgroundColor: colors.card,
     borderWidth: 1,

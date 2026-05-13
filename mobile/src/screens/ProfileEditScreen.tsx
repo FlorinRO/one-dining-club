@@ -1,12 +1,13 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ArrowLeft } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, InteractionManager, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { authApi } from "../api/authApi";
 import { Screen } from "../components/Screen";
 import { ProfileStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
+import { useCartStore } from "../store/cartStore";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileEdit">;
@@ -21,39 +22,52 @@ export function ProfileEditScreen({ navigation, route }: Props) {
   const [lastName, setLastName] = useState(user?.last_name ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
+  const promoCode = useCartStore((state) => state.promoCode);
+  const setPromoCode = useCartStore((state) => state.setPromoCode);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const [focusedInput, setFocusedInput] = useState<"firstName" | "lastName" | "phone" | "email" | null>(null);
+  const [focusedInput, setFocusedInput] = useState<"firstName" | "lastName" | "phone" | "email" | "promo" | null>(null);
   const firstNameRef = useRef<TextInput>(null);
   const lastNameRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
+  const promoRef = useRef<TextInput>(null);
 
   const title = useMemo(() => {
-    if (field === "name") return "Update your name";
-    if (field === "phone") return "Update your phone";
-    return "Update your email";
+    if (field === "name") return "Actualizează numele";
+    if (field === "phone") return "Actualizează numărul de telefon";
+    if (field === "promo") return "Adaugă cod promo";
+    return "Actualizează emailul";
   }, [field]);
 
   useEffect(() => {
-    if (field !== "name") return;
-    const timer = setTimeout(() => {
-      setFocusedInput("firstName");
-      firstNameRef.current?.focus();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [field]);
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
-
+    let focusTask: { cancel: () => void } | null = null;
+    const unsubscribe = navigation.addListener("transitionEnd", () => {
+      focusTask = InteractionManager.runAfterInteractions(() => {
+        if (field === "name") {
+          setFocusedInput("firstName");
+          firstNameRef.current?.focus();
+          return;
+        }
+        if (field === "phone") {
+          setFocusedInput("phone");
+          phoneRef.current?.focus();
+          return;
+        }
+        if (field === "promo") {
+          setFocusedInput("promo");
+          promoRef.current?.focus();
+          return;
+        }
+        setFocusedInput("email");
+        emailRef.current?.focus();
+      });
+    });
     return () => {
-      showSub.remove();
-      hideSub.remove();
+      unsubscribe();
+      focusTask?.cancel();
     };
-  }, []);
+  }, [field, navigation]);
 
   const save = async () => {
     if (!accessToken) return;
@@ -70,6 +84,16 @@ export function ProfileEditScreen({ navigation, route }: Props) {
         setError("Folosește o adresă de email validă.");
         return;
       }
+    }
+    if (field === "promo") {
+      if (!promoCode.trim()) {
+        setError("Introdu un cod promo.");
+        return;
+      }
+      setPromoCode(promoCode.trim().toUpperCase());
+      Alert.alert("Cod promo", `Codul ${promoCode.trim().toUpperCase()} a fost aplicat.`);
+      navigation.goBack();
+      return;
     }
 
     setError(null);
@@ -95,11 +119,16 @@ export function ProfileEditScreen({ navigation, route }: Props) {
 
   return (
     <Screen>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-          <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-            <ArrowLeft size={30} color={colors.text} strokeWidth={2.2} />
-          </Pressable>
+          <View style={styles.headerRow}>
+            <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+              <ArrowLeft size={30} color={colors.text} strokeWidth={2.2} />
+            </Pressable>
+            <Pressable style={styles.topSaveButton} onPress={save} disabled={saving}>
+              <Text style={[styles.topSaveText, saving && styles.saveTextDisabled]}>{saving ? "Se salvează..." : "Salvează"}</Text>
+            </Pressable>
+          </View>
 
           <Text style={styles.title}>{title}</Text>
 
@@ -109,13 +138,13 @@ export function ProfileEditScreen({ navigation, route }: Props) {
                 style={[styles.inputCard, focusedInput !== "firstName" && styles.inputCardMuted, focusedInput === "firstName" && styles.inputCardFocused]}
                 onPress={() => firstNameRef.current?.focus()}
               >
-                <Text style={styles.inputLabel}>First name</Text>
+                <Text style={styles.inputLabel}>Prenume</Text>
                 <TextInput
                   ref={firstNameRef}
                   value={firstName}
                   onChangeText={setFirstName}
                   style={styles.input}
-                  placeholder="First name"
+                  placeholder="Prenume"
                   placeholderTextColor={colors.muted}
                   onFocus={() => setFocusedInput("firstName")}
                   onBlur={() => setFocusedInput(null)}
@@ -130,13 +159,13 @@ export function ProfileEditScreen({ navigation, route }: Props) {
                   requestAnimationFrame(() => lastNameRef.current?.focus());
                 }}
               >
-                <Text style={styles.inputLabel}>Last name</Text>
+                <Text style={styles.inputLabel}>Nume</Text>
                 <TextInput
                   ref={lastNameRef}
                   value={lastName}
                   onChangeText={setLastName}
                   style={styles.input}
-                  placeholder="Last name"
+                  placeholder="Nume"
                   placeholderTextColor={colors.muted}
                   onFocus={() => setFocusedInput("lastName")}
                   onBlur={() => setFocusedInput(null)}
@@ -145,16 +174,31 @@ export function ProfileEditScreen({ navigation, route }: Props) {
             </>
           ) : field === "phone" ? (
             <Pressable style={[styles.inputCard, focusedInput === "phone" && styles.inputCardFocused]} onPress={() => phoneRef.current?.focus()}>
-              <Text style={styles.inputLabel}>Phone</Text>
+              <Text style={styles.inputLabel}>Număr de telefon</Text>
               <TextInput
                 ref={phoneRef}
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
                 style={styles.input}
-                placeholder="Phone"
+                placeholder="Număr de telefon"
                 placeholderTextColor={colors.muted}
                 onFocus={() => setFocusedInput("phone")}
+                onBlur={() => setFocusedInput(null)}
+              />
+            </Pressable>
+          ) : field === "promo" ? (
+            <Pressable style={[styles.inputCard, focusedInput === "promo" && styles.inputCardFocused]} onPress={() => promoRef.current?.focus()}>
+              <Text style={styles.inputLabel}>Cod promo</Text>
+              <TextInput
+                ref={promoRef}
+                value={promoCode}
+                onChangeText={setPromoCode}
+                autoCapitalize="characters"
+                style={styles.input}
+                placeholder="Ex: ONE20"
+                placeholderTextColor={colors.muted}
+                onFocus={() => setFocusedInput("promo")}
                 onBlur={() => setFocusedInput(null)}
               />
             </Pressable>
@@ -178,14 +222,6 @@ export function ProfileEditScreen({ navigation, route }: Props) {
 
           {error && <Text style={styles.errorText}>{error}</Text>}
         </ScrollView>
-
-        {!keyboardVisible ? (
-          <View style={styles.saveButtonWrapper}>
-            <Pressable style={[styles.saveButton, saving && styles.saveButtonDisabled]} onPress={save} disabled={saving}>
-              <Text style={styles.saveButtonText}>{saving ? "Se salvează..." : "Save"}</Text>
-            </Pressable>
-          </View>
-        ) : null}
       </KeyboardAvoidingView>
     </Screen>
   );
@@ -200,12 +236,28 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
   },
+  headerRow: {
+    minHeight: 40,
+    marginBottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   backButton: {
     width: 40,
     height: 40,
     alignItems: "flex-start",
     justifyContent: "center",
-    marginBottom: 26,
+  },
+  topSaveButton: {
+    minHeight: 32,
+    justifyContent: "center",
+    alignItems: "flex-end",
+  },
+  topSaveText: {
+    color: colors.redDark,
+    fontSize: 14,
+    fontWeight: "500",
   },
   title: {
     color: colors.text,
@@ -216,11 +268,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   inputCard: {
-    borderWidth: 3,
+    borderWidth: 1,
     borderColor: colors.redDark,
     borderRadius: 18,
     paddingHorizontal: 18,
-    paddingVertical: 8,
+    paddingVertical: 6,
     marginBottom: 14,
     backgroundColor: colors.background,
   },
@@ -229,7 +281,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#DDE0E0",
   },
   inputCardFocused: {
-    borderWidth: 3,
+    borderWidth: 1,
     borderColor: colors.redDark,
     backgroundColor: colors.background,
   },
@@ -242,10 +294,10 @@ const styles = StyleSheet.create({
   input: {
     color: colors.text,
     fontSize: 16,
-    lineHeight: 21,
+    lineHeight: 19,
     fontWeight: "500",
     paddingVertical: 0,
-    minHeight: 24,
+    minHeight: 20,
   },
   errorText: {
     marginTop: 6,
@@ -253,23 +305,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-  saveButton: {
-    borderRadius: 999,
-    backgroundColor: colors.redDark,
-    minHeight: 62,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveButtonWrapper: {
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  saveButtonText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.white,
-  },
-  saveButtonDisabled: {
+  saveTextDisabled: {
     opacity: 0.55,
   },
 });

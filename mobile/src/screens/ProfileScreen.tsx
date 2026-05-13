@@ -1,7 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
-  BadgePercent,
   Check,
   ChevronRight,
   CreditCard,
@@ -36,7 +35,6 @@ import {
 import { addressesApi } from "../api/addressesApi";
 import { authApi } from "../api/authApi";
 import { ordersApi } from "../api/ordersApi";
-import { PrimaryButton } from "../components/PrimaryButton";
 import { Screen } from "../components/Screen";
 import { ProfileStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
@@ -76,7 +74,6 @@ export function ProfileScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [resetLoading, setResetLoading] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
 
@@ -90,7 +87,6 @@ export function ProfileScreen({ navigation }: Props) {
   const paymentMethod = lastPaymentOrder?.payment_method;
   const paymentTitle = paymentMethod ? paymentMethodLabel(paymentMethod) : "Adaugă metodă de plată";
   const paymentHint = lastPaymentOrder ? `Ultima comandă #${lastPaymentOrder.id}` : "Alegi la checkout";
-  const totalSpent = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
   const accountBalance = 0;
 
   const loadAccount = useCallback(
@@ -136,19 +132,6 @@ export function ProfileScreen({ navigation }: Props) {
       loadAccount();
     }, [loadAccount]),
   );
-
-  const sendPasswordReset = async () => {
-    if (!user?.email || isGuest) return;
-    setResetLoading(true);
-    try {
-      await authApi.forgotPassword(user.email);
-      Alert.alert("Email trimis", "Dacă există un cont activ, vei primi instrucțiuni de resetare.");
-    } catch {
-      Alert.alert("Eroare", "Nu am putut trimite emailul de resetare.");
-    } finally {
-      setResetLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     Alert.alert("Delogare", "Vrei să ieși din cont?", [
@@ -197,7 +180,10 @@ export function ProfileScreen({ navigation }: Props) {
           <View style={styles.guestPanel}>
             <Text style={styles.guestTitle}>Intră în cont pentru sincronizare</Text>
             <Text style={styles.guestText}>Profilul, adresele și istoricul comenzilor sunt salvate în backend după autentificare.</Text>
-            <PrimaryButton title="Intră sau creează cont" onPress={logout} />
+            <Pressable style={({ pressed }) => [styles.guestCta, pressed && styles.guestCtaPressed]} onPress={logout}>
+              <Text style={styles.guestCtaLabel}>Intră sau creează cont</Text>
+              <ChevronRight size={18} color={colors.white} strokeWidth={2.8} />
+            </Pressable>
           </View>
         </ScrollView>
       </Screen>
@@ -285,19 +271,19 @@ export function ProfileScreen({ navigation }: Props) {
             icon={<Plus size={24} color={colors.white} strokeWidth={3.6} />}
             onPress={() => Alert.alert("ONE Plus", "Abonamentele pot fi conectate când backend-ul expune planuri de membership.")}
           />
-          <OtherRow title="Coduri promo" icon={<Tag size={22} color={colors.text} strokeWidth={2.4} />} onPress={openCart} />
+          <OtherRow title="Coduri promo" icon={<Tag size={22} color={colors.text} strokeWidth={2.4} />} onPress={() => navigation.navigate("ProfileEdit", { field: "promo" })} />
           <OtherRow title="Setări" icon={<Settings size={22} color={colors.text} strokeWidth={2.4} />} onPress={() => navigation.navigate("Address")} />
           <OtherRow
             title="Confidențialitate"
             icon={<Hand size={22} color={colors.text} strokeWidth={2.4} />}
-            onPress={() => Alert.alert("Confidențialitate", "Profilul este încărcat din /auth/me/, iar comenzile și adresele sunt cerute cu tokenul tău de acces.")}
+            onPress={() => navigation.navigate("ProfileInfo", { topic: "privacy" })}
           />
           <OtherRow
             title="Despre"
             icon={<Info size={22} color={colors.text} strokeWidth={2.4} />}
-            onPress={() => Alert.alert("Despre ONE Dining Club", `Comenzi: ${orders.length}\nTotal cheltuit: ${formatLei(totalSpent)}`)}
+            onPress={() => navigation.navigate("ProfileInfo", { topic: "about" })}
           />
-          <OtherRow title={resetLoading ? "Se trimite..." : "Suport"} icon={<BadgePercent size={22} color={colors.text} strokeWidth={2.4} />} onPress={sendPasswordReset} />
+          <OtherRow title="Suport" icon={<Mail size={22} color={colors.text} strokeWidth={2.4} />} onPress={() => navigation.navigate("ProfileInfo", { topic: "support" })} />
         </View>
 
         <CourierCard defaultAddress={defaultAddress} />
@@ -788,11 +774,9 @@ const styles = StyleSheet.create({
   guestPanel: {
     marginTop: 4,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
+    backgroundColor: colors.cardSoft,
     padding: 18,
-    gap: 12,
+    gap: 14,
   },
   guestTitle: {
     color: colors.text,
@@ -804,6 +788,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontWeight: "400",
+  },
+  guestCta: {
+    marginTop: 12,
+    minHeight: 52,
+    borderRadius: 14,
+    backgroundColor: colors.redDark,
+    paddingHorizontal: 16,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    shadowColor: "#7A0A0A",
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  guestCtaPressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.99 }],
+  },
+  guestCtaLabel: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: "600",
+    letterSpacing: 0.2,
   },
   pressed: {
     opacity: 0.82,

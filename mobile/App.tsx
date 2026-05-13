@@ -4,6 +4,7 @@ import { Asset } from "expo-asset";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { useColorScheme } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { RootNavigator } from "./src/navigation/RootNavigator";
@@ -33,9 +34,11 @@ export default function App() {
   }, [accessToken, continueAsGuest, hasHydrated]);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style={scheme === "dark" ? "light" : "dark"} />
-      <RootNavigator />
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <StatusBar style={scheme === "dark" ? "light" : "dark"} />
+        <RootNavigator />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -30,7 +30,8 @@ export type OrdersStackParamList = {
 export type ProfileStackParamList = {
   ProfileHome: undefined;
   Address: undefined;
-  ProfileEdit: { field: "name" | "phone" | "email" };
+  ProfileEdit: { field: "name" | "phone" | "email" | "promo" };
+  ProfileInfo: { topic: "privacy" | "about" | "support" };
 };
 
 export type MainTabsParamList = {

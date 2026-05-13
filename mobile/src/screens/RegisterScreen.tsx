@@ -1,17 +1,22 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, Phone, Star, UserRound } from "lucide-react-native";
-import { useCallback, useState } from "react";
+import { Eye, EyeOff, LockKeyhole, Mail, Phone, Star, UserRound } from "lucide-react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import BottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetScrollView,
+  BottomSheetTextInput,
+} from "@gorhom/bottom-sheet";
 import {
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import LottieView from "lottie-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { authApi } from "../api/authApi";
 import { useSocialAuth } from "../lib/socialAuth";
@@ -23,11 +28,15 @@ type Props = NativeStackScreenProps<AuthStackParamList, "Register">;
 
 export function RegisterScreen({ navigation }: Props) {
   const setSession = useAuthStore((state) => state.setSession);
+  const insets = useSafeAreaInsets();
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const snapPoints = useRef(["82%"]).current;
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +49,26 @@ export function RegisterScreen({ navigation }: Props) {
     onSuccess: handleSocialSuccess,
     onError: handleSocialError,
   });
+  const renderBackdrop = useCallback(
+    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
+      <>
+        <BottomSheetBackdrop
+          {...props}
+          appearsOnIndex={0}
+          disappearsOnIndex={-1}
+          opacity={0.34}
+          pressBehavior="none"
+        />
+        <View pointerEvents="none" style={styles.brandBarOverlay}>
+          <View style={styles.brandRow}>
+            <Text style={styles.brandText}>ONE DINING CLUB</Text>
+            <Star color={colors.white} fill={colors.white} size={11} strokeWidth={2} />
+          </View>
+        </View>
+      </>
+    ),
+    [],
+  );
 
   const submit = async () => {
     if (!firstName || !email || password.length < 8) {
@@ -81,14 +110,17 @@ export function RegisterScreen({ navigation }: Props) {
     }
   };
 
-  return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
-      <View style={styles.screen}>
-        <View style={styles.hero}>
-          <Pressable style={styles.backButton} onPress={() => navigation.navigate("Login")}>
-            <ArrowLeft color={colors.red} size={24} strokeWidth={2.3} />
-          </Pressable>
+  useEffect(() => {
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const hideListener = Keyboard.addListener(hideEvent, () => {
+      bottomSheetRef.current?.snapToIndex(0);
+    });
+    return () => hideListener.remove();
+  }, []);
 
+  return (
+    <View style={styles.screen}>
+        <View style={styles.hero}>
           <View style={styles.brandBar}>
             <View style={styles.brandRow}>
               <Text style={styles.brandText}>ONE DINING CLUB</Text>
@@ -107,8 +139,26 @@ export function RegisterScreen({ navigation }: Props) {
 
         </View>
 
-        <View style={styles.sheet}>
-          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetContent}>
+        <BottomSheet
+          ref={bottomSheetRef}
+          index={0}
+          snapPoints={snapPoints}
+          enablePanDownToClose={false}
+          style={styles.sheet}
+          backgroundStyle={styles.sheetBackground}
+          handleIndicatorStyle={styles.handleBar}
+          backdropComponent={renderBackdrop}
+          keyboardBehavior="interactive"
+          keyboardBlurBehavior="none"
+          android_keyboardInputMode="adjustResize"
+          enableHandlePanningGesture={false}
+          enableContentPanningGesture={false}
+        >
+          <BottomSheetScrollView
+            keyboardShouldPersistTaps="always"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 24 }]}
+          >
             <View style={styles.card}>
               {verificationEmail ? (
                 <View style={styles.verificationBox}>
@@ -145,26 +195,26 @@ export function RegisterScreen({ navigation }: Props) {
 
                   <View style={styles.form}>
                     <View style={styles.nameRow}>
-                      <View style={[styles.inputWrap, styles.nameInput]}>
+                      <View style={[styles.inputWrap, styles.nameInput, focusedField === "firstName" && styles.inputWrapFocused]}>
                         <UserRound color={colors.muted} size={19} />
-                        <TextInput value={firstName} onChangeText={setFirstName} placeholder="Prenume" placeholderTextColor={colors.muted} style={styles.input} />
+                        <BottomSheetTextInput value={firstName} onChangeText={setFirstName} onFocus={() => setFocusedField("firstName")} onBlur={() => setFocusedField(null)} placeholder="Prenume" placeholderTextColor={colors.muted} style={styles.input} />
                       </View>
-                      <View style={[styles.inputWrap, styles.nameInput]}>
+                      <View style={[styles.inputWrap, styles.nameInput, focusedField === "lastName" && styles.inputWrapFocused]}>
                         <UserRound color={colors.muted} size={19} />
-                        <TextInput value={lastName} onChangeText={setLastName} placeholder="Nume" placeholderTextColor={colors.muted} style={styles.input} />
+                        <BottomSheetTextInput value={lastName} onChangeText={setLastName} onFocus={() => setFocusedField("lastName")} onBlur={() => setFocusedField(null)} placeholder="Nume" placeholderTextColor={colors.muted} style={styles.input} />
                       </View>
                     </View>
-                    <View style={styles.inputWrap}>
+                    <View style={[styles.inputWrap, focusedField === "email" && styles.inputWrapFocused]}>
                       <Mail color={colors.muted} size={20} />
-                      <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor={colors.muted} style={styles.input} />
+                      <BottomSheetTextInput value={email} onChangeText={setEmail} onFocus={() => setFocusedField("email")} onBlur={() => setFocusedField(null)} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor={colors.muted} style={styles.input} />
                     </View>
-                    <View style={styles.inputWrap}>
+                    <View style={[styles.inputWrap, focusedField === "phone" && styles.inputWrapFocused]}>
                       <Phone color={colors.muted} size={20} />
-                      <TextInput value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="Telefon" placeholderTextColor={colors.muted} style={styles.input} />
+                      <BottomSheetTextInput value={phone} onChangeText={setPhone} onFocus={() => setFocusedField("phone")} onBlur={() => setFocusedField(null)} keyboardType="phone-pad" placeholder="Telefon" placeholderTextColor={colors.muted} style={styles.input} />
                     </View>
-                    <View style={styles.inputWrap}>
+                    <View style={[styles.inputWrap, focusedField === "password" && styles.inputWrapFocused]}>
                       <LockKeyhole color={colors.muted} size={20} />
-                      <TextInput value={password} onChangeText={setPassword} secureTextEntry={!showPassword} placeholder="Parolă" placeholderTextColor={colors.muted} style={styles.input} />
+                      <BottomSheetTextInput value={password} onChangeText={setPassword} onFocus={() => setFocusedField("password")} onBlur={() => setFocusedField(null)} secureTextEntry={!showPassword} placeholder="Parolă" placeholderTextColor={colors.muted} style={styles.input} />
                       <Pressable onPress={() => setShowPassword((value) => !value)}>
                         {showPassword ? <EyeOff color={colors.muted} size={20} /> : <Eye color={colors.muted} size={20} />}
                       </Pressable>
@@ -183,10 +233,9 @@ export function RegisterScreen({ navigation }: Props) {
                 </>
               )}
             </View>
-          </ScrollView>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
+          </BottomSheetScrollView>
+        </BottomSheet>
+    </View>
   );
 }
 
@@ -211,26 +260,22 @@ function SocialButton({ label, title, color, textColor, loading, onPress }: Soci
 }
 
 const styles = StyleSheet.create({
-  keyboard: { flex: 1, backgroundColor: colors.white },
   screen: { flex: 1, backgroundColor: colors.white },
   hero: { flex: 1, paddingHorizontal: 24, paddingTop: 56, overflow: "hidden", backgroundColor: colors.white },
-  backButton: {
-    position: "absolute",
-    left: 24,
-    top: 56,
-    zIndex: 30,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFF1F1",
-  },
   brandBar: {
     position: "absolute",
     left: 0,
     right: 0,
-    top: 136,
+    top: 108,
+    backgroundColor: colors.red,
+    paddingHorizontal: 22,
+    paddingVertical: 6,
+  },
+  brandBarOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 108,
     backgroundColor: colors.red,
     paddingHorizontal: 22,
     paddingVertical: 6,
@@ -257,23 +302,24 @@ const styles = StyleSheet.create({
   },
   lottieAnimation: { width: "100%", height: "100%" },
   sheet: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 20,
-    maxHeight: "82%",
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    borderColor: colors.red,
     borderTopLeftRadius: 38,
     borderTopRightRadius: 38,
-    backgroundColor: colors.white,
     shadowColor: "#18181B",
     shadowOffset: { width: 0, height: -12 },
     shadowOpacity: 0.08,
     shadowRadius: 24,
     elevation: 14,
+  },
+  sheetBackground: {
+    borderTopLeftRadius: 38,
+    borderTopRightRadius: 38,
+    backgroundColor: colors.white,
+  },
+  handleBar: {
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: "#FFE1E1",
   },
   sheetContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 34 },
   card: { backgroundColor: colors.white },
@@ -310,10 +356,11 @@ const styles = StyleSheet.create({
   dividerRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 24 },
   divider: { flex: 1, height: 1, backgroundColor: "#EFEFF1" },
   dividerText: { color: "#A1A1AA", fontSize: 13, fontWeight: "600", textTransform: "uppercase" },
-  form: { gap: 12 },
+  form: { gap: 12, marginTop: -12 },
   nameRow: { flexDirection: "row", gap: 10 },
   nameInput: { flex: 1, paddingHorizontal: 12 },
-  inputWrap: { minHeight: 60, borderRadius: 20, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#FAFAFA", borderWidth: 1, borderColor: "#F0F0F2" },
+  inputWrap: { minHeight: 54, borderRadius: 20, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#FAFAFA", borderWidth: 1, borderColor: "#F0F0F2" },
+  inputWrapFocused: { borderColor: colors.red, backgroundColor: colors.white },
   input: { flex: 1, color: "#18181B", fontSize: 16, fontWeight: "400" },
   error: { marginTop: 16, color: colors.redDark, fontSize: 14, fontWeight: "500" },
   primaryButton: {
