@@ -2,6 +2,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { HomeStackParamList } from "./types";
 import { CartStack } from "./CartStack";
+import { DeliveryAddressScreen } from "../screens/DeliveryAddressScreen";
+import { DeliveryAddressMapScreen } from "../screens/DeliveryAddressMapScreen";
 import { FavoritesScreen } from "../screens/FavoritesScreen";
 import { HomeScreen } from "../screens/HomeScreen";
 import { ProductDetailsModal } from "../screens/ProductDetailsModal";
@@ -20,6 +22,8 @@ export function HomeStack() {
       }}
     >
       <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="DeliveryAddress" component={DeliveryAddressScreen} />
+      <Stack.Screen name="DeliveryAddressMap" component={DeliveryAddressMapScreen} />
       <Stack.Screen name="Favorites" component={FavoritesScreen} />
       <Stack.Screen name="SectionRestaurants" component={SectionRestaurantsScreen} />
       <Stack.Screen name="RestaurantDetails" component={RestaurantDetailsScreen} />

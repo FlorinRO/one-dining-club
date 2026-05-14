@@ -491,24 +491,42 @@ export function SearchScreen() {
           </Animated.View>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filtersScroll}
-          contentContainerStyle={styles.filtersRow}
-        >
-          {filters.map((item) => (
-            <FilterChip
-              key={item.key}
-              label={item.label}
-              icon={item.icon}
-              active={isFilterActive(item.key)}
-              redActive={item.key === "offers" || item.key === "pickup"}
-              dropdown={item.dropdown}
-              onPress={() => onFilterChipPress(item.key)}
-            />
-          ))}
-        </ScrollView>
+        <View style={styles.filtersBlock}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filtersScroll}
+            contentContainerStyle={styles.filtersRow}
+          >
+            {filters.map((item) => (
+              <FilterChip
+                key={item.key}
+                label={item.label}
+                icon={item.icon}
+                active={isFilterActive(item.key)}
+                redActive={item.key === "offers" || item.key === "pickup"}
+                dropdown={item.dropdown}
+                onPress={() => onFilterChipPress(item.key)}
+              />
+            ))}
+          </ScrollView>
+
+          {activeCategories.length > 0 && (
+            <View style={styles.activeCategoryPillRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeCategoriesRow}>
+                {activeCategories.map((category) => (
+                  <View key={category} style={styles.activeCategoryPill}>
+                    <Text style={styles.activeCategoryEmoji}>{getCategoryEmoji(category)}</Text>
+                    <Text style={styles.activeCategoryText}>{category}</Text>
+                    <Pressable hitSlop={8} onPress={() => setActiveCategories((current) => current.filter((item) => item !== category))}>
+                      <X size={14} stroke={colors.text} strokeWidth={2.4} />
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
 
         {hasSearchIntent ? (
           <>
@@ -516,26 +534,9 @@ export function SearchScreen() {
               key="search-results-list"
               data={filtered}
               keyExtractor={(item) => String(item.id)}
+              style={styles.resultsList}
               ListHeaderComponent={
                 <>
-                  {activeCategories.length > 0 && (
-                    <View style={styles.activeCategoryPillRow}>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeCategoriesRow}>
-                        {activeCategories.map((category) => (
-                          <View key={category} style={styles.activeCategoryPill}>
-                            <Text style={styles.activeCategoryEmoji}>{getCategoryEmoji(category)}</Text>
-                            <Text style={styles.activeCategoryText}>{category}</Text>
-                            <Pressable
-                              hitSlop={8}
-                              onPress={() => setActiveCategories((current) => current.filter((item) => item !== category))}
-                            >
-                              <X size={14} stroke={colors.text} strokeWidth={2.4} />
-                            </Pressable>
-                          </View>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
                   {filtered.length > 0 && (
                     <View style={styles.resultsHeader}>
                       <Text style={styles.resultsCountText}>{filtered.length} rezultate</Text>
@@ -621,7 +622,13 @@ export function SearchScreen() {
                 <X size={24} stroke={colors.text} strokeWidth={2.5} />
               </Pressable>
               <Text style={styles.sheetTitle}>Filtre</Text>
-              <Pressable hitSlop={10} onPress={resetAllFilters}>
+              <Pressable
+                hitSlop={10}
+                onPress={() => {
+                  resetAllFilters();
+                  setActiveSheet(null);
+                }}
+              >
                 <Text style={styles.resetText}>Reset</Text>
               </Pressable>
             </View>
@@ -944,13 +951,17 @@ const styles = StyleSheet.create({
   filtersRow: {
     gap: 7,
     paddingRight: 22,
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 0,
+  },
+  filtersBlock: {
+    gap: 10,
   },
   filtersScroll: {
     zIndex: 2,
     elevation: 2,
     backgroundColor: colors.background,
-    marginBottom: 8,
+    marginBottom: 0,
   },
   filterChip: {
     height: 38,
@@ -974,6 +985,9 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingBottom: 110,
+  },
+  resultsList: {
+    marginTop: 0,
   },
   resultBlock: {
     gap: 14,
@@ -1066,8 +1080,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   activeCategoryPillRow: {
-    marginTop: 2,
-    marginBottom: 4,
+    marginTop: 0,
+    marginBottom: 0,
   },
   activeCategoriesRow: {
     gap: 8,

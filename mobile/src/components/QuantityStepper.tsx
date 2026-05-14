@@ -43,7 +43,6 @@ const styles = StyleSheet.create({
     minWidth: 24,
     textAlign: "center",
     color: colors.text,
-    fontWeight: "900",
+    fontWeight: "500",
   },
 });
-

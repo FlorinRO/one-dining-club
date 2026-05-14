@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
   },
   heroHeadlineWrap: {
     position: "absolute",
-    top: 178,
+    top: 192,
     left: 24,
     right: 24,
     zIndex: 12,
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     color: "#121212",
     fontSize: 32,
     lineHeight: 38,
-    fontWeight: "900",
+    fontWeight: "700",
     letterSpacing: -0.7,
     maxWidth: 330,
   },
@@ -619,6 +619,7 @@ const styles = StyleSheet.create({
     color: "#121212",
     fontSize: 31,
     fontWeight: "700",
+    transform: [{ translateY: 8 }],
   },
   subtitle: {
     marginTop: 8,
@@ -626,6 +627,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 23,
     fontWeight: "400",
+    transform: [{ translateY: 8 }],
   },
   socialRow: {
     flexDirection: "row",

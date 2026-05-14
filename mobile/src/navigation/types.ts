@@ -9,6 +9,8 @@ export type AuthStackParamList = {
 
 export type HomeStackParamList = {
   Home: undefined;
+  DeliveryAddress: { focusSearch?: boolean } | undefined;
+  DeliveryAddressMap: undefined;
   Favorites: undefined;
   SectionRestaurants: { mode: "nearby" | "recommended"; title: string };
   RestaurantDetails: { restaurant: Restaurant };

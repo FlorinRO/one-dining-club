@@ -1,6 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useFocusEffect } from "@react-navigation/native";
 import { MapPin, Search, SearchX, SlidersHorizontal, Star } from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -10,6 +11,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,12 +22,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
+import { addressesApi } from "../api/addressesApi";
 import { RestaurantCard } from "../components/RestaurantCard";
 import { Screen } from "../components/Screen";
 import { HomeStackParamList } from "../navigation/types";
+import { useAuthStore } from "../store/authStore";
 import { useFavoritesStore } from "../store/favoritesStore";
 import { colors } from "../theme/colors";
-import { Restaurant } from "../types/models";
+import { Address, Restaurant } from "../types/models";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "Home">;
 
@@ -80,8 +84,10 @@ export function HomeScreen({ navigation }: Props) {
   const [showSplashOverlay, setShowSplashOverlay] = useState(true);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("Toate");
+  const [refreshing, setRefreshing] = useState(false);
   const favoriteRestaurantIds = useFavoritesStore((state) => state.restaurantIds);
   const [showStickySearch, setShowStickySearch] = useState(false);
+  const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
   const [searchBarY, setSearchBarY] = useState(0);
   const lastScrollY = useRef(0);
   const stickyAnim = useRef(new Animated.Value(0)).current;
@@ -92,16 +98,19 @@ export function HomeScreen({ navigation }: Props) {
   const promotedIndexRef = useRef(0);
   const promotedAutoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const promotedResumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accessToken = useAuthStore((state) => state.accessToken);
+
+  const fetchRestaurants = useCallback(async () => {
+    const items = await restaurantsApi.list();
+    setRestaurants(items);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
 
-    restaurantsApi
-      .list()
-      .then((items) => {
-        if (isMounted) {
-          setRestaurants(items);
-        }
+    fetchRestaurants()
+      .catch(() => {
+        // Keep existing content if loading fails.
       })
       .finally(() => {
         if (isMounted) {
@@ -112,7 +121,16 @@ export function HomeScreen({ navigation }: Props) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [fetchRestaurants]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchRestaurants();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchRestaurants]);
 
   useEffect(() => {
     const timer = setTimeout(() => setHasMetSplashTime(true), 2600);
@@ -346,6 +364,26 @@ export function HomeScreen({ navigation }: Props) {
     navigation.getParent()?.navigate("SearchTab", { focusSearch: true });
   };
 
+  const loadDefaultAddress = useCallback(async () => {
+    if (!accessToken) {
+      setDefaultAddress(null);
+      return;
+    }
+    try {
+      const list = await addressesApi.list();
+      const selected = list.find((item) => item.is_default) ?? list[0] ?? null;
+      setDefaultAddress(selected);
+    } catch {
+      setDefaultAddress(null);
+    }
+  }, [accessToken]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadDefaultAddress();
+    }, [loadDefaultAddress]),
+  );
+
   return (
     <Screen padded={false}>
       <Animated.View
@@ -384,7 +422,13 @@ export function HomeScreen({ navigation }: Props) {
         </Pressable>
       </Animated.View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} onScroll={handleScroll} scrollEventThrottle={16}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.red} />}
+      >
         <View style={styles.header}>
           <View style={styles.headerTextBlock}>
             <View style={styles.eyebrowBadge}>
@@ -393,13 +437,17 @@ export function HomeScreen({ navigation }: Props) {
                 <Star color={colors.white} fill={colors.white} size={11} strokeWidth={2} />
               </View>
             </View>
-            <View style={styles.locationRow}>
+            <Pressable style={styles.locationRow} onPress={() => navigation.navigate("DeliveryAddress")}>
               <MapPin size={16} stroke={colors.red} />
               <View style={styles.locationTextBlock}>
-                <Text style={styles.locationStreet}>Str. Baba Novac 12, Bl. B3, Sc. 1, Ap. 24</Text>
-                <Text style={styles.locationCity}>București, Sector 3</Text>
+                <Text style={styles.locationStreet}>
+                  {defaultAddress?.address_line_1 ?? "Adaugă o adresă de livrare"}
+                </Text>
+                <Text style={styles.locationCity}>
+                  {defaultAddress?.city ?? "Apasă ca să selectezi adresa"}
+                </Text>
               </View>
-            </View>
+            </Pressable>
           </View>
         </View>
 

@@ -15,10 +15,6 @@ import { Product, Restaurant } from "../types/models";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "RestaurantDetails">;
 
-const SHOWCASE_ZIG_ZAG_TOP_PATH =
-  "M0 0 H280 V8 L272 0 L264 8 L256 0 L248 8 L240 0 L232 8 L224 0 L216 8 L208 0 L200 8 L192 0 L184 8 L176 0 L168 8 L160 0 L152 8 L144 0 L136 8 L128 0 L120 8 L112 0 L104 8 L96 0 L88 8 L80 0 L72 8 L64 0 L56 8 L48 0 L40 8 L32 0 L24 8 L16 0 L8 8 L0 0 Z";
-const SHOWCASE_ZIG_ZAG_BOTTOM_PATH =
-  "M0 8 H280 V0 L272 8 L264 0 L256 8 L248 0 L240 8 L232 0 L224 8 L216 0 L208 8 L200 0 L192 8 L184 0 L176 8 L168 0 L160 8 L152 0 L144 8 L136 0 L128 8 L120 0 L112 8 L104 0 L96 8 L88 0 L80 8 L72 0 L64 8 L56 0 L48 8 L40 0 L32 8 L24 0 L16 8 L8 0 L0 8 Z";
 
 export function RestaurantDetailsScreen({ navigation, route }: Props) {
   const HERO_HEIGHT = 258;
@@ -306,8 +302,6 @@ function ShowcaseProductCard({ product, onPress }: ShowcaseProductCardProps) {
           resizeMode="cover"
         />
         <View style={styles.showcaseImageOverlay} />
-        <ShowcaseImageZigZagEdge position="top" />
-        <ShowcaseImageZigZagEdge position="bottom" />
       </View>
       <View style={styles.showcaseContent}>
         <View style={styles.showcaseTitleRow}>
@@ -327,25 +321,6 @@ function ShowcaseProductCard({ product, onPress }: ShowcaseProductCardProps) {
         </Text>
       </View>
     </Pressable>
-  );
-}
-
-type ShowcaseImageZigZagEdgeProps = {
-  position: "top" | "bottom";
-};
-
-function ShowcaseImageZigZagEdge({ position }: ShowcaseImageZigZagEdgeProps) {
-  return (
-    <Svg
-      width="100%"
-      height={8}
-      viewBox="0 0 280 8"
-      preserveAspectRatio="none"
-      pointerEvents="none"
-      style={[styles.showcaseZigZagEdge, position === "top" ? styles.showcaseZigZagTop : styles.showcaseZigZagBottom]}
-    >
-      <Path d={position === "top" ? SHOWCASE_ZIG_ZAG_TOP_PATH : SHOWCASE_ZIG_ZAG_BOTTOM_PATH} fill={colors.card} />
-    </Svg>
   );
 }
 
@@ -531,10 +506,11 @@ const styles = StyleSheet.create({
   },
   showcaseList: {
     gap: 22,
+    marginHorizontal: -18,
   },
   showcaseCard: {
     overflow: "hidden",
-    borderRadius: 8,
+    borderRadius: 0,
     backgroundColor: colors.card,
     borderWidth: 0,
   },
@@ -556,18 +532,6 @@ const styles = StyleSheet.create({
   showcaseImageOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.16)",
-  },
-  showcaseZigZagEdge: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    zIndex: 2,
-  },
-  showcaseZigZagTop: {
-    top: 0,
-  },
-  showcaseZigZagBottom: {
-    bottom: 0,
   },
   showcaseContent: {
     padding: 14,

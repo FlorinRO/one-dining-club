@@ -1,10 +1,8 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { AlertCircle, Check, Info, ShoppingBag, Star, X } from "lucide-react-native";
-import { useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import { AlertCircle, Check, ShoppingBag, X } from "lucide-react-native";
+import { useMemo, useRef, useState } from "react";
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { PrimaryButton } from "../components/PrimaryButton";
 import { QuantityStepper } from "../components/QuantityStepper";
 import { money } from "../lib/format";
 import { FALLBACK_PRODUCT_IMAGE, resolveImageUri } from "../lib/images";
@@ -15,10 +13,6 @@ import { ProductOption, ProductOptionGroup } from "../types/models";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "ProductDetails">;
 
-const PRODUCT_ZIG_ZAG_TOP_PATH =
-  "M0 0 H280 V8 L272 0 L264 8 L256 0 L248 8 L240 0 L232 8 L224 0 L216 8 L208 0 L200 8 L192 0 L184 8 L176 0 L168 8 L160 0 L152 8 L144 0 L136 8 L128 0 L120 8 L112 0 L104 8 L96 0 L88 8 L80 0 L72 8 L64 0 L56 8 L48 0 L40 8 L32 0 L24 8 L16 0 L8 8 L0 0 Z";
-const PRODUCT_ZIG_ZAG_BOTTOM_PATH =
-  "M0 8 H280 V0 L272 8 L264 0 L256 8 L248 0 L240 8 L232 0 L224 8 L216 0 L208 8 L200 0 L192 8 L184 0 L176 8 L168 0 L160 8 L152 0 L144 8 L136 0 L128 8 L120 0 L112 8 L104 0 L96 8 L88 0 L80 8 L72 0 L64 8 L56 0 L48 8 L40 0 L32 8 L24 0 L16 8 L8 0 L0 8 Z";
 
 const selectedCountForGroup = (selectedOptions: ProductOption[], group: ProductOptionGroup) => {
   const optionIds = new Set(group.options.map((option) => option.id));
@@ -46,6 +40,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<ProductOption[]>([]);
   const [notes, setNotes] = useState("");
+  const scrollRef = useRef<ScrollView>(null);
   const optionGroups = product.option_groups ?? [];
   const basePrice = product.effective_price ?? product.discount_price ?? product.price;
 
@@ -98,8 +93,21 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 18 : 0}
+    >
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        alwaysBounceVertical={false}
+        overScrollMode="never"
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
         <View style={styles.hero}>
           <Image
             source={{ uri: resolveImageUri(product.image, FALLBACK_PRODUCT_IMAGE) }}
@@ -107,8 +115,6 @@ export function ProductDetailsModal({ navigation, route }: Props) {
             resizeMode="cover"
           />
           <View style={styles.imageOverlay} />
-          <ProductImageZigZagEdge position="top" />
-          <ProductImageZigZagEdge position="bottom" />
           <Pressable onPress={() => navigation.goBack()} style={styles.close}>
             <X size={22} stroke={colors.white} />
           </Pressable>
@@ -123,27 +129,10 @@ export function ProductDetailsModal({ navigation, route }: Props) {
             </View>
           </View>
 
-          {(product.category_name || product.is_popular) && (
-            <View style={styles.metaRow}>
-              {product.category_name && (
-                <View style={styles.metaItem}>
-                  <Info size={15} stroke={colors.muted} />
-                  <Text numberOfLines={1} style={styles.metaText}>{product.category_name}</Text>
-                </View>
-              )}
-              {product.is_popular && (
-                <View style={styles.metaItem}>
-                  <Star size={15} stroke={colors.red} fill={colors.red} />
-                  <Text style={styles.metaText}>Popular</Text>
-                </View>
-              )}
-            </View>
-          )}
-
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Descriere</Text>
             <Text style={styles.description}>{product.description}</Text>
           </View>
+          <View style={styles.sectionDivider} />
 
           {product.allergens && (
             <View style={styles.notice}>
@@ -154,6 +143,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
               </View>
             </View>
           )}
+          {product.allergens && <View style={styles.sectionDivider} />}
 
           {optionGroups.map((group) => (
             <View key={group.id} style={styles.optionGroup}>
@@ -186,12 +176,18 @@ export function ProductDetailsModal({ navigation, route }: Props) {
               })}
             </View>
           ))}
+          {optionGroups.length > 0 && <View style={styles.sectionDivider} />}
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Mențiuni</Text>
             <TextInput
               value={notes}
               onChangeText={setNotes}
+              onFocus={() => {
+                setTimeout(() => {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                }, 120);
+              }}
               placeholder="Ex: fără ceapă, sos separat"
               placeholderTextColor={colors.muted}
               multiline
@@ -209,35 +205,19 @@ export function ProductDetailsModal({ navigation, route }: Props) {
             onIncrease={() => setQuantity((value) => value + 1)}
             onDecrease={() => setQuantity((value) => Math.max(1, value - 1))}
           />
-          <PrimaryButton
-            title={isAvailable ? `Adaugă · ${money(total)}` : "Indisponibil"}
-            onPress={submit}
-            disabled={!canSubmit}
-            icon={<ShoppingBag size={18} stroke={colors.white} />}
-            style={styles.addButton}
-          />
+          <Pressable disabled={!canSubmit} onPress={submit} style={({ pressed }) => [styles.addButton, pressed && canSubmit && styles.addButtonPressed, !canSubmit && styles.addButtonDisabled]}>
+            <ShoppingBag size={17} stroke={colors.red} />
+            {isAvailable ? (
+              <Text style={styles.addButtonText}>
+                Adaugă · <Text style={styles.addButtonPrice}>{money(total)}</Text>
+              </Text>
+            ) : (
+              <Text style={styles.addButtonText}>Indisponibil</Text>
+            )}
+          </Pressable>
         </View>
       </View>
-    </View>
-  );
-}
-
-type ProductImageZigZagEdgeProps = {
-  position: "top" | "bottom";
-};
-
-function ProductImageZigZagEdge({ position }: ProductImageZigZagEdgeProps) {
-  return (
-    <Svg
-      width="100%"
-      height={8}
-      viewBox="0 0 280 8"
-      preserveAspectRatio="none"
-      pointerEvents="none"
-      style={[styles.zigZagEdge, position === "top" ? styles.zigZagTop : styles.zigZagBottom]}
-    >
-      <Path d={position === "top" ? PRODUCT_ZIG_ZAG_TOP_PATH : PRODUCT_ZIG_ZAG_BOTTOM_PATH} fill={colors.background} />
-    </Svg>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -263,33 +243,23 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.14)",
   },
-  zigZagEdge: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    zIndex: 2,
-  },
-  zigZagTop: {
-    top: 0,
-  },
-  zigZagBottom: {
-    bottom: 0,
-  },
   close: {
     position: "absolute",
-    top: 58,
-    right: 18,
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    top: 16,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.58)",
     zIndex: 3,
   },
   body: {
-    padding: 18,
-    gap: 18,
+    paddingHorizontal: 18,
+    paddingTop: 22,
+    paddingBottom: 8,
+    gap: 22,
   },
   titleRow: {
     flexDirection: "row",
@@ -327,35 +297,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  metaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  metaItem: {
-    minHeight: 30,
-    maxWidth: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    paddingHorizontal: 10,
-  },
-  metaText: {
-    flexShrink: 1,
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: "700",
-  },
   section: {
-    gap: 8,
+    gap: 10,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    opacity: 0.6,
+    marginVertical: -6,
   },
   sectionTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "800",
+    fontWeight: "500",
   },
   description: {
     color: colors.text,
@@ -387,18 +341,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   optionGroup: {
-    gap: 9,
-    paddingTop: 2,
+    gap: 10,
+    paddingTop: 4,
   },
   groupTitle: {
     color: colors.text,
     fontSize: 18,
-    fontWeight: "900",
+    fontWeight: "600",
   },
   groupHint: {
     marginTop: 3,
     color: colors.muted,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   option: {
     minHeight: 50,
@@ -407,6 +361,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.card,
     paddingHorizontal: 14,
+    paddingVertical: 6,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
@@ -435,7 +390,7 @@ const styles = StyleSheet.create({
   optionName: {
     flex: 1,
     color: colors.text,
-    fontWeight: "800",
+    fontWeight: "500",
   },
   optionNameActive: {
     color: colors.red,
@@ -445,19 +400,19 @@ const styles = StyleSheet.create({
   },
   optionPrice: {
     color: colors.muted,
-    fontWeight: "800",
+    fontWeight: "500",
   },
   notesInput: {
-    minHeight: 92,
+    minHeight: 102,
     borderRadius: 2,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
     color: colors.text,
     paddingHorizontal: 12,
-    paddingVertical: 11,
+    paddingVertical: 12,
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 22,
   },
   footerHint: {
     marginBottom: 8,
@@ -472,13 +427,37 @@ const styles = StyleSheet.create({
   },
   addButton: {
     flex: 1,
+    minHeight: 46,
     borderRadius: 2,
+    borderWidth: 1,
+    borderColor: colors.red,
+    backgroundColor: colors.white,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  addButtonPressed: {
+    opacity: 0.85,
+  },
+  addButtonDisabled: {
+    opacity: 0.5,
+  },
+  addButtonText: {
+    color: colors.red,
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  addButtonPrice: {
+    color: colors.text,
   },
   footer: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
+    minHeight: 104,
     padding: 18,
     backgroundColor: colors.background,
     borderTopWidth: 1,
