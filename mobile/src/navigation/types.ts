@@ -20,8 +20,6 @@ export type HomeStackParamList = {
 
 export type CartStackParamList = {
   CartHome: undefined;
-  Checkout: undefined;
-  Address: undefined;
 };
 
 export type OrdersStackParamList = {
@@ -31,7 +29,7 @@ export type OrdersStackParamList = {
 
 export type ProfileStackParamList = {
   ProfileHome: undefined;
-  Address: undefined;
+  ProfileSettings: undefined;
   ProfileEdit: { field: "name" | "phone" | "email" | "promo" };
   ProfileInfo: { topic: "privacy" | "about" | "support" };
 };

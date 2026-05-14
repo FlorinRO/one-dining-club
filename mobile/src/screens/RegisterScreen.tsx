@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { authApi } from "../api/authApi";
+import { useI18n } from "../i18n/useI18n";
 import { useSocialAuth } from "../lib/socialAuth";
 import { AuthStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
@@ -24,6 +25,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, "Register">;
 type FieldKey = "firstName" | "lastName" | "email" | "phone" | "password";
 
 export function RegisterScreen({ navigation }: Props) {
+  const { tr } = useI18n();
   const setSession = useAuthStore((state) => state.setSession);
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
@@ -91,7 +93,7 @@ export function RegisterScreen({ navigation }: Props) {
 
   const submit = async () => {
     if (!firstName || !email || password.length < 8) {
-      setError("Completează prenumele, emailul și o parolă de minimum 8 caractere.");
+      setError(tr("Completează prenumele, emailul și o parolă de minimum 8 caractere.", "Fill in first name, email, and a password of at least 8 characters."));
       return;
     }
 
@@ -107,9 +109,9 @@ export function RegisterScreen({ navigation }: Props) {
       });
       setPassword("");
       setVerificationEmail(result.email || email.trim());
-      setResendMessage("Ți-am trimis un link de confirmare. Verifică Inbox și Spam.");
+      setResendMessage(tr("Ți-am trimis un link de confirmare. Verifică Inbox și Spam.", "We sent you a confirmation link. Check Inbox and Spam."));
     } catch {
-      setError("Nu am putut crea contul. Verifică dacă emailul nu este deja folosit.");
+      setError(tr("Nu am putut crea contul. Verifică dacă emailul nu este deja folosit.", "Could not create account. Check if email is already in use."));
     } finally {
       setLoading(false);
     }
@@ -123,7 +125,7 @@ export function RegisterScreen({ navigation }: Props) {
       await authApi.resendEmailVerification(verificationEmail);
       setResendMessage("Am retrimis linkul de confirmare.");
     } catch {
-      setResendMessage("Nu am putut retrimite emailul. Încearcă din nou.");
+      setResendMessage(tr("Nu am putut retrimite emailul. Încearcă din nou.", "Could not resend email. Try again."));
     } finally {
       setResendLoading(false);
     }
@@ -150,9 +152,9 @@ export function RegisterScreen({ navigation }: Props) {
             <View style={styles.verificationIcon}>
               <Mail color={colors.red} size={26} strokeWidth={2.2} />
             </View>
-            <Text style={styles.title}>Confirmă emailul</Text>
+            <Text style={styles.title}>{tr("Confirmă emailul", "Confirm email")}</Text>
             <Text style={styles.subtitle}>
-              Am creat contul pentru {verificationEmail}. Deschide linkul primit pe email, apoi revino la autentificare.
+              {tr(`Am creat contul pentru ${verificationEmail}. Deschide linkul primit pe email, apoi revino la autentificare.`, `We created the account for ${verificationEmail}. Open the link received by email, then return to sign in.`)}
             </Text>
             {resendMessage && <Text style={styles.successMessage}>{resendMessage}</Text>}
             <Pressable
@@ -164,17 +166,17 @@ export function RegisterScreen({ navigation }: Props) {
                 resendLoading && styles.disabled,
               ]}
             >
-              <Text style={styles.secondaryWideText}>{resendLoading ? "Se retrimite..." : "Retrimite emailul"}</Text>
+              <Text style={styles.secondaryWideText}>{resendLoading ? tr("Se retrimite...", "Resending...") : tr("Retrimite emailul", "Resend email")}</Text>
             </Pressable>
             <Pressable onPress={() => navigation.navigate("Login")} style={styles.primaryButton}>
-              <Text style={styles.primaryText}>Am confirmat, intră în cont</Text>
+              <Text style={styles.primaryText}>{tr("Am confirmat, intră în cont", "Confirmed, sign in")}</Text>
             </Pressable>
           </View>
         ) : (
           <>
-            <Text style={styles.title}>Creează cont</Text>
+            <Text style={styles.title}>{tr("Creează cont", "Create account")}</Text>
             <Text style={styles.subtitle}>
-              Salvăm adresele, comenzile și restaurantele preferate după confirmarea emailului.
+              {tr("Salvăm adresele, comenzile și restaurantele preferate după confirmarea emailului.", "We save addresses, orders, and favorite restaurants after email confirmation.")}
             </Text>
 
             <View style={styles.socialRow}>
@@ -204,7 +206,7 @@ export function RegisterScreen({ navigation }: Props) {
 
             <View style={styles.dividerRow}>
               <View style={styles.divider} />
-              <Text style={styles.dividerText}>sau cu email</Text>
+              <Text style={styles.dividerText}>{tr("sau cu email", "or with email")}</Text>
               <View style={styles.divider} />
             </View>
 
@@ -229,7 +231,7 @@ export function RegisterScreen({ navigation }: Props) {
                       scrollToField("lastName");
                       lastNameInputRef.current?.focus();
                     }}
-                    placeholder="Prenume"
+                    placeholder={tr("Prenume", "First name")}
                     placeholderTextColor={colors.muted}
                     style={styles.input}
                   />
@@ -253,7 +255,7 @@ export function RegisterScreen({ navigation }: Props) {
                       scrollToField("email");
                       emailInputRef.current?.focus();
                     }}
-                    placeholder="Nume"
+                    placeholder={tr("Nume", "Last name")}
                     placeholderTextColor={colors.muted}
                     style={styles.input}
                   />
@@ -334,7 +336,7 @@ export function RegisterScreen({ navigation }: Props) {
                     onBlur={() => setFocusedField(null)}
                   secureTextEntry={!showPassword}
                   returnKeyType="done"
-                  placeholder="Parolă"
+                  placeholder={tr("Parolă", "Password")}
                   placeholderTextColor={colors.muted}
                   style={styles.input}
                 />
@@ -351,12 +353,12 @@ export function RegisterScreen({ navigation }: Props) {
               onPress={submit}
               style={({ pressed }) => [styles.primaryButton, pressed && !loading && styles.pressed, loading && styles.disabled]}
             >
-              <Text style={styles.primaryText}>{loading ? "Se creează..." : "Creează cont"}</Text>
+              <Text style={styles.primaryText}>{loading ? tr("Se creează...", "Creating...") : tr("Creează cont", "Create account")}</Text>
             </Pressable>
 
             <Pressable style={styles.footerLink} onPress={() => navigation.navigate("Login")}>
               <Text style={styles.footerText}>
-                Ai deja cont? <Text style={styles.footerAccent}>Intră în cont</Text>
+                {tr("Ai deja cont?", "Already have an account?")} <Text style={styles.footerAccent}>{tr("Intră în cont", "Sign in")}</Text>
               </Text>
             </Pressable>
           </>

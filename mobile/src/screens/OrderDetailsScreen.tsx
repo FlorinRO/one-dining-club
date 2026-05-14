@@ -4,12 +4,16 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OrdersStackParamList } from "../navigation/types";
+import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
+import { useI18n } from "../i18n/useI18n";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrderDetails">;
 
 export function OrderDetailsScreen({ route }: Props) {
+  const { tr, language } = useI18n();
   const insets = useSafeAreaInsets();
+  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
   const { order } = route.params;
   const subtotal = Number(order.subtotal || 0);
   const discount = Number(order.discount || 0);
@@ -18,26 +22,32 @@ export function OrderDetailsScreen({ route }: Props) {
   const subtotalAfterDiscount = Math.max(0, subtotal - discount);
   const total = Number(order.total || 0);
   const orderCode = `#${`I${order.id.toString(36).toUpperCase()}`}`;
-  const statusLabel = order.order_status === "delivered" ? "Livrată" : "În curs";
-  const formattedDate = new Intl.DateTimeFormat("ro-RO", {
+  const statusLabel = order.order_status === "delivered" ? tr("Livrată", "Delivered") : tr("În curs", "In progress");
+  const formattedDate = new Intl.DateTimeFormat(language === "en" ? "en-US" : "ro-RO", {
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(order.created_at));
-  const primaryAddress = typeof order.address === "object" ? `${order.address.address_line_1}, ${order.address.city}` : "Adresă salvată";
+  const primaryAddress = typeof order.address === "object" ? `${order.address.address_line_1}, ${order.address.city}` : tr("Adresă salvată", "Saved address");
   const extraAddressLines = typeof order.address === "object" ? [order.address.address_line_2, order.address.instructions].filter(Boolean) : [];
-  const paymentLabel = order.payment_method === "cash" ? "Plată cash" : "Plată online";
+  const paymentLabel = order.payment_method === "cash" ? tr("Plată cash", "Cash payment") : tr("Plată online", "Online payment");
 
   return (
     <View style={styles.page}>
-      <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={[styles.content, { paddingBottom: 0 }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        onScroll={trackFloatingCartScrollDirection}
+        scrollEventThrottle={16}
+        contentContainerStyle={[styles.content, { paddingBottom: 0 }]}
+      >
         <View style={[styles.card, styles.topInfoCard]}>
           <Text style={styles.metaText}>
             {statusLabel} {formattedDate}
           </Text>
-          <Text style={styles.orderCode}>Comanda {orderCode}</Text>
+          <Text style={styles.orderCode}>{tr("Comanda", "Order")} {orderCode}</Text>
 
           {order.items.map((item) => (
             <View key={item.id} style={styles.itemRow}>
@@ -50,10 +60,10 @@ export function OrderDetailsScreen({ route }: Props) {
         </View>
 
         <View style={styles.card}>
-          <SummaryRow label="Reducere" value={`-${money(discount)}`} />
+          <SummaryRow label={tr("Reducere", "Discount")} value={`-${money(discount)}`} />
           <SummaryRow label="Subtotal" value={money(subtotalAfterDiscount)} strong />
-          <SummaryRow label="Taxă servicii" value={money(serviceFee)} />
-          <SummaryRow label="Taxă livrare" value={money(deliveryFee)} />
+          <SummaryRow label={tr("Taxă servicii", "Service fee")} value={money(serviceFee)} />
+          <SummaryRow label={tr("Taxă livrare", "Delivery fee")} value={money(deliveryFee)} />
           <View style={styles.divider} />
           <SummaryRow label="Total" value={money(total)} large />
           <View style={styles.paymentRow}>
@@ -68,31 +78,31 @@ export function OrderDetailsScreen({ route }: Props) {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Adresa de livrare</Text>
+          <Text style={styles.sectionTitle}>{tr("Adresa de livrare", "Delivery address")}</Text>
           <Text style={styles.addressMain}>{primaryAddress}</Text>
           {extraAddressLines.map((line) => (
             <Text key={line} style={styles.addressMuted}>
               {line}
             </Text>
           ))}
-          {!extraAddressLines.length ? <Text style={styles.addressMuted}>La apartamentul 10</Text> : null}
+          {!extraAddressLines.length ? <Text style={styles.addressMuted}>{tr("La apartamentul 10", "At apartment 10")}</Text> : null}
         </View>
 
-        <Pressable style={styles.card} onPress={() => Alert.alert("Meniu", `Deschidem meniul pentru ${order.restaurant_name}.`)}>
+        <Pressable style={styles.card} onPress={() => Alert.alert(tr("Meniu", "Menu"), tr(`Deschidem meniul pentru ${order.restaurant_name}.`, `Opening menu for ${order.restaurant_name}.`))}>
           <Text style={styles.sectionTitle}>{order.restaurant_name}</Text>
           <View style={styles.menuRow}>
-            <Text style={styles.menuText}>Vezi meniul</Text>
+            <Text style={styles.menuText}>{tr("Vezi meniul", "View menu")}</Text>
             <ChevronRight size={34} color="#9AA0A0" strokeWidth={1.8} />
           </View>
         </Pressable>
 
         <View style={[styles.actionsCard, { paddingBottom: 28 + insets.bottom, marginBottom: -(insets.bottom + 18) }]}>
           <View style={styles.actionsBlock}>
-            <Pressable style={styles.orderAgainButton} onPress={() => Alert.alert("Comandă din nou", "Funcția de reorder se poate conecta acum la coș.")}>
-              <Text style={styles.orderAgainText}>Comandă din nou</Text>
+            <Pressable style={styles.orderAgainButton} onPress={() => Alert.alert(tr("Comandă din nou", "Order again"), tr("Funcția de reorder se poate conecta acum la coș.", "Reorder can now be connected to cart."))}>
+              <Text style={styles.orderAgainText}>{tr("Comandă din nou", "Order again")}</Text>
             </Pressable>
-            <Pressable style={styles.helpButton} onPress={() => Alert.alert("Ajutor", "Suportul pentru această comandă va fi conectat aici.")}>
-              <Text style={styles.helpText}>Ajutor</Text>
+            <Pressable style={styles.helpButton} onPress={() => Alert.alert(tr("Ajutor", "Help"), tr("Suportul pentru această comandă va fi conectat aici.", "Support for this order will be connected here."))}>
+              <Text style={styles.helpText}>{tr("Ajutor", "Help")}</Text>
             </Pressable>
           </View>
         </View>

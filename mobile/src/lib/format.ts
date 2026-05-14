@@ -1,4 +1,4 @@
-export const money = (value: string | number) => `${Number(value).toFixed(2)} lei`;
+export const money = (value: string | number) => `${Number(value).toFixed(2).replace(".", ",")} lei`;
 
 export const deliveryWindow = (min: number, max: number) => `${min}-${max} min`;
 
@@ -9,4 +9,3 @@ export const shortDate = (value: string) =>
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
-

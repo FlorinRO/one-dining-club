@@ -3,6 +3,8 @@ import { ArrowLeft } from "lucide-react-native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Screen } from "../components/Screen";
+import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
+import { useI18n } from "../i18n/useI18n";
 import { ProfileStackParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
 
@@ -14,7 +16,7 @@ type InfoContent = {
   body: string[];
 };
 
-const CONTENT: Record<"privacy" | "about" | "support", InfoContent> = {
+const CONTENT_RO: Record<"privacy" | "about" | "support", InfoContent> = {
   privacy: {
     title: "Confidențialitate",
     subtitle: "Cum îți protejăm datele în aplicație",
@@ -48,9 +50,45 @@ const CONTENT: Record<"privacy" | "about" | "support", InfoContent> = {
     ],
   },
 };
+const CONTENT_EN: Record<"privacy" | "about" | "support", InfoContent> = {
+  privacy: {
+    title: "Privacy",
+    subtitle: "How we protect your data in the app",
+    body: [
+      "Your account data is used for essential features: authentication, delivery, order history, and support.",
+      "Profile details, addresses, and orders are securely sent to the backend only when you are authenticated.",
+      "We do not publicly expose personal data such as email, phone number, or addresses. These are visible only in your account and for order processing.",
+      "You can update your name, phone number, and email anytime from Profile, and new information is synced on save.",
+      "If you want account deletion or clarification about your data, contact support from the Support section.",
+    ],
+  },
+  about: {
+    title: "About ONE Dining Club",
+    subtitle: "Simple, fast, and clear delivery",
+    body: [
+      "ONE Dining Club connects local restaurants with customers who want fast ordering without complicated steps.",
+      "In the app you can save addresses, apply promo codes, and track orders in a unified experience.",
+      "We focus on speed, cost transparency, and a stable experience both at checkout and after placing an order.",
+      "The product is constantly evolving: we add new features based on real usage feedback.",
+    ],
+  },
+  support: {
+    title: "Support",
+    subtitle: "We are here when you need help",
+    body: [
+      "For issues related to account, orders, payments, or promo codes, contact us and we will reply as quickly as possible.",
+      "When you send a report, include the order ID, device used, and a short description of the issue.",
+      "If you encounter login errors, first check your internet connection and try again.",
+      "For urgent situations related to an ongoing order, clearly mention that it is urgent for prioritization.",
+      "Support email: support@onedining.club",
+    ],
+  },
+};
 
 export function ProfileInfoScreen({ navigation, route }: Props) {
-  const content = CONTENT[route.params.topic];
+  const { language } = useI18n();
+  const content = (language === "en" ? CONTENT_EN : CONTENT_RO)[route.params.topic];
+  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   return (
     <Screen>
@@ -60,7 +98,12 @@ export function ProfileInfoScreen({ navigation, route }: Props) {
             <ArrowLeft size={30} color={colors.text} strokeWidth={2.2} />
           </Pressable>
         </View>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+          onScroll={trackFloatingCartScrollDirection}
+          scrollEventThrottle={16}
+        >
           <Text style={styles.title}>{content.title}</Text>
           <Text style={styles.subtitle}>{content.subtitle}</Text>
           {content.body.map((paragraph) => (

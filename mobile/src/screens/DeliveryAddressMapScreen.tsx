@@ -7,6 +7,7 @@ import * as Location from "expo-location";
 import { AxiosError } from "axios";
 
 import { addressesApi } from "../api/addressesApi";
+import { useI18n } from "../i18n/useI18n";
 import { HomeStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { colors } from "../theme/colors";
@@ -27,12 +28,13 @@ const toBackendDecimalString = (value: number) => value.toFixed(6);
 
 function buildLabel(line1: string) {
   const value = line1.toLowerCase();
-  if (value.includes("acas")) return "Acasă";
-  if (value.includes("birou")) return "Birou";
-  return "Adresă pe hartă";
+  if (value.includes("acas") || value.includes("home")) return "Home";
+  if (value.includes("birou") || value.includes("office")) return "Office";
+  return "Map address";
 }
 
 export function DeliveryAddressMapScreen({ navigation }: Props) {
+  const { tr } = useI18n();
   const accessToken = useAuthStore((state) => state.accessToken);
   const user = useAuthStore((state) => state.user);
   const [coordinate, setCoordinate] = useState<Coordinates>(fallback);
@@ -60,12 +62,12 @@ export function DeliveryAddressMapScreen({ navigation }: Props) {
       const [result] = await Location.reverseGeocodeAsync(point);
       const streetPieces = [result?.street, result?.streetNumber].filter(Boolean);
       const district = [result?.district, result?.subregion].filter(Boolean).join(", ");
-      const resolvedLine = streetPieces.join(" ") || district || "Adresă necunoscută";
+      const resolvedLine = streetPieces.join(" ") || district || tr("Adresă necunoscută", "Unknown address");
       setLine1(resolvedLine);
-      setCity(result?.city || result?.region || "România");
+      setCity(result?.city || result?.region || "Romania");
     } catch {
-      setLine1("Adresă necunoscută");
-      setCity("România");
+      setLine1(tr("Adresă necunoscută", "Unknown address"));
+      setCity("Romania");
     } finally {
       setResolving(false);
     }
@@ -74,7 +76,7 @@ export function DeliveryAddressMapScreen({ navigation }: Props) {
   const centerOnCurrentLocation = useCallback(async () => {
     const permission = await Location.requestForegroundPermissionsAsync();
     if (permission.status !== "granted") {
-      Alert.alert("Permisiune necesară", "Activează locația pentru a alege adresa direct de pe hartă.");
+      Alert.alert(tr("Permisiune necesară", "Permission required"), tr("Activează locația pentru a alege adresa direct de pe hartă.", "Enable location to choose address directly on the map."));
       return;
     }
     const current = await Location.getCurrentPositionAsync({
@@ -127,7 +129,7 @@ export function DeliveryAddressMapScreen({ navigation }: Props) {
 
   const saveAddress = async () => {
     if (!accessToken) {
-      Alert.alert("Autentificare necesară", "Intră în cont ca să salvezi adresa.");
+      Alert.alert(tr("Autentificare necesară", "Authentication required"), tr("Intră în cont ca să salvezi adresa.", "Sign in to save address."));
       return;
     }
 
@@ -135,8 +137,8 @@ export function DeliveryAddressMapScreen({ navigation }: Props) {
     try {
       const allAddresses = await addressesApi.list();
       const isFirstAddress = allAddresses.length === 0;
-      const normalizedLine = (line1 || "Adresă pe hartă").trim().toLowerCase();
-      const normalizedCity = (city || "România").trim().toLowerCase();
+      const normalizedLine = (line1 || tr("Adresă pe hartă", "Map address")).trim().toLowerCase();
+      const normalizedCity = (city || "Romania").trim().toLowerCase();
       const existingMatch = allAddresses.find(
         (item) =>
           item.address_line_1.trim().toLowerCase() === normalizedLine &&
@@ -158,8 +160,8 @@ export function DeliveryAddressMapScreen({ navigation }: Props) {
         label: buildLabel(line1),
         full_name: fullName,
         phone,
-        address_line_1: line1 || "Adresă pe hartă",
-        city: city || "România",
+        address_line_1: line1 || tr("Adresă pe hartă", "Map address"),
+        city: city || "Romania",
         instructions: "",
         is_default: isFirstAddress,
       };
@@ -181,7 +183,7 @@ export function DeliveryAddressMapScreen({ navigation }: Props) {
           : rawData
             ? String(rawData)
             : null;
-      Alert.alert("Eroare", details || "Nu am putut salva adresa de pe hartă.");
+      Alert.alert(tr("Eroare", "Error"), details || tr("Nu am putut salva adresa de pe hartă.", "Could not save map address."));
     } finally {
       setSaving(false);
     }
@@ -209,23 +211,23 @@ export function DeliveryAddressMapScreen({ navigation }: Props) {
         {!locationReady || resolving ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={colors.red} />
-            <Text style={styles.loadingText}>Căutăm adresa exactă...</Text>
+            <Text style={styles.loadingText}>{tr("Căutăm adresa exactă...", "Looking up exact address...")}</Text>
           </View>
         ) : (
           <>
-            <Text style={styles.sheetTitle}>Setează adresa de livrare</Text>
+            <Text style={styles.sheetTitle}>{tr("Setează adresa de livrare", "Set delivery address")}</Text>
             <Pressable style={styles.addressInput} onPress={() => navigation.navigate("DeliveryAddress", { focusSearch: true })}>
               <Search size={20} color={colors.muted} />
               <Text numberOfLines={1} style={styles.addressLine}>
-                {line1 || "Adresă pe hartă"}
+                {line1 || tr("Adresă pe hartă", "Map address")}
                 {city ? `, ${city}` : ""}
               </Text>
             </Pressable>
-            <Text style={styles.helperText}>Mișcă harta astfel încât pinul să fie la intrarea clădirii.</Text>
+            <Text style={styles.helperText}>{tr("Mișcă harta astfel încât pinul să fie la intrarea clădirii.", "Move the map so the pin is at the building entrance.")}</Text>
           </>
         )}
         <Pressable style={[styles.saveButton, (saving || resolving || !locationReady) && styles.saveButtonDisabled]} onPress={saveAddress} disabled={saving || resolving || !locationReady}>
-          <Text style={styles.saveButtonText}>{saving ? "Se salvează..." : "Setează adresa"}</Text>
+          <Text style={styles.saveButtonText}>{saving ? tr("Se salvează...", "Saving...") : tr("Setează adresa", "Set address")}</Text>
         </Pressable>
       </View>
     </View>

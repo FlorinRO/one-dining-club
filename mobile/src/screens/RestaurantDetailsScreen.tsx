@@ -5,7 +5,8 @@ import { Animated, Image, Keyboard, Pressable, ScrollView, Share, StyleSheet, Te
 import Svg, { Path } from "react-native-svg";
 
 import { restaurantsApi } from "../api/restaurantsApi";
-import { FloatingCartBar } from "../components/FloatingCartBar";
+import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
+import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
 import { FALLBACK_PRODUCT_IMAGE, FALLBACK_RESTAURANT_IMAGE, resolveImageUri } from "../lib/images";
 import { useFavoritesStore } from "../store/favoritesStore";
@@ -17,6 +18,7 @@ type Props = NativeStackScreenProps<HomeStackParamList, "RestaurantDetails">;
 
 
 export function RestaurantDetailsScreen({ navigation, route }: Props) {
+  const { tr } = useI18n();
   const HERO_HEIGHT = 258;
   const SHEET_OVERLAP = 34;
   const SHEET_WAVE_HEIGHT = 42;
@@ -30,6 +32,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
   const scrollY = useRef(new Animated.Value(0)).current;
   const toggleRestaurant = useFavoritesStore((state) => state.toggleRestaurant);
   const isFavorite = useFavoritesStore((state) => state.isRestaurantFavorite(restaurant.id));
+  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   useEffect(() => {
     restaurantsApi.detail(initialRestaurant.id).then(setRestaurant);
@@ -72,6 +75,14 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
     outputRange: [0, 1],
     extrapolate: "clamp",
   });
+  const handleMainScroll = useMemo(
+    () =>
+      Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+        useNativeDriver: true,
+        listener: trackFloatingCartScrollDirection,
+      }),
+    [scrollY, trackFloatingCartScrollDirection],
+  );
   const shareRestaurant = async () => {
     await Share.share({
       title: restaurant.name,
@@ -111,7 +122,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         scrollEventThrottle={16}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        onScroll={handleMainScroll}
       >
         <Animated.View style={{ transform: [{ translateY: overscrollCompensation }] }}>
           <View style={[styles.bodySheetWrap, { marginTop: HERO_HEIGHT - SHEET_OVERLAP }]} pointerEvents="box-none">
@@ -138,7 +149,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
                 </View>
                 <View style={styles.metaItem}>
                   <Bike size={16} stroke={colors.muted} />
-                  <Text style={styles.metaText}>{Number(restaurant.delivery_fee).toFixed(2)} lei</Text>
+                  <Text style={styles.metaText}>{money(restaurant.delivery_fee)}</Text>
                 </View>
                 <View style={styles.metaItem}>
                   <Clock3 size={16} stroke={colors.muted} />
@@ -207,7 +218,6 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
           </Text>
         </View>
       </Animated.View>
-      <FloatingCartBar onPress={() => navigation.navigate("CartFlow", { screen: "CartHome" })} />
       {isRestaurantSearchOpen && (
         <View style={styles.searchOverlay}>
           <View style={styles.searchHeader}>
@@ -219,7 +229,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
                 onChangeText={setRestaurantSearchQuery}
                 onFocus={() => setIsSearchInputFocused(true)}
                 onBlur={() => setIsSearchInputFocused(false)}
-                placeholder="Caută în acest restaurant"
+                placeholder={tr("Caută în acest restaurant", "Search in this restaurant")}
                 placeholderTextColor={colors.muted}
                 style={styles.searchInput}
                 autoFocus
@@ -240,6 +250,8 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
                 contentContainerStyle={styles.searchContent}
                 keyboardDismissMode="interactive"
                 keyboardShouldPersistTaps="handled"
+                onScroll={trackFloatingCartScrollDirection}
+                scrollEventThrottle={16}
                 onScrollBeginDrag={() => Keyboard.dismiss()}
               >
                 <Text style={styles.searchCount}>
@@ -303,19 +315,17 @@ function ShowcaseProductCard({ product, onPress }: ShowcaseProductCardProps) {
         />
         <View style={styles.showcaseImageOverlay} />
       </View>
-      <View style={styles.showcaseContent}>
-        <View style={styles.showcaseTitleRow}>
-          <View style={styles.showcaseNameBadge}>
-            <Text numberOfLines={1} style={styles.showcaseName}>
-              {product.name}
-            </Text>
-          </View>
-          <View style={styles.showcasePriceCta}>
-            <View style={styles.showcasePriceRow}>
-              <Text style={styles.showcasePrice}>{money(effectivePrice)}</Text>
-            </View>
+      <View style={styles.showcaseNameBadge}>
+        <Text numberOfLines={1} style={styles.showcaseName}>
+          {product.name}
+        </Text>
+        <View style={styles.showcasePriceCta}>
+          <View style={styles.showcasePriceRow}>
+            <Text style={styles.showcasePrice}>{money(effectivePrice)}</Text>
           </View>
         </View>
+      </View>
+      <View style={styles.showcaseContent}>
         <Text numberOfLines={2} style={styles.showcaseDescription}>
           {product.description}
         </Text>
@@ -505,7 +515,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   showcaseList: {
-    gap: 22,
+    gap: 32,
     marginHorizontal: -18,
   },
   showcaseCard: {
@@ -537,27 +547,24 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 13,
   },
-  showcaseTitleRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    alignSelf: "flex-start",
-    maxWidth: "100%",
-  },
   showcaseName: {
-    flexShrink: 1,
     color: colors.white,
     fontFamily: "Georgia",
-    fontSize: 20,
-    lineHeight: 25,
+    fontSize: 16,
+    lineHeight: 20,
     fontStyle: "italic",
     fontWeight: "400",
+    textAlign: "center",
   },
   showcaseNameBadge: {
-    height: 36,
-    flexShrink: 1,
-    justifyContent: "center",
+    minHeight: 36,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: colors.red,
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 10,
   },
   showcaseDescription: {
     color: colors.muted,
@@ -566,16 +573,15 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   showcasePriceCta: {
-    height: 36,
-    borderWidth: 2,
-    borderRadius: 2,
-    borderColor: colors.red,
+    minHeight: 28,
+    borderRadius: 6,
+    borderWidth: 0,
     backgroundColor: colors.white,
     paddingVertical: 4,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     flexDirection: "row",
     alignItems: "center",
-    gap: 9,
+    justifyContent: "center",
   },
   showcasePriceRow: {
     flexDirection: "row",
@@ -583,9 +589,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   showcasePrice: {
-    color: colors.text,
+    color: "#000000",
     fontSize: 15,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   searchOverlay: {
     ...StyleSheet.absoluteFillObject,

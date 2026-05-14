@@ -6,6 +6,8 @@ import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleS
 
 import { ordersApi } from "../api/ordersApi";
 import { Screen } from "../components/Screen";
+import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
+import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
 import { OrdersStackParamList } from "../navigation/types";
 import { useOrdersStore } from "../store/ordersStore";
@@ -16,11 +18,13 @@ type Props = NativeStackScreenProps<OrdersStackParamList, "OrdersHome">;
 type OrderWithImage = Order & { mockImage?: string };
 
 export function OrdersScreen({ navigation }: Props) {
+  const { tr, language } = useI18n();
   const orders = useOrdersStore((state) => state.orders);
   const setOrders = useOrdersStore((state) => state.setOrders);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   const loadOrders = useCallback(
     async (mode: "initial" | "refresh" = "initial") => {
@@ -36,7 +40,7 @@ export function OrdersScreen({ navigation }: Props) {
         setOrders(data.length ? data : MOCK_ORDERS);
       } catch {
         setOrders(MOCK_ORDERS);
-        setError("Backend indisponibil acum. Afișăm comenzi demo pentru UI.");
+        setError(tr("Backend indisponibil acum. Afișăm comenzi demo pentru UI.", "Backend unavailable right now. Showing demo orders for UI."));
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -55,17 +59,19 @@ export function OrdersScreen({ navigation }: Props) {
     <Screen>
       <ScrollView
         showsVerticalScrollIndicator={false}
+        onScroll={trackFloatingCartScrollDirection}
+        scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.red} onRefresh={() => loadOrders("refresh")} />}
         contentContainerStyle={styles.content}
       >
-        <Text style={styles.title}>Comenzile mele</Text>
+        <Text style={styles.title}>{tr("Comenzile mele", "My orders")}</Text>
 
         {error && <Text style={styles.errorBanner}>{error}</Text>}
 
         {loading ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator color={colors.red} />
-            <Text style={styles.mutedText}>Se încarcă comenzile...</Text>
+            <Text style={styles.mutedText}>{tr("Se încarcă comenzile...", "Loading orders...")}</Text>
           </View>
         ) : orders.length ? (
           <View style={styles.list} pointerEvents="box-none">
@@ -83,7 +89,7 @@ export function OrdersScreen({ navigation }: Props) {
                     {order.restaurant_name}
                   </Text>
                   <Text style={styles.total}>{money(order.total)}</Text>
-                  <Text style={styles.meta}>{formatOrderMeta(order.created_at, order.order_status)}</Text>
+                  <Text style={styles.meta}>{formatOrderMeta(order.created_at, order.order_status, language === "en" ? "en-US" : "ro-RO", tr)}</Text>
                 </View>
                 <View style={styles.trailingButton}>
                   <RotateCcw size={20} color={colors.text} strokeWidth={2} />
@@ -94,8 +100,8 @@ export function OrdersScreen({ navigation }: Props) {
         ) : (
           <View style={styles.emptyBox}>
             <ListOrdered size={28} color={colors.red} strokeWidth={2.2} />
-            <Text style={styles.emptyTitle}>Nu ai comenzi încă</Text>
-            <Text style={styles.emptyText}>După prima comandă plasată cu backend-ul, istoricul apare aici.</Text>
+            <Text style={styles.emptyTitle}>{tr("Nu ai comenzi încă", "No orders yet")}</Text>
+            <Text style={styles.emptyText}>{tr("După prima comandă plasată cu backend-ul, istoricul apare aici.", "After your first backend order, history will show up here.")}</Text>
           </View>
         )}
       </ScrollView>
@@ -114,22 +120,27 @@ function restaurantInitials(name: string) {
   );
 }
 
-function formatOrderMeta(createdAt: string, status: Order["order_status"]) {
-  return `${new Intl.DateTimeFormat("ro-RO", {
+function formatOrderMeta(
+  createdAt: string,
+  status: Order["order_status"],
+  locale: string,
+  tr: (ro: string, en: string) => string,
+) {
+  return `${new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(createdAt))} · ${statusLabel(status)}`;
+  }).format(new Date(createdAt))} · ${statusLabel(status, tr)}`;
 }
 
-function statusLabel(status: Order["order_status"]) {
-  if (status === "delivered") return "Livrată";
-  if (status === "on_the_way") return "În livrare";
-  if (status === "preparing") return "În preparare";
-  if (status === "cancelled") return "Anulată";
-  return "Plasată";
+function statusLabel(status: Order["order_status"], tr: (ro: string, en: string) => string) {
+  if (status === "delivered") return tr("Livrată", "Delivered");
+  if (status === "on_the_way") return tr("În livrare", "On the way");
+  if (status === "preparing") return tr("În preparare", "Preparing");
+  if (status === "cancelled") return tr("Anulată", "Cancelled");
+  return tr("Plasată", "Placed");
 }
 
 const MOCK_ORDERS: OrderWithImage[] = [

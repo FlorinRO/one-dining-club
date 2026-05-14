@@ -1,10 +1,12 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { ArrowLeft } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { restaurantsApi } from "../api/restaurantsApi";
 import { RestaurantCard } from "../components/RestaurantCard";
 import { Screen } from "../components/Screen";
+import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { HomeStackParamList } from "../navigation/types";
 import { useFavoritesStore } from "../store/favoritesStore";
 import { colors } from "../theme/colors";
@@ -15,6 +17,7 @@ type Props = NativeStackScreenProps<HomeStackParamList, "Favorites">;
 export function FavoritesScreen({ navigation }: Props) {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const favoriteIds = useFavoritesStore((state) => state.restaurantIds);
+  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   useEffect(() => {
     restaurantsApi.list().then(setRestaurants);
@@ -27,7 +30,15 @@ export function FavoritesScreen({ navigation }: Props) {
 
   return (
     <Screen>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        onScroll={trackFloatingCartScrollDirection}
+        scrollEventThrottle={16}
+      >
+        <Pressable style={styles.backButton} onPress={() => navigation.goBack()} hitSlop={10}>
+          <ArrowLeft size={24} color={colors.text} strokeWidth={2.2} />
+        </Pressable>
         <Text style={styles.title}>Favorite</Text>
         {!favorites.length ? (
           <View style={styles.empty}>
@@ -56,6 +67,12 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 30,
     gap: 18,
+  },
+  backButton: {
+    width: 38,
+    height: 38,
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
     color: colors.text,

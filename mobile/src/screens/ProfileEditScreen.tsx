@@ -5,6 +5,8 @@ import { Alert, InteractionManager, KeyboardAvoidingView, Platform, Pressable, S
 
 import { authApi } from "../api/authApi";
 import { Screen } from "../components/Screen";
+import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
+import { useI18n } from "../i18n/useI18n";
 import { ProfileStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useCartStore } from "../store/cartStore";
@@ -13,6 +15,7 @@ import { colors } from "../theme/colors";
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileEdit">;
 
 export function ProfileEditScreen({ navigation, route }: Props) {
+  const { tr } = useI18n();
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
   const setUser = useAuthStore((state) => state.setUser);
@@ -32,12 +35,13 @@ export function ProfileEditScreen({ navigation, route }: Props) {
   const phoneRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
   const promoRef = useRef<TextInput>(null);
+  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   const title = useMemo(() => {
-    if (field === "name") return "Actualizează numele";
-    if (field === "phone") return "Actualizează numărul de telefon";
-    if (field === "promo") return "Adaugă cod promo";
-    return "Actualizează emailul";
+    if (field === "name") return tr("Actualizează numele", "Update name");
+    if (field === "phone") return tr("Actualizează numărul de telefon", "Update phone number");
+    if (field === "promo") return tr("Adaugă cod promo", "Add promo code");
+    return tr("Actualizează emailul", "Update email");
   }, [field]);
 
   useEffect(() => {
@@ -74,24 +78,24 @@ export function ProfileEditScreen({ navigation, route }: Props) {
 
     if (field === "name") {
       if (!firstName.trim()) {
-        setError("Prenumele este obligatoriu.");
+        setError(tr("Prenumele este obligatoriu.", "First name is required."));
         return;
       }
     }
 
     if (field === "email") {
       if (!email.trim() || !email.includes("@")) {
-        setError("Folosește o adresă de email validă.");
+        setError(tr("Folosește o adresă de email validă.", "Use a valid email address."));
         return;
       }
     }
     if (field === "promo") {
       if (!promoCode.trim()) {
-        setError("Introdu un cod promo.");
+        setError(tr("Introdu un cod promo.", "Enter a promo code."));
         return;
       }
       setPromoCode(promoCode.trim().toUpperCase());
-      Alert.alert("Cod promo", `Codul ${promoCode.trim().toUpperCase()} a fost aplicat.`);
+      Alert.alert(tr("Cod promo", "Promo code"), tr(`Codul ${promoCode.trim().toUpperCase()} a fost aplicat.`, `Code ${promoCode.trim().toUpperCase()} has been applied.`));
       navigation.goBack();
       return;
     }
@@ -111,7 +115,7 @@ export function ProfileEditScreen({ navigation, route }: Props) {
       setUser(updatedUser);
       navigation.goBack();
     } catch {
-      Alert.alert("Eroare", "Nu am putut salva profilul. Încearcă din nou.");
+      Alert.alert(tr("Eroare", "Error"), tr("Nu am putut salva profilul. Încearcă din nou.", "Could not save profile. Try again."));
     } finally {
       setSaving(false);
     }
@@ -120,13 +124,18 @@ export function ProfileEditScreen({ navigation, route }: Props) {
   return (
     <Screen>
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.content}
+          onScroll={trackFloatingCartScrollDirection}
+          scrollEventThrottle={16}
+        >
           <View style={styles.headerRow}>
             <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
               <ArrowLeft size={30} color={colors.text} strokeWidth={2.2} />
             </Pressable>
             <Pressable style={styles.topSaveButton} onPress={save} disabled={saving}>
-              <Text style={[styles.topSaveText, saving && styles.saveTextDisabled]}>{saving ? "Se salvează..." : "Salvează"}</Text>
+              <Text style={[styles.topSaveText, saving && styles.saveTextDisabled]}>{saving ? tr("Se salvează...", "Saving...") : tr("Salvează", "Save")}</Text>
             </Pressable>
           </View>
 
@@ -138,13 +147,13 @@ export function ProfileEditScreen({ navigation, route }: Props) {
                 style={[styles.inputCard, focusedInput !== "firstName" && styles.inputCardMuted, focusedInput === "firstName" && styles.inputCardFocused]}
                 onPress={() => firstNameRef.current?.focus()}
               >
-                <Text style={styles.inputLabel}>Prenume</Text>
+                <Text style={styles.inputLabel}>{tr("Prenume", "First name")}</Text>
                 <TextInput
                   ref={firstNameRef}
                   value={firstName}
                   onChangeText={setFirstName}
                   style={styles.input}
-                  placeholder="Prenume"
+                  placeholder={tr("Prenume", "First name")}
                   placeholderTextColor={colors.muted}
                   onFocus={() => setFocusedInput("firstName")}
                   onBlur={() => setFocusedInput(null)}
@@ -159,13 +168,13 @@ export function ProfileEditScreen({ navigation, route }: Props) {
                   requestAnimationFrame(() => lastNameRef.current?.focus());
                 }}
               >
-                <Text style={styles.inputLabel}>Nume</Text>
+                <Text style={styles.inputLabel}>{tr("Nume", "Last name")}</Text>
                 <TextInput
                   ref={lastNameRef}
                   value={lastName}
                   onChangeText={setLastName}
                   style={styles.input}
-                  placeholder="Nume"
+                  placeholder={tr("Nume", "Last name")}
                   placeholderTextColor={colors.muted}
                   onFocus={() => setFocusedInput("lastName")}
                   onBlur={() => setFocusedInput(null)}
@@ -174,14 +183,14 @@ export function ProfileEditScreen({ navigation, route }: Props) {
             </>
           ) : field === "phone" ? (
             <Pressable style={[styles.inputCard, focusedInput === "phone" && styles.inputCardFocused]} onPress={() => phoneRef.current?.focus()}>
-              <Text style={styles.inputLabel}>Număr de telefon</Text>
+              <Text style={styles.inputLabel}>{tr("Număr de telefon", "Phone number")}</Text>
               <TextInput
                 ref={phoneRef}
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
                 style={styles.input}
-                placeholder="Număr de telefon"
+                placeholder={tr("Număr de telefon", "Phone number")}
                 placeholderTextColor={colors.muted}
                 onFocus={() => setFocusedInput("phone")}
                 onBlur={() => setFocusedInput(null)}
@@ -189,7 +198,7 @@ export function ProfileEditScreen({ navigation, route }: Props) {
             </Pressable>
           ) : field === "promo" ? (
             <Pressable style={[styles.inputCard, focusedInput === "promo" && styles.inputCardFocused]} onPress={() => promoRef.current?.focus()}>
-              <Text style={styles.inputLabel}>Cod promo</Text>
+              <Text style={styles.inputLabel}>{tr("Cod promo", "Promo code")}</Text>
               <TextInput
                 ref={promoRef}
                 value={promoCode}

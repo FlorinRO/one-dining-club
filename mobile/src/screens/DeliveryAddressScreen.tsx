@@ -1,38 +1,45 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
-import { Check, Crosshair, House, MapPin, Search, X } from "lucide-react-native";
+import { Check, Crosshair, MapPin, X } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Animated, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 
 import { addressesApi } from "../api/addressesApi";
+import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { HomeStackParamList } from "../navigation/types";
+import { useI18n } from "../i18n/useI18n";
 import { useAuthStore } from "../store/authStore";
 import { colors } from "../theme/colors";
 import { Address } from "../types/models";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "DeliveryAddress">;
 
-export function DeliveryAddressScreen({ navigation, route }: Props) {
-  const searchInputRef = useRef<TextInput | null>(null);
-  const searchFocusAnim = useRef(new Animated.Value(0)).current;
+type AddressOption = {
+  slot: "map" | "auto";
+  displayLabel: string;
+  address: Address;
+};
+
+export function DeliveryAddressScreen({ navigation }: Props) {
+  const { tr } = useI18n();
   const accessToken = useAuthStore((state) => state.accessToken);
   const user = useAuthStore((state) => state.user);
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [savingCurrent, setSavingCurrent] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const autoLocationTriggeredRef = useRef(false);
+  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   const loadAddresses = useCallback(
     async (mode: "initial" | "refresh" = "initial") => {
       if (!accessToken) {
         setAddresses([]);
-        setError("Intră în cont ca să vezi adresele.");
+        setError(tr("Intră în cont ca să vezi adresele.", "Sign in to view addresses."));
         return;
       }
 
@@ -47,7 +54,7 @@ export function DeliveryAddressScreen({ navigation, route }: Props) {
         const data = await addressesApi.list();
         setAddresses(data);
       } catch {
-        setError("Nu am putut încărca adresele.");
+        setError(tr("Nu am putut încărca adresele.", "Could not load addresses."));
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -56,24 +63,34 @@ export function DeliveryAddressScreen({ navigation, route }: Props) {
     [accessToken],
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      loadAddresses();
-      if (route.params?.focusSearch) {
-        setTimeout(() => searchInputRef.current?.focus(), 120);
-        navigation.setParams({ focusSearch: undefined });
-      }
-    }, [loadAddresses, navigation, route.params?.focusSearch]),
-  );
+  const visibleAddresses = useMemo(() => {
+    const bySlot: Partial<Record<AddressOption["slot"], Address>> = {};
 
-  const filteredAddresses = useMemo(() => {
-    const value = query.trim().toLowerCase();
-    if (!value) return addresses;
-    return addresses.filter((address) => {
-      const haystack = `${address.label} ${address.address_line_1} ${address.city}`.toLowerCase();
-      return haystack.includes(value);
-    });
-  }, [addresses, query]);
+    const rank = (item: Address) => {
+      const defaultBonus = item.is_default ? 100 : 0;
+      return defaultBonus + item.id;
+    };
+
+    const normalize = (value: string) => value.trim().toLowerCase();
+    const isAuto = (label: string) => {
+      const text = normalize(label);
+      return text.includes("loca") || text.includes("automat");
+    };
+
+    for (const address of addresses) {
+      const slot: AddressOption["slot"] = isAuto(address.label) ? "auto" : "map";
+      const existing = bySlot[slot];
+      if (!existing || rank(address) > rank(existing)) {
+        bySlot[slot] = address;
+      }
+    }
+
+    const ordered: AddressOption[] = [];
+    if (bySlot.map) ordered.push({ slot: "map", displayLabel: tr("Adresă din hartă", "Map address"), address: bySlot.map });
+    if (bySlot.auto) ordered.push({ slot: "auto", displayLabel: tr("Adresă detectată automat", "Auto-detected address"), address: bySlot.auto });
+
+    return ordered;
+  }, [addresses]);
 
   const setDefault = async (id: number) => {
     const previous = addresses;
@@ -86,26 +103,15 @@ export function DeliveryAddressScreen({ navigation, route }: Props) {
       navigation.goBack();
     } catch {
       setAddresses(previous);
-      setError("Nu am putut seta adresa implicită.");
+      setError(tr("Nu am putut seta adresa implicită.", "Could not set default address."));
     } finally {
       setSavingId(null);
     }
   };
 
-  const animateSearchFocus = useCallback(
-    (focused: boolean) => {
-      Animated.timing(searchFocusAnim, {
-        toValue: focused ? 1 : 0,
-        duration: 180,
-        useNativeDriver: false,
-      }).start();
-    },
-    [searchFocusAnim],
-  );
-
-  const saveCurrentLocation = async () => {
+  const saveCurrentLocation = useCallback(async () => {
     if (!accessToken) {
-      Alert.alert("Autentificare necesară", "Intră în cont ca să setezi locația curentă.");
+      Alert.alert(tr("Autentificare necesară", "Authentication required"), tr("Intră în cont ca să setezi locația curentă.", "Sign in to set current location."));
       return;
     }
 
@@ -114,7 +120,7 @@ export function DeliveryAddressScreen({ navigation, route }: Props) {
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (permission.status !== "granted") {
-        Alert.alert("Permisiune necesară", "Activează locația pentru a folosi locația curentă.");
+        Alert.alert(tr("Permisiune necesară", "Permission required"), tr("Activează locația pentru a folosi locația curentă.", "Enable location to use current location."));
         return;
       }
 
@@ -124,12 +130,13 @@ export function DeliveryAddressScreen({ navigation, route }: Props) {
         longitude: current.coords.longitude,
       };
       const [geo] = await Location.reverseGeocodeAsync(coords);
-      const line1 = [geo?.street, geo?.streetNumber].filter(Boolean).join(" ") || [geo?.district, geo?.subregion].filter(Boolean).join(", ") || "Locație curentă";
-      const city = geo?.city || geo?.region || "România";
-      const fullName = user?.full_name || `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "Client";
+      const line1 = [geo?.street, geo?.streetNumber].filter(Boolean).join(" ") || [geo?.district, geo?.subregion].filter(Boolean).join(", ") || tr("Locație curentă", "Current location");
+      const city = geo?.city || geo?.region || "Romania";
+      const fullName = user?.full_name || `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || tr("Client", "Customer");
       const phone = user?.phone || "N/A";
 
-      const existingMatch = addresses.find(
+      const allAddresses = await addressesApi.list();
+      const existingMatch = allAddresses.find(
         (item) =>
           item.address_line_1.trim().toLowerCase() === line1.trim().toLowerCase() &&
           item.city.trim().toLowerCase() === city.trim().toLowerCase(),
@@ -137,35 +144,45 @@ export function DeliveryAddressScreen({ navigation, route }: Props) {
 
       if (existingMatch) {
         await addressesApi.update(existingMatch.id, {
-          label: "Locația curentă",
+          label: tr("Adresă detectată automat", "Auto-detected address"),
           latitude: coords.latitude.toFixed(6),
           longitude: coords.longitude.toFixed(6),
         });
-        await addressesApi.setDefault(existingMatch.id);
       } else {
         const created = await addressesApi.create({
-          label: "Locația curentă",
+          label: tr("Adresă detectată automat", "Auto-detected address"),
           full_name: fullName,
           phone,
           address_line_1: line1,
           city,
           instructions: "",
-          is_default: addresses.length === 0,
+          is_default: false,
         });
 
         await addressesApi.update(created.id, {
           latitude: coords.latitude.toFixed(6),
           longitude: coords.longitude.toFixed(6),
         });
-        await addressesApi.setDefault(created.id);
       }
-      navigation.goBack();
+      await loadAddresses();
     } catch {
-      setError("Nu am putut seta locația curentă.");
+      setError(tr("Nu am putut seta locația curentă.", "Could not set current location."));
     } finally {
       setSavingCurrent(false);
     }
-  };
+  }, [accessToken, loadAddresses, user?.first_name, user?.full_name, user?.last_name, user?.phone]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadAddresses();
+      if (!autoLocationTriggeredRef.current) {
+        autoLocationTriggeredRef.current = true;
+        setTimeout(() => {
+          void saveCurrentLocation();
+        }, 180);
+      }
+    }, [loadAddresses, saveCurrentLocation]),
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
@@ -174,97 +191,43 @@ export function DeliveryAddressScreen({ navigation, route }: Props) {
           <Pressable style={styles.closeButton} onPress={() => navigation.goBack()}>
             <X size={24} stroke={colors.text} />
           </Pressable>
-          <Text style={styles.title}>Adresa de livrare</Text>
-        </View>
-
-        <View style={styles.searchRow}>
-          <Animated.View
-            style={[
-              styles.searchBox,
-              {
-                marginRight: searchFocusAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 42],
-                }),
-                borderWidth: searchFocusAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 1],
-                }),
-                borderColor: colors.red,
-                backgroundColor: isSearchFocused ? colors.white : "#F1F1F1",
-              },
-            ]}
-          >
-            <Search size={20} stroke={colors.text} />
-            <TextInput
-              ref={searchInputRef}
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Caută adresă"
-              placeholderTextColor="#676767"
-              style={styles.searchInput}
-              autoCapitalize="none"
-              autoCorrect={false}
-              onFocus={() => {
-                setIsSearchFocused(true);
-                animateSearchFocus(true);
-              }}
-              onBlur={() => {
-                setIsSearchFocused(false);
-                animateSearchFocus(false);
-              }}
-            />
-          </Animated.View>
-          {isSearchFocused ? (
-            <Pressable
-              style={styles.searchDismiss}
-              onPress={() => {
-                searchInputRef.current?.blur();
-              }}
-            >
-              <X size={16} color={colors.text} />
-            </Pressable>
-          ) : null}
+          <Text style={styles.title}>{tr("Adresa de livrare", "Delivery address")}</Text>
         </View>
 
         <Pressable style={styles.mapRow} onPress={() => navigation.navigate("DeliveryAddressMap")}>
           <View style={styles.mapIconWrap}>
             <MapPin size={14} stroke={colors.red} />
           </View>
-          <Text style={styles.mapText}>Alege pe hartă</Text>
+          <Text style={styles.mapText}>{tr("Alege pe hartă", "Choose on map")}</Text>
         </Pressable>
-
-        <Pressable style={styles.currentRow} onPress={saveCurrentLocation} disabled={savingCurrent}>
-          <View style={styles.currentIconWrap}>
-            {savingCurrent ? <ActivityIndicator size="small" color={colors.text} /> : <Crosshair size={14} stroke={colors.text} />}
-          </View>
-          <Text style={styles.currentText}>{savingCurrent ? "Setăm locația curentă..." : "Locația curentă"}</Text>
-        </Pressable>
+        {savingCurrent ? <Text style={styles.autoLocationText}>{tr("Setăm automat locația curentă...", "Setting current location automatically...")}</Text> : null}
 
         <View style={styles.divider} />
 
         <ScrollView
           showsVerticalScrollIndicator={false}
+          onScroll={trackFloatingCartScrollDirection}
+          scrollEventThrottle={16}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadAddresses("refresh")} tintColor={colors.red} />}
         >
           {loading ? (
             <View style={styles.statusBox}>
               <ActivityIndicator color={colors.red} />
-              <Text style={styles.statusText}>Se încarcă adresele...</Text>
+              <Text style={styles.statusText}>{tr("Se încarcă adresele...", "Loading addresses...")}</Text>
             </View>
           ) : null}
 
           {!loading &&
-            filteredAddresses.map((item) => {
-              const isSelected = item.is_default;
+            visibleAddresses.map((item) => {
+              const isSelected = item.address.is_default;
               return (
-                <Pressable key={item.id} style={styles.item} onPress={() => setDefault(item.id)} disabled={savingId !== null}>
+                <Pressable key={item.slot} style={styles.item} onPress={() => setDefault(item.address.id)} disabled={savingId !== null}>
                   <View style={styles.itemLeft}>
-                    <View style={styles.itemIconWrap}>{iconFor(item.label, item.is_default)}</View>
+                    <View style={styles.itemIconWrap}>{iconFor(item.displayLabel)}</View>
                     <View style={styles.itemTextWrap}>
-                      <Text style={styles.itemTitle}>{item.label}</Text>
-                      <Text style={styles.itemSubtitle}>{item.address_line_1}</Text>
-                      <Text style={styles.itemSubtitle}>{item.city}</Text>
+                      <Text style={styles.itemTitle}>{item.displayLabel}</Text>
+                      <Text style={styles.itemSubtitle}>{item.address.address_line_1}</Text>
+                      <Text style={styles.itemSubtitle}>{item.address.city}</Text>
                     </View>
                   </View>
                   {isSelected ? (
@@ -276,9 +239,9 @@ export function DeliveryAddressScreen({ navigation, route }: Props) {
               );
             })}
 
-          {!loading && !filteredAddresses.length ? (
+          {!loading && !visibleAddresses.length ? (
             <View style={styles.statusBox}>
-              <Text style={styles.statusText}>{query.trim() ? "Nu există adrese pentru căutarea ta." : "Nu ai adrese salvate încă."}</Text>
+              <Text style={styles.statusText}>{tr("Nu ai adrese salvate încă.", "You have no saved addresses yet.")}</Text>
             </View>
           ) : null}
 
@@ -286,7 +249,7 @@ export function DeliveryAddressScreen({ navigation, route }: Props) {
             <View style={styles.statusBox}>
               <Text style={styles.errorText}>{error}</Text>
               <Pressable style={styles.retryButton} onPress={() => loadAddresses()}>
-                <Text style={styles.retryText}>Reîncearcă</Text>
+                <Text style={styles.retryText}>{tr("Reîncearcă", "Try again")}</Text>
               </Pressable>
             </View>
           ) : null}
@@ -296,10 +259,10 @@ export function DeliveryAddressScreen({ navigation, route }: Props) {
   );
 }
 
-function iconFor(label: string, isDefault: boolean) {
+function iconFor(label: string) {
   const value = label.trim().toLowerCase();
-  if (value.includes("acas")) return <House size={20} stroke={colors.text} strokeWidth={2.3} />;
-  if (value.includes("loca") || isDefault) return <Crosshair size={20} stroke={colors.text} strokeWidth={2.3} />;
+  if (value.includes("hart") || value.includes("map")) return <MapPin size={20} stroke={colors.text} strokeWidth={2.3} />;
+  if (value.includes("automat") || value.includes("detect") || value.includes("auto")) return <Crosshair size={20} stroke={colors.text} strokeWidth={2.3} />;
   return <MapPin size={20} stroke={colors.text} strokeWidth={2.3} />;
 }
 
@@ -331,58 +294,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.text,
   },
-  searchBox: {
-    minHeight: 48,
-    borderRadius: 16,
-    backgroundColor: "#F1F1F1",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    paddingHorizontal: 14,
-  },
-  searchRow: {
-    position: "relative",
-    justifyContent: "center",
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.text,
-    paddingVertical: 0,
-  },
-  searchDismiss: {
-    position: "absolute",
-    right: 12,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#EDEDED",
-  },
   mapRow: {
     marginTop: 24,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-  },
-  currentRow: {
-    marginTop: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-  },
-  currentIconWrap: {
-    width: 24,
-    height: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  currentText: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: colors.text,
-    fontWeight: "500",
   },
   mapIconWrap: {
     width: 24,
@@ -399,6 +315,12 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: colors.red,
     fontWeight: "600",
+  },
+  autoLocationText: {
+    marginTop: 10,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.muted,
   },
   divider: {
     height: 1,

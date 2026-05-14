@@ -6,6 +6,7 @@ import { NativeSyntheticEvent, NativeScrollEvent, Pressable, ScrollView, StyleSh
 import { restaurantsApi } from "../api/restaurantsApi";
 import { RestaurantCard } from "../components/RestaurantCard";
 import { Screen } from "../components/Screen";
+import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { HomeStackParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
 import { Restaurant } from "../types/models";
@@ -17,6 +18,7 @@ export function SectionRestaurantsScreen({ navigation, route }: Props) {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const lastScrollY = useRef(0);
+  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   useEffect(() => {
     restaurantsApi.list().then(setRestaurants);
@@ -35,6 +37,7 @@ export function SectionRestaurantsScreen({ navigation, route }: Props) {
   }, [mode, restaurants]);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    trackFloatingCartScrollDirection(event);
     const currentY = event.nativeEvent.contentOffset.y;
 
     if (currentY <= 0) {

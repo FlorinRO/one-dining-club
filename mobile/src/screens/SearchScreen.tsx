@@ -14,12 +14,14 @@ import {
   Tag,
   X,
 } from "lucide-react-native";
-import { ComponentType, ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, FlatList, Image, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ComponentType, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Easing, FlatList, Image, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
 import { Screen } from "../components/Screen";
+import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
+import { useI18n } from "../i18n/useI18n";
 import { deliveryWindow } from "../lib/format";
 import { FALLBACK_PRODUCT_IMAGE, FALLBACK_RESTAURANT_IMAGE, resolveImageUri } from "../lib/images";
 import { MainTabsParamList } from "../navigation/types";
@@ -76,71 +78,6 @@ const discoveryCategories: DiscoveryCategory[] = [
   { label: "Soup", emoji: "🍲" },
 ];
 
-const sheetConfigs: Record<FilterKey, SheetConfig> = {
-  sort: {
-    title: "Sortare",
-    type: "single",
-    options: [
-      { label: "Cele mai relevante", value: "relevant" },
-      { label: "Cele mai apropiate", value: "closest" },
-      { label: "Cel mai mic cost de livrare", value: "deliveryFee" },
-      { label: "Cea mai rapidă livrare", value: "deliveryTime" },
-      { label: "Cel mai bun rating", value: "rating" },
-    ],
-  },
-  offers: {
-    title: "Oferte",
-    type: "single",
-    options: [{ label: "Doar restaurante cu oferte", value: true }],
-  },
-  rating: {
-    title: "Rating",
-    type: "single",
-    options: [
-      { label: "4.3 sau mai mare", value: 4.3 },
-      { label: "4.5 sau mai mare", value: 4.5 },
-      { label: "4.7 sau mai mare", value: 4.7 },
-    ],
-  },
-  deliveryFee: {
-    title: "Taxă de livrare",
-    type: "single",
-    options: [
-      { label: "Gratuit", value: 0 },
-      { label: "3,50 RON sau mai puțin", value: 3.5 },
-      { label: "5,00 RON sau mai puțin", value: 5 },
-    ],
-  },
-  deliveryTime: {
-    title: "Timp de livrare",
-    type: "single",
-    options: [
-      { label: "20 min sau mai puțin", value: 20 },
-      { label: "30 min sau mai puțin", value: 30 },
-      { label: "45 min sau mai puțin", value: 45 },
-    ],
-  },
-  pickup: {
-    title: "Ridicare",
-    type: "single",
-    options: [{ label: "Ridicare disponibilă", value: true }],
-  },
-  distance: {
-    title: "Distanță",
-    type: "single",
-    options: [
-      { label: "1 km sau mai puțin", value: 1 },
-      { label: "2 km sau mai puțin", value: 2 },
-      { label: "3 km sau mai puțin", value: 3 },
-    ],
-  },
-  categories: {
-    title: "Categorii",
-    type: "multi",
-    options: discoveryCategories.map((item) => ({ label: `${item.emoji} ${item.label}`, value: item.label })),
-  },
-};
-
 function getCategoryEmoji(label: string) {
   const match = discoveryCategories.find((item) => item.label.toLowerCase() === label.toLowerCase());
   return match?.emoji ?? "🍽️";
@@ -151,9 +88,11 @@ function formatRon(value: string | number) {
 }
 
 export function SearchScreen() {
+  const { tr } = useI18n();
   const navigation = useNavigation<NavigationProp<MainTabsParamList>>();
   const route = useRoute<RouteProp<MainTabsParamList, "SearchTab">>();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
@@ -171,6 +110,91 @@ export function SearchScreen() {
   const searchInputRef = useRef<TextInput>(null);
   const entryAnimation = useRef(new Animated.Value(1)).current;
   const focusAnimation = useRef(new Animated.Value(0)).current;
+  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
+  const sheetPaddingBottom = Math.max(insets.bottom, 18) + 14;
+  const bottomSheetMaxHeight = Math.max(320, windowHeight - insets.top - 24);
+
+  const filterLabel = useCallback(
+    (key: FilterKey) => {
+      if (key === "sort") return tr("Sortare", "Sort");
+      if (key === "offers") return tr("Oferte", "Offers");
+      if (key === "rating") return tr("Rating", "Rating");
+      if (key === "deliveryFee") return tr("Taxă de livrare", "Delivery fee");
+      if (key === "deliveryTime") return tr("Timp de livrare", "Delivery time");
+      if (key === "pickup") return tr("Ridicare", "Pickup");
+      if (key === "distance") return tr("Distanță", "Distance");
+      return tr("Categorii", "Categories");
+    },
+    [tr],
+  );
+
+  const localizedSheetConfigs = useMemo<Record<FilterKey, SheetConfig>>(
+    () => ({
+      sort: {
+        title: tr("Sortare", "Sort"),
+        type: "single",
+        options: [
+          { label: tr("Cele mai relevante", "Most relevant"), value: "relevant" },
+          { label: tr("Cele mai apropiate", "Closest"), value: "closest" },
+          { label: tr("Cel mai mic cost de livrare", "Lowest delivery fee"), value: "deliveryFee" },
+          { label: tr("Cea mai rapidă livrare", "Fastest delivery"), value: "deliveryTime" },
+          { label: tr("Cel mai bun rating", "Best rating"), value: "rating" },
+        ],
+      },
+      offers: {
+        title: tr("Oferte", "Offers"),
+        type: "single",
+        options: [{ label: tr("Doar restaurante cu oferte", "Only restaurants with offers"), value: true }],
+      },
+      rating: {
+        title: tr("Rating", "Rating"),
+        type: "single",
+        options: [
+          { label: tr("4.3 sau mai mare", "4.3 or higher"), value: 4.3 },
+          { label: tr("4.5 sau mai mare", "4.5 or higher"), value: 4.5 },
+          { label: tr("4.7 sau mai mare", "4.7 or higher"), value: 4.7 },
+        ],
+      },
+      deliveryFee: {
+        title: tr("Taxă de livrare", "Delivery fee"),
+        type: "single",
+        options: [
+          { label: tr("Gratuit", "Free"), value: 0 },
+          { label: tr("3,50 RON sau mai puțin", "3.50 RON or less"), value: 3.5 },
+          { label: tr("5,00 RON sau mai puțin", "5.00 RON or less"), value: 5 },
+        ],
+      },
+      deliveryTime: {
+        title: tr("Timp de livrare", "Delivery time"),
+        type: "single",
+        options: [
+          { label: tr("20 min sau mai puțin", "20 min or less"), value: 20 },
+          { label: tr("30 min sau mai puțin", "30 min or less"), value: 30 },
+          { label: tr("45 min sau mai puțin", "45 min or less"), value: 45 },
+        ],
+      },
+      pickup: {
+        title: tr("Ridicare", "Pickup"),
+        type: "single",
+        options: [{ label: tr("Ridicare disponibilă", "Pickup available"), value: true }],
+      },
+      distance: {
+        title: tr("Distanță", "Distance"),
+        type: "single",
+        options: [
+          { label: tr("1 km sau mai puțin", "1 km or less"), value: 1 },
+          { label: tr("2 km sau mai puțin", "2 km or less"), value: 2 },
+          { label: tr("3 km sau mai puțin", "3 km or less"), value: 3 },
+        ],
+      },
+      categories: {
+        title: tr("Categorii", "Categories"),
+        type: "multi",
+        options: discoveryCategories.map((item) => ({ label: `${item.emoji} ${item.label}`, value: item.label })),
+      },
+    }),
+    [tr],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -382,7 +406,7 @@ export function SearchScreen() {
   };
 
   const emptyQueryLabel = query.trim() || activeCategories.join(", ") || "selecția curentă";
-  const sheetConfig = activeSheet && activeSheet !== "allFilters" ? sheetConfigs[activeSheet] : null;
+  const sheetConfig = activeSheet && activeSheet !== "allFilters" ? localizedSheetConfigs[activeSheet] : null;
   const activeFiltersCount =
     (sort !== "relevant" ? 1 : 0) +
     (offersOnly ? 1 : 0) +
@@ -451,7 +475,7 @@ export function SearchScreen() {
               }}
               onSubmitEditing={commitRecentSearch}
               returnKeyType="search"
-              placeholder="Caută restaurante sau preparate"
+              placeholder={tr("Caută restaurante sau preparate", "Search restaurants or dishes")}
               placeholderTextColor={colors.muted}
               style={styles.searchInput}
             />
@@ -501,7 +525,7 @@ export function SearchScreen() {
             {filters.map((item) => (
               <FilterChip
                 key={item.key}
-                label={item.label}
+                label={filterLabel(item.key)}
                 icon={item.icon}
                 active={isFilterActive(item.key)}
                 redActive={item.key === "offers" || item.key === "pickup"}
@@ -539,7 +563,7 @@ export function SearchScreen() {
                 <>
                   {filtered.length > 0 && (
                     <View style={styles.resultsHeader}>
-                      <Text style={styles.resultsCountText}>{filtered.length} rezultate</Text>
+                      <Text style={styles.resultsCountText}>{filtered.length} {tr("rezultate", "results")}</Text>
                       <Pressable style={styles.resetResultsButton} onPress={clearSearchContext}>
                         <Text style={styles.resetResultsText}>Reset</Text>
                       </Pressable>
@@ -567,14 +591,16 @@ export function SearchScreen() {
               )}
               ItemSeparatorComponent={() => <View style={{ height: 34 }} />}
               showsVerticalScrollIndicator={false}
+              onScroll={trackFloatingCartScrollDirection}
+              scrollEventThrottle={16}
               contentContainerStyle={styles.list}
               ListEmptyComponent={
                 <View style={styles.emptyState}>
                   <View style={styles.emptyIconWrap}>
                     <SearchX size={24} stroke={colors.muted} />
                   </View>
-                  <Text style={styles.emptyTitle}>Niciun rezultat</Text>
-                  <Text style={styles.emptyText}>Nu există rezultate pentru „{emptyQueryLabel}”.</Text>
+                  <Text style={styles.emptyTitle}>{tr("Niciun rezultat", "No results")}</Text>
+                  <Text style={styles.emptyText}>{tr(`Nu există rezultate pentru „${emptyQueryLabel}”.`, `No results for "${emptyQueryLabel}".`)}</Text>
                 </View>
               }
             />
@@ -585,6 +611,8 @@ export function SearchScreen() {
             data={discoveryCategories}
             keyExtractor={(item) => item.label}
             showsVerticalScrollIndicator={false}
+            onScroll={trackFloatingCartScrollDirection}
+            scrollEventThrottle={16}
             contentContainerStyle={styles.discoveryList}
             ListHeaderComponent={
               <View style={styles.discoveryHeader}>
@@ -600,7 +628,7 @@ export function SearchScreen() {
                     <Text style={styles.recentText}>{item}</Text>
                   </Pressable>
                 ))}
-                <Text style={styles.sectionTitle}>Tipuri de produse</Text>
+                <Text style={styles.sectionTitle}>{tr("Tipuri de produse", "Product types")}</Text>
               </View>
             }
             renderItem={({ item }) => (
@@ -616,12 +644,12 @@ export function SearchScreen() {
       <Modal transparent visible={!!activeSheet} animationType="fade" onRequestClose={() => setActiveSheet(null)}>
         <Pressable style={styles.modalOverlay} onPress={() => setActiveSheet(null)} />
         {activeSheet === "allFilters" ? (
-          <View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom, 18) + 14 }]}>
+          <View style={[styles.bottomSheet, { paddingBottom: sheetPaddingBottom, maxHeight: bottomSheetMaxHeight }]}>
             <View style={styles.sheetHeader}>
               <Pressable hitSlop={10} onPress={() => setActiveSheet(null)}>
                 <X size={24} stroke={colors.text} strokeWidth={2.5} />
               </Pressable>
-              <Text style={styles.sheetTitle}>Filtre</Text>
+              <Text style={styles.sheetTitle}>{tr("Filtre", "Filters")}</Text>
               <Pressable
                 hitSlop={10}
                 onPress={() => {
@@ -633,14 +661,19 @@ export function SearchScreen() {
               </Pressable>
             </View>
 
-            <ScrollView style={styles.allFiltersScroll} showsVerticalScrollIndicator={false}>
-              <FilterSection title="Sortare" icon={ArrowUpDown}>
-                {sheetConfigs.sort.options.map((option, index) => {
+            <ScrollView
+              style={styles.allFiltersScroll}
+              showsVerticalScrollIndicator={false}
+              onScroll={trackFloatingCartScrollDirection}
+              scrollEventThrottle={16}
+            >
+              <FilterSection title={tr("Sortare", "Sort")} icon={ArrowUpDown}>
+                {localizedSheetConfigs.sort.options.map((option, index) => {
                   const selected = isOptionSelected("sort", option.value);
                   return (
                     <Pressable
                       key={option.label}
-                      style={[styles.optionRow, index < sheetConfigs.sort.options.length - 1 && styles.optionBorder]}
+                      style={[styles.optionRow, index < localizedSheetConfigs.sort.options.length - 1 && styles.optionBorder]}
                       onPress={() => selectOption("sort", option.value)}
                     >
                       <Text style={styles.optionText}>{option.label}</Text>
@@ -650,9 +683,9 @@ export function SearchScreen() {
                 })}
               </FilterSection>
 
-              <FilterSection title="Oferte" icon={Tag}>
+              <FilterSection title={tr("Oferte", "Offers")} icon={Tag}>
                 <Pressable style={styles.toggleRow} onPress={() => setOffersOnly((current) => !current)}>
-                  <Text style={styles.toggleText}>Doar restaurante cu oferte</Text>
+                  <Text style={styles.toggleText}>{tr("Doar restaurante cu oferte", "Only restaurants with offers")}</Text>
                   <View style={[styles.checkbox, offersOnly && styles.checkboxSelected]}>
                     {offersOnly ? <Check size={14} stroke={colors.white} strokeWidth={3} /> : null}
                   </View>
@@ -661,7 +694,7 @@ export function SearchScreen() {
 
               <FilterSection title="Rating" icon={Star}>
                 <View style={styles.choiceWrap}>
-                  {sheetConfigs.rating.options.map((option) => {
+                  {localizedSheetConfigs.rating.options.map((option) => {
                     const selected = isOptionSelected("rating", option.value);
                     return (
                       <Pressable key={option.label} style={[styles.choiceChip, selected && styles.choiceChipActive]} onPress={() => selectOption("rating", option.value)}>
@@ -672,9 +705,9 @@ export function SearchScreen() {
                 </View>
               </FilterSection>
 
-              <FilterSection title="Taxă de livrare" icon={Bike}>
+              <FilterSection title={tr("Taxă de livrare", "Delivery fee")} icon={Bike}>
                 <View style={styles.choiceWrap}>
-                  {sheetConfigs.deliveryFee.options.map((option) => {
+                  {localizedSheetConfigs.deliveryFee.options.map((option) => {
                     const selected = isOptionSelected("deliveryFee", option.value);
                     return (
                       <Pressable key={option.label} style={[styles.choiceChip, selected && styles.choiceChipActive]} onPress={() => selectOption("deliveryFee", option.value)}>
@@ -685,9 +718,9 @@ export function SearchScreen() {
                 </View>
               </FilterSection>
 
-              <FilterSection title="Timp de livrare" icon={Clock3}>
+              <FilterSection title={tr("Timp de livrare", "Delivery time")} icon={Clock3}>
                 <View style={styles.choiceWrap}>
-                  {sheetConfigs.deliveryTime.options.map((option) => {
+                  {localizedSheetConfigs.deliveryTime.options.map((option) => {
                     const selected = isOptionSelected("deliveryTime", option.value);
                     return (
                       <Pressable key={option.label} style={[styles.choiceChip, selected && styles.choiceChipActive]} onPress={() => selectOption("deliveryTime", option.value)}>
@@ -698,18 +731,18 @@ export function SearchScreen() {
                 </View>
               </FilterSection>
 
-              <FilterSection title="Ridicare" icon={Footprints}>
+              <FilterSection title={tr("Ridicare", "Pickup")} icon={Footprints}>
                 <Pressable style={styles.toggleRow} onPress={() => setPickupOnly((current) => !current)}>
-                  <Text style={styles.toggleText}>Doar locații cu ridicare disponibilă</Text>
+                  <Text style={styles.toggleText}>{tr("Doar locații cu ridicare disponibilă", "Only locations with pickup available")}</Text>
                   <View style={[styles.checkbox, pickupOnly && styles.checkboxSelected]}>
                     {pickupOnly ? <Check size={14} stroke={colors.white} strokeWidth={3} /> : null}
                   </View>
                 </Pressable>
               </FilterSection>
 
-              <FilterSection title="Distanță" icon={Route}>
+              <FilterSection title={tr("Distanță", "Distance")} icon={Route}>
                 <View style={styles.choiceWrap}>
-                  {sheetConfigs.distance.options.map((option) => {
+                  {localizedSheetConfigs.distance.options.map((option) => {
                     const selected = isOptionSelected("distance", option.value);
                     return (
                       <Pressable key={option.label} style={[styles.choiceChip, selected && styles.choiceChipActive]} onPress={() => selectOption("distance", option.value)}>
@@ -720,7 +753,7 @@ export function SearchScreen() {
                 </View>
               </FilterSection>
 
-              <FilterSection title="Categorii" icon={SlidersHorizontal}>
+              <FilterSection title={tr("Categorii", "Categories")} icon={SlidersHorizontal}>
                 <View style={styles.categoryList}>
                   {discoveryCategories.map((item, index) => {
                     const selected = activeCategories.includes(item.label);
@@ -739,12 +772,12 @@ export function SearchScreen() {
 
             <View style={styles.applyWrap}>
               <Pressable style={styles.applyButton} onPress={() => setActiveSheet(null)}>
-                <Text style={styles.applyText}>Aplică</Text>
+                <Text style={styles.applyText}>{tr("Aplică", "Apply")}</Text>
               </Pressable>
             </View>
           </View>
         ) : activeSheet && sheetConfig ? (
-          <View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom, 18) + 14 }]}>
+          <View style={[styles.bottomSheet, { paddingBottom: sheetPaddingBottom, maxHeight: bottomSheetMaxHeight }]}>
             <View style={styles.sheetHeader}>
               <Pressable hitSlop={10} onPress={() => setActiveSheet(null)}>
                 <X size={24} stroke={colors.text} strokeWidth={2.5} />
@@ -755,7 +788,13 @@ export function SearchScreen() {
               </Pressable>
             </View>
 
-            <View style={styles.singleSheetOptionList}>
+            <ScrollView
+              style={styles.singleSheetScroll}
+              contentContainerStyle={styles.singleSheetOptionList}
+              showsVerticalScrollIndicator={false}
+              onScroll={trackFloatingCartScrollDirection}
+              scrollEventThrottle={16}
+            >
               {sheetConfig.options.map((option, index) => {
                 const selected = isOptionSelected(activeSheet, option.value);
                 return (
@@ -771,7 +810,7 @@ export function SearchScreen() {
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
 
             <View style={styles.applyWrap}>
               <Pressable style={styles.applyButton} onPress={() => setActiveSheet(null)}>
@@ -1247,6 +1286,9 @@ const styles = StyleSheet.create({
   },
   optionList: {
     paddingHorizontal: 2,
+  },
+  singleSheetScroll: {
+    flexGrow: 0,
   },
   singleSheetOptionList: {
     paddingHorizontal: 20,

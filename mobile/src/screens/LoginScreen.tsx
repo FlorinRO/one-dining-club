@@ -29,6 +29,7 @@ import LottieView from "lottie-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { authApi } from "../api/authApi";
+import { useI18n } from "../i18n/useI18n";
 import { useSocialAuth } from "../lib/socialAuth";
 import { AuthStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
@@ -37,6 +38,7 @@ import { colors } from "../theme/colors";
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
 
 export function LoginScreen({ navigation }: Props) {
+  const { tr } = useI18n();
   const setSession = useAuthStore((state) => state.setSession);
   const continueAsGuest = useAuthStore((state) => state.continueAsGuest);
   const [email, setEmail] = useState("demo@onedining.club");
@@ -79,7 +81,7 @@ export function LoginScreen({ navigation }: Props) {
 
   const submit = async () => {
     if (!email || !password) {
-      setError("Completează emailul și parola.");
+      setError(tr("Completează emailul și parola.", "Fill in email and password."));
       return;
     }
 
@@ -90,7 +92,7 @@ export function LoginScreen({ navigation }: Props) {
       const session = await authApi.login(email.trim(), password);
       setSession(session);
     } catch (loginError) {
-      setError(getLoginErrorMessage(loginError));
+      setError(getLoginErrorMessage(loginError, tr));
     } finally {
       setLoading(false);
     }
@@ -104,7 +106,7 @@ export function LoginScreen({ navigation }: Props) {
 
   const submitForgotPassword = async () => {
     if (!forgotEmail.trim()) {
-      setForgotMessage("Introdu emailul contului.");
+      setForgotMessage(tr("Introdu emailul contului.", "Enter account email."));
       return;
     }
 
@@ -112,9 +114,9 @@ export function LoginScreen({ navigation }: Props) {
     setForgotMessage(null);
     try {
       await authApi.forgotPassword(forgotEmail.trim());
-      setForgotMessage("Dacă există un cont activ, vei primi instrucțiuni de resetare.");
+      setForgotMessage(tr("Dacă există un cont activ, vei primi instrucțiuni de resetare.", "If an active account exists, you will receive reset instructions."));
     } catch {
-      setForgotMessage("Nu am putut trimite cererea. Încearcă din nou.");
+      setForgotMessage(tr("Nu am putut trimite cererea. Încearcă din nou.", "Could not send request. Try again."));
     } finally {
       setForgotLoading(false);
     }
@@ -157,10 +159,10 @@ export function LoginScreen({ navigation }: Props) {
           <View style={styles.heroHeadlineWrap}>
             <View style={styles.heroHeadlineAccent} />
             <Text style={styles.heroHeadline}>
-              Mâncarea ta preferată
-              {"\n"}la un <Text style={styles.heroHeadlineHighlight}>login</Text> distanță
+              {tr("Mâncarea ta preferată", "Your favorite food")}
+              {"\n"}{tr("la un", "just")} <Text style={styles.heroHeadlineHighlight}>login</Text> {tr("distanță", "away")}
             </Text>
-            <Text style={styles.heroHeadlineSub}>Rapid, simplu și gata de comandă în câteva secunde.</Text>
+            <Text style={styles.heroHeadlineSub}>{tr("Rapid, simplu și gata de comandă în câteva secunde.", "Fast, simple, and ready to order in seconds.")}</Text>
           </View>
           <View style={styles.heroBottomBrandBar}>
             <View style={styles.heroBottomBrandRow}>
@@ -188,8 +190,8 @@ export function LoginScreen({ navigation }: Props) {
               <LogIn color={colors.red} size={20} strokeWidth={2.4} />
             </View>
             <View style={styles.openSheetTextGroup}>
-              <Text style={styles.openSheetLabel}>Continuă</Text>
-              <Text style={styles.openSheetHint}>Deschide autentificarea</Text>
+              <Text style={styles.openSheetLabel}>{tr("Continuă", "Continue")}</Text>
+              <Text style={styles.openSheetHint}>{tr("Deschide autentificarea", "Open authentication")}</Text>
             </View>
           </Pressable>
         </View>
@@ -214,8 +216,8 @@ export function LoginScreen({ navigation }: Props) {
             contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 24 }]}
           >
             <View style={styles.card}>
-              <Text style={styles.title}>Intră în cont</Text>
-              <Text style={styles.subtitle}>Bine ai revenit. Alege metoda preferată pentru autentificare.</Text>
+              <Text style={styles.title}>{tr("Intră în cont", "Sign in")}</Text>
+              <Text style={styles.subtitle}>{tr("Bine ai revenit. Alege metoda preferată pentru autentificare.", "Welcome back. Choose your preferred sign-in method.")}</Text>
 
               <View style={styles.socialRow}>
                 <SocialButton
@@ -245,7 +247,7 @@ export function LoginScreen({ navigation }: Props) {
 
               <View style={styles.dividerRow}>
                 <View style={styles.divider} />
-                <Text style={styles.dividerText}>sau cu email</Text>
+                <Text style={styles.dividerText}>{tr("sau cu email", "or with email")}</Text>
                 <View style={styles.divider} />
               </View>
 
@@ -273,7 +275,7 @@ export function LoginScreen({ navigation }: Props) {
                     onFocus={() => setFocusedField("password")}
                     onBlur={() => setFocusedField(null)}
                     secureTextEntry={!showPassword}
-                    placeholder="Parolă"
+                    placeholder={tr("Parolă", "Password")}
                     placeholderTextColor="#A1A1AA"
                     style={styles.input}
                   />
@@ -289,11 +291,11 @@ export function LoginScreen({ navigation }: Props) {
                   <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
                     {rememberMe && <CheckCircle2 color={colors.white} size={16} />}
                   </View>
-                  <Text style={styles.optionText}>Ține-mă minte</Text>
+                  <Text style={styles.optionText}>{tr("Ține-mă minte", "Remember me")}</Text>
                 </Pressable>
 
                 <Pressable onPress={openForgotPassword}>
-                  <Text style={styles.forgotText}>Ai uitat parola?</Text>
+                  <Text style={styles.forgotText}>{tr("Ai uitat parola?", "Forgot password?")}</Text>
                 </Pressable>
               </View>
 
@@ -308,12 +310,12 @@ export function LoginScreen({ navigation }: Props) {
                   loading && styles.disabled,
                 ]}
               >
-                <Text style={styles.primaryText}>{loading ? "Se conectează..." : "Intră în cont"}</Text>
+                <Text style={styles.primaryText}>{loading ? tr("Se conectează...", "Signing in...") : tr("Intră în cont", "Sign in")}</Text>
               </Pressable>
 
               <Pressable style={styles.footerLink} onPress={() => navigation.navigate("Register")}>
                 <Text style={styles.footerText}>
-                  Nu ai cont? <Text style={styles.footerAccent}>Creează unul</Text>
+                  {tr("Nu ai cont?", "No account?")} <Text style={styles.footerAccent}>{tr("Creează unul", "Create one")}</Text>
                 </Text>
               </Pressable>
             </View>
@@ -323,8 +325,8 @@ export function LoginScreen({ navigation }: Props) {
         <Modal visible={forgotOpen} animationType="fade" transparent onRequestClose={() => setForgotOpen(false)}>
           <View style={styles.modalBackdrop}>
             <View style={styles.forgotCard}>
-              <Text style={styles.forgotTitle}>Resetare parolă</Text>
-              <Text style={styles.forgotSubtitle}>Primești un link pe email pentru setarea unei parole noi.</Text>
+              <Text style={styles.forgotTitle}>{tr("Resetare parolă", "Password reset")}</Text>
+              <Text style={styles.forgotSubtitle}>{tr("Primești un link pe email pentru setarea unei parole noi.", "You will receive an email link to set a new password.")}</Text>
               <View style={[styles.forgotInputWrap, focusedField === "forgotEmail" && styles.forgotInputWrapFocused]}>
                 <Mail color={colors.red} size={20} strokeWidth={2.2} />
                 <TextInput
@@ -342,14 +344,14 @@ export function LoginScreen({ navigation }: Props) {
               {forgotMessage && <Text style={styles.forgotMessage}>{forgotMessage}</Text>}
               <View style={styles.forgotActions}>
                 <Pressable onPress={() => setForgotOpen(false)} style={styles.secondaryButton}>
-                  <Text style={styles.secondaryText}>Închide</Text>
+                  <Text style={styles.secondaryText}>{tr("Închide", "Close")}</Text>
                 </Pressable>
                 <Pressable
                   disabled={forgotLoading}
                   onPress={submitForgotPassword}
                   style={[styles.forgotSubmitButton, forgotLoading && styles.disabled]}
                 >
-                  <Text style={styles.forgotSubmitText}>{forgotLoading ? "Se trimite..." : "Trimite"}</Text>
+                  <Text style={styles.forgotSubmitText}>{forgotLoading ? tr("Se trimite...", "Sending...") : tr("Trimite", "Send")}</Text>
                 </Pressable>
               </View>
             </View>
@@ -374,21 +376,19 @@ function SocialButton({ label, title, color, textColor, loading, onPress }: Soci
       <View style={[styles.socialIcon, { backgroundColor: color }]}>
         <Text style={[styles.socialLetter, { color: textColor }]}>{label}</Text>
       </View>
-      <Text style={styles.socialText}>{loading ? "Se deschide..." : title}</Text>
+      <Text style={styles.socialText}>{loading ? "Opening..." : title}</Text>
     </Pressable>
   );
 }
 
-function getLoginErrorMessage(error: unknown) {
+function getLoginErrorMessage(error: unknown, tr: (ro: string, en: string) => string) {
   const data = (error as { response?: { data?: unknown } }).response?.data;
-  if (typeof data === "string") return data;
-  if (data && typeof data === "object") {
-    for (const value of Object.values(data as Record<string, unknown>)) {
-      if (typeof value === "string") return value;
-      if (Array.isArray(value) && typeof value[0] === "string") return value[0];
+  if (typeof data === "string") {
+    if (data.toLowerCase().includes("invalid") || data.toLowerCase().includes("credential")) {
+      return tr("Emailul sau parola nu sunt corecte.", "Email or password is incorrect.");
     }
   }
-  return "Emailul sau parola nu sunt corecte.";
+  return tr("Emailul sau parola nu sunt corecte.", "Email or password is incorrect.");
 }
 
 const styles = StyleSheet.create({

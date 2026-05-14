@@ -15,10 +15,9 @@ export function useNotificationSetup() {
   useEffect(() => {
     if (Platform.OS === "android") {
       Notifications.setNotificationChannelAsync("orders", {
-        name: "Comenzi",
+        name: "Orders",
         importance: Notifications.AndroidImportance.HIGH,
       });
     }
   }, []);
 }
-

@@ -450,6 +450,86 @@ export const mockRestaurants: Restaurant[] = [
     is_open: true,
     categories: [{ id: 24, name: "Seafood", icon: "fish" }],
   },
+  {
+    id: 25,
+    name: "Taqueria Norte",
+    slug: "taqueria-norte",
+    description: "Tacos mexicane, quesadilla și salsa făcută zilnic.",
+    cover_image: "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Strada Arthur Verona 11",
+    delivery_fee: 6.4,
+    minimum_order: 27,
+    estimated_delivery_time_min: 20,
+    estimated_delivery_time_max: 33,
+    rating: 4.7,
+    reviews_count: 134,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 2.0,
+    is_open: true,
+    categories: [{ id: 25, name: "Mexican", icon: "taco" }],
+  },
+  {
+    id: 26,
+    name: "Nordic Fish Bar",
+    slug: "nordic-fish-bar",
+    description: "Somon, cod și bowl-uri seafood fresh.",
+    cover_image: "https://images.unsplash.com/photo-1559847844-5315695dadae?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Strada Paris 5",
+    delivery_fee: 10.5,
+    minimum_order: 44,
+    estimated_delivery_time_min: 30,
+    estimated_delivery_time_max: 45,
+    rating: 4.8,
+    reviews_count: 143,
+    has_offer: false,
+    supports_pickup: false,
+    distance_km: 4.8,
+    is_open: true,
+    categories: [{ id: 26, name: "Seafood", icon: "fish" }],
+  },
+  {
+    id: 27,
+    name: "Anatolia Grill",
+    slug: "anatolia-grill",
+    description: "Kebab autentic, grill mixt și hummus de casă.",
+    cover_image: "https://images.unsplash.com/photo-1525755662778-989d0524087e?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Strada Icoanei 21",
+    delivery_fee: 5.2,
+    minimum_order: 25,
+    estimated_delivery_time_min: 17,
+    estimated_delivery_time_max: 29,
+    rating: 4.6,
+    reviews_count: 126,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 1.8,
+    is_open: true,
+    categories: [{ id: 27, name: "Turkish", icon: "grill" }],
+  },
+  {
+    id: 28,
+    name: "Dolce Forno",
+    slug: "dolce-forno",
+    description: "Patiserie artizanală, cannoli și deserturi italiene.",
+    cover_image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=1400&auto=format&fit=crop",
+    city: "București",
+    address: "Strada Popa Tatu 39",
+    delivery_fee: 4.3,
+    minimum_order: 19,
+    estimated_delivery_time_min: 14,
+    estimated_delivery_time_max: 23,
+    rating: 4.7,
+    reviews_count: 101,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 1.0,
+    is_open: true,
+    categories: [{ id: 28, name: "Desserts", icon: "dessert" }],
+  },
 ];
 
 const baseMockCategories: ProductCategory[] = [
@@ -573,8 +653,8 @@ const baseMockProducts: Product[] = [
   },
 ];
 
-const generatedCategoryNames = ["Signature", "Main", "Sides", "Dessert"];
-const generatedProductStyles = ["Classic", "Spicy", "Smoky", "Crispy"];
+const generatedCategoryName = "Chef Picks";
+const generatedProductStyles = ["Classic", "Spicy", "Smoky", "Crispy", "House"];
 const generatedProductBaseNames = [
   "Burger", "Pizza", "Pasta", "Ramen", "Bowl", "Wrap", "Salad", "Taco", "Quesadilla", "Soup",
   "Sandwich", "Schnitzel", "Rice Box", "Noodle Box", "Bao", "Dumplings", "Sushi Roll", "Poke",
@@ -592,48 +672,49 @@ const generatedProductImagePool = [
   "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?q=80&w=1000&auto=format&fit=crop",
 ];
 
-const generatedCategories: ProductCategory[] = mockRestaurants.flatMap((restaurant, restaurantIndex) =>
-  generatedCategoryNames.map((name, categoryIndex) => ({
-    id: 1000 + restaurantIndex * 10 + categoryIndex + 1,
-    restaurant: restaurant.id,
-    name,
-    sort_order: categoryIndex + 1,
-    is_active: true,
-  })),
-);
+const generatedCategories: ProductCategory[] = mockRestaurants.map((restaurant, restaurantIndex) => ({
+  id: 1000 + restaurantIndex + 1,
+  restaurant: restaurant.id,
+  name: generatedCategoryName,
+  sort_order: 99,
+  is_active: true,
+}));
 
 const generatedProducts: Product[] = mockRestaurants.flatMap((restaurant, restaurantIndex) => {
-  const restaurantCategories = generatedCategories.filter((category) => category.restaurant === restaurant.id);
+  const category = generatedCategories.find((item) => item.restaurant === restaurant.id);
+  if (!category) return [];
 
-  return restaurantCategories.flatMap((category, categoryIndex) =>
-    generatedProductStyles.map((style, productIndex) => {
-      const sequence = categoryIndex * generatedProductStyles.length + productIndex + 1;
-      const globalSequence = restaurantIndex * (generatedCategoryNames.length * generatedProductStyles.length) + sequence;
-      const dishIndex = (globalSequence * 7 + restaurant.id * 3) % generatedProductBaseNames.length;
-      const basePrice = 24 + restaurantIndex + categoryIndex * 4 + productIndex * 3;
-      const hasDiscount = sequence % 3 === 0;
-      const discountPrice = hasDiscount ? Math.max(basePrice - 5, 10) : null;
-      const productName = `${style} ${generatedProductBaseNames[dishIndex]} ${restaurant.id}-${sequence}`;
+  const existingProductCount = baseMockProducts.filter((item) => item.restaurant === restaurant.id).length;
+  const productsToGenerate = Math.max(5 - existingProductCount, 0);
 
-      return {
-        id: 10000 + restaurant.id * 100 + sequence,
-        restaurant: restaurant.id,
-        restaurant_name: restaurant.name,
-        category: category.id,
-        category_name: category.name,
-        name: productName,
-        description: `Produs demo distinct pentru ${restaurant.name}, categoria ${category.name.toLowerCase()}, util la testare search și filtre.`,
-        image: generatedProductImagePool[globalSequence % generatedProductImagePool.length],
-        price: basePrice,
-        discount_price: discountPrice,
-        effective_price: discountPrice ?? basePrice,
-        is_available: sequence % 7 !== 0,
-        is_popular: sequence % 2 === 0,
-        preparation_time: 10 + ((restaurantIndex + categoryIndex + productIndex) % 16),
-        allergens: sequence % 4 === 0 ? "Gluten, lactoza" : "Fără alergeni majori",
-      };
-    }),
-  );
+  return generatedProductStyles.slice(0, productsToGenerate).map((style, productIndex) => {
+    const sequence = productIndex + 1;
+    const globalSequence = restaurantIndex * generatedProductStyles.length + sequence;
+    const dishIndex = (globalSequence * 7 + restaurant.id * 3) % generatedProductBaseNames.length;
+    const basePrice = 24 + restaurantIndex + productIndex * 3;
+    const hasDiscount = sequence % 3 === 0;
+    const discountPrice = hasDiscount ? Math.max(basePrice - 5, 10) : null;
+    const productName = `${style} ${generatedProductBaseNames[dishIndex]} ${restaurant.slug}`;
+    const imageBase = generatedProductImagePool[globalSequence % generatedProductImagePool.length];
+
+    return {
+      id: 10000 + restaurant.id * 100 + sequence,
+      restaurant: restaurant.id,
+      restaurant_name: restaurant.name,
+      category: category.id,
+      category_name: category.name,
+      name: productName,
+      description: `Produs demo distinct pentru ${restaurant.name}, categoria ${category.name.toLowerCase()}, util la testare search și filtre.`,
+      image: `${imageBase}&sig=${restaurant.id}-${sequence}`,
+      price: basePrice,
+      discount_price: discountPrice,
+      effective_price: discountPrice ?? basePrice,
+      is_available: sequence % 5 !== 0,
+      is_popular: sequence % 2 === 0,
+      preparation_time: 10 + ((restaurantIndex + productIndex) % 16),
+      allergens: sequence % 4 === 0 ? "Gluten, lactoza" : "Fără alergeni majori",
+    };
+  });
 });
 
 export const mockCategories: ProductCategory[] = [...baseMockCategories, ...generatedCategories];

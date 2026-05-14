@@ -25,6 +25,8 @@ import { restaurantsApi } from "../api/restaurantsApi";
 import { addressesApi } from "../api/addressesApi";
 import { RestaurantCard } from "../components/RestaurantCard";
 import { Screen } from "../components/Screen";
+import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
+import { useI18n } from "../i18n/useI18n";
 import { HomeStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useFavoritesStore } from "../store/favoritesStore";
@@ -51,7 +53,7 @@ const baseProductCarousel: CarouselItem[] = [
   { label: "Chicken", hint: "Crispy & grilled", iconUrl: "https://em-content.zobj.net/source/apple/391/poultry-leg_1f357.png" },
   { label: "Sandwich", hint: "Toasted & deli", iconUrl: "https://em-content.zobj.net/source/apple/391/sandwich_1f96a.png" },
   { label: "Japanese", hint: "Ramen-tempura", iconUrl: "https://em-content.zobj.net/source/apple/391/bento-box_1f371.png" },
-  { label: "Bakery", hint: "Artizanale", iconUrl: "https://em-content.zobj.net/source/apple/391/croissant_1f950.png" },
+  { label: "Bakery", hint: "Artisanal", iconUrl: "https://em-content.zobj.net/source/apple/391/croissant_1f950.png" },
   { label: "Healthy", hint: "Fresh & fit", iconUrl: "https://em-content.zobj.net/source/apple/391/green-salad_1f957.png" },
   { label: "Thai", hint: "Spicy Thai", iconUrl: "https://em-content.zobj.net/source/apple/391/hot-pepper_1f336-fe0f.png" },
   { label: "Salads", hint: "Light bowls", iconUrl: "https://em-content.zobj.net/source/apple/391/green-salad_1f957.png" },
@@ -76,6 +78,7 @@ const promotedAds = [
 const sectionShuffle = (id: number, seed: number) => ((id * 37 + seed * 17) % 97) / 97;
 
 export function HomeScreen({ navigation }: Props) {
+  const { tr } = useI18n();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -83,7 +86,7 @@ export function HomeScreen({ navigation }: Props) {
   const [hasMetSplashTime, setHasMetSplashTime] = useState(false);
   const [showSplashOverlay, setShowSplashOverlay] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("Toate");
+  const [activeCategory, setActiveCategory] = useState("All");
   const [refreshing, setRefreshing] = useState(false);
   const favoriteRestaurantIds = useFavoritesStore((state) => state.restaurantIds);
   const [showStickySearch, setShowStickySearch] = useState(false);
@@ -99,6 +102,7 @@ export function HomeScreen({ navigation }: Props) {
   const promotedAutoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const promotedResumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accessToken = useAuthStore((state) => state.accessToken);
+  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   const fetchRestaurants = useCallback(async () => {
     const items = await restaurantsApi.list();
@@ -242,7 +246,7 @@ export function HomeScreen({ navigation }: Props) {
     return restaurants.filter((restaurant) => {
       const matchesSearch = restaurant.name.toLowerCase().includes(search.toLowerCase());
       const matchesCategory =
-        activeCategory === "Toate" || restaurant.categories?.some((category) => category.name === activeCategory);
+        activeCategory === "All" || restaurant.categories?.some((category) => category.name === activeCategory);
       return matchesSearch && matchesCategory;
     });
   }, [restaurants, search, activeCategory]);
@@ -264,6 +268,8 @@ export function HomeScreen({ navigation }: Props) {
       return sectionShuffle(a.id, 2) - sectionShuffle(b.id, 2);
     });
   }, [filtered]);
+  const nearbyCarouselRestaurants = useMemo(() => nearbyRestaurants.slice(0, 5), [nearbyRestaurants]);
+  const recommendedCarouselRestaurants = useMemo(() => recommendedRestaurants.slice(0, 5), [recommendedRestaurants]);
 
   const allRestaurants = useMemo(() => {
     return [...filtered].sort((a, b) => sectionShuffle(a.id, 3) - sectionShuffle(b.id, 3));
@@ -336,10 +342,11 @@ export function HomeScreen({ navigation }: Props) {
       return baseProductCarousel;
     }
 
-    return [{ label: "Favourites", hint: "Locuri salvate", action: "favorites" as const }, ...baseProductCarousel];
-  }, [favoriteRestaurantIds.length]);
+    return [{ label: "Favourites", hint: tr("Locuri salvate", "Saved places"), action: "favorites" as const }, ...baseProductCarousel];
+  }, [favoriteRestaurantIds.length, tr]);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    trackFloatingCartScrollDirection(event);
     const currentY = Math.max(0, event.nativeEvent.contentOffset.y);
     const delta = currentY - lastScrollY.current;
     const topHideThreshold = searchBarY + 10;
@@ -409,7 +416,7 @@ export function HomeScreen({ navigation }: Props) {
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder="Caută restaurante sau preparate"
+              placeholder={tr("Caută restaurante sau preparate", "Search restaurants or dishes")}
               placeholderTextColor={colors.muted}
               style={styles.searchInput}
               editable={false}
@@ -441,10 +448,10 @@ export function HomeScreen({ navigation }: Props) {
               <MapPin size={16} stroke={colors.red} />
               <View style={styles.locationTextBlock}>
                 <Text style={styles.locationStreet}>
-                  {defaultAddress?.address_line_1 ?? "Adaugă o adresă de livrare"}
+                  {defaultAddress?.address_line_1 ?? tr("Adaugă o adresă de livrare", "Add a delivery address")}
                 </Text>
                 <Text style={styles.locationCity}>
-                  {defaultAddress?.city ?? "Apasă ca să selectezi adresa"}
+                  {defaultAddress?.city ?? tr("Apasă ca să selectezi adresa", "Tap to select address")}
                 </Text>
               </View>
             </Pressable>
@@ -463,7 +470,7 @@ export function HomeScreen({ navigation }: Props) {
               <TextInput
                 value={search}
                 onChangeText={setSearch}
-                placeholder="Caută restaurante sau preparate"
+                placeholder={tr("Caută restaurante sau preparate", "Search restaurants or dishes")}
                 placeholderTextColor={colors.muted}
                 style={styles.searchInput}
                 editable={false}
@@ -497,7 +504,9 @@ export function HomeScreen({ navigation }: Props) {
                   <Image source={{ uri: item.iconUrl }} style={styles.categoryImage} resizeMode="contain" />
                 ) : (
                   <View style={styles.categoryImageFallback}>
-                    <Text style={styles.categoryImageFallbackText}>★</Text>
+                    <Text style={[styles.categoryImageFallbackText, item.action === "favorites" && styles.favoriteFallbackIcon]}>
+                      {item.action === "favorites" ? "❤️" : "★"}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -515,8 +524,8 @@ export function HomeScreen({ navigation }: Props) {
             <View style={styles.emptyIconWrap}>
               <SearchX size={24} stroke={colors.muted} />
             </View>
-            <Text style={styles.emptyTitle}>Niciun rezultat</Text>
-            <Text style={styles.emptyText}>Nu există rezultate pentru „{search.trim()}”.</Text>
+            <Text style={styles.emptyTitle}>{tr("Niciun rezultat", "No results")}</Text>
+            <Text style={styles.emptyText}>{tr(`Nu există rezultate pentru „${search.trim()}”.`, `No results for "${search.trim()}".`)}</Text>
           </View>
         ) : (
           <>
@@ -532,8 +541,8 @@ export function HomeScreen({ navigation }: Props) {
                     <View style={[styles.promotedBanner, { width: promotedCardWidth }]}>
                       <Image source={{ uri: item.imageUrl }} style={styles.promotedBannerImage} resizeMode="cover" />
                       <View style={styles.promotedOverlay}>
-                        <Text style={styles.promotedBadge}>SLOT DISPONIBIL</Text>
-                        <Text style={styles.promotedTitle}>Loc de reclamă</Text>
+                        <Text style={styles.promotedBadge}>{tr("SLOT DISPONIBIL", "AVAILABLE SLOT")}</Text>
+                        <Text style={styles.promotedTitle}>{tr("Loc de reclamă", "Ad placement")}</Text>
                       </View>
                     </View>
                   )}
@@ -604,13 +613,13 @@ export function HomeScreen({ navigation }: Props) {
 
             <View style={styles.sectionBlock}>
               <SectionHeader
-                title="Aproape de tine"
-                actionLabel="Toate >"
-                onPressAction={() => navigation.navigate("SectionRestaurants", { mode: "nearby", title: "Aproape de tine" })}
+                title={tr("Aproape de tine", "Near you")}
+                actionLabel={tr("Toate >", "All >")}
+                onPressAction={() => navigation.navigate("SectionRestaurants", { mode: "nearby", title: tr("Aproape de tine", "Near you") })}
               />
               <FlatList
                 horizontal
-                data={nearbyRestaurants}
+                data={nearbyCarouselRestaurants}
                 keyExtractor={(item) => `nearby-${item.id}`}
                 renderItem={({ item }) => (
                   <RestaurantCard medium smallImageOnly restaurant={item} onPress={() => navigation.navigate("RestaurantDetails", { restaurant: item })} />
@@ -624,13 +633,13 @@ export function HomeScreen({ navigation }: Props) {
 
             <View style={styles.sectionBlock}>
               <SectionHeader
-                title="Recomandate"
-                actionLabel="Toate >"
-                onPressAction={() => navigation.navigate("SectionRestaurants", { mode: "recommended", title: "Recomandate" })}
+                title={tr("Recomandate", "Recommended")}
+                actionLabel={tr("Toate >", "All >")}
+                onPressAction={() => navigation.navigate("SectionRestaurants", { mode: "recommended", title: tr("Recomandate", "Recommended") })}
               />
               <FlatList
                 horizontal
-                data={recommendedRestaurants}
+                data={recommendedCarouselRestaurants}
                 keyExtractor={(item) => String(item.id)}
                 renderItem={({ item }) => (
                   <RestaurantCard medium smallImageOnly restaurant={item} onPress={() => navigation.navigate("RestaurantDetails", { restaurant: item })} />
@@ -643,7 +652,7 @@ export function HomeScreen({ navigation }: Props) {
             </View>
 
             <View style={styles.sectionBlock}>
-              <SectionHeader title="Toate restaurantele" />
+              <SectionHeader title={tr("Toate restaurantele", "All restaurants")} />
               <View style={styles.allRestaurantsList}>
                 {allRestaurants.map((restaurant) => (
                   <RestaurantCard
@@ -941,6 +950,13 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 16,
     fontWeight: "800",
+  },
+  favoriteFallbackIcon: {
+    fontSize: 30,
+    lineHeight: 34,
+    textShadowColor: "rgba(0, 0, 0, 0.2)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
   categoryLabel: {
     color: colors.text,

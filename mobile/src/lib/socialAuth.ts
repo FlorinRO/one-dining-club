@@ -69,14 +69,14 @@ export function useSocialAuth({ onSuccess, onError }: UseSocialAuthOptions) {
 
     if (!token) {
       setLoadingProvider(null);
-      onError("Google nu a returnat un token valid.");
+      onError("Google did not return a valid token.");
       return;
     }
 
     authApi
       .socialLogin("google", token, tokenType)
       .then(onSuccess)
-      .catch(() => onError("Nu am putut valida contul Google."))
+      .catch(() => onError("Could not validate Google account."))
       .finally(() => setLoadingProvider(null));
   }, [googleResponse, onError, onSuccess]);
 
@@ -88,24 +88,24 @@ export function useSocialAuth({ onSuccess, onError }: UseSocialAuthOptions) {
     const accessToken = facebookResponse.params.access_token ?? facebookResponse.authentication?.accessToken;
     if (!accessToken) {
       setLoadingProvider(null);
-      onError("Facebook nu a returnat un token valid.");
+      onError("Facebook did not return a valid token.");
       return;
     }
 
     authApi
       .socialLogin("facebook", accessToken)
       .then(onSuccess)
-      .catch(() => onError("Nu am putut valida contul Facebook."))
+      .catch(() => onError("Could not validate Facebook account."))
       .finally(() => setLoadingProvider(null));
   }, [facebookResponse, onError, onSuccess]);
 
   const startSocialLogin = async (provider: SocialProvider) => {
     if (provider === "google" && (!hasGoogleClient || !googleRequest)) {
-      onError("Configurează EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID sau EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID pentru login Google.");
+      onError("Configure EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, or EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID for Google login.");
       return;
     }
     if (provider === "facebook" && (!hasFacebookClient || !facebookRequest)) {
-      onError("Configurează EXPO_PUBLIC_FACEBOOK_CLIENT_ID pentru login Facebook.");
+      onError("Configure EXPO_PUBLIC_FACEBOOK_CLIENT_ID for Facebook login.");
       return;
     }
 
@@ -116,7 +116,7 @@ export function useSocialAuth({ onSuccess, onError }: UseSocialAuthOptions) {
     }
     if (response.type === "error") {
       setLoadingProvider(null);
-      onError(`Autentificarea ${provider === "google" ? "Google" : "Facebook"} a eșuat.`);
+      onError(`${provider === "google" ? "Google" : "Facebook"} authentication failed.`);
     }
   };
 

@@ -7,6 +7,80 @@ type Paginated<T> = {
 };
 
 const unwrap = <T>(payload: T[] | Paginated<T>) => (Array.isArray(payload) ? payload : payload.results);
+const normalize = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+const toNumber = (value: string | number | null | undefined) => (value == null ? null : Number(value));
+
+const localFilterRestaurants = (
+  restaurants: Restaurant[],
+  params?: {
+    search?: string;
+    city?: string;
+    category?: number;
+    categories?: string;
+    category_name?: string;
+    min_rating?: number;
+    max_delivery_fee?: number;
+    max_delivery_time?: number;
+    max_distance_km?: number;
+    lat?: number;
+    lng?: number;
+    has_offer?: boolean;
+    supports_pickup?: boolean;
+    ordering?: string;
+  },
+) => {
+  if (!params) return restaurants;
+  const categoryNames = params.category_name
+    ? params.category_name.split(",").map((item) => normalize(item.trim())).filter(Boolean)
+    : [];
+  const categoryIds = params.categories
+    ? params.categories
+        .split(",")
+        .map((item) => Number(item.trim()))
+        .filter((item) => Number.isFinite(item))
+    : [];
+
+  const filtered = restaurants.filter((restaurant) => {
+    const categoryList = restaurant.categories ?? [];
+    const categoryNameList = categoryList.map((item) => normalize(item.name));
+    const haystack = normalize([restaurant.name, restaurant.description, restaurant.city, categoryList.map((item) => item.name).join(" ")].join(" "));
+    const maxDeliveryTime = Math.max(restaurant.estimated_delivery_time_min, restaurant.estimated_delivery_time_max);
+
+    if (params.search && !haystack.includes(normalize(params.search))) return false;
+    if (params.city && normalize(restaurant.city) !== normalize(params.city)) return false;
+    if (params.category != null && !categoryList.some((item) => item.id === params.category)) return false;
+    if (categoryIds.length && !categoryList.some((item) => categoryIds.includes(item.id))) return false;
+    if (categoryNames.length && !categoryNames.some((name) => categoryNameList.includes(name))) return false;
+    if (params.min_rating != null && (toNumber(restaurant.rating) ?? 0) < params.min_rating) return false;
+    if (params.max_delivery_fee != null && (toNumber(restaurant.delivery_fee) ?? 0) > params.max_delivery_fee) return false;
+    if (params.max_delivery_time != null && maxDeliveryTime > params.max_delivery_time) return false;
+    if (params.max_distance_km != null && (restaurant.distance_km ?? Number.POSITIVE_INFINITY) > params.max_distance_km) return false;
+    if (params.has_offer != null && Boolean(restaurant.has_offer) !== params.has_offer) return false;
+    if (params.supports_pickup != null && Boolean(restaurant.supports_pickup) !== params.supports_pickup) return false;
+
+    return true;
+  });
+
+  if (!params.ordering) return filtered;
+  const ordering = params.ordering.trim();
+  const isDesc = ordering.startsWith("-");
+  const field = isDesc ? ordering.slice(1) : ordering;
+  const direction = isDesc ? -1 : 1;
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (field === "rating") return ((toNumber(a.rating) ?? 0) - (toNumber(b.rating) ?? 0)) * direction;
+    if (field === "delivery_fee") return ((toNumber(a.delivery_fee) ?? 0) - (toNumber(b.delivery_fee) ?? 0)) * direction;
+    if (field === "estimated_delivery_time_min") return (a.estimated_delivery_time_min - b.estimated_delivery_time_min) * direction;
+    if (field === "distance_km") return ((a.distance_km ?? 999) - (b.distance_km ?? 999)) * direction;
+    return 0;
+  });
+
+  return sorted;
+};
 
 export const restaurantsApi = {
   async list(params?: {
@@ -27,9 +101,13 @@ export const restaurantsApi = {
   }) {
     try {
       const { data } = await apiClient.get<Restaurant[] | Paginated<Restaurant>>("/restaurants/", { params });
-      return unwrap(data);
+      const items = unwrap(data);
+      if (__DEV__ && items.length <= 1) {
+        return localFilterRestaurants(mockRestaurants, params);
+      }
+      return items;
     } catch {
-      return mockRestaurants;
+      return localFilterRestaurants(mockRestaurants, params);
     }
   },
 
@@ -45,7 +123,11 @@ export const restaurantsApi = {
   async products(id: number) {
     try {
       const { data } = await apiClient.get<Product[] | Paginated<Product>>(`/restaurants/${id}/products/`);
-      return unwrap(data);
+      const items = unwrap(data);
+      if (__DEV__ && items.length === 0) {
+        return mockProducts.filter((product) => product.restaurant === id);
+      }
+      return items;
     } catch {
       return mockProducts.filter((product) => product.restaurant === id);
     }

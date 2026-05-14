@@ -6,7 +6,6 @@ import {
   CreditCard,
   Hand,
   Info,
-  LogOut,
   Mail,
   MapPin,
   Phone,
@@ -36,6 +35,8 @@ import { addressesApi } from "../api/addressesApi";
 import { authApi } from "../api/authApi";
 import { ordersApi } from "../api/ordersApi";
 import { Screen } from "../components/Screen";
+import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
+import { useI18n } from "../i18n/useI18n";
 import { ProfileStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { colors } from "../theme/colors";
@@ -61,10 +62,10 @@ type OtherRowProps = {
 };
 
 export function ProfileScreen({ navigation }: Props) {
+  const { t, tr } = useI18n();
   const systemScheme = useColorScheme();
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
-  const refreshToken = useAuthStore((state) => state.refreshToken);
   const isGuest = useAuthStore((state) => state.isGuest);
   const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
@@ -74,19 +75,19 @@ export function ProfileScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [logoutLoading, setLogoutLoading] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
+  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   const displayName = useMemo(
-    () => user?.full_name || `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || (isGuest ? "Oaspete" : "Client"),
+    () => user?.full_name || `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || (isGuest ? tr("Oaspete", "Guest") : tr("Client", "Customer")),
     [isGuest, user?.first_name, user?.full_name, user?.last_name],
   );
-  const greetingName = useMemo(() => firstWord(displayName) || firstWord(user?.email?.split("@")[0]) || "Client", [displayName, user?.email]);
+  const greetingName = useMemo(() => firstWord(displayName) || firstWord(user?.email?.split("@")[0]) || tr("Client", "Customer"), [displayName, tr, user?.email]);
   const defaultAddress = addresses.find((address) => address.is_default) ?? addresses[0];
   const lastPaymentOrder = orders.find((order) => order.payment_method !== "cash") ?? orders[0];
   const paymentMethod = lastPaymentOrder?.payment_method;
-  const paymentTitle = paymentMethod ? paymentMethodLabel(paymentMethod) : "Adaugă metodă de plată";
-  const paymentHint = lastPaymentOrder ? `Ultima comandă #${lastPaymentOrder.id}` : "Alegi la checkout";
+  const paymentTitle = paymentMethod ? paymentMethodLabel(paymentMethod, tr) : tr("Adaugă metodă de plată", "Add payment method");
+  const paymentHint = lastPaymentOrder ? tr(`Ultima comandă #${lastPaymentOrder.id}`, `Last order #${lastPaymentOrder.id}`) : tr("Alegi la checkout", "Choose at checkout");
   const accountBalance = 0;
 
   const loadAccount = useCallback(
@@ -118,7 +119,7 @@ export function ProfileScreen({ navigation }: Props) {
       if (orderResult.status === "fulfilled") setOrders(orderResult.value);
 
       if ([profileResult, addressResult, orderResult].some((result) => result.status === "rejected")) {
-        setLoadError("Nu am putut sincroniza toate datele contului. Trage în jos pentru reîncărcare.");
+        setLoadError(tr("Nu am putut sincroniza toate datele contului. Trage în jos pentru reîncărcare.", "Could not sync all account data. Pull down to refresh."));
       }
 
       setLoading(false);
@@ -133,29 +134,6 @@ export function ProfileScreen({ navigation }: Props) {
     }, [loadAccount]),
   );
 
-  const handleLogout = () => {
-    Alert.alert("Delogare", "Vrei să ieși din cont?", [
-      { text: "Anulează", style: "cancel" },
-      {
-        text: "Delogare",
-        style: "destructive",
-        onPress: async () => {
-          setLogoutLoading(true);
-          try {
-            if (refreshToken && !isGuest) {
-              await authApi.logout(refreshToken);
-            }
-          } catch {
-            // Clear the local session even if the backend token is already invalid.
-          } finally {
-            setLogoutLoading(false);
-            logout();
-          }
-        },
-      },
-    ]);
-  };
-
   const setTheme = (preference: ThemePreference) => {
     setThemePreference(preference);
     Appearance.setColorScheme(preference === "system" ? null : preference);
@@ -166,22 +144,27 @@ export function ProfileScreen({ navigation }: Props) {
 
   const openPaymentHelp = () => {
     Alert.alert(
-      "Plată",
-      "ONE Dining Club trimite metoda de plată aleasă către backend atunci când plasezi o comandă. Cardurile salvate nu sunt stocate încă în acest backend.",
-      [{ text: "Vezi comenzile", onPress: openOrders }, { text: "OK" }],
+      tr("Plată", "Payment"),
+      tr("ONE Dining Club trimite metoda de plată aleasă către backend atunci când plasezi o comandă. Cardurile salvate nu sunt stocate încă în acest backend.", "ONE Dining Club sends your selected payment method to the backend when you place an order. Saved cards are not stored in this backend yet."),
+      [{ text: tr("Vezi comenzile", "View orders"), onPress: openOrders }, { text: "OK" }],
     );
   };
 
   if (isGuest) {
     return (
       <Screen padded={false}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-          <Text style={[styles.heroTitle, styles.guestHeroTitle]}>Bună, Oaspete</Text>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+          onScroll={trackFloatingCartScrollDirection}
+          scrollEventThrottle={16}
+        >
+          <Text style={[styles.heroTitle, styles.guestHeroTitle]}>{tr("Bună, Oaspete", "Hi, Guest")}</Text>
           <View style={styles.guestPanel}>
-            <Text style={styles.guestTitle}>Intră în cont pentru sincronizare</Text>
-            <Text style={styles.guestText}>Profilul, adresele și istoricul comenzilor sunt salvate în backend după autentificare.</Text>
+            <Text style={styles.guestTitle}>{tr("Intră în cont pentru sincronizare", "Sign in to sync")}</Text>
+            <Text style={styles.guestText}>{tr("Profilul, adresele și istoricul comenzilor sunt salvate în backend după autentificare.", "Profile, addresses, and order history are saved in backend after authentication.")}</Text>
             <Pressable style={({ pressed }) => [styles.guestCta, pressed && styles.guestCtaPressed]} onPress={logout}>
-              <Text style={styles.guestCtaLabel}>Intră sau creează cont</Text>
+              <Text style={styles.guestCtaLabel}>{tr("Intră sau creează cont", "Sign in or create account")}</Text>
               <ChevronRight size={18} color={colors.white} strokeWidth={2.8} />
             </Pressable>
           </View>
@@ -195,11 +178,13 @@ export function ProfileScreen({ navigation }: Props) {
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        onScroll={trackFloatingCartScrollDirection}
+        scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.red} onRefresh={() => loadAccount("refresh")} />}
         contentContainerStyle={styles.content}
       >
         <View style={styles.heroRow}>
-          <Text style={styles.heroTitle}>Bună, {greetingName}</Text>
+          <Text style={styles.heroTitle}>{tr("Bună", "Hi")}, {greetingName}</Text>
           <Pressable style={styles.refreshButton} onPress={() => loadAccount("refresh")} disabled={refreshing || loading}>
             {refreshing || loading ? <ActivityIndicator color={colors.red} /> : <RefreshCw size={18} color={colors.text} strokeWidth={2.6} />}
           </Pressable>
@@ -207,91 +192,94 @@ export function ProfileScreen({ navigation }: Props) {
 
         {loadError && <Text style={styles.errorBanner}>{loadError}</Text>}
 
-        <SectionHeader title="Plată" action="Editează" onPress={openPaymentHelp} />
-        <Pressable style={styles.paymentMethodRow} onPress={openPaymentHelp}>
-          <View style={styles.paymentBadge}>
-            <CreditCard size={20} color={colors.white} strokeWidth={2.6} />
-          </View>
-          <View style={styles.paymentCopy}>
-            <Text style={styles.paymentTitle}>{paymentTitle}</Text>
-            <Text style={styles.inlineAction}>Schimbă</Text>
-          </View>
-          <Text style={styles.paymentHint} numberOfLines={1}>
-            {paymentHint}
-          </Text>
-        </Pressable>
-        <Divider />
-        <Pressable style={styles.balanceRow} onPress={openOrders}>
-          <Wallet size={22} color={colors.text} strokeWidth={2.4} />
-          <Text style={styles.balanceTitle}>Sold ONE</Text>
-          <Text style={styles.balanceValue}>{formatLei(accountBalance)}</Text>
-        </Pressable>
-
-        <SectionTitle title="Profil" />
-        <View style={styles.profileList}>
-          <AccountRow
-            icon={<UserRound size={22} color={colors.text} strokeWidth={2.4} />}
-            action="Editează"
-            onPress={() => navigation.navigate("ProfileEdit", { field: "name" })}
-          >
-            {displayName}
-          </AccountRow>
+        <View style={styles.sectionBlock}>
+          <SectionHeader title={tr("Plată", "Payment")} action={tr("Editează", "Edit")} onPress={openPaymentHelp} />
+          <Pressable style={styles.paymentMethodRow} onPress={openPaymentHelp}>
+            <View style={styles.paymentBadge}>
+              <CreditCard size={20} color={colors.white} strokeWidth={2.6} />
+            </View>
+            <View style={styles.paymentCopy}>
+              <Text style={styles.paymentTitle}>{paymentTitle}</Text>
+              <Text style={styles.inlineAction}>{tr("Schimbă", "Change")}</Text>
+            </View>
+            <Text style={styles.paymentHint} numberOfLines={1}>
+              {paymentHint}
+            </Text>
+          </Pressable>
           <Divider />
-          <AccountRow
-            icon={<Phone size={22} color={colors.text} strokeWidth={2.4} />}
-            action="Editează"
-            onPress={() => navigation.navigate("ProfileEdit", { field: "phone" })}
-          >
-            {user?.phone || "Adaugă număr"}
-          </AccountRow>
-          <Divider />
-          <AccountRow
-            icon={<Mail size={22} color={colors.text} strokeWidth={2.4} />}
-            action="Editează"
-            showCheck
-            onPress={() => navigation.navigate("ProfileEdit", { field: "email" })}
-          >
-            {user?.email ?? "Adaugă email"}
-          </AccountRow>
+          <Pressable style={styles.balanceRow} onPress={openOrders}>
+            <Wallet size={22} color={colors.text} strokeWidth={2.4} />
+            <Text style={styles.balanceTitle}>{tr("Sold ONE", "ONE balance")}</Text>
+            <Text style={styles.balanceValue}>{formatLei(accountBalance)}</Text>
+          </Pressable>
         </View>
 
-        <SectionTitle title="Temă" />
-        <View style={styles.themeGrid}>
-          <ThemeOption label="Sistem" value="system" selected={themePreference === "system"} onPress={setTheme} />
-          <ThemeOption label="Luminos" value="light" selected={themePreference === "light"} onPress={setTheme} />
-          <ThemeOption label="Întunecat" value="dark" selected={themePreference === "dark"} onPress={setTheme} />
+        <View style={styles.sectionBlock}>
+          <SectionTitle title={tr("Profil", "Profile")} />
+          <View style={styles.profileList}>
+            <AccountRow
+              icon={<UserRound size={22} color={colors.text} strokeWidth={2.4} />}
+              action={tr("Editează", "Edit")}
+              onPress={() => navigation.navigate("ProfileEdit", { field: "name" })}
+            >
+              {displayName}
+            </AccountRow>
+            <Divider />
+            <AccountRow
+              icon={<Phone size={22} color={colors.text} strokeWidth={2.4} />}
+              action={tr("Editează", "Edit")}
+              onPress={() => navigation.navigate("ProfileEdit", { field: "phone" })}
+            >
+              {user?.phone || tr("Adaugă număr", "Add number")}
+            </AccountRow>
+            <Divider />
+            <AccountRow
+              icon={<Mail size={22} color={colors.text} strokeWidth={2.4} />}
+              action={tr("Editează", "Edit")}
+              showCheck
+              onPress={() => navigation.navigate("ProfileEdit", { field: "email" })}
+            >
+              {user?.email ?? tr("Adaugă email", "Add email")}
+            </AccountRow>
+          </View>
         </View>
-        <Text style={styles.themeFootnote}>Tema dispozitivului: {systemScheme === "dark" ? "întunecată" : "luminoasă"}</Text>
 
-        <SectionTitle title="Altele" />
-        <View style={styles.otherList}>
-          <OtherRow
-            title="ONE Plus"
-            accent
-            icon={<Plus size={24} color={colors.white} strokeWidth={3.6} />}
-            onPress={() => Alert.alert("ONE Plus", "Abonamentele pot fi conectate când backend-ul expune planuri de membership.")}
-          />
-          <OtherRow title="Coduri promo" icon={<Tag size={22} color={colors.text} strokeWidth={2.4} />} onPress={() => navigation.navigate("ProfileEdit", { field: "promo" })} />
-          <OtherRow title="Setări" icon={<Settings size={22} color={colors.text} strokeWidth={2.4} />} onPress={() => navigation.navigate("Address")} />
-          <OtherRow
-            title="Confidențialitate"
-            icon={<Hand size={22} color={colors.text} strokeWidth={2.4} />}
-            onPress={() => navigation.navigate("ProfileInfo", { topic: "privacy" })}
-          />
-          <OtherRow
-            title="Despre"
-            icon={<Info size={22} color={colors.text} strokeWidth={2.4} />}
-            onPress={() => navigation.navigate("ProfileInfo", { topic: "about" })}
-          />
-          <OtherRow title="Suport" icon={<Mail size={22} color={colors.text} strokeWidth={2.4} />} onPress={() => navigation.navigate("ProfileInfo", { topic: "support" })} />
+        <View style={styles.sectionBlock}>
+          <SectionTitle title={tr("Temă", "Theme")} />
+          <View style={styles.themeGrid}>
+            <ThemeOption label={tr("Sistem", "System")} value="system" selected={themePreference === "system"} onPress={setTheme} />
+            <ThemeOption label={tr("Luminos", "Light")} value="light" selected={themePreference === "light"} onPress={setTheme} />
+            <ThemeOption label={tr("Întunecat", "Dark")} value="dark" selected={themePreference === "dark"} onPress={setTheme} />
+          </View>
+          <Text style={styles.themeFootnote}>{tr("Tema dispozitivului", "Device theme")}: {systemScheme === "dark" ? tr("întunecată", "dark") : tr("luminoasă", "light")}</Text>
         </View>
 
-        <CourierCard defaultAddress={defaultAddress} />
+        <View style={styles.sectionBlock}>
+          <SectionTitle title={tr("Altele", "Other")} />
+          <View style={styles.otherList}>
+            <OtherRow
+              title="ONE Plus"
+              accent
+              icon={<Plus size={24} color={colors.white} strokeWidth={3.6} />}
+              onPress={() => Alert.alert("ONE Plus", tr("Abonamentele pot fi conectate când backend-ul expune planuri de membership.", "Subscriptions can be connected when backend exposes membership plans."))}
+            />
+            <OtherRow title={tr("Coduri promo", "Promo codes")} icon={<Tag size={22} color={colors.text} strokeWidth={2.4} />} onPress={() => navigation.navigate("ProfileEdit", { field: "promo" })} />
+            <OtherRow title={t("profile.others.settings")} icon={<Settings size={22} color={colors.text} strokeWidth={2.4} />} onPress={() => navigation.navigate("ProfileSettings")} />
+            <OtherRow
+              title={t("profile.others.privacy")}
+              icon={<Hand size={22} color={colors.text} strokeWidth={2.4} />}
+              onPress={() => navigation.navigate("ProfileInfo", { topic: "privacy" })}
+            />
+            <OtherRow
+              title={t("profile.others.about")}
+              icon={<Info size={22} color={colors.text} strokeWidth={2.4} />}
+              onPress={() => navigation.navigate("ProfileInfo", { topic: "about" })}
+            />
+            <OtherRow title={t("profile.others.support")} icon={<Mail size={22} color={colors.text} strokeWidth={2.4} />} onPress={() => navigation.navigate("ProfileInfo", { topic: "support" })} />
+          </View>
+        </View>
 
-        <Pressable style={styles.logoutRow} onPress={handleLogout} disabled={logoutLoading}>
-          <LogOut size={20} color={colors.redDark} strokeWidth={2.5} />
-          <Text style={styles.logoutText}>{logoutLoading ? "Se deloghează..." : "Delogare"}</Text>
-        </Pressable>
+        <CourierCard defaultAddress={defaultAddress} tr={tr} />
       </ScrollView>
     </Screen>
   );
@@ -394,12 +382,12 @@ function OtherRow({ title, icon, onPress, accent }: OtherRowProps) {
   );
 }
 
-function CourierCard({ defaultAddress }: { defaultAddress?: Address }) {
+function CourierCard({ defaultAddress, tr }: { defaultAddress?: Address; tr: (ro: string, en: string) => string }) {
   return (
     <View style={styles.courierCard}>
       <View style={styles.courierCopy}>
-        <Text style={styles.courierTitle}>Devino curier</Text>
-        <Text style={styles.courierText}>Câștigă în ritmul tău</Text>
+        <Text style={styles.courierTitle}>{tr("Devino curier", "Become a courier")}</Text>
+        <Text style={styles.courierText}>{tr("Câștigă în ritmul tău", "Earn at your own pace")}</Text>
         {defaultAddress && (
           <View style={styles.addressPill}>
             <MapPin size={14} color={colors.redDark} strokeWidth={2.4} />
@@ -424,9 +412,9 @@ function firstWord(value?: string) {
   return value?.trim().split(/\s+/)[0] ?? "";
 }
 
-function paymentMethodLabel(method: PaymentMethod) {
+function paymentMethodLabel(method: PaymentMethod, tr: (ro: string, en: string) => string) {
   const labels: Record<PaymentMethod, string> = {
-    cash: "Numerar",
+    cash: tr("Numerar", "Cash"),
     card: "Card",
     apple_pay: "Apple Pay",
     google_pay: "Google Pay",
@@ -486,7 +474,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   sectionTitle: {
-    marginTop: 14,
     marginBottom: 14,
     color: colors.text,
     fontSize: 22,
@@ -500,11 +487,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   sectionHeader: {
-    marginTop: 22,
     marginBottom: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  sectionBlock: {
+    marginTop: 24,
   },
   headerAction: {
     flexDirection: "row",
@@ -757,19 +746,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 144,
     height: "100%",
-  },
-  logoutRow: {
-    minHeight: 52,
-    marginTop: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  logoutText: {
-    color: colors.redDark,
-    fontSize: 15,
-    fontWeight: "600",
   },
   guestPanel: {
     marginTop: 4,

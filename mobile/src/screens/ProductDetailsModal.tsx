@@ -4,6 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { QuantityStepper } from "../components/QuantityStepper";
+import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
+import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
 import { FALLBACK_PRODUCT_IMAGE, resolveImageUri } from "../lib/images";
 import { HomeStackParamList } from "../navigation/types";
@@ -22,25 +24,27 @@ const selectedCountForGroup = (selectedOptions: ProductOption[], group: ProductO
 const minimumRequiredForGroup = (group: ProductOptionGroup) =>
   Math.max(group.min_select, group.is_required ? 1 : 0);
 
-const groupHint = (group: ProductOptionGroup) => {
+const groupHint = (group: ProductOptionGroup, tr: (ro: string, en: string) => string) => {
   const minimumRequired = minimumRequiredForGroup(group);
   const maxSelect = Math.max(group.max_select || 1, 1);
   if (minimumRequired > 0 && maxSelect > minimumRequired) {
-    return `Necesar · alege ${minimumRequired}-${maxSelect}`;
+    return tr(`Necesar · alege ${minimumRequired}-${maxSelect}`, `Required · choose ${minimumRequired}-${maxSelect}`);
   }
   if (minimumRequired > 0) {
-    return `Necesar · alege ${minimumRequired}`;
+    return tr(`Necesar · alege ${minimumRequired}`, `Required · choose ${minimumRequired}`);
   }
-  return maxSelect > 1 ? `Opțional · alege maxim ${maxSelect}` : "Opțional";
+  return maxSelect > 1 ? tr(`Opțional · alege maxim ${maxSelect}`, `Optional · choose up to ${maxSelect}`) : tr("Opțional", "Optional");
 };
 
 export function ProductDetailsModal({ navigation, route }: Props) {
+  const { tr } = useI18n();
   const { product, restaurant } = route.params;
   const addItem = useCartStore((state) => state.addItem);
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<ProductOption[]>([]);
   const [notes, setNotes] = useState("");
   const scrollRef = useRef<ScrollView>(null);
+  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
   const optionGroups = product.option_groups ?? [];
   const basePrice = product.effective_price ?? product.discount_price ?? product.price;
 
@@ -107,6 +111,8 @@ export function ProductDetailsModal({ navigation, route }: Props) {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
+        onScroll={trackFloatingCartScrollDirection}
+        scrollEventThrottle={16}
       >
         <View style={styles.hero}>
           <Image
@@ -119,16 +125,15 @@ export function ProductDetailsModal({ navigation, route }: Props) {
             <X size={22} stroke={colors.white} />
           </Pressable>
         </View>
-        <View style={styles.body}>
-          <View style={styles.titleRow}>
-            <View style={styles.nameBadge}>
-              <Text numberOfLines={2} style={styles.name}>{product.name}</Text>
-            </View>
-            <View style={styles.priceBadge}>
-              <Text style={styles.price}>{money(basePrice)}</Text>
-            </View>
+        <View style={styles.titleRow}>
+          <View style={styles.nameBadge}>
+            <Text numberOfLines={1} style={styles.name}>{product.name}</Text>
           </View>
-
+          <View style={styles.priceBadge}>
+            <Text style={styles.price}>{money(basePrice)}</Text>
+          </View>
+        </View>
+        <View style={styles.body}>
           <View style={styles.section}>
             <Text style={styles.description}>{product.description}</Text>
           </View>
@@ -138,7 +143,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
             <View style={styles.notice}>
               <AlertCircle size={17} stroke={colors.red} />
               <View style={styles.noticeTextWrap}>
-                <Text style={styles.noticeTitle}>Alergeni</Text>
+                <Text style={styles.noticeTitle}>{tr("Alergeni", "Allergens")}</Text>
                 <Text style={styles.noticeText}>{product.allergens}</Text>
               </View>
             </View>
@@ -149,7 +154,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
             <View key={group.id} style={styles.optionGroup}>
               <View>
                 <Text style={styles.groupTitle}>{group.name}</Text>
-                <Text style={styles.groupHint}>{groupHint(group)}</Text>
+                <Text style={styles.groupHint}>{groupHint(group, tr)}</Text>
               </View>
               {group.options.map((option) => {
                 const active = selectedOptions.some((item) => item.id === option.id);
@@ -169,7 +174,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
                       {option.name}
                     </Text>
                     <Text style={[styles.optionPrice, active && styles.optionNameActive, unavailable && styles.optionDisabledText]}>
-                      {optionPrice > 0 ? `+${money(option.extra_price)}` : "Inclus"}
+                      {optionPrice > 0 ? `+${money(option.extra_price)}` : tr("Inclus", "Included")}
                     </Text>
                   </Pressable>
                 );
@@ -179,7 +184,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
           {optionGroups.length > 0 && <View style={styles.sectionDivider} />}
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Mențiuni</Text>
+            <Text style={styles.sectionTitle}>{tr("Mențiuni", "Notes")}</Text>
             <TextInput
               value={notes}
               onChangeText={setNotes}
@@ -188,7 +193,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
                   scrollRef.current?.scrollToEnd({ animated: true });
                 }, 120);
               }}
-              placeholder="Ex: fără ceapă, sos separat"
+              placeholder={tr("Ex: fără ceapă, sos separat", "Ex: no onion, sauce on the side")}
               placeholderTextColor={colors.muted}
               multiline
               style={styles.notesInput}
@@ -198,7 +203,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
         </View>
       </ScrollView>
       <View style={styles.footer}>
-        {missingRequiredGroup && <Text style={styles.footerHint}>Alege {missingRequiredGroup.name}</Text>}
+        {missingRequiredGroup && <Text style={styles.footerHint}>{tr("Alege", "Choose")} {missingRequiredGroup.name}</Text>}
         <View style={styles.footerRow}>
           <QuantityStepper
             value={quantity}
@@ -209,10 +214,10 @@ export function ProductDetailsModal({ navigation, route }: Props) {
             <ShoppingBag size={17} stroke={colors.red} />
             {isAvailable ? (
               <Text style={styles.addButtonText}>
-                Adaugă · <Text style={styles.addButtonPrice}>{money(total)}</Text>
+                {tr("Adaugă", "Add")} · <Text style={styles.addButtonPrice}>{money(total)}</Text>
               </Text>
             ) : (
-              <Text style={styles.addButtonText}>Indisponibil</Text>
+              <Text style={styles.addButtonText}>{tr("Indisponibil", "Unavailable")}</Text>
             )}
           </Pressable>
         </View>
@@ -257,44 +262,44 @@ const styles = StyleSheet.create({
   },
   body: {
     paddingHorizontal: 18,
-    paddingTop: 22,
+    paddingTop: 16,
     paddingBottom: 8,
     gap: 22,
   },
   titleRow: {
     flexDirection: "row",
-    alignItems: "stretch",
-    alignSelf: "flex-start",
-    maxWidth: "100%",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.red,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 10,
   },
   nameBadge: {
-    minHeight: 40,
+    minHeight: 36,
     flexShrink: 1,
     justifyContent: "center",
-    backgroundColor: colors.red,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
   },
   name: {
     color: colors.white,
     fontFamily: "Georgia",
-    fontSize: 23,
-    lineHeight: 28,
+    fontSize: 16,
+    lineHeight: 20,
     fontStyle: "italic",
     fontWeight: "400",
   },
   priceBadge: {
-    minHeight: 40,
-    borderWidth: 2,
-    borderRadius: 2,
-    borderColor: colors.red,
+    minHeight: 28,
+    borderRadius: 6,
+    borderWidth: 0,
     justifyContent: "center",
     backgroundColor: colors.white,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   price: {
-    color: colors.text,
-    fontSize: 16,
+    color: "#000000",
+    fontSize: 15,
     fontWeight: "600",
   },
   section: {
