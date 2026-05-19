@@ -158,6 +158,45 @@ class Command(BaseCommand):
                 ],
             },
         ]
+        generated_payload = [
+            ("sushi-loop", "Sushi Loop", "Sushi si poke fresh.", "Asian", "Sushi", "Salmon Nigiri", "Poke Bowl"),
+            ("taco-loco", "Taco Loco", "Street food mexican autentic.", "Burgers", "Tacos", "Chicken Taco", "Beef Quesadilla"),
+            ("pasta-fresca", "Pasta Fresca", "Pasta daily made.", "Italian", "Pasta", "Penne Arrabbiata", "Lasagna al Forno"),
+            ("pho-station", "Pho Station", "Supe vietnameze si wok.", "Asian", "Soups", "Pho Bo", "Crispy Spring Rolls"),
+            ("bagel-bros", "Bagel Bros", "Breakfast & brunch toata ziua.", "Coffee", "Breakfast", "Egg & Bacon Bagel", "Blueberry Pancakes"),
+            ("mediterraneo", "Mediterraneo", "Greci, grill si salate.", "Healthy", "Grill", "Chicken Souvlaki", "Greek Salad"),
+            ("burger-craft", "Burger Craft", "Burgeri premium si loaded fries.", "Burgers", "Burgers", "Classic Cheeseburger", "Truffle Fries"),
+            ("curry-house", "Curry House", "Curries aromate si naan proaspat.", "Asian", "Curry", "Butter Chicken", "Paneer Tikka Masala"),
+            ("fit-kitchen", "Fit Kitchen", "Mese fit cu calorii controlate.", "Healthy", "Bowls", "Turkey Protein Bowl", "Tofu Green Bowl"),
+            ("gelato-lab", "Gelato Lab", "Gelato artizanal si deserturi.", "Desserts", "Desserts", "Pistachio Gelato", "Chocolate Lava Cake"),
+        ]
+        for idx, row in enumerate(generated_payload, start=6):
+            slug, name, description, category_name, menu_category, p1, p2 = row
+            base_lat = Decimal("44.430000") + Decimal(idx) / Decimal("1000")
+            base_lng = Decimal("26.090000") + Decimal(idx) / Decimal("1200")
+            restaurants_payload.append(
+                {
+                    "slug": slug,
+                    "name": name,
+                    "description": description,
+                    "phone": f"+40727{idx:05d}",
+                    "email": f"hello@{slug}.test",
+                    "address": f"Strada Demo {idx}",
+                    "city": "Bucuresti",
+                    "latitude": base_lat,
+                    "longitude": base_lng,
+                    "delivery_fee": Decimal(f"{5 + (idx % 5)}.99"),
+                    "minimum_order": Decimal(f"{20 + (idx % 4) * 4}.00"),
+                    "estimated_delivery_time_min": 15 + (idx % 7),
+                    "estimated_delivery_time_max": 25 + (idx % 10),
+                    "rating": Decimal(f"4.{(idx % 4) + 5}0"),
+                    "categories": [category_name],
+                    "products": [
+                        (menu_category, p1, f"{p1} - preparat signature.", Decimal(f"{30 + idx}.00"), None, 12 + (idx % 8), "Poate contine alergeni"),
+                        (menu_category, p2, f"{p2} - preparat popular.", Decimal(f"{24 + idx}.00"), Decimal(f"{22 + idx}.00"), 10 + (idx % 7), "Poate contine alergeni"),
+                    ],
+                }
+            )
 
         pizza = None
         for payload in restaurants_payload:

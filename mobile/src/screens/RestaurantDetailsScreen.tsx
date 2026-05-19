@@ -8,7 +8,7 @@ import { restaurantsApi } from "../api/restaurantsApi";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
-import { FALLBACK_PRODUCT_IMAGE, FALLBACK_RESTAURANT_IMAGE, resolveImageUri } from "../lib/images";
+import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
 import { useFavoritesStore } from "../store/favoritesStore";
 import { HomeStackParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
@@ -105,7 +105,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
     <View style={styles.container}>
       <Animated.View style={[styles.heroWrap, { transform: [{ translateY: heroScrollOut }] }]}>
         <Animated.Image
-          source={{ uri: resolveImageUri(restaurant.cover_image, FALLBACK_RESTAURANT_IMAGE) }}
+          source={{ uri: resolveRestaurantImageUri(restaurant.cover_image, restaurant.id) }}
           style={[
             styles.hero,
             {
@@ -312,7 +312,7 @@ function ShowcaseProductCard({ product, onPress }: ShowcaseProductCardProps) {
     >
       <View style={styles.showcaseImageFrame}>
         <Image
-          source={{ uri: resolveImageUri(product.image, FALLBACK_PRODUCT_IMAGE) }}
+          source={{ uri: resolveProductImageUri(product.image, product.id) }}
           style={styles.showcaseImage}
           resizeMode="cover"
         />

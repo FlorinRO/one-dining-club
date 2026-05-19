@@ -10,7 +10,7 @@ import { QuantityStepper } from "../components/QuantityStepper";
 import { Screen } from "../components/Screen";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
-import { FALLBACK_PRODUCT_IMAGE, resolveImageUri } from "../lib/images";
+import { resolveProductImageUri } from "../lib/images";
 import { CartStackParamList } from "../navigation/types";
 import { useCartStore } from "../store/cartStore";
 import { useOrdersStore } from "../store/ordersStore";
@@ -174,7 +174,7 @@ export function CartScreen({ navigation }: Props) {
             <View style={styles.card}>
               {items.map((item, index) => (
                 <View key={item.id} style={[styles.item, index !== items.length - 1 && styles.itemDivider]}>
-                  <Image source={{ uri: resolveImageUri(item.product.image, FALLBACK_PRODUCT_IMAGE) }} resizeMode="cover" style={styles.itemImage} />
+                  <Image source={{ uri: resolveProductImageUri(item.product.image, item.product.id) }} resizeMode="cover" style={styles.itemImage} />
                   <View style={styles.itemInfo}>
                     <Text style={styles.itemName}>{item.product.name}</Text>
                     {item.selectedOptions.map((option) => (

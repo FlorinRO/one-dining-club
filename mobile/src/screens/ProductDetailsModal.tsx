@@ -6,7 +6,7 @@ import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleShee
 import { QuantityStepper } from "../components/QuantityStepper";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
-import { FALLBACK_PRODUCT_IMAGE, resolveImageUri } from "../lib/images";
+import { resolveProductImageUri } from "../lib/images";
 import { HomeStackParamList } from "../navigation/types";
 import { useCartStore } from "../store/cartStore";
 import { colors } from "../theme/colors";
@@ -114,7 +114,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
       >
         <View style={styles.hero}>
           <Image
-            source={{ uri: resolveImageUri(product.image, FALLBACK_PRODUCT_IMAGE) }}
+            source={{ uri: resolveProductImageUri(product.image, product.id) }}
             style={styles.image}
             resizeMode="cover"
           />

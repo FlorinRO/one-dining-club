@@ -23,7 +23,7 @@ import { Screen } from "../components/Screen";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { deliveryWindow } from "../lib/format";
-import { FALLBACK_PRODUCT_IMAGE, FALLBACK_RESTAURANT_IMAGE, resolveImageUri } from "../lib/images";
+import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
 import { MainTabsParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
 import { Product, Restaurant } from "../types/models";
@@ -885,7 +885,7 @@ function SearchRestaurantResult({
   return (
     <View style={styles.resultBlock}>
       <Pressable style={styles.resultHeader} onPress={onPress}>
-        <Image source={{ uri: resolveImageUri(restaurant.cover_image, FALLBACK_RESTAURANT_IMAGE) }} style={styles.resultAvatar} />
+        <Image source={{ uri: resolveRestaurantImageUri(restaurant.cover_image, restaurant.id) }} style={styles.resultAvatar} />
         <View style={styles.resultHeaderBody}>
           <View style={styles.resultTitleRow}>
             <Text style={styles.resultRestaurantName} numberOfLines={1}>
@@ -932,7 +932,7 @@ function SearchProductCard({ product, onPress }: { product: Product; onPress: ()
   return (
     <Pressable style={styles.searchProductCard} onPress={onPress}>
       <View style={styles.searchProductImageWrap}>
-        <Image source={{ uri: resolveImageUri(product.image, FALLBACK_PRODUCT_IMAGE) }} style={styles.searchProductImage} />
+        <Image source={{ uri: resolveProductImageUri(product.image, product.id) }} style={styles.searchProductImage} />
       </View>
       <Text style={styles.searchProductPrice}>{formatRon(effectivePrice)}</Text>
       <Text style={styles.searchProductName} numberOfLines={2}>

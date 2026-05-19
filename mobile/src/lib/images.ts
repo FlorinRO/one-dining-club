@@ -30,3 +30,15 @@ export function resolveImageUri(uri: string | null | undefined, fallback: string
 
   return fallback;
 }
+
+export function resolveRestaurantImageUri(uri: string | null | undefined, restaurantId?: number) {
+  if (uri) return resolveImageUri(uri, FALLBACK_RESTAURANT_IMAGE);
+  const seed = restaurantId ?? 1;
+  return `${FALLBACK_RESTAURANT_IMAGE}&sig=rest-${seed}`;
+}
+
+export function resolveProductImageUri(uri: string | null | undefined, productId?: number) {
+  if (uri) return resolveImageUri(uri, FALLBACK_PRODUCT_IMAGE);
+  const seed = productId ?? 1;
+  return `${FALLBACK_PRODUCT_IMAGE}&sig=prod-${seed}`;
+}

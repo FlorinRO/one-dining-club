@@ -2,7 +2,7 @@ import { Clock3, Heart, Star, Truck } from "lucide-react-native";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { deliveryWindow, money } from "../lib/format";
-import { FALLBACK_RESTAURANT_IMAGE, resolveImageUri } from "../lib/images";
+import { resolveRestaurantImageUri } from "../lib/images";
 import { useFavoritesStore } from "../store/favoritesStore";
 import { colors } from "../theme/colors";
 import { Restaurant } from "../types/models";
@@ -24,7 +24,7 @@ export function RestaurantCard({ restaurant, onPress, compact, small, smallImage
     <Pressable onPress={onPress} style={[styles.card, compact && styles.compact, small && styles.smallCard, medium && styles.mediumCard]}>
       <View style={styles.mediaWrap}>
         <Image
-          source={{ uri: resolveImageUri(restaurant.cover_image, FALLBACK_RESTAURANT_IMAGE) }}
+          source={{ uri: resolveRestaurantImageUri(restaurant.cover_image, restaurant.id) }}
           style={[styles.image, small && styles.smallImage, smallImageOnly && styles.smallImageOnly]}
         />
         <Pressable

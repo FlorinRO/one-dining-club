@@ -1,7 +1,7 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { money } from "../lib/format";
-import { FALLBACK_PRODUCT_IMAGE, resolveImageUri } from "../lib/images";
+import { resolveProductImageUri } from "../lib/images";
 import { colors } from "../theme/colors";
 import { Product } from "../types/models";
 
@@ -29,7 +29,7 @@ export function ProductCard({ product, onPress }: Props) {
           {hasDiscount && <Text style={styles.oldPrice}>{money(product.price)}</Text>}
         </View>
       </View>
-      <Image source={{ uri: resolveImageUri(product.image, FALLBACK_PRODUCT_IMAGE) }} style={styles.image} />
+      <Image source={{ uri: resolveProductImageUri(product.image, product.id) }} style={styles.image} />
     </Pressable>
   );
 }
