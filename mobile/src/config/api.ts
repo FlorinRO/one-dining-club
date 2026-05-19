@@ -15,12 +15,12 @@ function readExpoExtra(): ExpoExtra {
 
 export function resolveApiBaseUrl(): string {
   const extra = readExpoExtra();
-  const explicitUrl = process.env.EXPO_PUBLIC_API_URL ?? extra.apiUrl;
-  if (explicitUrl) {
-    return explicitUrl;
-  }
-
   if (__DEV__) {
+    const explicitDevUrl = process.env.EXPO_PUBLIC_API_URL ?? extra.apiUrl;
+    if (explicitDevUrl) {
+      return explicitDevUrl;
+    }
+
     // `localhost` / `127.0.0.1` points to the phone itself; a physical device must use the Mac LAN IP.
     return Constants.isDevice ? DEV_DEVICE_API_URL : DEV_SIMULATOR_API_URL;
   }

@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ArrowLeft, Bike, Clock3, Heart, Search, SearchX, Share2, Star, X } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Image, Keyboard, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { Animated, Image, Keyboard, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View, useColorScheme } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import { restaurantsApi } from "../api/restaurantsApi";
@@ -19,6 +19,8 @@ type Props = NativeStackScreenProps<HomeStackParamList, "RestaurantDetails">;
 
 export function RestaurantDetailsScreen({ navigation, route }: Props) {
   const { tr } = useI18n();
+  const colorScheme = useColorScheme();
+  const stickyBorderWidth = colorScheme === "dark" ? 0 : 1;
   const HERO_HEIGHT = 258;
   const SHEET_OVERLAP = 34;
   const SHEET_WAVE_HEIGHT = 42;
@@ -136,7 +138,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
             >
               <Path
                 d="M0,52 C120,8 240,8 360,52 C480,96 600,96 720,52 C840,8 960,8 1080,52 C1200,96 1320,96 1440,52 L1440,120 L0,120 Z"
-                fill={colors.white}
+                fill={colors.card}
               />
             </Svg>
             <View style={styles.bodySheet}>
@@ -203,6 +205,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
       <Animated.View
         style={[
           styles.stickyHeader,
+          { borderBottomWidth: stickyBorderWidth },
           {
             opacity: stickyHeaderOpacity,
             transform: [{ translateY: stickyHeaderTranslateY }],
@@ -337,7 +340,7 @@ function ShowcaseProductCard({ product, onPress }: ShowcaseProductCardProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.card,
   },
   content: {
     paddingBottom: 110,
@@ -382,7 +385,7 @@ const styles = StyleSheet.create({
     zIndex: 8,
     paddingHorizontal: 16,
     justifyContent: "flex-start",
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -418,10 +421,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
   },
   iconButtonActive: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.cardSoft,
   },
   heroOverlay: {
     position: "absolute",
@@ -459,7 +462,7 @@ const styles = StyleSheet.create({
   bodySheet: {
     padding: 18,
     gap: 16,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     paddingTop: 12,
     overflow: "hidden",
   },
@@ -576,7 +579,7 @@ const styles = StyleSheet.create({
     minHeight: 28,
     borderRadius: 6,
     borderWidth: 0,
-    backgroundColor: colors.white,
+    backgroundColor: colors.cardSoft,
     paddingVertical: 4,
     paddingHorizontal: 10,
     flexDirection: "row",
@@ -589,7 +592,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   showcasePrice: {
-    color: "#000000",
+    color: colors.text,
     fontSize: 15,
     fontWeight: "600",
   },
@@ -599,7 +602,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.52)",
   },
   searchHeader: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     paddingTop: 58,
     paddingHorizontal: 16,
     paddingBottom: 12,
@@ -618,7 +621,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     borderRadius: 14,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: 12,
@@ -631,7 +634,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     color: colors.text,
     fontSize: 15,
     fontWeight: "600",
@@ -641,7 +644,7 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 999,
     overflow: "hidden",
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     alignItems: "center",
     justifyContent: "center",
   },

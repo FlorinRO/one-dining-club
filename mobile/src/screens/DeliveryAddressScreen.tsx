@@ -2,7 +2,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
 import { Check, Crosshair, MapPin, X } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 
@@ -24,6 +24,8 @@ type AddressOption = {
 
 export function DeliveryAddressScreen({ navigation }: Props) {
   const { tr } = useI18n();
+  const colorScheme = useColorScheme();
+  const separatorColor = colorScheme === "dark" ? "#1A1A1A" : colors.border;
   const accessToken = useAuthStore((state) => state.accessToken);
   const user = useAuthStore((state) => state.user);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -195,14 +197,14 @@ export function DeliveryAddressScreen({ navigation }: Props) {
         </View>
 
         <Pressable style={styles.mapRow} onPress={() => navigation.navigate("DeliveryAddressMap")}>
-          <View style={styles.mapIconWrap}>
+          <View style={[styles.mapIconWrap, { borderColor: separatorColor }]}>
             <MapPin size={14} stroke={colors.red} />
           </View>
           <Text style={styles.mapText}>{tr("Alege pe hartă", "Choose on map")}</Text>
         </Pressable>
         {savingCurrent ? <Text style={styles.autoLocationText}>{tr("Setăm automat locația curentă...", "Setting current location automatically...")}</Text> : null}
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: separatorColor }]} />
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -221,7 +223,7 @@ export function DeliveryAddressScreen({ navigation }: Props) {
             visibleAddresses.map((item) => {
               const isSelected = item.address.is_default;
               return (
-                <Pressable key={item.slot} style={styles.item} onPress={() => setDefault(item.address.id)} disabled={savingId !== null}>
+                <Pressable key={item.slot} style={[styles.item, { borderBottomColor: separatorColor }]} onPress={() => setDefault(item.address.id)} disabled={savingId !== null}>
                   <View style={styles.itemLeft}>
                     <View style={styles.itemIconWrap}>{iconFor(item.displayLabel)}</View>
                     <View style={styles.itemTextWrap}>
@@ -305,7 +307,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E9E9E9",
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FAFAFA",
@@ -324,7 +326,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: "#E9E9E9",
+    backgroundColor: colors.border,
     marginTop: 20,
   },
   item: {
@@ -333,7 +335,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderBottomColor: "#ECECEC",
+    borderBottomColor: colors.border,
     paddingVertical: 14,
   },
   itemLeft: {

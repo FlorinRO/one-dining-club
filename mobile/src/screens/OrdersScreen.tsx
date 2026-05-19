@@ -2,7 +2,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ListOrdered, RotateCcw } from "lucide-react-native";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 
 import { ordersApi } from "../api/ordersApi";
 import { Screen } from "../components/Screen";
@@ -19,6 +19,8 @@ type OrderWithImage = Order & { mockImage?: string };
 
 export function OrdersScreen({ navigation }: Props) {
   const { tr, language } = useI18n();
+  const colorScheme = useColorScheme();
+  const separatorColor = colorScheme === "dark" ? "#1A1A1A" : colors.border;
   const orders = useOrdersStore((state) => state.orders);
   const setOrders = useOrdersStore((state) => state.setOrders);
   const [loading, setLoading] = useState(false);
@@ -74,9 +76,13 @@ export function OrdersScreen({ navigation }: Props) {
             <Text style={styles.mutedText}>{tr("Se încarcă comenzile...", "Loading orders...")}</Text>
           </View>
         ) : orders.length ? (
-          <View style={styles.list} pointerEvents="box-none">
+          <View style={[styles.list, { borderTopColor: separatorColor }]} pointerEvents="box-none">
             {(orders as OrderWithImage[]).map((order) => (
-              <Pressable key={order.id} style={({ pressed }) => [styles.order, pressed && styles.pressed]} onPress={() => navigation.navigate("OrderDetails", { order })}>
+              <Pressable
+                key={order.id}
+                style={({ pressed }) => [styles.order, { borderBottomColor: separatorColor }, pressed && styles.pressed]}
+                onPress={() => navigation.navigate("OrderDetails", { order })}
+              >
                 {order.mockImage ? (
                   <Image source={{ uri: order.mockImage }} style={styles.orderThumbImage} />
                 ) : (

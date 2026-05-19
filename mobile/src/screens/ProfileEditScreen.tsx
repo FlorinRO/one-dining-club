@@ -286,8 +286,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   inputCardMuted: {
-    borderWidth: 0,
-    backgroundColor: "#DDE0E0",
+    borderWidth: 1,
+    borderColor: "transparent",
+    backgroundColor: colors.cardSoft,
   },
   inputCardFocused: {
     borderWidth: 1,
@@ -295,7 +296,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   inputLabel: {
-    color: "#5A6262",
+    color: colors.muted,
     fontSize: 12,
     fontWeight: "500",
     marginBottom: 6,

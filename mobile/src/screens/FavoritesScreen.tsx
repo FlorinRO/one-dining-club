@@ -16,11 +16,27 @@ type Props = NativeStackScreenProps<HomeStackParamList, "Favorites">;
 
 export function FavoritesScreen({ navigation }: Props) {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [loading, setLoading] = useState(true);
   const favoriteIds = useFavoritesStore((state) => state.restaurantIds);
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   useEffect(() => {
-    restaurantsApi.list().then(setRestaurants);
+    let isMounted = true;
+    setLoading(true);
+    restaurantsApi
+      .list()
+      .then((data) => {
+        if (!isMounted) return;
+        setRestaurants(data);
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const favorites = useMemo(
@@ -40,7 +56,13 @@ export function FavoritesScreen({ navigation }: Props) {
           <ArrowLeft size={24} color={colors.text} strokeWidth={2.2} />
         </Pressable>
         <Text style={styles.title}>Favorite</Text>
-        {!favorites.length ? (
+        {loading ? (
+          <View style={styles.list}>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <View key={`favorites-skeleton-${index}`} style={styles.skeletonCard} />
+            ))}
+          </View>
+        ) : !favorites.length ? (
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>Nu ai favorite încă</Text>
             <Text style={styles.emptyText}>Apasă pe inimă la restaurantele preferate și vor apărea aici.</Text>
@@ -81,6 +103,11 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 20,
+  },
+  skeletonCard: {
+    height: 170,
+    borderRadius: 16,
+    backgroundColor: colors.cardSoft,
   },
   empty: {
     borderRadius: 22,

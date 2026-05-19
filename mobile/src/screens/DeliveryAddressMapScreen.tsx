@@ -289,7 +289,9 @@ const styles = StyleSheet.create({
   addressInput: {
     minHeight: 52,
     borderRadius: 14,
-    backgroundColor: "#F1F1F1",
+    backgroundColor: colors.cardSoft,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingHorizontal: 14,
     flexDirection: "row",
     alignItems: "center",
@@ -361,7 +363,7 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
   },
   centerPinStem: {
     width: 4,

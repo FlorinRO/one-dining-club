@@ -14,6 +14,7 @@ export function OrdersStack() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        animation: "slide_from_right",
         contentStyle: { backgroundColor: colors.background },
       }}
     >
@@ -26,7 +27,7 @@ export function OrdersStack() {
           title: route.params.order.restaurant_name,
           headerShadowVisible: false,
           headerTopInsetEnabled: false,
-          headerStyle: { backgroundColor: colors.white, height: 50 },
+          headerStyle: { backgroundColor: colors.background, height: 50 },
           headerTitleStyle: { color: colors.text, fontSize: 17, fontWeight: "600" },
           headerTintColor: colors.text,
           headerBackTitleVisible: false,

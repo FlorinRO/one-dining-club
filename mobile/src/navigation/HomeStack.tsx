@@ -18,6 +18,7 @@ export function HomeStack() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        animation: "slide_from_right",
         contentStyle: { backgroundColor: colors.background },
       }}
     >
@@ -30,7 +31,7 @@ export function HomeStack() {
       <Stack.Screen
         name="ProductDetails"
         component={ProductDetailsModal}
-        options={{ presentation: "modal" }}
+        options={{ presentation: "modal", animation: "slide_from_bottom" }}
       />
       <Stack.Screen name="CartFlow" component={CartStack} />
     </Stack.Navigator>

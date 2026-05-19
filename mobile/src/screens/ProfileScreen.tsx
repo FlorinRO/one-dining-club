@@ -39,12 +39,11 @@ import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDi
 import { useI18n } from "../i18n/useI18n";
 import { ProfileStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
+import { ThemePreference, usePreferencesStore } from "../store/preferencesStore";
 import { colors } from "../theme/colors";
 import { Address, Order, PaymentMethod } from "../types/models";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileHome">;
-
-type ThemePreference = "system" | "light" | "dark";
 
 type AccountRowProps = {
   icon: ReactElement;
@@ -69,13 +68,14 @@ export function ProfileScreen({ navigation }: Props) {
   const isGuest = useAuthStore((state) => state.isGuest);
   const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
+  const themePreference = usePreferencesStore((state) => state.themePreference);
+  const setThemePreference = usePreferencesStore((state) => state.setThemePreference);
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   const displayName = useMemo(
@@ -383,11 +383,14 @@ function OtherRow({ title, icon, onPress, accent }: OtherRowProps) {
 }
 
 function CourierCard({ defaultAddress, tr }: { defaultAddress?: Address; tr: (ro: string, en: string) => string }) {
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === "dark";
+
   return (
     <View style={styles.courierCard}>
       <View style={styles.courierCopy}>
-        <Text style={styles.courierTitle}>{tr("Devino curier", "Become a courier")}</Text>
-        <Text style={styles.courierText}>{tr("Câștigă în ritmul tău", "Earn at your own pace")}</Text>
+        <Text style={[styles.courierTitle, isDarkMode && styles.courierTextDark]}>{tr("Devino curier", "Become a courier")}</Text>
+        <Text style={[styles.courierText, isDarkMode && styles.courierTextDark]}>{tr("Câștigă în ritmul tău", "Earn at your own pace")}</Text>
         {defaultAddress && (
           <View style={styles.addressPill}>
             <MapPin size={14} color={colors.redDark} strokeWidth={2.4} />
@@ -688,7 +691,7 @@ const styles = StyleSheet.create({
   },
   courierCard: {
     height: 116,
-    marginTop: 24,
+    marginTop: 44,
     borderRadius: 12,
     backgroundColor: "#FDE8E8",
     overflow: "hidden",
@@ -713,6 +716,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "400",
+  },
+  courierTextDark: {
+    color: "#000000",
   },
   addressPill: {
     marginTop: 4,

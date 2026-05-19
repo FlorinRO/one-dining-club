@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react-native";
 import { ComponentType, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, FlatList, Image, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { Animated, Easing, FlatList, Image, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
@@ -95,6 +95,7 @@ export function SearchScreen() {
   const { height: windowHeight } = useWindowDimensions();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortValue>("relevant");
   const [offersOnly, setOffersOnly] = useState(false);
@@ -200,6 +201,7 @@ export function SearchScreen() {
     let isMounted = true;
 
     async function loadSearchData() {
+      setIsLoading(true);
       const ordering =
         sort === "deliveryFee"
           ? "delivery_fee"
@@ -208,22 +210,27 @@ export function SearchScreen() {
             : sort === "rating"
               ? "-rating"
               : undefined;
-      const nextRestaurants = await restaurantsApi.list({
-        search: query.trim() || undefined,
-        category_name: activeCategories.length ? activeCategories.join(",") : undefined,
-        min_rating: minimumRating ?? undefined,
-        max_delivery_fee: maximumDeliveryFee ?? undefined,
-        max_delivery_time: maximumDeliveryTime ?? undefined,
-        max_distance_km: maximumDistance ?? undefined,
-        has_offer: offersOnly || undefined,
-        supports_pickup: pickupOnly || undefined,
-        ordering,
-      });
-      const productGroups = await Promise.all(nextRestaurants.map((restaurant) => restaurantsApi.products(restaurant.id)));
+      try {
+        const nextRestaurants = await restaurantsApi.list({
+          search: query.trim() || undefined,
+          category_name: activeCategories.length ? activeCategories.join(",") : undefined,
+          min_rating: minimumRating ?? undefined,
+          max_delivery_fee: maximumDeliveryFee ?? undefined,
+          max_delivery_time: maximumDeliveryTime ?? undefined,
+          max_distance_km: maximumDistance ?? undefined,
+          has_offer: offersOnly || undefined,
+          supports_pickup: pickupOnly || undefined,
+          ordering,
+        });
+        const productGroups = await Promise.all(nextRestaurants.map((restaurant) => restaurantsApi.products(restaurant.id)));
 
-      if (!isMounted) return;
-      setRestaurants(nextRestaurants);
-      setProducts(productGroups.flat());
+        if (!isMounted) return;
+        setRestaurants(nextRestaurants);
+        setProducts(productGroups.flat());
+      } finally {
+        if (!isMounted) return;
+        setIsLoading(false);
+      }
     }
 
     loadSearchData();
@@ -552,7 +559,13 @@ export function SearchScreen() {
           )}
         </View>
 
-        {hasSearchIntent ? (
+        {isLoading ? (
+          hasSearchIntent ? (
+            <SearchResultsSkeleton />
+          ) : (
+            <SearchDiscoverySkeleton />
+          )
+        ) : hasSearchIntent ? (
           <>
             <FlatList
               key="search-results-list"
@@ -593,15 +606,12 @@ export function SearchScreen() {
               showsVerticalScrollIndicator={false}
               onScroll={trackFloatingCartScrollDirection}
               scrollEventThrottle={16}
-              contentContainerStyle={styles.list}
+              contentContainerStyle={[styles.list, filtered.length === 0 && styles.emptyResultsList]}
               ListEmptyComponent={
-                <View style={styles.emptyState}>
-                  <View style={styles.emptyIconWrap}>
-                    <SearchX size={24} stroke={colors.muted} />
-                  </View>
-                  <Text style={styles.emptyTitle}>{tr("Niciun rezultat", "No results")}</Text>
-                  <Text style={styles.emptyText}>{tr(`Nu există rezultate pentru „${emptyQueryLabel}”.`, `No results for "${emptyQueryLabel}".`)}</Text>
-                </View>
+                <SearchEmptyState
+                  title={tr("Oops, niciun rezultat", "Oops, no results")}
+                  subtitle={tr(`Nu există rezultate pentru „${emptyQueryLabel}”.`, `No results for "${emptyQueryLabel}".`)}
+                />
               }
             />
           </>
@@ -824,6 +834,43 @@ export function SearchScreen() {
   );
 }
 
+function SearchResultsSkeleton() {
+  return (
+    <View style={styles.searchSkeletonWrap}>
+      {Array.from({ length: 3 }).map((_, index) => (
+        <View key={`search-result-skeleton-${index}`} style={styles.searchResultSkeleton}>
+          <View style={styles.searchResultSkeletonHeader}>
+            <View style={styles.searchResultSkeletonAvatar} />
+            <View style={styles.searchResultSkeletonLines}>
+              <View style={styles.searchResultSkeletonLineLg} />
+              <View style={styles.searchResultSkeletonLineSm} />
+            </View>
+          </View>
+          <View style={styles.searchResultSkeletonProductsRow}>
+            {Array.from({ length: 3 }).map((__, productIndex) => (
+              <View key={`search-product-skeleton-${index}-${productIndex}`} style={styles.searchResultSkeletonProduct} />
+            ))}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function SearchDiscoverySkeleton() {
+  return (
+    <View style={styles.discoverySkeletonWrap}>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <View key={`recent-skeleton-${index}`} style={styles.recentSkeletonRow} />
+      ))}
+      <View style={styles.discoveryTitleSkeleton} />
+      {Array.from({ length: 10 }).map((_, index) => (
+        <View key={`discovery-item-skeleton-${index}`} style={styles.discoveryItemSkeleton} />
+      ))}
+    </View>
+  );
+}
+
 function SearchRestaurantResult({
   restaurant,
   products,
@@ -895,6 +942,50 @@ function SearchProductCard({ product, onPress }: { product: Product; onPress: ()
   );
 }
 
+function SearchEmptyState({ title, subtitle }: { title: string; subtitle: string }) {
+  const appear = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(appear, {
+      toValue: 1,
+      duration: 360,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [appear]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.emptyState,
+        {
+          opacity: appear,
+          transform: [
+            {
+              translateY: appear.interpolate({
+                inputRange: [0, 1],
+                outputRange: [12, 0],
+              }),
+            },
+            {
+              scale: appear.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.97, 1],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <View style={styles.emptyIconWrap}>
+        <SearchX size={24} stroke={colors.muted} />
+      </View>
+      <Text style={styles.emptyTitle}>{title}</Text>
+      <Text style={styles.emptyText}>{subtitle}</Text>
+    </Animated.View>
+  );
+}
+
 function FilterChip({
   label,
   icon: Icon,
@@ -910,12 +1001,19 @@ function FilterChip({
   dropdown?: boolean;
   onPress: () => void;
 }) {
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === "dark";
   const useRedActive = active && redActive;
   const iconColor = useRedActive ? colors.white : colors.text;
   const textColor = useRedActive ? colors.white : colors.text;
+  const activeChipStyle = active
+    ? useRedActive
+      ? styles.filterChipActiveRed
+      : [styles.filterChipActive, isDarkMode && styles.filterChipActiveDark]
+    : null;
 
   return (
-    <Pressable style={[styles.filterChip, active && (useRedActive ? styles.filterChipActiveRed : styles.filterChipActive)]} onPress={onPress}>
+    <Pressable style={[styles.filterChip, activeChipStyle]} onPress={onPress}>
       <Icon size={16} stroke={iconColor} strokeWidth={2.2} />
       <Text style={[styles.filterChipText, { color: textColor }]}>{label}</Text>
       {dropdown ? <ChevronDown size={15} stroke={iconColor} strokeWidth={2.3} /> : null}
@@ -958,7 +1056,7 @@ const styles = StyleSheet.create({
   searchBar: {
     height: 50,
     borderRadius: 13,
-    backgroundColor: "#F0F2F3",
+    backgroundColor: colors.cardSoft,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
@@ -968,7 +1066,7 @@ const styles = StyleSheet.create({
   searchBarFocused: {
     borderWidth: 1.5,
     borderColor: colors.red,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
   },
   searchInput: {
     flex: 1,
@@ -1006,13 +1104,16 @@ const styles = StyleSheet.create({
     height: 38,
     paddingHorizontal: 12,
     borderRadius: 11,
-    backgroundColor: "#F0F2F3",
+    backgroundColor: colors.cardSoft,
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
   },
   filterChipActive: {
     backgroundColor: "#E4F2EA",
+  },
+  filterChipActiveDark: {
+    backgroundColor: "#243229",
   },
   filterChipActiveRed: {
     backgroundColor: colors.red,
@@ -1024,6 +1125,11 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingBottom: 110,
+  },
+  emptyResultsList: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingBottom: 150,
   },
   resultsList: {
     marginTop: 0,
@@ -1159,7 +1265,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 14,
-    paddingTop: 28,
+    paddingTop: 0,
     gap: 8,
   },
   emptyIconWrap: {
@@ -1245,7 +1351,7 @@ const styles = StyleSheet.create({
     maxHeight: 540,
     paddingHorizontal: 10,
     paddingTop: 10,
-    backgroundColor: "#EAECEC",
+    backgroundColor: colors.background,
   },
   filtersSectionCard: {
     backgroundColor: colors.background,
@@ -1335,7 +1441,9 @@ const styles = StyleSheet.create({
   choiceChip: {
     minHeight: 36,
     borderRadius: 12,
-    backgroundColor: "#EAECEC",
+    backgroundColor: colors.cardSoft,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
@@ -1380,7 +1488,7 @@ const styles = StyleSheet.create({
   },
   categoryList: {
     borderTopWidth: 1,
-    borderTopColor: "#E0E3E3",
+    borderTopColor: colors.border,
     marginTop: 2,
   },
   categoryRow: {
@@ -1428,5 +1536,72 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     lineHeight: 12,
+  },
+  searchSkeletonWrap: {
+    paddingTop: 14,
+    paddingBottom: 110,
+    gap: 28,
+  },
+  searchResultSkeleton: {
+    gap: 12,
+  },
+  searchResultSkeletonHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  searchResultSkeletonAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 10,
+    backgroundColor: colors.cardSoft,
+  },
+  searchResultSkeletonLines: {
+    flex: 1,
+    gap: 8,
+  },
+  searchResultSkeletonLineLg: {
+    width: "62%",
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: colors.cardSoft,
+  },
+  searchResultSkeletonLineSm: {
+    width: "38%",
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.cardSoft,
+  },
+  searchResultSkeletonProductsRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  searchResultSkeletonProduct: {
+    width: 128,
+    height: 166,
+    borderRadius: 10,
+    backgroundColor: colors.cardSoft,
+  },
+  discoverySkeletonWrap: {
+    paddingTop: 14,
+    paddingBottom: 110,
+    gap: 12,
+  },
+  recentSkeletonRow: {
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: colors.cardSoft,
+  },
+  discoveryTitleSkeleton: {
+    marginTop: 14,
+    width: "48%",
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: colors.cardSoft,
+  },
+  discoveryItemSkeleton: {
+    height: 22,
+    borderRadius: 8,
+    backgroundColor: colors.cardSoft,
   },
 });

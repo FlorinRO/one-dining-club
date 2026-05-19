@@ -2,7 +2,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationState, PartialState, useNavigation, useNavigationState } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Home, ListOrdered, Search, UserRound } from "lucide-react-native";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FloatingCartBar } from "../components/FloatingCartBar";
@@ -17,12 +17,18 @@ import { colors } from "../theme/colors";
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 
 export function MainTabs() {
+  const colorScheme = useColorScheme();
+  const darkBorderColor = colorScheme === "dark" ? "#1A1A1A" : "#EAEAEA";
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<Record<string, object | undefined>>>();
   const { t } = useI18n();
   const rootState = useNavigationState((state) => state);
   const activeRouteName = getDeepActiveRouteName(rootState);
-  const hideFloatingCart = activeRouteName === "CartHome" || activeRouteName === "CartFlow";
+  const hideFloatingCart =
+    activeRouteName === "CartHome" ||
+    activeRouteName === "CartFlow" ||
+    activeRouteName === "DeliveryAddress" ||
+    activeRouteName === "DeliveryAddressMap";
   const hideBottomBar = activeRouteName === "CartHome" || activeRouteName === "CartFlow";
 
   return (
@@ -31,11 +37,12 @@ export function MainTabs() {
         id="MainTabs"
         screenOptions={{
           headerShown: false,
+          animation: "fade",
           tabBarStyle: {
             display: hideBottomBar ? "none" : "flex",
             height: 46 + insets.bottom,
             backgroundColor: colors.surface,
-            borderTopColor: colors.border,
+            borderTopColor: darkBorderColor,
             paddingTop: 6,
             paddingBottom: 2 + insets.bottom,
           },

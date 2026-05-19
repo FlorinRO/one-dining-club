@@ -26,7 +26,12 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer theme={theme}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          animation: "fade",
+        }}
+      >
         {accessToken || isGuest ? (
           <Stack.Screen name="MainTabs" component={MainTabs} />
         ) : (

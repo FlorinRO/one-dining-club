@@ -1,5 +1,5 @@
 import { Minus, Plus } from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, useColorScheme } from "react-native";
 
 import { colors } from "../theme/colors";
 
@@ -10,8 +10,11 @@ type Props = {
 };
 
 export function QuantityStepper({ value, onIncrease, onDecrease }: Props) {
+  const colorScheme = useColorScheme();
+  const stepperBorderColor = colorScheme === "dark" ? "#1A1A1A" : colors.border;
+
   return (
-    <View style={styles.stepper}>
+    <View style={[styles.stepper, { borderColor: stepperBorderColor }]}>
       <Pressable onPress={onDecrease} style={styles.button}>
         <Minus size={18} stroke={colors.text} />
       </Pressable>

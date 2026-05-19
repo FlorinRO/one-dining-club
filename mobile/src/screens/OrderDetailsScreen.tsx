@@ -92,7 +92,7 @@ export function OrderDetailsScreen({ route }: Props) {
           <Text style={styles.sectionTitle}>{order.restaurant_name}</Text>
           <View style={styles.menuRow}>
             <Text style={styles.menuText}>{tr("Vezi meniul", "View menu")}</Text>
-            <ChevronRight size={34} color="#9AA0A0" strokeWidth={1.8} />
+            <ChevronRight size={34} color={colors.muted} strokeWidth={1.8} />
           </View>
         </Pressable>
 
@@ -127,19 +127,19 @@ function SummaryRow({ label, value, strong, large }: { label: string; value: str
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: "#ECEEEE",
+    backgroundColor: colors.background,
   },
   content: {
     paddingTop: 0,
     paddingBottom: 28,
     gap: 8,
-    backgroundColor: "#ECEEEE",
+    backgroundColor: colors.background,
   },
   card: {
     borderRadius: 18,
     paddingHorizontal: 22,
     paddingVertical: 20,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     marginHorizontal: 0,
     gap: 12,
   },
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     height: 1,
     marginTop: 4,
     marginBottom: 6,
-    backgroundColor: "#D9DEDE",
+    backgroundColor: colors.border,
   },
   summaryLabelLarge: {
     fontSize: 20,
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   addressMuted: {
-    color: "#6E7474",
+    color: colors.muted,
     fontSize: 16,
     lineHeight: 22,
     fontWeight: "500",
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingHorizontal: 22,
     paddingVertical: 20,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     marginHorizontal: 0,
   },
   orderAgainButton: {
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   helpButton: {
     height: 62,
     borderRadius: 31,
-    backgroundColor: "#DCE0E0",
+    backgroundColor: colors.cardSoft,
     alignItems: "center",
     justifyContent: "center",
   },

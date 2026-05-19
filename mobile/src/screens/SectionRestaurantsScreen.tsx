@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ArrowLeft } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NativeSyntheticEvent, NativeScrollEvent, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { NativeSyntheticEvent, NativeScrollEvent, Pressable, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 
 import { restaurantsApi } from "../api/restaurantsApi";
 import { RestaurantCard } from "../components/RestaurantCard";
@@ -15,13 +15,31 @@ type Props = NativeStackScreenProps<HomeStackParamList, "SectionRestaurants">;
 
 export function SectionRestaurantsScreen({ navigation, route }: Props) {
   const { mode, title } = route.params;
+  const colorScheme = useColorScheme();
+  const stickyBorderWidth = colorScheme === "dark" ? 0 : 1;
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const lastScrollY = useRef(0);
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   useEffect(() => {
-    restaurantsApi.list().then(setRestaurants);
+    let isMounted = true;
+    setLoading(true);
+    restaurantsApi
+      .list()
+      .then((data) => {
+        if (!isMounted) return;
+        setRestaurants(data);
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const list = useMemo(() => {
@@ -57,7 +75,7 @@ export function SectionRestaurantsScreen({ navigation, route }: Props) {
   return (
     <Screen>
       {showStickyHeader && (
-        <View style={styles.stickyHeader}>
+        <View style={[styles.stickyHeader, { borderBottomWidth: stickyBorderWidth }]}>
           <Pressable style={styles.stickyBackButton} onPress={() => navigation.goBack()}>
             <ArrowLeft size={22} stroke={colors.text} />
           </Pressable>
@@ -83,14 +101,18 @@ export function SectionRestaurantsScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.list}>
-          {list.map((restaurant) => (
-            <RestaurantCard
-              key={restaurant.id}
-              compact
-              restaurant={restaurant}
-              onPress={() => navigation.navigate("RestaurantDetails", { restaurant })}
-            />
-          ))}
+          {loading
+            ? Array.from({ length: 5 }).map((_, index) => (
+                <View key={`section-skeleton-${index}`} style={styles.skeletonCard} />
+              ))
+            : list.map((restaurant) => (
+                <RestaurantCard
+                  key={restaurant.id}
+                  compact
+                  restaurant={restaurant}
+                  onPress={() => navigation.navigate("RestaurantDetails", { restaurant })}
+                />
+              ))}
         </View>
       </ScrollView>
     </Screen>
@@ -112,7 +134,6 @@ const styles = StyleSheet.create({
     height: 56,
     backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     justifyContent: "center",
     paddingHorizontal: 4,
   },
@@ -156,5 +177,10 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 18,
+  },
+  skeletonCard: {
+    height: 170,
+    borderRadius: 16,
+    backgroundColor: colors.cardSoft,
   },
 });

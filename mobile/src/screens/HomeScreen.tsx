@@ -1,5 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
+import * as Haptics from "expo-haptics";
 import { MapPin, Search, SearchX, SlidersHorizontal, Star } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -16,8 +17,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useColorScheme,
   useWindowDimensions,
   View,
+  ViewToken,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -79,6 +82,8 @@ const sectionShuffle = (id: number, seed: number) => ((id * 37 + seed * 17) % 97
 
 export function HomeScreen({ navigation }: Props) {
   const { tr } = useI18n();
+  const colorScheme = useColorScheme();
+  const darkBorderColor = colorScheme === "dark" ? "#1A1A1A" : "#EAEAEA";
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -98,6 +103,10 @@ export function HomeScreen({ navigation }: Props) {
   const splashSequence = useRef(new Animated.Value(0)).current;
   const tabBarReveal = useRef(new Animated.Value(0)).current;
   const promotedListRef = useRef<FlatList<{ id: string; imageUrl: string }> | null>(null);
+  const isCategoryDraggingRef = useRef(false);
+  const isCategoryMomentumRef = useRef(false);
+  const lastCategoryHapticKeyRef = useRef<string | null>(null);
+  const lastCategoryHapticTsRef = useRef(0);
   const promotedIndexRef = useRef(0);
   const promotedAutoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const promotedResumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -179,7 +188,7 @@ export function HomeScreen({ navigation }: Props) {
     const baseTabBarStyle = {
       height: 46 + insets.bottom,
       backgroundColor: colors.surface,
-      borderTopColor: colors.border,
+      borderTopColor: darkBorderColor,
       paddingTop: 6,
       paddingBottom: 2 + insets.bottom,
     };
@@ -231,7 +240,7 @@ export function HomeScreen({ navigation }: Props) {
         tabBarStyle: undefined,
       });
     };
-  }, [insets.bottom, navigation, showSplashOverlay, tabBarReveal]);
+  }, [darkBorderColor, insets.bottom, navigation, showSplashOverlay, tabBarReveal]);
 
   useEffect(() => {
     Animated.timing(stickyAnim, {
@@ -371,6 +380,35 @@ export function HomeScreen({ navigation }: Props) {
     navigation.getParent()?.navigate("SearchTab", { focusSearch: true });
   };
 
+  const triggerCategorySelectionHaptic = useCallback((itemKey: string) => {
+    if (!isCategoryDraggingRef.current) {
+      return;
+    }
+
+    if (lastCategoryHapticKeyRef.current === itemKey) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastCategoryHapticTsRef.current < 50) {
+      return;
+    }
+
+    lastCategoryHapticKeyRef.current = itemKey;
+    lastCategoryHapticTsRef.current = now;
+    void Haptics.selectionAsync();
+  }, []);
+
+  const onCategoryViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: Array<ViewToken<CarouselItem>> }) => {
+      const nextVisible = viewableItems.find((token) => token.isViewable && token.item?.label);
+      if (!nextVisible?.item) {
+        return;
+      }
+      triggerCategorySelectionHaptic(nextVisible.item.label);
+    },
+  ).current;
+
   const loadDefaultAddress = useCallback(async () => {
     if (!accessToken) {
       setDefaultAddress(null);
@@ -410,7 +448,7 @@ export function HomeScreen({ navigation }: Props) {
           },
         ]}
       >
-        <Pressable style={styles.searchBar} onPress={openSearchWithFocus}>
+        <Pressable style={[styles.searchBar, { borderColor: darkBorderColor }]} onPress={openSearchWithFocus}>
           <Search size={23} stroke={colors.text} strokeWidth={2.6} />
           <View style={styles.searchInputProxy} pointerEvents="none">
             <TextInput
@@ -464,7 +502,7 @@ export function HomeScreen({ navigation }: Props) {
             setSearchBarY(event.nativeEvent.layout.y);
           }}
         >
-          <Pressable style={styles.searchBar} onPress={openSearchWithFocus}>
+          <Pressable style={[styles.searchBar, { borderColor: darkBorderColor }]} onPress={openSearchWithFocus}>
             <Search size={23} stroke={colors.text} strokeWidth={2.6} />
             <View style={styles.searchInputProxy} pointerEvents="none">
               <TextInput
@@ -487,6 +525,26 @@ export function HomeScreen({ navigation }: Props) {
           horizontal
           data={carouselItems}
           keyExtractor={(item) => item.label}
+          onViewableItemsChanged={onCategoryViewableItemsChanged}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 65 }}
+          onScrollBeginDrag={() => {
+            isCategoryDraggingRef.current = true;
+            lastCategoryHapticKeyRef.current = null;
+          }}
+          onMomentumScrollBegin={() => {
+            isCategoryMomentumRef.current = true;
+          }}
+          onScrollEndDrag={() => {
+            setTimeout(() => {
+              if (!isCategoryMomentumRef.current) {
+                isCategoryDraggingRef.current = false;
+              }
+            }, 0);
+          }}
+          onMomentumScrollEnd={() => {
+            isCategoryMomentumRef.current = false;
+            isCategoryDraggingRef.current = false;
+          }}
           renderItem={({ item, index }) => (
             <Pressable
               style={styles.categoryTile}
@@ -669,7 +727,7 @@ export function HomeScreen({ navigation }: Props) {
       </ScrollView>
 
       {showSplashOverlay ? (
-        <HomeLoadingOverlay opacity={splashOpacity} progress={splashSequence} />
+        <HomeLoadingOverlay opacity={splashOpacity} />
       ) : null}
     </Screen>
   );
@@ -677,51 +735,31 @@ export function HomeScreen({ navigation }: Props) {
 
 function HomeLoadingOverlay({
   opacity,
-  progress,
 }: {
   opacity: Animated.Value;
-  progress: Animated.Value;
 }) {
-  const textTranslateX = progress.interpolate({
-    inputRange: [0, 0.18, 0.38, 1],
-    outputRange: [22, 22, 0, 0],
-  });
-  const textOpacity = progress.interpolate({
-    inputRange: [0, 0.2, 0.35, 1],
-    outputRange: [0, 0, 1, 1],
-  });
-  const starOpacity = progress.interpolate({
-    inputRange: [0, 0.52, 0.74, 1],
-    outputRange: [0, 0, 1, 1],
-  });
-  const starScale = progress.interpolate({
-    inputRange: [0, 0.52, 0.72, 0.84, 1],
-    outputRange: [0.45, 0.45, 1.22, 0.96, 1],
-  });
-  const starRotate = progress.interpolate({
-    inputRange: [0, 0.52, 0.7, 0.84, 1],
-    outputRange: ["-45deg", "-45deg", "18deg", "-8deg", "0deg"],
-  });
-  const starTranslateY = progress.interpolate({
-    inputRange: [0, 0.52, 0.72, 0.84, 1],
-    outputRange: [28, 28, -5, 0, 0],
-  });
-  const starTranslateX = progress.interpolate({
-    inputRange: [0, 0.52, 0.72, 0.9, 1],
-    outputRange: [-10, -10, 2, 0, 0],
-  });
-  const starBurstOpacity = progress.interpolate({
-    inputRange: [0, 0.7, 0.82, 1],
-    outputRange: [0, 0, 1, 0],
-  });
-  const sparkTravelWaveOne = progress.interpolate({
-    inputRange: [0, 0.68, 0.9, 1],
-    outputRange: [0, 0, 1, 1],
-  });
-  const sparkTravelWaveTwo = progress.interpolate({
-    inputRange: [0, 0.8, 0.98, 1],
-    outputRange: [0, 0, 1, 1],
-  });
+  const shimmer = useRef(new Animated.Value(0.45)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmer, {
+          toValue: 1,
+          duration: 700,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmer, {
+          toValue: 0.45,
+          duration: 700,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shimmer]);
 
   return (
     <Modal
@@ -734,82 +772,30 @@ function HomeLoadingOverlay({
       visible
     >
       <Animated.View pointerEvents="auto" style={[styles.loadingOverlay, { opacity }]}>
-        <View style={styles.loadingStage}>
-          <Animated.View style={[styles.loaderTitleRow, { opacity: textOpacity, transform: [{ translateX: textTranslateX }] }]}>
-            <Text style={styles.loaderTitle}>ONE DINING CLUB</Text>
-            <Animated.View
-              style={[
-                styles.loaderStarWrap,
-                {
-                  opacity: starOpacity,
-                  transform: [{ translateX: starTranslateX }, { translateY: starTranslateY }, { scale: starScale }, { rotate: starRotate }],
-                },
-              ]}
-            >
-              <Spark travel={sparkTravelWaveOne} opacity={starBurstOpacity} dx={0} dy={-26} delay={0.02} size={4} />
-              <Spark travel={sparkTravelWaveOne} opacity={starBurstOpacity} dx={20} dy={-16} delay={0.06} size={3} />
-              <Spark travel={sparkTravelWaveOne} opacity={starBurstOpacity} dx={24} dy={2} delay={0.09} size={4} />
-              <Spark travel={sparkTravelWaveOne} opacity={starBurstOpacity} dx={14} dy={20} delay={0.08} size={3} />
-              <Spark travel={sparkTravelWaveOne} opacity={starBurstOpacity} dx={-17} dy={18} delay={0.05} size={4} />
-              <Spark travel={sparkTravelWaveOne} opacity={starBurstOpacity} dx={-24} dy={-6} delay={0.04} size={3} />
-              <Spark travel={sparkTravelWaveTwo} opacity={starBurstOpacity} dx={0} dy={-34} delay={0.01} size={2} />
-              <Spark travel={sparkTravelWaveTwo} opacity={starBurstOpacity} dx={28} dy={-20} delay={0.03} size={2} />
-              <Spark travel={sparkTravelWaveTwo} opacity={starBurstOpacity} dx={33} dy={1} delay={0.05} size={2} />
-              <Spark travel={sparkTravelWaveTwo} opacity={starBurstOpacity} dx={20} dy={27} delay={0.04} size={2} />
-              <Spark travel={sparkTravelWaveTwo} opacity={starBurstOpacity} dx={-22} dy={25} delay={0.02} size={2} />
-              <Spark travel={sparkTravelWaveTwo} opacity={starBurstOpacity} dx={-31} dy={-9} delay={0.03} size={2} />
-              <Star size={20} color={colors.white} fill={colors.white} strokeWidth={2} />
-            </Animated.View>
-          </Animated.View>
+        <View style={styles.skeletonStage}>
+          <Animated.View style={[styles.skeletonBlock, styles.skeletonHeaderStrip, { opacity: shimmer }]} />
+          <Animated.View style={[styles.skeletonBlock, styles.skeletonAddressMain, { opacity: shimmer }]} />
+          <Animated.View style={[styles.skeletonBlock, styles.skeletonAddressSub, { opacity: shimmer }]} />
+          <Animated.View style={[styles.skeletonBlock, styles.skeletonSearchBar, { opacity: shimmer }]} />
+          <View style={styles.skeletonChipRow}>
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Animated.View key={index} style={[styles.skeletonBlock, styles.skeletonChip, { opacity: shimmer }]} />
+            ))}
+          </View>
+          <Animated.View style={[styles.skeletonBlock, styles.skeletonBanner, { opacity: shimmer }]} />
+          {Array.from({ length: 3 }).map((_, index) => (
+            <View key={`section-${index}`} style={styles.skeletonSection}>
+              <Animated.View style={[styles.skeletonBlock, styles.skeletonSectionTitle, { opacity: shimmer }]} />
+              <View style={styles.skeletonRestaurantRow}>
+                {Array.from({ length: 2 }).map((__, cardIndex) => (
+                  <Animated.View key={cardIndex} style={[styles.skeletonBlock, styles.skeletonRestaurantCard, { opacity: shimmer }]} />
+                ))}
+              </View>
+            </View>
+          ))}
         </View>
       </Animated.View>
     </Modal>
-  );
-}
-
-function Spark({
-  travel,
-  opacity,
-  dx,
-  dy,
-  delay = 0,
-  size = 4,
-}: {
-  travel: Animated.AnimatedInterpolation<number>;
-  opacity: Animated.AnimatedInterpolation<number>;
-  dx: number;
-  dy: number;
-  delay?: number;
-  size?: number;
-}) {
-  const delayedTravel = travel.interpolate({
-    inputRange: [0, Math.min(1, 0.12 + delay), 1],
-    outputRange: [0, 0, 1],
-  });
-  const sparkTranslateX = delayedTravel.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, dx],
-  });
-  const sparkTranslateY = delayedTravel.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, dy],
-  });
-  const sparkScale = delayedTravel.interpolate({
-    inputRange: [0, 0.25, 1],
-    outputRange: [0.2, 1, 0.5],
-  });
-
-  return (
-    <Animated.View
-      style={[
-        styles.spark,
-        { width: size, height: size },
-        {
-          opacity,
-          transform: [{ translateX: sparkTranslateX }, { translateY: sparkTranslateY }, { scale: sparkScale }],
-        },
-      ]}
-    />
   );
 }
 
@@ -1071,40 +1057,68 @@ const styles = StyleSheet.create({
   loadingOverlay: {
     flex: 1,
     zIndex: 100,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.red,
+    backgroundColor: colors.background,
   },
-  loadingStage: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
+  skeletonStage: {
+    flex: 1,
+    paddingHorizontal: 22,
+    paddingTop: 24,
+    paddingBottom: 24,
+    gap: 12,
   },
-  loaderTitleRow: {
+  skeletonBlock: {
+    backgroundColor: colors.cardSoft,
+    borderRadius: 12,
+  },
+  skeletonHeaderStrip: {
+    height: 24,
+    marginHorizontal: -22,
+  },
+  skeletonAddressMain: {
+    width: "68%",
+    height: 14,
+    marginTop: 10,
+  },
+  skeletonAddressSub: {
+    width: "52%",
+    height: 12,
+  },
+  skeletonSearchBar: {
+    height: 54,
+    borderRadius: 16,
+    marginTop: 6,
+  },
+  skeletonChipRow: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
     gap: 8,
+    marginTop: 2,
   },
-  loaderTitle: {
-    color: colors.white,
-    fontSize: 24,
-    fontWeight: "700",
-    letterSpacing: 1.8,
+  skeletonChip: {
+    width: 84,
+    height: 74,
+    borderRadius: 14,
   },
-  loaderStarWrap: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
+  skeletonBanner: {
+    height: 134,
+    borderRadius: 14,
+    marginTop: 8,
   },
-  spark: {
-    position: "absolute",
-    width: 4,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: colors.white,
+  skeletonSection: {
+    gap: 12,
+    marginTop: 14,
+  },
+  skeletonSectionTitle: {
+    width: "40%",
+    height: 20,
+    borderRadius: 8,
+  },
+  skeletonRestaurantRow: {
+    flexDirection: "row",
+    gap: 14,
+  },
+  skeletonRestaurantCard: {
+    width: 206,
+    height: 170,
+    borderRadius: 12,
   },
 });

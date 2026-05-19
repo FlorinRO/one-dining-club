@@ -1,10 +1,9 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { AlertCircle, Check, ShoppingBag, X } from "lucide-react-native";
 import { useMemo, useRef, useState } from "react";
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme } from "react-native";
 
 import { QuantityStepper } from "../components/QuantityStepper";
-import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
 import { FALLBACK_PRODUCT_IMAGE, resolveImageUri } from "../lib/images";
@@ -38,13 +37,14 @@ const groupHint = (group: ProductOptionGroup, tr: (ro: string, en: string) => st
 
 export function ProductDetailsModal({ navigation, route }: Props) {
   const { tr } = useI18n();
+  const colorScheme = useColorScheme();
+  const footerBorderColor = colorScheme === "dark" ? "#1A1A1A" : colors.border;
   const { product, restaurant } = route.params;
   const addItem = useCartStore((state) => state.addItem);
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<ProductOption[]>([]);
   const [notes, setNotes] = useState("");
   const scrollRef = useRef<ScrollView>(null);
-  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
   const optionGroups = product.option_groups ?? [];
   const basePrice = product.effective_price ?? product.discount_price ?? product.price;
 
@@ -111,8 +111,6 @@ export function ProductDetailsModal({ navigation, route }: Props) {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        onScroll={trackFloatingCartScrollDirection}
-        scrollEventThrottle={16}
       >
         <View style={styles.hero}>
           <Image
@@ -121,9 +119,6 @@ export function ProductDetailsModal({ navigation, route }: Props) {
             resizeMode="cover"
           />
           <View style={styles.imageOverlay} />
-          <Pressable onPress={() => navigation.goBack()} style={styles.close}>
-            <X size={22} stroke={colors.white} />
-          </Pressable>
         </View>
         <View style={styles.titleRow}>
           <View style={styles.nameBadge}>
@@ -202,7 +197,10 @@ export function ProductDetailsModal({ navigation, route }: Props) {
           </View>
         </View>
       </ScrollView>
-      <View style={styles.footer}>
+      <Pressable onPress={() => navigation.goBack()} style={styles.close}>
+        <X size={22} stroke={colors.white} />
+      </Pressable>
+      <View style={[styles.footer, { borderTopColor: footerBorderColor }]}>
         {missingRequiredGroup && <Text style={styles.footerHint}>{tr("Alege", "Choose")} {missingRequiredGroup.name}</Text>}
         <View style={styles.footerRow}>
           <QuantityStepper
@@ -258,7 +256,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.58)",
-    zIndex: 3,
+    zIndex: 30,
+    elevation: 8,
   },
   body: {
     paddingHorizontal: 18,
@@ -293,12 +292,12 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 0,
     justifyContent: "center",
-    backgroundColor: colors.white,
+    backgroundColor: colors.cardSoft,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   price: {
-    color: "#000000",
+    color: colors.text,
     fontSize: 15,
     fontWeight: "600",
   },
@@ -373,7 +372,7 @@ const styles = StyleSheet.create({
   },
   optionActive: {
     borderColor: colors.red,
-    backgroundColor: colors.white,
+    backgroundColor: colors.cardSoft,
   },
   optionDisabled: {
     opacity: 0.48,
@@ -436,7 +435,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     borderWidth: 1,
     borderColor: colors.red,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     paddingHorizontal: 14,
     alignItems: "center",
     justifyContent: "center",

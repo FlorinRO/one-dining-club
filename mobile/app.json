@@ -1,5 +1,6 @@
 {
   "expo": {
+    "owner": "connectionpoint",
     "name": "One Dining Club",
     "slug": "one-dining-club",
     "scheme": "onediningclub",
@@ -9,17 +10,24 @@
     "splash": {
       "backgroundColor": "#E53935"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "club.onedining.customer",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "One Dining Club folosește locația pentru restaurante și livrare."
+        "NSLocationWhenInUseUsageDescription": "One Dining Club folosește locația pentru restaurante și livrare.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "club.onedining.customer",
-      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "POST_NOTIFICATIONS"]
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS"
+      ]
     },
     "plugins": [
       "expo-notifications",
@@ -34,7 +42,10 @@
       "googleWebClientId": "",
       "googleIosClientId": "",
       "googleAndroidClientId": "",
-      "facebookClientId": ""
+      "facebookClientId": "",
+      "eas": {
+        "projectId": "d84264ea-fb7b-4d5e-8d1c-9d7cfb237cdf"
+      }
     }
   }
 }
