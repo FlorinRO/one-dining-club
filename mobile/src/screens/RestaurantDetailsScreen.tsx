@@ -41,7 +41,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
     restaurantsApi.products(initialRestaurant.id).then(setProducts);
   }, [initialRestaurant.id]);
 
-  const selectedProducts = useMemo(() => products.slice(0, 5), [products]);
+  const selectedProducts = useMemo(() => products.slice(0, 10), [products]);
 
   const restaurantSearchResults = useMemo(() => {
     const query = restaurantSearchQuery.trim().toLowerCase();

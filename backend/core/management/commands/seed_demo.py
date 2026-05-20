@@ -48,6 +48,12 @@ class Command(BaseCommand):
             ("Healthy", "leaf"),
             ("Desserts", "dessert"),
             ("Coffee", "coffee"),
+            ("Japanese", "ramen"),
+            ("Mexican", "taco"),
+            ("Korean", "chicken"),
+            ("BBQ", "grill"),
+            ("Brunch", "coffee"),
+            ("Middle Eastern", "falafel"),
         ]:
             category_map[name], _ = RestaurantCategory.objects.get_or_create(name=name, defaults={"icon": icon})
 
@@ -197,6 +203,198 @@ class Command(BaseCommand):
                     ],
                 }
             )
+
+        expanded_demo_payload = [
+            (
+                "umami-reels",
+                "Umami Reels",
+                "Ramen, karaage si bowls japoneze gandite pentru feed-uri video rapide.",
+                "Japanese",
+                "Ramen",
+                ["Shoyu Glow Ramen", "Karaage Crunch Bowl", "Miso Butter Corn Ramen", "Yuzu Salmon Don", "Tokyo Egg Sando", "Gyoza Drip Plate", "Tonkatsu Reel Curry", "Sesame Udon Toss", "Wasabi Tuna Roll", "Matcha Mochi Stack"],
+                "Gluten, ou, soia",
+            ),
+            (
+                "neon-taco-bar",
+                "Neon Taco Bar",
+                "Tacos, quesadilla si street corn cu salsa proaspata si plating colorat.",
+                "Mexican",
+                "Tacos",
+                ["Birria Dip Taco", "Al Pastor Neon Taco", "Chipotle Chicken Quesadilla", "Street Corn Crunch", "Avocado Lime Tostada", "Beef Barbacoa Burrito", "Crispy Fish Taco", "Mango Salsa Nachos", "Pork Carnitas Bowl", "Churro Dulce Bites"],
+                "Gluten, lactoza",
+            ),
+            (
+                "carbonara-cut",
+                "Carbonara Cut",
+                "Paste fresh, focaccia si sosuri italiene cu portii filmabile.",
+                "Italian",
+                "Pasta",
+                ["Guanciale Carbonara Reel", "Truffle Cacio Pepe", "Vodka Rigatoni Pull", "Pesto Burrata Linguine", "Short Rib Pappardelle", "Focaccia Stracciatella", "Ravioli Sage Butter", "Spicy Arrabbiata Mafalde", "Lemon Ricotta Gnocchi", "Tiramisu Spoon Shot"],
+                "Gluten, ou, lactoza",
+            ),
+            (
+                "crispy-seoul-lab",
+                "Crispy Seoul Lab",
+                "Korean fried chicken, bibimbap si sosuri gochujang cu crunch puternic.",
+                "Korean",
+                "Korean",
+                ["Gochujang Wing Tower", "Honey Garlic Dakgangjeong", "Kimchi Fried Rice Pop", "Bulgogi Bibimbap", "Corn Cheese Lava Bowl", "Crispy Tteok Skewers", "Seoul Slaw Chicken Burger", "Japchae Glass Noodles", "Soy Sesame Drumsticks", "Hotteok Caramel Stack"],
+                "Gluten, susan, soia",
+            ),
+            (
+                "bowl-motion",
+                "Bowl Motion",
+                "Protein bowls, salate calde si dressing-uri fresh pentru pranzuri rapide.",
+                "Healthy",
+                "Bowls",
+                ["Green Goddess Chicken Bowl", "Salmon Avocado Motion", "Halloumi Quinoa Crunch", "Turkey Tahini Protein Bowl", "Tofu Peanut Noodle Salad", "Beetroot Feta Energy Bowl", "Lime Shrimp Rice Bowl", "Falafel Kale Plate", "Mango Chicken Fit Bowl", "Cocoa Chia Recovery Cup"],
+                "Poate contine alergeni",
+            ),
+            (
+                "smokehouse-loop",
+                "Smokehouse Loop",
+                "BBQ, brisket, ribs si burgeri afumati cu garnituri consistente.",
+                "BBQ",
+                "BBQ",
+                ["Brisket Burnt Ends Box", "Sticky Rib Reel Rack", "Pulled Pork Smoke Bun", "Maple Bacon Smash", "Charred Corn Slaw Cup", "Smoked Chicken Mac", "Texas Chili Loaded Fries", "BBQ Halloumi Stack", "Pitmaster Sausage Plate", "Peach Cobbler Jar"],
+                "Gluten, lactoza",
+            ),
+            (
+                "bao-pop-studio",
+                "Bao Pop Studio",
+                "Bao buns, dumplings si noodles asiatici cu topping-uri crocante.",
+                "Asian",
+                "Bao",
+                ["Pork Belly Bao Pop", "Crispy Tofu Bao", "Duck Hoisin Bao", "Shrimp Chili Dumplings", "Sichuan Noodle Pull", "Katsu Curry Bao", "Miso Mushroom Dumplings", "Sesame Chicken Rice Box", "Thai Basil Beef Bowl", "Coconut Mango Sticky Rice"],
+                "Gluten, susan, soia",
+            ),
+            (
+                "gelato-stories",
+                "Gelato Stories",
+                "Gelato, prajituri si bauturi reci cu topping-uri de sezon.",
+                "Desserts",
+                "Desserts",
+                ["Pistachio Gelato Swirl", "Salted Caramel Affogato", "Berry Cheesecake Cup", "Chocolate Lava Reel", "Tiramisu Gelato Sandwich", "Lemon Meringue Jar", "Hazelnut Crunch Sundae", "Strawberry Basil Sorbet", "Cannoli Cream Bites", "Espresso Granita Float"],
+                "Lactoza, ou",
+            ),
+            (
+                "market-brunch-club",
+                "Market Brunch Club",
+                "Brunch all-day, sandwich-uri calde, oua si cafea de specialitate.",
+                "Brunch",
+                "Brunch",
+                ["Benedict Market Stack", "Croissant Egg Melt", "Pancake Berry Reel", "Shakshuka Toast Pull", "Avocado Halloumi Tartine", "Bacon Hash Skillet", "Smoked Salmon Bagel", "French Toast Brulee", "Granola Yogurt Jar", "Cold Brew Cream Float"],
+                "Gluten, ou, lactoza",
+            ),
+            (
+                "levant-reel-kitchen",
+                "Levant Reel Kitchen",
+                "Falafel, hummus, kebab si platouri levantine cu lipii calde.",
+                "Middle Eastern",
+                "Levant",
+                ["Falafel Crunch Pita", "Chicken Shawarma Reel", "Beef Kofta Plate", "Hummus Chili Oil Bowl", "Halloumi Za'atar Wrap", "Lamb Kebab Rice Box", "Baba Ganoush Scoop", "Tabbouleh Citrus Salad", "Harissa Cauliflower Pita", "Pistachio Baklava Bites"],
+                "Gluten, susan",
+            ),
+        ]
+        for offset, row in enumerate(expanded_demo_payload, start=16):
+            slug, name, description, category_name, menu_category, product_names, allergens = row
+            base_lat = Decimal("44.432000") + Decimal(offset) / Decimal("900")
+            base_lng = Decimal("26.086000") + Decimal(offset) / Decimal("1100")
+            restaurants_payload.append(
+                {
+                    "slug": slug,
+                    "name": name,
+                    "description": description,
+                    "phone": f"+40728{offset:05d}",
+                    "email": f"hello@{slug}.test",
+                    "address": f"Strada Demo Reels {offset}",
+                    "city": "Bucuresti",
+                    "latitude": base_lat,
+                    "longitude": base_lng,
+                    "delivery_fee": Decimal(f"{5 + (offset % 6)}.90"),
+                    "minimum_order": Decimal(f"{24 + (offset % 5) * 4}.00"),
+                    "estimated_delivery_time_min": 16 + (offset % 10),
+                    "estimated_delivery_time_max": 28 + (offset % 14),
+                    "rating": Decimal(f"4.{82 + (offset % 12)}"),
+                    "categories": [category_name],
+                    "products": [
+                        (
+                            menu_category,
+                            product_name,
+                            f"{product_name} - preparat demo distinct pentru feed video.",
+                            Decimal(f"{27 + product_idx + (offset % 5)}.00"),
+                            Decimal(f"{24 + product_idx + (offset % 5)}.00") if product_idx in (3, 7) else None,
+                            10 + ((offset + product_idx) % 12),
+                            allergens,
+                        )
+                        for product_idx, product_name in enumerate(product_names, start=1)
+                    ],
+                }
+            )
+
+        demo_product_styles = ["Classic", "Spicy", "Smoky", "Crispy", "House", "Loaded", "Fresh", "Fire", "Signature", "Street"]
+        demo_product_bases = [
+            "Burger",
+            "Pizza",
+            "Pasta",
+            "Ramen",
+            "Bowl",
+            "Wrap",
+            "Salad",
+            "Taco",
+            "Quesadilla",
+            "Soup",
+            "Sandwich",
+            "Schnitzel",
+            "Rice Box",
+            "Noodle Box",
+            "Bao",
+            "Dumplings",
+            "Sushi Roll",
+            "Poke",
+            "Steak",
+            "Wings",
+            "Halloumi",
+            "Falafel",
+            "Shawarma",
+            "Risotto",
+            "Gnocchi",
+            "Lasagna",
+            "Kebab",
+            "Burrito",
+            "Udon",
+            "Pho",
+            "Maki",
+            "Nigiri",
+            "Bibimbap",
+            "Curry",
+            "Brisket",
+            "Ribs",
+        ]
+        for restaurant_index, payload in enumerate(restaurants_payload, start=1):
+            product_rows = payload["products"]
+            existing_product_names = {row[1] for row in product_rows}
+            fallback_category = product_rows[0][0] if product_rows else "Chef Picks"
+            while len(product_rows) < 10:
+                sequence = len(product_rows) + 1
+                style = demo_product_styles[(sequence - 1) % len(demo_product_styles)]
+                base_name = demo_product_bases[(restaurant_index * 7 + sequence * 3) % len(demo_product_bases)]
+                product_name = f"{style} {base_name} {payload['slug']}"
+                if product_name in existing_product_names:
+                    product_name = f"{product_name} {sequence}"
+                existing_product_names.add(product_name)
+                base_price = Decimal(f"{24 + restaurant_index + sequence}.00")
+                product_rows.append(
+                    (
+                        fallback_category,
+                        product_name,
+                        f"{product_name} - produs demo distinct pentru meniu extins.",
+                        base_price,
+                        base_price - Decimal("4.00") if sequence % 3 == 0 else None,
+                        10 + ((restaurant_index + sequence) % 14),
+                        "Poate contine alergeni",
+                    )
+                )
 
         pizza = None
         for payload in restaurants_payload:

@@ -1,19 +1,22 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useEvent } from "expo";
+import { useEvent, useEventListener } from "expo";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import { useVideoPlayer, VideoView } from "expo-video";
 import {
   Heart,
-  MessageCircle,
-  Send,
-  Share2,
+  MessageSquare,
+  Repeat2,
   ShoppingBag,
-  Star,
   UtensilsCrossed,
+  Volume2,
+  VolumeX,
 } from "lucide-react-native";
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   FlatList,
   Image,
   NativeScrollEvent,
@@ -30,11 +33,13 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
+import { getDemoProductVideoUrl } from "../data/demoVideos";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
 import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
 import { HomeStackParamList } from "../navigation/types";
 import { useCartStore } from "../store/cartStore";
+import { useFavoritesStore } from "../store/favoritesStore";
 import { colors } from "../theme/colors";
 import { Product, Restaurant } from "../types/models";
 
@@ -43,6 +48,7 @@ type Props = NativeStackScreenProps<HomeStackParamList, "Home">;
 type FeedRestaurant = {
   restaurant: Restaurant;
   products: Product[];
+  initialProductIndex: number;
 };
 
 const VIDEO_POSTERS = [
@@ -56,19 +62,6 @@ const VIDEO_POSTERS = [
   "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?q=80&w=1300&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1300&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1529042410759-befb1204b468?q=80&w=1300&auto=format&fit=crop",
-];
-
-const MOCK_VIDEO_SOURCES = [
-  "https://assets.mixkit.co/videos/47555/47555-720.mp4",
-  "https://assets.mixkit.co/videos/43063/43063-720.mp4",
-  "https://assets.mixkit.co/videos/3806/3806-720.mp4",
-  "https://assets.mixkit.co/videos/43925/43925-720.mp4",
-  "https://assets.mixkit.co/videos/42464/42464-720.mp4",
-  "https://assets.mixkit.co/videos/43905/43905-720.mp4",
-  "https://assets.mixkit.co/videos/1666/1666-720.mp4",
-  "https://assets.mixkit.co/videos/40522/40522-720.mp4",
-  "https://assets.mixkit.co/videos/4672/4672-720.mp4",
-  "https://assets.mixkit.co/videos/42909/42909-720.mp4",
 ];
 
 const productKey = (restaurantId: number, productId: number) => `${restaurantId}:${productId}`;
@@ -111,6 +104,7 @@ export function HomeScreen({ navigation }: Props) {
   const { tr } = useI18n();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const addItem = useCartStore((state) => state.addItem);
+  const favoriteRestaurantIds = useFavoritesStore((state) => state.restaurantIds);
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [productsByRestaurant, setProductsByRestaurant] = useState<Record<number, Product[]>>({});
@@ -118,6 +112,8 @@ export function HomeScreen({ navigation }: Props) {
   const [commentBumps, setCommentBumps] = useState<Record<string, number>>({});
   const [activeRestaurantIndex, setActiveRestaurantIndex] = useState(0);
   const [activeProductByRestaurant, setActiveProductByRestaurant] = useState<Record<number, number>>({});
+  const [audiblePostKey, setAudiblePostKey] = useState<string | null>(null);
+  const [isRestaurantScrollEnabled, setIsRestaurantScrollEnabled] = useState(true);
   const [feedHeight, setFeedHeight] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -126,18 +122,22 @@ export function HomeScreen({ navigation }: Props) {
 
   const fetchFeed = useCallback(async () => {
     const restaurantItems = await restaurantsApi.list({ ordering: "-rating" });
-    const visibleRestaurants = restaurantItems.filter((item) => item.is_open !== false).slice(0, 12);
+    const openRestaurants = restaurantItems.filter((item) => item.is_open !== false);
+    const scopedRestaurants = favoriteRestaurantIds.length
+      ? openRestaurants.filter((item) => favoriteRestaurantIds.includes(item.id))
+      : openRestaurants;
+    const visibleRestaurants = scopedRestaurants.slice(0, 12);
     setRestaurants(visibleRestaurants);
 
     const productEntries = await Promise.all(
       visibleRestaurants.map(async (restaurant) => {
         const products = await restaurantsApi.products(restaurant.id);
-        return [restaurant.id, products.slice(0, 8)] as const;
+        return [restaurant.id, products.slice(0, 10)] as const;
       }),
     );
 
     setProductsByRestaurant(Object.fromEntries(productEntries));
-  }, []);
+  }, [favoriteRestaurantIds]);
 
   useEffect(() => {
     let isMounted = true;
@@ -164,16 +164,27 @@ export function HomeScreen({ navigation }: Props) {
   }, [fetchFeed]);
 
   const feedData = useMemo<FeedRestaurant[]>(() => {
-    return restaurants.map((restaurant) => {
-      const products = productsByRestaurant[restaurant.id] ?? [];
+    return restaurants.map((restaurant, restaurantIndex) => {
+      const products = (productsByRestaurant[restaurant.id] ?? []).filter((product) => Number(product.restaurant) === restaurant.id);
+      const resolvedProducts = products.length ? products : [buildFallbackProduct(restaurant)];
       return {
         restaurant,
-        products: products.length ? products : [buildFallbackProduct(restaurant)],
+        products: resolvedProducts,
+        initialProductIndex: restaurantIndex % resolvedProducts.length,
       };
     });
   }, [productsByRestaurant, restaurants]);
 
-  const activeRestaurant = feedData[activeRestaurantIndex]?.restaurant;
+  const activeFeedItem = feedData[activeRestaurantIndex];
+  const activeFeedProductIndex = activeFeedItem
+    ? activeProductByRestaurant[activeFeedItem.restaurant.id] ?? activeFeedItem.initialProductIndex
+    : 0;
+  const activeFeedProduct = activeFeedItem?.products[
+    Math.min(Math.max(activeFeedProductIndex, 0), Math.max(activeFeedItem.products.length - 1, 0))
+  ];
+  const activePostKey = activeFeedItem && activeFeedProduct
+    ? productKey(activeFeedItem.restaurant.id, activeFeedProduct.id)
+    : null;
 
   const restaurantViewabilityConfig = useRef({ itemVisiblePercentThreshold: 65 }).current;
   const onRestaurantViewableItemsChanged = useRef(
@@ -218,6 +229,17 @@ export function HomeScreen({ navigation }: Props) {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
+  useEffect(() => {
+    if (!activePostKey) {
+      setAudiblePostKey(null);
+      return;
+    }
+
+    if (audiblePostKey !== activePostKey) {
+      setAudiblePostKey(activePostKey);
+    }
+  }, [activePostKey, audiblePostKey]);
+
   if (isLoading && !feedData.length) {
     return (
       <View style={styles.loadingScreen}>
@@ -250,11 +272,15 @@ export function HomeScreen({ navigation }: Props) {
             pageHeight={pageHeight}
             pageWidth={screenWidth}
             isActive={index === activeRestaurantIndex}
-            activeProductIndex={activeProductByRestaurant[item.restaurant.id] ?? 0}
+            activeProductIndex={activeProductByRestaurant[item.restaurant.id] ?? item.initialProductIndex}
+            audiblePostKey={audiblePostKey}
             likedPosts={likedPosts}
             commentBumps={commentBumps}
             onProductIndexChange={(productIndex) => {
               setActiveProductByRestaurant((current) => ({ ...current, [item.restaurant.id]: productIndex }));
+            }}
+            onHorizontalSwipeStateChange={(isSwipingHorizontally) => {
+              setIsRestaurantScrollEnabled(!isSwipingHorizontally);
             }}
             onOpenRestaurant={() => navigation.navigate("RestaurantDetails", { restaurant: item.restaurant })}
             onOpenProduct={(product) => navigation.navigate("ProductDetails", { restaurant: item.restaurant, product })}
@@ -262,12 +288,18 @@ export function HomeScreen({ navigation }: Props) {
             onLike={(product) => toggleLike(item.restaurant, product)}
             onComment={(product) => addCommentBump(item.restaurant, product)}
             onShare={(product) => shareProduct(item.restaurant, product)}
+            onAudioChange={(key, shouldEnableAudio) => {
+              setAudiblePostKey(shouldEnableAudio ? key : null);
+            }}
+            onClearAudio={() => setAudiblePostKey(null)}
           />
         )}
         pagingEnabled
+        directionalLockEnabled
         snapToInterval={pageHeight}
         decelerationRate="fast"
         disableIntervalMomentum
+        scrollEnabled={isRestaurantScrollEnabled}
         showsVerticalScrollIndicator={false}
         viewabilityConfig={restaurantViewabilityConfig}
         onViewableItemsChanged={onRestaurantViewableItemsChanged}
@@ -276,6 +308,7 @@ export function HomeScreen({ navigation }: Props) {
         maxToRenderPerBatch={2}
         windowSize={3}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.white} />}
+        onScrollBeginDrag={() => setAudiblePostKey(null)}
         onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
           const nextIndex = Math.round(event.nativeEvent.contentOffset.y / pageHeight);
           if (nextIndex !== activeRestaurantIndex && nextIndex >= 0 && nextIndex < feedData.length) {
@@ -296,15 +329,19 @@ type RestaurantFeedPageProps = {
   pageWidth: number;
   isActive: boolean;
   activeProductIndex: number;
+  audiblePostKey: string | null;
   likedPosts: Record<string, boolean>;
   commentBumps: Record<string, number>;
   onProductIndexChange: (index: number) => void;
+  onHorizontalSwipeStateChange: (isSwipingHorizontally: boolean) => void;
   onOpenRestaurant: () => void;
   onOpenProduct: (product: Product) => void;
   onQuickAdd: (product: Product) => void;
   onLike: (product: Product) => void;
   onComment: (product: Product) => void;
   onShare: (product: Product) => void;
+  onAudioChange: (key: string, shouldEnableAudio: boolean) => void;
+  onClearAudio: () => void;
 };
 
 function RestaurantFeedPage({
@@ -313,17 +350,26 @@ function RestaurantFeedPage({
   pageWidth,
   isActive,
   activeProductIndex,
+  audiblePostKey,
   likedPosts,
   commentBumps,
   onProductIndexChange,
+  onHorizontalSwipeStateChange,
   onOpenRestaurant,
   onOpenProduct,
   onQuickAdd,
   onLike,
   onComment,
   onShare,
+  onAudioChange,
+  onClearAudio,
 }: RestaurantFeedPageProps) {
+  const productListRef = useRef<FlatList<Product>>(null);
+  const horizontalLockReleaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchGestureLockRef = useRef<"horizontal" | "vertical" | null>(null);
   const productViewabilityConfig = useRef({ itemVisiblePercentThreshold: 65 }).current;
+  const clampedActiveProductIndex = Math.min(Math.max(activeProductIndex, 0), item.products.length - 1);
   const onProductViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: Array<ViewToken<Product>> }) => {
       const next = viewableItems.find((token) => token.isViewable && token.index != null);
@@ -333,14 +379,78 @@ function RestaurantFeedPage({
     },
   ).current;
 
+  const releaseHorizontalScrollLock = useCallback(() => {
+    if (horizontalLockReleaseTimeoutRef.current) {
+      clearTimeout(horizontalLockReleaseTimeoutRef.current);
+    }
+
+    horizontalLockReleaseTimeoutRef.current = setTimeout(() => {
+      onHorizontalSwipeStateChange(false);
+      horizontalLockReleaseTimeoutRef.current = null;
+    }, 120);
+  }, [onHorizontalSwipeStateChange]);
+
+  useEffect(() => {
+    productListRef.current?.scrollToIndex({ index: clampedActiveProductIndex, animated: false });
+  }, [clampedActiveProductIndex]);
+
+  useEffect(() => {
+    return () => {
+      if (horizontalLockReleaseTimeoutRef.current) {
+        clearTimeout(horizontalLockReleaseTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <View style={[styles.page, { width: pageWidth, height: pageHeight }]}>
+    <View
+      style={[styles.page, { width: pageWidth, height: pageHeight }]}
+      onTouchStart={(event) => {
+        touchStartRef.current = { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY };
+        touchGestureLockRef.current = null;
+      }}
+      onTouchMove={(event) => {
+        const start = touchStartRef.current;
+        if (!start || touchGestureLockRef.current) return;
+
+        const dx = event.nativeEvent.pageX - start.x;
+        const dy = event.nativeEvent.pageY - start.y;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+
+        if (Math.max(absDx, absDy) < 8) return;
+
+        if (absDx > absDy * 1.15) {
+          touchGestureLockRef.current = "horizontal";
+          onHorizontalSwipeStateChange(true);
+        } else if (absDy > absDx * 1.15) {
+          touchGestureLockRef.current = "vertical";
+          onHorizontalSwipeStateChange(false);
+        }
+      }}
+      onTouchEnd={() => {
+        touchStartRef.current = null;
+        if (touchGestureLockRef.current === "horizontal") {
+          releaseHorizontalScrollLock();
+        }
+        touchGestureLockRef.current = null;
+      }}
+      onTouchCancel={() => {
+        touchStartRef.current = null;
+        if (touchGestureLockRef.current === "horizontal") {
+          releaseHorizontalScrollLock();
+        }
+        touchGestureLockRef.current = null;
+      }}
+    >
       <FlatList
+        ref={productListRef}
         horizontal
         data={item.products}
         keyExtractor={(product) => String(product.id)}
         renderItem={({ item: product, index }) => {
           const key = productKey(item.restaurant.id, product.id);
+          const isSlideActive = isActive && index === clampedActiveProductIndex;
           return (
             <ProductVideoSlide
               restaurant={item.restaurant}
@@ -349,7 +459,8 @@ function RestaurantFeedPage({
               productCount={item.products.length}
               width={pageWidth}
               height={pageHeight}
-              isActive={isActive && index === activeProductIndex}
+              isActive={isSlideActive}
+              isAudible={audiblePostKey === key && isSlideActive}
               isLiked={Boolean(likedPosts[key])}
               commentBump={commentBumps[key] ?? 0}
               onOpenRestaurant={onOpenRestaurant}
@@ -358,14 +469,26 @@ function RestaurantFeedPage({
               onLike={() => onLike(product)}
               onComment={() => onComment(product)}
               onShare={() => onShare(product)}
+              onAudioChange={(shouldEnableAudio) => onAudioChange(key, shouldEnableAudio)}
             />
           );
         }}
         pagingEnabled
+        directionalLockEnabled
         snapToInterval={pageWidth}
         decelerationRate="fast"
         disableIntervalMomentum
         showsHorizontalScrollIndicator={false}
+        onScrollBeginDrag={() => {
+          if (horizontalLockReleaseTimeoutRef.current) {
+            clearTimeout(horizontalLockReleaseTimeoutRef.current);
+            horizontalLockReleaseTimeoutRef.current = null;
+          }
+          onClearAudio();
+          onHorizontalSwipeStateChange(true);
+        }}
+        onMomentumScrollEnd={releaseHorizontalScrollLock}
+        onScrollEndDrag={releaseHorizontalScrollLock}
         viewabilityConfig={productViewabilityConfig}
         onViewableItemsChanged={onProductViewableItemsChanged}
         getItemLayout={(_, index) => ({ length: pageWidth, offset: pageWidth * index, index })}
@@ -386,6 +509,7 @@ type ProductVideoSlideProps = {
   width: number;
   height: number;
   isActive: boolean;
+  isAudible: boolean;
   isLiked: boolean;
   commentBump: number;
   onOpenRestaurant: () => void;
@@ -394,7 +518,31 @@ type ProductVideoSlideProps = {
   onLike: () => void;
   onComment: () => void;
   onShare: () => void;
+  onAudioChange: (shouldEnableAudio: boolean) => void;
 };
+
+type LikeBurstHeart = {
+  id: number;
+  xOffset: number;
+  size: number;
+  duration: number;
+  delay: number;
+  rotate: string;
+};
+
+type PersistentLikeHeart = {
+  id: number;
+  xOffset: number;
+  yOffset: number;
+  size: number;
+  delay: number;
+};
+
+const PERSISTENT_LIKE_HEARTS: PersistentLikeHeart[] = [
+  { id: 1, xOffset: -12, yOffset: -2, size: 8, delay: 0 },
+  { id: 2, xOffset: 0, yOffset: -8, size: 9, delay: 180 },
+  { id: 3, xOffset: 12, yOffset: -2, size: 8, delay: 360 },
+];
 
 function ProductVideoSlide({
   restaurant,
@@ -404,6 +552,7 @@ function ProductVideoSlide({
   width,
   height,
   isActive,
+  isAudible,
   isLiked,
   commentBump,
   onOpenRestaurant,
@@ -412,6 +561,7 @@ function ProductVideoSlide({
   onLike,
   onComment,
   onShare,
+  onAudioChange,
 }: ProductVideoSlideProps) {
   const { tr } = useI18n();
   const insets = useSafeAreaInsets();
@@ -419,7 +569,11 @@ function ProductVideoSlide({
   const posterIndex = Math.abs(restaurant.id * 7 + product.id * 3 + index) % VIDEO_POSTERS.length;
   const productPrice = product.effective_price ?? product.discount_price ?? product.price;
   const posterUri = product.image ? resolveProductImageUri(product.image, product.id) : VIDEO_POSTERS[posterIndex];
-  const videoUri = MOCK_VIDEO_SOURCES[(restaurant.id + product.id + index) % MOCK_VIDEO_SOURCES.length];
+  const videoUri = product.video_url ?? getDemoProductVideoUrl((restaurant.id - 1) * 10 + index);
+  const feedVideoKey = productKey(restaurant.id, product.id);
+  const [hasAudioTrack, setHasAudioTrack] = useState(product.has_audio ?? true);
+  const canPlayAudio = hasAudioTrack;
+  const shouldMute = !isActive || !isAudible || !canPlayAudio;
   const videoSource = useMemo(
     () => ({
       uri: videoUri,
@@ -432,6 +586,8 @@ function ProductVideoSlide({
   const comments = stats.comments + commentBump;
   const [hasRenderedFrame, setHasRenderedFrame] = useState(false);
   const [hasPlaybackError, setHasPlaybackError] = useState(false);
+  const [likeHearts, setLikeHearts] = useState<LikeBurstHeart[]>([]);
+  const likeBurstIdRef = useRef(0);
   const player = useVideoPlayer(videoSource, (videoPlayer) => {
     videoPlayer.loop = true;
     videoPlayer.muted = true;
@@ -448,9 +604,60 @@ function ProductVideoSlide({
   const playerStatus = statusEvent?.status ?? player.status;
   const isPlaying = playingEvent?.isPlaying ?? player.playing;
 
+  useEventListener(player, "sourceLoad", (payload) => {
+    const audioTrackCount = payload.availableAudioTracks?.length ?? 0;
+    setHasAudioTrack(audioTrackCount > 0);
+    console.log("[FeedVideo] video loaded", {
+      key: feedVideoKey,
+      uri: videoUri,
+      duration: payload.duration,
+      hasAudioTrack: audioTrackCount > 0,
+      audioTrackCount,
+      muted: player.muted,
+      volume: player.volume,
+    });
+  });
+
+  useEventListener(player, "availableAudioTracksChange", ({ availableAudioTracks }) => {
+    setHasAudioTrack(availableAudioTracks.length > 0);
+    console.log("[FeedVideo] audio tracks changed", {
+      key: feedVideoKey,
+      uri: videoUri,
+      hasAudioTrack: availableAudioTracks.length > 0,
+      audioTrackCount: availableAudioTracks.length,
+    });
+  });
+
+  useEventListener(player, "mutedChange", ({ muted }) => {
+    console.log("[FeedVideo] muted state changed", {
+      key: feedVideoKey,
+      muted,
+      volume: player.volume,
+    });
+  });
+
+  useEventListener(player, "volumeChange", ({ volume }) => {
+    console.log("[FeedVideo] volume changed", {
+      key: feedVideoKey,
+      muted: player.muted,
+      volume,
+    });
+  });
+
+  useEventListener(player, "statusChange", ({ status, error }) => {
+    if (status === "error") {
+      console.warn("[FeedVideo] playback status error", {
+        key: feedVideoKey,
+        uri: videoUri,
+        error,
+      });
+    }
+  });
+
   useEffect(() => {
     setHasRenderedFrame(false);
     setHasPlaybackError(false);
+    setHasAudioTrack(product.has_audio ?? true);
   }, [videoUri]);
 
   useEffect(() => {
@@ -464,6 +671,66 @@ function ProductVideoSlide({
     }
   }, [playerStatus]);
 
+  const applyAudioState = useCallback(
+    (muted: boolean, volume: number, reason: string) => {
+      try {
+        player.muted = muted;
+        player.volume = volume;
+        console.log("[FeedVideo] audio state applied", {
+          key: feedVideoKey,
+          reason,
+          isActive,
+          muted,
+          volume,
+        });
+      } catch (error) {
+        console.warn("[FeedVideo] audio state error", {
+          key: feedVideoKey,
+          reason,
+          error,
+        });
+      }
+    },
+    [feedVideoKey, isActive, player],
+  );
+
+  const requestPlay = useCallback(
+    (reason: string) => {
+      try {
+        const playResult = player.play() as unknown;
+        console.log("[FeedVideo] play() requested", {
+          key: feedVideoKey,
+          reason,
+          isActive,
+          muted: player.muted,
+          volume: player.volume,
+          status: player.status,
+        });
+
+        if (playResult && typeof (playResult as Promise<void>).catch === "function") {
+          void (playResult as Promise<void>).catch((error) => {
+            console.warn("[FeedVideo] play() error", {
+              key: feedVideoKey,
+              reason,
+              error,
+            });
+          });
+        }
+      } catch (error) {
+        console.warn("[FeedVideo] play() error", {
+          key: feedVideoKey,
+          reason,
+          error,
+        });
+      }
+    },
+    [feedVideoKey, isActive, player],
+  );
+
+  useEffect(() => {
+    applyAudioState(shouldMute, shouldMute ? 0 : 1, shouldMute ? "inactive-or-muted" : "active-user-unmuted");
+  }, [applyAudioState, shouldMute]);
+
   useEffect(() => {
     if (!isActive) {
       player.pause();
@@ -471,11 +738,67 @@ function ProductVideoSlide({
     }
 
     if (playerStatus !== "error" && !isPlaying) {
-      player.play();
+      requestPlay(shouldMute ? "active-muted-autoplay" : "active-audible-user-play");
     }
 
     return undefined;
-  }, [isActive, isPlaying, player, playerStatus]);
+  }, [isActive, isPlaying, player, playerStatus, requestPlay, shouldMute]);
+
+  const handleAudioPress = useCallback(() => {
+    void Haptics.selectionAsync();
+
+    if (!isActive) {
+      console.log("[FeedVideo] audio button ignored for inactive video", {
+        key: feedVideoKey,
+        muted: player.muted,
+        volume: player.volume,
+      });
+      return;
+    }
+
+    if (!canPlayAudio) {
+      console.log("[FeedVideo] audio button ignored because video has no audio track", {
+        key: feedVideoKey,
+        uri: videoUri,
+      });
+      applyAudioState(true, 0, "no-audio-track");
+      return;
+    }
+
+    if (isAudible) {
+      onAudioChange(false);
+      applyAudioState(true, 0, "user-muted");
+      return;
+    }
+
+    onAudioChange(true);
+    applyAudioState(false, 1, "user-unmuted");
+    requestPlay("user-unmuted");
+  }, [applyAudioState, canPlayAudio, feedVideoKey, isActive, isAudible, onAudioChange, player, requestPlay, videoUri]);
+
+  const handleLikePress = useCallback(() => {
+    const willLike = !isLiked;
+    onLike();
+
+    if (!willLike) return;
+
+    const burstIdBase = likeBurstIdRef.current + 1;
+    likeBurstIdRef.current += 7;
+    const hearts: LikeBurstHeart[] = Array.from({ length: 7 }).map((_, heartIndex) => ({
+      id: burstIdBase + heartIndex,
+      xOffset: Math.round((Math.random() - 0.5) * 30),
+      size: 9 + Math.round(Math.random() * 5),
+      duration: 520 + Math.round(Math.random() * 220),
+      delay: Math.round(Math.random() * 80),
+      rotate: `${Math.round((Math.random() - 0.5) * 30)}deg`,
+    }));
+
+    setLikeHearts((current) => [...current, ...hearts]);
+  }, [isLiked, onLike]);
+
+  const removeHeart = useCallback((id: number) => {
+    setLikeHearts((current) => current.filter((heart) => heart.id !== id));
+  }, []);
 
   return (
     <View style={[styles.slide, { width, height }]}>
@@ -486,10 +809,19 @@ function ProductVideoSlide({
         nativeControls={false}
         fullscreenOptions={{ enable: false }}
         allowsPictureInPicture={false}
+        playsInline
         pointerEvents="none"
         surfaceType="textureView"
         useExoShutter={false}
-        onFirstFrameRender={() => setHasRenderedFrame(true)}
+        onFirstFrameRender={() => {
+          setHasRenderedFrame(true);
+          console.log("[FeedVideo] first frame rendered", {
+            key: feedVideoKey,
+            uri: videoUri,
+            muted: player.muted,
+            volume: player.volume,
+          });
+        }}
       />
       {hasPlaybackError ? (
         <Image source={{ uri: posterUri }} style={styles.videoFallbackImage} resizeMode="cover" />
@@ -499,82 +831,225 @@ function ProductVideoSlide({
           <ActivityIndicator color={colors.white} />
         </View>
       ) : null}
-      <View style={styles.dimLayer} />
+      <View style={[styles.dimLayer, { bottom: insets.bottom + 92 }]} />
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(0,0,0,0.88)", "rgba(0,0,0,0.56)", "rgba(0,0,0,0.0)"]}
+        start={{ x: 0.5, y: 1 }}
+        end={{ x: 0.5, y: 0 }}
+        style={styles.bottomFadeOverlay}
+      />
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(0,0,0,0.80)", "rgba(0,0,0,0.44)", "rgba(0,0,0,0.0)"]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topFadeOverlay}
+      />
 
       <Pressable style={styles.fullSlidePressable} onPress={onOpenProduct} />
 
       <View style={styles.productPagers} pointerEvents="none">
-        {Array.from({ length: Math.min(productCount, 8) }).map((_, dotIndex) => (
+        {Array.from({ length: Math.min(productCount, 10) }).map((_, dotIndex) => (
           <View key={dotIndex} style={[styles.productDot, dotIndex === index && styles.productDotActive]} />
         ))}
       </View>
 
       <View style={styles.actionStack}>
-        <SocialButton
-          label={compactCount(stats.likes + (isLiked ? 1 : 0))}
-          active={isLiked}
-          onPress={onLike}
-          icon={<Heart size={26} stroke={colors.white} fill={isLiked ? colors.red : "transparent"} />}
-        />
+        <View style={styles.likeButtonWrap}>
+          <View pointerEvents="none" style={styles.likeBurstLayer}>
+            {isLiked ? PERSISTENT_LIKE_HEARTS.map((heart) => (
+              <PersistentLikeHeartDot key={heart.id} heart={heart} />
+            )) : null}
+            {likeHearts.map((heart) => (
+              <FloatingLikeHeart
+                key={heart.id}
+                heart={heart}
+                onDone={() => removeHeart(heart.id)}
+              />
+            ))}
+          </View>
+          <SocialButton
+            label={compactCount(stats.likes + (isLiked ? 1 : 0))}
+            active={isLiked}
+            onPress={handleLikePress}
+            icon={<Heart size={24} stroke={colors.white} fill={colors.white} />}
+          />
+        </View>
         <SocialButton
           label={compactCount(comments)}
           onPress={onComment}
-          icon={<MessageCircle size={25} stroke={colors.white} />}
+          icon={<MessageSquare size={24} stroke={colors.white} fill={colors.white} />}
         />
         <SocialButton
           label={compactCount(stats.shares)}
           onPress={onShare}
-          icon={<Share2 size={25} stroke={colors.white} />}
+          icon={<Repeat2 size={24} stroke={colors.white} />}
         />
         <SocialButton
-          label={tr("Trimite", "Send")}
-          onPress={onShare}
-          icon={<Send size={24} stroke={colors.white} />}
+          onPress={handleAudioPress}
+          active={isAudible && canPlayAudio}
+          label={canPlayAudio ? (isAudible ? tr("Sunet", "Sound") : tr("Mut", "Muted")) : tr("Fără audio", "No audio")}
+          icon={
+            isAudible && canPlayAudio
+              ? <Volume2 size={24} stroke={colors.white} fill={colors.white} />
+              : <VolumeX size={24} stroke={colors.white} fill={colors.white} />
+          }
         />
       </View>
 
       <View style={styles.contentOverlay}>
+        <Pressable onPress={onOpenProduct}>
+          <Text numberOfLines={2} style={styles.productTitle}>{product.name}</Text>
+          <Text numberOfLines={2} style={styles.productDescription}>{product.description || restaurant.description}</Text>
+        </Pressable>
+
         <Pressable style={styles.restaurantHeader} onPress={onOpenRestaurant}>
-          <Image source={{ uri: restaurantPosterUri }} style={styles.restaurantAvatar} />
+          <View style={styles.restaurantIconWrap}>
+            <UtensilsCrossed size={13} stroke={colors.white} />
+          </View>
           <View style={styles.restaurantTextBlock}>
-            <View style={styles.restaurantNameRow}>
-              <Text numberOfLines={1} style={styles.restaurantName}>@{restaurant.slug || restaurant.name.toLowerCase().replace(/\s+/g, "")}</Text>
-              <View style={styles.followPill}>
-                <Text style={styles.followText}>{tr("Vezi", "View")}</Text>
-              </View>
-            </View>
+            <Text numberOfLines={1} style={styles.restaurantName}>{restaurant.name}</Text>
             <Text numberOfLines={1} style={styles.restaurantMeta}>
               {Number(restaurant.rating).toFixed(1)} ★ · {restaurant.estimated_delivery_time_min}-{restaurant.estimated_delivery_time_max} min · {money(restaurant.delivery_fee)} livrare
             </Text>
           </View>
         </Pressable>
 
-        <Pressable onPress={onOpenProduct}>
-          <Text numberOfLines={2} style={styles.productTitle}>{product.name}</Text>
-          <Text numberOfLines={2} style={styles.productDescription}>{product.description || restaurant.description}</Text>
-        </Pressable>
-
-        <View style={styles.tagsRow}>
-          <View style={styles.tagPill}>
-            <Star size={12} stroke="#111111" fill="#111111" />
-            <Text style={styles.tagText}>{product.category_name ?? tr("Recomandat", "Recommended")}</Text>
-          </View>
-          {product.is_popular ? (
-            <View style={styles.tagPillMuted}>
-              <Text style={styles.tagTextMuted}>{tr("Popular", "Popular")}</Text>
-            </View>
-          ) : null}
-        </View>
-
       </View>
       <View style={[styles.ctaRow, { bottom: insets.bottom + 58 }]}>
         <Pressable style={styles.orderButton} onPress={onQuickAdd}>
           <ShoppingBag size={18} stroke="#111111" />
-          <Text style={styles.orderButtonText}>{tr("Adaugă", "Add")}</Text>
-          <Text style={styles.orderButtonPrice}>{money(productPrice)}</Text>
+          <Text style={styles.orderButtonText}>+ {tr("Adaugă", "Add")}</Text>
+          <View style={styles.orderButtonPriceBadge}>
+            <View style={styles.orderButtonPriceWrap}>
+              <Text style={styles.orderButtonPrice}>{money(productPrice).replace(",", ".")}</Text>
+              <View pointerEvents="none" style={styles.orderPriceLineGreenStrike} />
+            </View>
+          </View>
         </Pressable>
       </View>
     </View>
+  );
+}
+
+type FloatingLikeHeartProps = {
+  heart: LikeBurstHeart;
+  onDone: () => void;
+};
+
+function FloatingLikeHeart({ heart, onDone }: FloatingLikeHeartProps) {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.sequence([
+      Animated.delay(heart.delay),
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: heart.duration,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]);
+
+    animation.start(({ finished }) => {
+      if (finished) onDone();
+    });
+
+    return () => {
+      animation.stop();
+    };
+  }, [heart.delay, heart.duration, onDone, progress]);
+
+  return (
+    <Animated.Text
+      style={[
+        styles.floatingHeart,
+        {
+          fontSize: heart.size,
+          left: 24 + heart.xOffset,
+          opacity: progress.interpolate({
+            inputRange: [0, 0.2, 1],
+            outputRange: [0, 1, 0],
+          }),
+          transform: [
+            {
+              translateY: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [2, -46],
+              }),
+            },
+            {
+              scale: progress.interpolate({
+                inputRange: [0, 0.15, 1],
+                outputRange: [0.6, 1.1, 0.85],
+              }),
+            },
+            { rotate: heart.rotate },
+          ],
+        },
+      ]}
+    >
+      ♥
+    </Animated.Text>
+  );
+}
+
+type PersistentLikeHeartDotProps = {
+  heart: PersistentLikeHeart;
+};
+
+function PersistentLikeHeartDot({ heart }: PersistentLikeHeartDotProps) {
+  const bob = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.delay(heart.delay),
+        Animated.timing(bob, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bob, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    animation.start();
+    return () => animation.stop();
+  }, [bob, heart.delay]);
+
+  return (
+    <Animated.Text
+      style={[
+        styles.persistentHeart,
+        {
+          fontSize: heart.size,
+          left: 25 + heart.xOffset,
+          top: 14 + heart.yOffset,
+          opacity: bob.interpolate({
+            inputRange: [0, 0.5, 1],
+            outputRange: [0.35, 0.85, 0.35],
+          }),
+          transform: [
+            {
+              translateY: bob.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, -4],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      ♥
+    </Animated.Text>
   );
 }
 
@@ -582,14 +1057,15 @@ type SocialButtonProps = {
   icon: ReactNode;
   label: string;
   active?: boolean;
+  hideLabel?: boolean;
   onPress: () => void;
 };
 
-function SocialButton({ icon, label, active, onPress }: SocialButtonProps) {
+function SocialButton({ icon, label, active, hideLabel, onPress }: SocialButtonProps) {
   return (
     <Pressable style={({ pressed }) => [styles.socialButton, pressed && styles.socialButtonPressed]} onPress={onPress}>
       <View style={[styles.socialIconWrap, active && styles.socialIconWrapActive]}>{icon}</View>
-      <Text style={styles.socialLabel}>{label}</Text>
+      {!hideLabel ? <Text style={styles.socialLabel}>{label}</Text> : null}
     </Pressable>
   );
 }
@@ -662,6 +1138,22 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.18)",
     zIndex: 3,
   },
+  bottomFadeOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 360,
+    zIndex: 4,
+  },
+  topFadeOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 220,
+    zIndex: 4,
+  },
   fullSlidePressable: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 10,
@@ -677,26 +1169,51 @@ const styles = StyleSheet.create({
     zIndex: 12,
   },
   productDot: {
-    width: 18,
+    flex: 1,
     height: 3,
     borderRadius: 2,
     backgroundColor: "rgba(255,255,255,0.34)",
   },
   productDotActive: {
-    width: 34,
     backgroundColor: colors.white,
   },
   actionStack: {
     position: "absolute",
     right: 12,
-    bottom: 136,
+    bottom: 138,
     alignItems: "center",
-    gap: 16,
+    gap: 4,
     zIndex: 12,
   },
+  likeButtonWrap: {
+    position: "relative",
+  },
+  likeBurstLayer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: -6,
+    bottom: 0,
+    zIndex: 20,
+  },
+  floatingHeart: {
+    position: "absolute",
+    top: 12,
+    color: "#FF4D6D",
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowRadius: 4,
+  },
+  persistentHeart: {
+    position: "absolute",
+    color: "#FF4D6D",
+    textShadowColor: "rgba(0,0,0,0.28)",
+    textShadowRadius: 3,
+  },
   socialButton: {
+    position: "relative",
+    width: 50,
+    height: 60,
     alignItems: "center",
-    gap: 5,
   },
   socialButtonPressed: {
     transform: [{ scale: 0.94 }],
@@ -712,13 +1229,14 @@ const styles = StyleSheet.create({
   },
   socialIconWrapActive: {
     backgroundColor: "transparent",
-    borderColor: "transparent",
   },
   socialLabel: {
+    position: "absolute",
+    top: 40,
     color: colors.white,
     fontSize: 11,
     lineHeight: 13,
-    fontWeight: "900",
+    fontWeight: "600",
     textShadowColor: "rgba(0,0,0,0.7)",
     textShadowRadius: 8,
   },
@@ -733,108 +1251,56 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: 13,
+    marginTop: 12,
+    marginBottom: 12,
   },
-  restaurantAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 2,
-    borderColor: colors.white,
-    backgroundColor: "rgba(255,255,255,0.16)",
+  restaurantIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
   restaurantTextBlock: {
     flex: 1,
   },
-  restaurantNameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
   restaurantName: {
     flexShrink: 1,
     color: colors.white,
-    fontSize: 16,
-    lineHeight: 20,
-    fontWeight: "900",
-  },
-  followPill: {
-    height: 24,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.white,
-  },
-  followText: {
-    color: "#111111",
-    fontSize: 11,
-    lineHeight: 13,
-    fontWeight: "900",
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "600",
+    letterSpacing: 0.15,
   },
   restaurantMeta: {
     marginTop: 4,
     color: "rgba(255,255,255,0.76)",
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: "800",
+    fontWeight: "500",
+    letterSpacing: 0.1,
   },
   productTitle: {
-    marginTop: 2,
+    marginTop: 4,
     color: colors.white,
-    fontSize: 25,
-    lineHeight: 31,
-    fontWeight: "900",
-    letterSpacing: -0.8,
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: "700",
+    letterSpacing: -0.1,
     textShadowColor: "rgba(0,0,0,0.58)",
     textShadowRadius: 14,
   },
   productDescription: {
-    marginTop: 6,
+    marginTop: 8,
     paddingRight: 8,
     color: "rgba(255,255,255,0.88)",
     fontSize: 12,
     lineHeight: 17,
-    fontWeight: "600",
+    fontWeight: "500",
+    letterSpacing: 0.1,
     textShadowColor: "rgba(0,0,0,0.62)",
     textShadowRadius: 10,
-  },
-  tagsRow: {
-    marginTop: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap",
-  },
-  tagPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    minHeight: 28,
-    paddingHorizontal: 11,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.92)",
-  },
-  tagText: {
-    color: "#111111",
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: "900",
-  },
-  tagPillMuted: {
-    minHeight: 28,
-    paddingHorizontal: 11,
-    borderRadius: 14,
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.36)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.16)",
-  },
-  tagTextMuted: {
-    color: colors.white,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: "900",
   },
   ctaRow: {
     position: "absolute",
@@ -844,26 +1310,66 @@ const styles = StyleSheet.create({
     zIndex: 14,
   },
   orderButton: {
-    width: "76%",
-    minHeight: 52,
-    borderRadius: 16,
-    paddingHorizontal: 16,
+    width: "88%",
+    minHeight: 44,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+    paddingLeft: 12,
+    paddingRight: 0,
     alignItems: "center",
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "space-between",
     gap: 8,
     backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: "#000000",
+    overflow: "hidden",
+  },
+  orderButtonPriceBadge: {
+    alignSelf: "stretch",
+    paddingLeft: 12,
+    paddingRight: 12,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#000000",
+    flexDirection: "row",
+    gap: 8,
+  },
+  orderButtonPriceWrap: {
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
   },
   orderButtonText: {
     color: "#111111",
-    fontSize: 15,
-    lineHeight: 18,
-    fontWeight: "900",
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: "600",
+    letterSpacing: 0.15,
   },
   orderButtonPrice: {
-    color: colors.red,
-    fontSize: 15,
-    lineHeight: 18,
-    fontWeight: "900",
+    color: colors.white,
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: "600",
+    letterSpacing: 0.15,
+  },
+  orderPriceLineGreenStrike: {
+    position: "absolute",
+    left: -1,
+    right: -1,
+    top: "50%",
+    marginTop: 0,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: "#45E56B",
   },
 });

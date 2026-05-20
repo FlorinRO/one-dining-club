@@ -1,6 +1,7 @@
 import { Address, Order, Product, ProductCategory, Restaurant } from "../types/models";
+import { demoProductVideoIds, getDemoProductVideoUrl } from "./demoVideos";
 
-export const mockRestaurants: Restaurant[] = [
+const baseMockRestaurants: Restaurant[] = [
   {
     id: 1,
     name: "Luna Rossa Kitchen",
@@ -532,6 +533,211 @@ export const mockRestaurants: Restaurant[] = [
   },
 ];
 
+const expandedDemoRestaurants: Restaurant[] = [
+  {
+    id: 29,
+    name: "Umami Reels",
+    slug: "umami-reels",
+    description: "Ramen, karaage si bowls japoneze gandite pentru feed-uri video rapide.",
+    cover_image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?q=80&w=1400&auto=format&fit=crop",
+    city: "Bucuresti",
+    address: "Strada Ion Campineanu 18",
+    delivery_fee: 8.7,
+    minimum_order: 34,
+    estimated_delivery_time_min: 24,
+    estimated_delivery_time_max: 38,
+    rating: 4.93,
+    reviews_count: 286,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 2.6,
+    is_open: true,
+    categories: [{ id: 29, name: "Japanese", icon: "ramen" }],
+  },
+  {
+    id: 30,
+    name: "Neon Taco Bar",
+    slug: "neon-taco-bar",
+    description: "Tacos, quesadilla si street corn cu salsa proaspata si plating colorat.",
+    cover_image: "https://images.unsplash.com/photo-1565299585323-38174c4a6471?q=80&w=1400&auto=format&fit=crop",
+    city: "Bucuresti",
+    address: "Calea Dorobanti 84",
+    delivery_fee: 6.9,
+    minimum_order: 29,
+    estimated_delivery_time_min: 19,
+    estimated_delivery_time_max: 32,
+    rating: 4.86,
+    reviews_count: 241,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 2.1,
+    is_open: true,
+    categories: [{ id: 30, name: "Mexican", icon: "taco" }],
+  },
+  {
+    id: 31,
+    name: "Carbonara Cut",
+    slug: "carbonara-cut",
+    description: "Paste fresh, focaccia si sosuri italiene cu portii filmabile.",
+    cover_image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?q=80&w=1400&auto=format&fit=crop",
+    city: "Bucuresti",
+    address: "Strada Tunari 41",
+    delivery_fee: 7.8,
+    minimum_order: 33,
+    estimated_delivery_time_min: 23,
+    estimated_delivery_time_max: 36,
+    rating: 4.91,
+    reviews_count: 312,
+    has_offer: false,
+    supports_pickup: true,
+    distance_km: 2.9,
+    is_open: true,
+    categories: [{ id: 31, name: "Italian", icon: "pasta" }],
+  },
+  {
+    id: 32,
+    name: "Crispy Seoul Lab",
+    slug: "crispy-seoul-lab",
+    description: "Korean fried chicken, bibimbap si sosuri gochujang cu crunch puternic.",
+    cover_image: "https://images.unsplash.com/photo-1617835429239-6a7f19f2329a?q=80&w=1400&auto=format&fit=crop",
+    city: "Bucuresti",
+    address: "Strada Viitorului 29",
+    delivery_fee: 9.4,
+    minimum_order: 37,
+    estimated_delivery_time_min: 27,
+    estimated_delivery_time_max: 43,
+    rating: 4.88,
+    reviews_count: 203,
+    has_offer: true,
+    supports_pickup: false,
+    distance_km: 3.8,
+    is_open: true,
+    categories: [{ id: 32, name: "Korean", icon: "chicken" }],
+  },
+  {
+    id: 33,
+    name: "Bowl Motion",
+    slug: "bowl-motion",
+    description: "Protein bowls, salate calde si dressing-uri fresh pentru pranzuri rapide.",
+    cover_image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1400&auto=format&fit=crop",
+    city: "Bucuresti",
+    address: "Bd. Lascar Catargiu 30",
+    delivery_fee: 5.9,
+    minimum_order: 27,
+    estimated_delivery_time_min: 17,
+    estimated_delivery_time_max: 29,
+    rating: 4.84,
+    reviews_count: 178,
+    has_offer: false,
+    supports_pickup: true,
+    distance_km: 1.6,
+    is_open: true,
+    categories: [{ id: 33, name: "Healthy", icon: "leaf" }],
+  },
+  {
+    id: 34,
+    name: "Smokehouse Loop",
+    slug: "smokehouse-loop",
+    description: "BBQ, brisket, ribs si burgeri afumati cu garnituri consistente.",
+    cover_image: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?q=80&w=1400&auto=format&fit=crop",
+    city: "Bucuresti",
+    address: "Splaiul Unirii 160",
+    delivery_fee: 10.8,
+    minimum_order: 45,
+    estimated_delivery_time_min: 31,
+    estimated_delivery_time_max: 48,
+    rating: 4.89,
+    reviews_count: 264,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 4.9,
+    is_open: true,
+    categories: [{ id: 34, name: "BBQ", icon: "grill" }],
+  },
+  {
+    id: 35,
+    name: "Bao Pop Studio",
+    slug: "bao-pop-studio",
+    description: "Bao buns, dumplings si noodles asiatici cu topping-uri crocante.",
+    cover_image: "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=1400&auto=format&fit=crop",
+    city: "Bucuresti",
+    address: "Strada Academiei 9",
+    delivery_fee: 8.3,
+    minimum_order: 32,
+    estimated_delivery_time_min: 22,
+    estimated_delivery_time_max: 35,
+    rating: 4.87,
+    reviews_count: 221,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 2.4,
+    is_open: true,
+    categories: [{ id: 35, name: "Asian", icon: "bao" }],
+  },
+  {
+    id: 36,
+    name: "Gelato Stories",
+    slug: "gelato-stories",
+    description: "Gelato, prajituri si bauturi reci cu topping-uri de sezon.",
+    cover_image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=1400&auto=format&fit=crop",
+    city: "Bucuresti",
+    address: "Strada Pictor Verona 3",
+    delivery_fee: 4.7,
+    minimum_order: 21,
+    estimated_delivery_time_min: 15,
+    estimated_delivery_time_max: 24,
+    rating: 4.82,
+    reviews_count: 156,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 1.3,
+    is_open: true,
+    categories: [{ id: 36, name: "Desserts", icon: "dessert" }],
+  },
+  {
+    id: 37,
+    name: "Market Brunch Club",
+    slug: "market-brunch-club",
+    description: "Brunch all-day, sandwich-uri calde, oua si cafea de specialitate.",
+    cover_image: "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?q=80&w=1400&auto=format&fit=crop",
+    city: "Bucuresti",
+    address: "Piata Amzei 7",
+    delivery_fee: 5.4,
+    minimum_order: 24,
+    estimated_delivery_time_min: 16,
+    estimated_delivery_time_max: 27,
+    rating: 4.85,
+    reviews_count: 189,
+    has_offer: false,
+    supports_pickup: true,
+    distance_km: 1.5,
+    is_open: true,
+    categories: [{ id: 37, name: "Brunch", icon: "coffee" }],
+  },
+  {
+    id: 38,
+    name: "Levant Reel Kitchen",
+    slug: "levant-reel-kitchen",
+    description: "Falafel, hummus, kebab si platouri levantine cu lipii calde.",
+    cover_image: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1400&auto=format&fit=crop",
+    city: "Bucuresti",
+    address: "Strada Matei Basarab 55",
+    delivery_fee: 6.6,
+    minimum_order: 28,
+    estimated_delivery_time_min: 18,
+    estimated_delivery_time_max: 31,
+    rating: 4.83,
+    reviews_count: 174,
+    has_offer: true,
+    supports_pickup: true,
+    distance_km: 2.0,
+    is_open: true,
+    categories: [{ id: 38, name: "Middle Eastern", icon: "falafel" }],
+  },
+];
+
+export const mockRestaurants: Restaurant[] = [...baseMockRestaurants, ...expandedDemoRestaurants];
+
 const baseMockCategories: ProductCategory[] = [
   { id: 1, restaurant: 1, name: "Popular", sort_order: 1, is_active: true },
   { id: 2, restaurant: 1, name: "Pizza", sort_order: 2, is_active: true },
@@ -654,7 +860,7 @@ const baseMockProducts: Product[] = [
 ];
 
 const generatedCategoryName = "Chef Picks";
-const generatedProductStyles = ["Classic", "Spicy", "Smoky", "Crispy", "House"];
+const generatedProductStyles = ["Classic", "Spicy", "Smoky", "Crispy", "House", "Loaded", "Fresh", "Fire", "Signature", "Street"];
 const generatedProductBaseNames = [
   "Burger", "Pizza", "Pasta", "Ramen", "Bowl", "Wrap", "Salad", "Taco", "Quesadilla", "Soup",
   "Sandwich", "Schnitzel", "Rice Box", "Noodle Box", "Bao", "Dumplings", "Sushi Roll", "Poke",
@@ -671,6 +877,7 @@ const generatedProductImagePool = [
   "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?q=80&w=1000&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?q=80&w=1000&auto=format&fit=crop",
 ];
+const expandedDemoRestaurantIds = new Set(expandedDemoRestaurants.map((restaurant) => restaurant.id));
 
 const generatedCategories: ProductCategory[] = mockRestaurants.map((restaurant, restaurantIndex) => ({
   id: 1000 + restaurantIndex + 1,
@@ -685,7 +892,9 @@ const generatedProducts: Product[] = mockRestaurants.flatMap((restaurant, restau
   if (!category) return [];
 
   const existingProductCount = baseMockProducts.filter((item) => item.restaurant === restaurant.id).length;
-  const productsToGenerate = Math.max(5 - existingProductCount, 0);
+  const isExpandedDemoRestaurant = expandedDemoRestaurantIds.has(restaurant.id);
+  const targetProductCount = isExpandedDemoRestaurant ? 10 : 5;
+  const productsToGenerate = Math.max(targetProductCount - existingProductCount, 0);
 
   return generatedProductStyles.slice(0, productsToGenerate).map((style, productIndex) => {
     const sequence = productIndex + 1;
@@ -696,6 +905,8 @@ const generatedProducts: Product[] = mockRestaurants.flatMap((restaurant, restau
     const discountPrice = hasDiscount ? Math.max(basePrice - 5, 10) : null;
     const productName = `${style} ${generatedProductBaseNames[dishIndex]} ${restaurant.slug}`;
     const imageBase = generatedProductImagePool[globalSequence % generatedProductImagePool.length];
+    const demoVideoIndex = isExpandedDemoRestaurant ? (restaurant.id - 29) * 10 + productIndex : -1;
+    const demoVideoId = demoProductVideoIds[demoVideoIndex];
 
     return {
       id: 10000 + restaurant.id * 100 + sequence,
@@ -706,6 +917,8 @@ const generatedProducts: Product[] = mockRestaurants.flatMap((restaurant, restau
       name: productName,
       description: `Produs demo distinct pentru ${restaurant.name}, categoria ${category.name.toLowerCase()}, util la testare search și filtre.`,
       image: `${imageBase}&sig=${restaurant.id}-${sequence}`,
+      video_url: demoVideoId ? getDemoProductVideoUrl(demoVideoIndex) : null,
+      has_audio: false,
       price: basePrice,
       discount_price: discountPrice,
       effective_price: discountPrice ?? basePrice,

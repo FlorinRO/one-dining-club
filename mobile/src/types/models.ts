@@ -74,6 +74,9 @@ export type Product = {
   name: string;
   description: string;
   image?: string | null;
+  video_url?: string | null;
+  audio_url?: string | null;
+  has_audio?: boolean;
   price: string | number;
   discount_price?: string | number | null;
   effective_price?: string | number;

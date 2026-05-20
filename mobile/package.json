@@ -25,6 +25,7 @@
     "expo-auth-session": "~7.0.11",
     "expo-constants": "18.0.13",
     "expo-haptics": "^55.0.14",
+    "expo-linear-gradient": "^55.0.14",
     "expo-location": "19.0.8",
     "expo-notifications": "0.32.17",
     "expo-status-bar": "3.0.9",
