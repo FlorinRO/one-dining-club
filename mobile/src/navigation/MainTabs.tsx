@@ -2,7 +2,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationState, PartialState, useNavigation, useNavigationState } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Home, ListOrdered, Search, UserRound } from "lucide-react-native";
-import { StyleSheet, View, useColorScheme } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FloatingCartBar } from "../components/FloatingCartBar";
@@ -12,19 +12,18 @@ import { OrdersStack } from "./OrdersStack";
 import { ProfileStack } from "./ProfileStack";
 import { SearchScreen } from "../screens/SearchScreen";
 import { useI18n } from "../i18n/useI18n";
-import { colors } from "../theme/colors";
 
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 
 export function MainTabs() {
-  const colorScheme = useColorScheme();
-  const darkBorderColor = colorScheme === "dark" ? "#1A1A1A" : "#EAEAEA";
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<Record<string, object | undefined>>>();
   const { t } = useI18n();
   const rootState = useNavigationState((state) => state);
   const activeRouteName = getDeepActiveRouteName(rootState);
+  const isFeedRoute = activeRouteName === "Home";
   const hideFloatingCart =
+    activeRouteName === "Home" ||
     activeRouteName === "CartHome" ||
     activeRouteName === "CartFlow" ||
     activeRouteName === "DeliveryAddress" ||
@@ -41,13 +40,16 @@ export function MainTabs() {
           tabBarStyle: {
             display: hideBottomBar ? "none" : "flex",
             height: 46 + insets.bottom,
-            backgroundColor: colors.surface,
-            borderTopColor: darkBorderColor,
+            backgroundColor: "transparent",
+            borderTopColor: "transparent",
+            elevation: 0,
+            shadowOpacity: 0,
+            position: "absolute",
             paddingTop: 6,
             paddingBottom: 2 + insets.bottom,
           },
-          tabBarActiveTintColor: colors.lime,
-          tabBarInactiveTintColor: colors.muted,
+          tabBarActiveTintColor: "#FFFFFF",
+          tabBarInactiveTintColor: "#FFFFFF",
           tabBarLabelStyle: {
             fontSize: 11,
             fontWeight: "700",
@@ -58,7 +60,7 @@ export function MainTabs() {
           name="HomeTab"
           component={HomeStack}
           options={{
-            title: t("tabs.home", "Home"),
+            title: t("tabs.home", "Feed"),
             tabBarIcon: ({ color, size }) => <Home stroke={color} size={size - 2} />,
           }}
         />

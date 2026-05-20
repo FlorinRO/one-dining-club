@@ -1,23 +1,28 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useFocusEffect } from "@react-navigation/native";
+import { useEvent } from "expo";
 import * as Haptics from "expo-haptics";
-import { MapPin, Search, SearchX, SlidersHorizontal, Star } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useVideoPlayer, VideoView } from "expo-video";
 import {
-  Animated,
-  Easing,
+  Heart,
+  MessageCircle,
+  Send,
+  Share2,
+  ShoppingBag,
+  Star,
+  UtensilsCrossed,
+} from "lucide-react-native";
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
   FlatList,
   Image,
-  Modal,
-  NativeSyntheticEvent,
   NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   RefreshControl,
-  ScrollView,
+  Share,
   StyleSheet,
   Text,
-  TextInput,
-  useColorScheme,
   useWindowDimensions,
   View,
   ViewToken,
@@ -25,1100 +30,840 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
-import { addressesApi } from "../api/addressesApi";
-import { RestaurantCard } from "../components/RestaurantCard";
-import { Screen } from "../components/Screen";
-import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
+import { money } from "../lib/format";
+import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
 import { HomeStackParamList } from "../navigation/types";
-import { useAuthStore } from "../store/authStore";
-import { useFavoritesStore } from "../store/favoritesStore";
+import { useCartStore } from "../store/cartStore";
 import { colors } from "../theme/colors";
-import { Address, Restaurant } from "../types/models";
+import { Product, Restaurant } from "../types/models";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "Home">;
 
-type CarouselItem = {
-  label: string;
-  hint: string;
-  iconUrl?: string;
-  action?: "favorites";
+type FeedRestaurant = {
+  restaurant: Restaurant;
+  products: Product[];
 };
 
-const baseProductCarousel: CarouselItem[] = [
-  { label: "Kebab", hint: "Wrap & platou", iconUrl: "https://em-content.zobj.net/source/apple/391/burrito_1f32f.png" },
-  { label: "Pizza", hint: "Cuptor pe vatră", iconUrl: "https://em-content.zobj.net/source/apple/391/pizza_1f355.png" },
-  { label: "Burgers", hint: "Smash & classic", iconUrl: "https://em-content.zobj.net/source/apple/391/hamburger_1f354.png" },
-  { label: "Asian", hint: "Wok & noodles", iconUrl: "https://em-content.zobj.net/source/apple/391/steaming-bowl_1f35c.png" },
-  { label: "Sushi", hint: "Nigiri & rolls", iconUrl: "https://em-content.zobj.net/source/apple/391/sushi_1f363.png" },
-  { label: "Italian", hint: "Paste & pizza", iconUrl: "https://em-content.zobj.net/source/apple/391/spaghetti_1f35d.png" },
-  { label: "Wraps", hint: "Rapid & fresh", iconUrl: "https://em-content.zobj.net/source/apple/391/taco_1f32e.png" },
-  { label: "Chicken", hint: "Crispy & grilled", iconUrl: "https://em-content.zobj.net/source/apple/391/poultry-leg_1f357.png" },
-  { label: "Sandwich", hint: "Toasted & deli", iconUrl: "https://em-content.zobj.net/source/apple/391/sandwich_1f96a.png" },
-  { label: "Japanese", hint: "Ramen-tempura", iconUrl: "https://em-content.zobj.net/source/apple/391/bento-box_1f371.png" },
-  { label: "Bakery", hint: "Artisanal", iconUrl: "https://em-content.zobj.net/source/apple/391/croissant_1f950.png" },
-  { label: "Healthy", hint: "Fresh & fit", iconUrl: "https://em-content.zobj.net/source/apple/391/green-salad_1f957.png" },
-  { label: "Thai", hint: "Spicy Thai", iconUrl: "https://em-content.zobj.net/source/apple/391/hot-pepper_1f336-fe0f.png" },
-  { label: "Salads", hint: "Light bowls", iconUrl: "https://em-content.zobj.net/source/apple/391/green-salad_1f957.png" },
-  { label: "Ramen", hint: "Slow broth", iconUrl: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f35c.png" },
-  { label: "Seafood", hint: "Ocean fresh", iconUrl: "https://em-content.zobj.net/source/apple/391/shrimp_1f990.png" },
-  { label: "Desserts", hint: "Sweet bites", iconUrl: "https://em-content.zobj.net/source/apple/391/shortcake_1f370.png" },
-  { label: "Indian", hint: "Curry & tandoor", iconUrl: "https://em-content.zobj.net/source/apple/391/curry-rice_1f35b.png" },
-  { label: "Breakfast", hint: "All day brunch", iconUrl: "https://em-content.zobj.net/source/apple/391/pancakes_1f95e.png" },
-  { label: "Coffee", hint: "Specialty roast", iconUrl: "https://em-content.zobj.net/source/apple/391/hot-beverage_2615.png" },
-  { label: "BBQ", hint: "Smoke & grill", iconUrl: "https://em-content.zobj.net/source/apple/391/cut-of-meat_1f969.png" },
-  { label: "Soup", hint: "Hot bowls", iconUrl: "https://em-content.zobj.net/source/apple/391/pot-of-food_1f372.png" },
+const VIDEO_POSTERS = [
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1300&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=1300&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1300&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1553621042-f6e147245754?q=80&w=1300&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1300&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1559847844-5315695dadae?q=80&w=1300&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?q=80&w=1300&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?q=80&w=1300&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1300&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1529042410759-befb1204b468?q=80&w=1300&auto=format&fit=crop",
 ];
 
-const categoryBgPalette = ["#F8EBDD", "#F8F0CF", "#E6F4DD", "#ECE5F8", "#F9E4EA"];
-const promotedAds = [
-  { id: "ad-1", imageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80" },
-  { id: "ad-2", imageUrl: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=80" },
-  { id: "ad-3", imageUrl: "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1200&q=80" },
-  { id: "ad-4", imageUrl: "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=1200&q=80" },
+const MOCK_VIDEO_SOURCES = [
+  "https://assets.mixkit.co/videos/47555/47555-720.mp4",
+  "https://assets.mixkit.co/videos/43063/43063-720.mp4",
+  "https://assets.mixkit.co/videos/3806/3806-720.mp4",
+  "https://assets.mixkit.co/videos/43925/43925-720.mp4",
+  "https://assets.mixkit.co/videos/42464/42464-720.mp4",
+  "https://assets.mixkit.co/videos/43905/43905-720.mp4",
+  "https://assets.mixkit.co/videos/1666/1666-720.mp4",
+  "https://assets.mixkit.co/videos/40522/40522-720.mp4",
+  "https://assets.mixkit.co/videos/4672/4672-720.mp4",
+  "https://assets.mixkit.co/videos/42909/42909-720.mp4",
 ];
 
-const sectionShuffle = (id: number, seed: number) => ((id * 37 + seed * 17) % 97) / 97;
+const productKey = (restaurantId: number, productId: number) => `${restaurantId}:${productId}`;
+
+const compactCount = (value: number) => {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1000) return `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)}K`;
+  return String(value);
+};
+
+const statsFor = (restaurant: Restaurant, product: Product) => {
+  const seed = restaurant.id * 41 + product.id * 17;
+  return {
+    likes: 1400 + (seed % 82) * 137,
+    comments: 28 + (seed % 64),
+    shares: 12 + (seed % 33),
+  };
+};
+
+const buildFallbackProduct = (restaurant: Restaurant): Product => ({
+  id: restaurant.id * 10000,
+  restaurant: restaurant.id,
+  restaurant_name: restaurant.name,
+  category: null,
+  category_name: "Chef pick",
+  name: `${restaurant.name} tasting plate`,
+  description: restaurant.description || "Mock video dish prepared for the new swipe-first feed.",
+  image: null,
+  price: Number(restaurant.minimum_order || 49) || 49,
+  discount_price: null,
+  effective_price: Number(restaurant.minimum_order || 49) || 49,
+  is_available: true,
+  is_popular: true,
+  preparation_time: restaurant.estimated_delivery_time_min || 20,
+  allergens: "",
+  option_groups: [],
+});
 
 export function HomeScreen({ navigation }: Props) {
   const { tr } = useI18n();
-  const colorScheme = useColorScheme();
-  const darkBorderColor = colorScheme === "dark" ? "#1A1A1A" : "#EAEAEA";
-  const insets = useSafeAreaInsets();
-  const { width: screenWidth } = useWindowDimensions();
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [hasLoadedRestaurants, setHasLoadedRestaurants] = useState(false);
-  const [hasMetSplashTime, setHasMetSplashTime] = useState(false);
-  const [showSplashOverlay, setShowSplashOverlay] = useState(true);
-  const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [refreshing, setRefreshing] = useState(false);
-  const favoriteRestaurantIds = useFavoritesStore((state) => state.restaurantIds);
-  const [showStickySearch, setShowStickySearch] = useState(false);
-  const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
-  const [searchBarY, setSearchBarY] = useState(0);
-  const lastScrollY = useRef(0);
-  const stickyAnim = useRef(new Animated.Value(0)).current;
-  const splashOpacity = useRef(new Animated.Value(1)).current;
-  const splashSequence = useRef(new Animated.Value(0)).current;
-  const tabBarReveal = useRef(new Animated.Value(0)).current;
-  const promotedListRef = useRef<FlatList<{ id: string; imageUrl: string }> | null>(null);
-  const isCategoryDraggingRef = useRef(false);
-  const isCategoryMomentumRef = useRef(false);
-  const lastCategoryHapticKeyRef = useRef<string | null>(null);
-  const lastCategoryHapticTsRef = useRef(0);
-  const promotedIndexRef = useRef(0);
-  const promotedAutoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const promotedResumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const accessToken = useAuthStore((state) => state.accessToken);
-  const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const addItem = useCartStore((state) => state.addItem);
 
-  const fetchRestaurants = useCallback(async () => {
-    const items = await restaurantsApi.list();
-    setRestaurants(items);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [productsByRestaurant, setProductsByRestaurant] = useState<Record<number, Product[]>>({});
+  const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
+  const [commentBumps, setCommentBumps] = useState<Record<string, number>>({});
+  const [activeRestaurantIndex, setActiveRestaurantIndex] = useState(0);
+  const [activeProductByRestaurant, setActiveProductByRestaurant] = useState<Record<number, number>>({});
+  const [feedHeight, setFeedHeight] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const pageHeight = feedHeight || screenHeight;
+
+  const fetchFeed = useCallback(async () => {
+    const restaurantItems = await restaurantsApi.list({ ordering: "-rating" });
+    const visibleRestaurants = restaurantItems.filter((item) => item.is_open !== false).slice(0, 12);
+    setRestaurants(visibleRestaurants);
+
+    const productEntries = await Promise.all(
+      visibleRestaurants.map(async (restaurant) => {
+        const products = await restaurantsApi.products(restaurant.id);
+        return [restaurant.id, products.slice(0, 8)] as const;
+      }),
+    );
+
+    setProductsByRestaurant(Object.fromEntries(productEntries));
   }, []);
 
   useEffect(() => {
     let isMounted = true;
 
-    fetchRestaurants()
-      .catch(() => {
-        // Keep existing content if loading fails.
-      })
+    fetchFeed()
+      .catch(() => undefined)
       .finally(() => {
-        if (isMounted) {
-          setHasLoadedRestaurants(true);
-        }
+        if (isMounted) setIsLoading(false);
       });
 
     return () => {
       isMounted = false;
     };
-  }, [fetchRestaurants]);
+  }, [fetchFeed]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await fetchRestaurants();
+      await fetchFeed();
     } finally {
       setRefreshing(false);
+      setIsLoading(false);
     }
-  }, [fetchRestaurants]);
+  }, [fetchFeed]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setHasMetSplashTime(true), 2600);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    const revealSequence = Animated.timing(splashSequence, {
-      toValue: 1,
-      duration: 1750,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    });
-    revealSequence.start();
-
-    return () => {
-      revealSequence.stop();
-      splashSequence.setValue(0);
-    };
-  }, [splashSequence]);
-
-  useEffect(() => {
-    if (!hasLoadedRestaurants || !hasMetSplashTime) {
-      return;
-    }
-
-    Animated.timing(splashOpacity, {
-      toValue: 0,
-      duration: 780,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) {
-        setShowSplashOverlay(false);
-      }
-    });
-  }, [hasLoadedRestaurants, hasMetSplashTime, splashOpacity]);
-
-  useEffect(() => {
-    const tabsParent = navigation.getParent();
-    const baseTabBarStyle = {
-      height: 46 + insets.bottom,
-      backgroundColor: colors.surface,
-      borderTopColor: darkBorderColor,
-      paddingTop: 6,
-      paddingBottom: 2 + insets.bottom,
-    };
-
-    if (!tabsParent) {
-      return;
-    }
-
-    if (showSplashOverlay) {
-      tabBarReveal.stopAnimation();
-      tabBarReveal.setValue(0);
-      tabsParent.setOptions({
-        tabBarStyle: { display: "none" },
-      });
-      return () => {
-        tabsParent.setOptions({
-          tabBarStyle: undefined,
-        });
+  const feedData = useMemo<FeedRestaurant[]>(() => {
+    return restaurants.map((restaurant) => {
+      const products = productsByRestaurant[restaurant.id] ?? [];
+      return {
+        restaurant,
+        products: products.length ? products : [buildFallbackProduct(restaurant)],
       };
-    }
-
-    const setAnimatedTabBarStyle = (progress: number) => {
-      tabsParent.setOptions({
-        tabBarStyle: [
-          baseTabBarStyle,
-          {
-            opacity: progress,
-            transform: [{ translateY: (1 - progress) * 22 }],
-          },
-        ],
-      });
-    };
-
-    setAnimatedTabBarStyle(0);
-    const listenerId = tabBarReveal.addListener(({ value }) => {
-      setAnimatedTabBarStyle(value);
     });
+  }, [productsByRestaurant, restaurants]);
 
-    Animated.timing(tabBarReveal, {
-      toValue: 1,
-      duration: 180,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
+  const activeRestaurant = feedData[activeRestaurantIndex]?.restaurant;
 
-    return () => {
-      tabBarReveal.removeListener(listenerId);
-      tabsParent.setOptions({
-        tabBarStyle: undefined,
-      });
-    };
-  }, [darkBorderColor, insets.bottom, navigation, showSplashOverlay, tabBarReveal]);
-
-  useEffect(() => {
-    Animated.timing(stickyAnim, {
-      toValue: showStickySearch ? 1 : 0,
-      duration: 140,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [showStickySearch, stickyAnim]);
-
-  const filtered = useMemo(() => {
-    return restaurants.filter((restaurant) => {
-      const matchesSearch = restaurant.name.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory =
-        activeCategory === "All" || restaurant.categories?.some((category) => category.name === activeCategory);
-      return matchesSearch && matchesCategory;
-    });
-  }, [restaurants, search, activeCategory]);
-
-  const nearbyRestaurants = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      const distanceA = Number(a.distance_km ?? 99);
-      const distanceB = Number(b.distance_km ?? 99);
-      if (distanceA !== distanceB) return distanceA - distanceB;
-      return sectionShuffle(a.id, 1) - sectionShuffle(b.id, 1);
-    });
-  }, [filtered]);
-
-  const recommendedRestaurants = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      const scoreA = Number(a.rating) + Number(a.reviews_count ?? 0) * 0.001 + (a.has_offer ? 0.25 : 0);
-      const scoreB = Number(b.rating) + Number(b.reviews_count ?? 0) * 0.001 + (b.has_offer ? 0.25 : 0);
-      if (scoreA !== scoreB) return scoreB - scoreA;
-      return sectionShuffle(a.id, 2) - sectionShuffle(b.id, 2);
-    });
-  }, [filtered]);
-  const nearbyCarouselRestaurants = useMemo(() => nearbyRestaurants.slice(0, 5), [nearbyRestaurants]);
-  const recommendedCarouselRestaurants = useMemo(() => recommendedRestaurants.slice(0, 5), [recommendedRestaurants]);
-
-  const allRestaurants = useMemo(() => {
-    return [...filtered].sort((a, b) => sectionShuffle(a.id, 3) - sectionShuffle(b.id, 3));
-  }, [filtered]);
-  const hasSearchQuery = search.trim().length > 0;
-  const showEmptySearchState = hasSearchQuery && filtered.length === 0;
-  const promotedCardWidth = Math.max(220, screenWidth - 44);
-  const promotedItemGap = 28;
-  const promotedItemSize = promotedCardWidth + promotedItemGap;
-  const promotedCarouselData = useMemo(
-    () =>
-      [...promotedAds, ...promotedAds, ...promotedAds].map((item, index) => ({
-        ...item,
-        id: `${item.id}-${index}`,
-      })),
-    [],
-  );
-  const promotedBaseLength = promotedAds.length;
-
-  useEffect(() => {
-    const startAutoScroll = () => {
-      if (promotedAutoTimerRef.current) {
-        clearInterval(promotedAutoTimerRef.current);
+  const restaurantViewabilityConfig = useRef({ itemVisiblePercentThreshold: 65 }).current;
+  const onRestaurantViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: Array<ViewToken<FeedRestaurant>> }) => {
+      const next = viewableItems.find((token) => token.isViewable && token.index != null);
+      if (next?.index != null) {
+        setActiveRestaurantIndex(next.index);
       }
-      promotedAutoTimerRef.current = setInterval(() => {
-        const nextIndex = promotedIndexRef.current + 1;
-        promotedListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
-        promotedIndexRef.current = nextIndex;
-      }, 4000);
-    };
-
-    const stopAutoScroll = () => {
-      if (promotedAutoTimerRef.current) {
-        clearInterval(promotedAutoTimerRef.current);
-        promotedAutoTimerRef.current = null;
-      }
-    };
-
-    const resumeAutoScroll = (delayMs: number) => {
-      if (promotedResumeTimerRef.current) {
-        clearTimeout(promotedResumeTimerRef.current);
-      }
-      promotedResumeTimerRef.current = setTimeout(() => {
-        startAutoScroll();
-      }, delayMs);
-    };
-
-    const pauseAutoScroll = () => {
-      stopAutoScroll();
-      resumeAutoScroll(2500);
-    };
-
-    const initialTimer = setTimeout(() => {
-      promotedIndexRef.current = promotedBaseLength;
-      promotedListRef.current?.scrollToIndex({ index: promotedBaseLength, animated: false });
-      startAutoScroll();
-    }, 500);
-
-    return () => {
-      clearTimeout(initialTimer);
-      stopAutoScroll();
-      if (promotedResumeTimerRef.current) {
-        clearTimeout(promotedResumeTimerRef.current);
-      }
-    };
-  }, [promotedBaseLength]);
-
-  const carouselItems = useMemo(() => {
-    if (favoriteRestaurantIds.length === 0) {
-      return baseProductCarousel;
-    }
-
-    return [{ label: "Favourites", hint: tr("Locuri salvate", "Saved places"), action: "favorites" as const }, ...baseProductCarousel];
-  }, [favoriteRestaurantIds.length, tr]);
-
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    trackFloatingCartScrollDirection(event);
-    const currentY = Math.max(0, event.nativeEvent.contentOffset.y);
-    const delta = currentY - lastScrollY.current;
-    const topHideThreshold = searchBarY + 10;
-    const showThreshold = searchBarY + 30;
-
-    if (currentY <= topHideThreshold) {
-      if (showStickySearch) setShowStickySearch(false);
-      lastScrollY.current = currentY;
-      return;
-    }
-
-    if (delta <= -1.5 && currentY > showThreshold) {
-      if (!showStickySearch) setShowStickySearch(true);
-    } else if (delta >= 1.5) {
-      if (showStickySearch) setShowStickySearch(false);
-    }
-
-    lastScrollY.current = currentY;
-  };
-
-  const openSearchWithFocus = () => {
-    navigation.getParent()?.navigate("SearchTab", { focusSearch: true });
-  };
-
-  const triggerCategorySelectionHaptic = useCallback((itemKey: string) => {
-    if (!isCategoryDraggingRef.current) {
-      return;
-    }
-
-    if (lastCategoryHapticKeyRef.current === itemKey) {
-      return;
-    }
-
-    const now = Date.now();
-    if (now - lastCategoryHapticTsRef.current < 50) {
-      return;
-    }
-
-    lastCategoryHapticKeyRef.current = itemKey;
-    lastCategoryHapticTsRef.current = now;
-    void Haptics.selectionAsync();
-  }, []);
-
-  const onCategoryViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: Array<ViewToken<CarouselItem>> }) => {
-      const nextVisible = viewableItems.find((token) => token.isViewable && token.item?.label);
-      if (!nextVisible?.item) {
-        return;
-      }
-      triggerCategorySelectionHaptic(nextVisible.item.label);
     },
   ).current;
 
-  const loadDefaultAddress = useCallback(async () => {
-    if (!accessToken) {
-      setDefaultAddress(null);
-      return;
-    }
-    try {
-      const list = await addressesApi.list();
-      const selected = list.find((item) => item.is_default) ?? list[0] ?? null;
-      setDefaultAddress(selected);
-    } catch {
-      setDefaultAddress(null);
-    }
-  }, [accessToken]);
+  const shareProduct = useCallback(async (restaurant: Restaurant, product: Product) => {
+    await Share.share({
+      title: product.name,
+      message: `${product.name} de la ${restaurant.name} · ${money(product.effective_price ?? product.discount_price ?? product.price)}`,
+    });
+  }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadDefaultAddress();
-    }, [loadDefaultAddress]),
+  const quickAdd = useCallback(
+    (restaurant: Restaurant, product: Product) => {
+      const hasRequiredOptions = (product.option_groups ?? []).some((group) => group.is_required || group.min_select > 0);
+      if (hasRequiredOptions) {
+        navigation.navigate("ProductDetails", { restaurant, product });
+        return;
+      }
+
+      addItem({ restaurant, product, quantity: 1 });
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    [addItem, navigation],
   );
 
-  return (
-    <Screen padded={false}>
-      <Animated.View
-        pointerEvents={showStickySearch ? "auto" : "none"}
-        style={[
-          styles.searchStickyOverlay,
-          {
-            opacity: stickyAnim,
-            transform: [
-              {
-                translateY: stickyAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-10, 0],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        <Pressable style={[styles.searchBar, { borderColor: darkBorderColor }]} onPress={openSearchWithFocus}>
-          <Search size={23} stroke={colors.text} strokeWidth={2.6} />
-          <View style={styles.searchInputProxy} pointerEvents="none">
-            <TextInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder={tr("Caută restaurante sau preparate", "Search restaurants or dishes")}
-              placeholderTextColor={colors.muted}
-              style={styles.searchInput}
-              editable={false}
-              showSoftInputOnFocus={false}
-            />
-          </View>
-          <Pressable hitSlop={8} onPress={() => navigation.getParent()?.navigate("SearchTab", { openFilters: true })}>
-            <SlidersHorizontal size={22} stroke={colors.text} strokeWidth={2.7} />
-          </Pressable>
-        </Pressable>
-      </Animated.View>
+  const toggleLike = useCallback((restaurant: Restaurant, product: Product) => {
+    const key = productKey(restaurant.id, product.id);
+    setLikedPosts((current) => ({ ...current, [key]: !current[key] }));
+    void Haptics.selectionAsync();
+  }, []);
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.red} />}
-      >
-        <View style={styles.header}>
-          <View style={styles.headerTextBlock}>
-            <View style={styles.eyebrowBadge}>
-              <View style={styles.eyebrowRow}>
-                <Text style={styles.eyebrow}>ONE DINING CLUB</Text>
-                <Star color={colors.white} fill={colors.white} size={11} strokeWidth={2} />
-              </View>
-            </View>
-            <Pressable style={styles.locationRow} onPress={() => navigation.navigate("DeliveryAddress")}>
-              <MapPin size={16} stroke={colors.red} />
-              <View style={styles.locationTextBlock}>
-                <Text style={styles.locationStreet}>
-                  {defaultAddress?.address_line_1 ?? tr("Adaugă o adresă de livrare", "Add a delivery address")}
-                </Text>
-                <Text style={styles.locationCity}>
-                  {defaultAddress?.city ?? tr("Apasă ca să selectezi adresa", "Tap to select address")}
-                </Text>
-              </View>
-            </Pressable>
-          </View>
+  const addCommentBump = useCallback((restaurant: Restaurant, product: Product) => {
+    const key = productKey(restaurant.id, product.id);
+    setCommentBumps((current) => ({ ...current, [key]: (current[key] ?? 0) + 1 }));
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
+  if (isLoading && !feedData.length) {
+    return (
+      <View style={styles.loadingScreen}>
+        <View style={styles.loadingBrandMark}>
+          <UtensilsCrossed size={28} stroke={colors.white} />
         </View>
-
-        <View
-          style={styles.searchStickyWrap}
-          onLayout={(event) => {
-            setSearchBarY(event.nativeEvent.layout.y);
-          }}
-        >
-          <Pressable style={[styles.searchBar, { borderColor: darkBorderColor }]} onPress={openSearchWithFocus}>
-            <Search size={23} stroke={colors.text} strokeWidth={2.6} />
-            <View style={styles.searchInputProxy} pointerEvents="none">
-              <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder={tr("Caută restaurante sau preparate", "Search restaurants or dishes")}
-                placeholderTextColor={colors.muted}
-                style={styles.searchInput}
-                editable={false}
-                showSoftInputOnFocus={false}
-              />
-            </View>
-            <Pressable hitSlop={8} onPress={() => navigation.getParent()?.navigate("SearchTab", { openFilters: true })}>
-              <SlidersHorizontal size={22} stroke={colors.text} strokeWidth={2.7} />
-            </Pressable>
-          </Pressable>
-        </View>
-
-        <FlatList
-          horizontal
-          data={carouselItems}
-          keyExtractor={(item) => item.label}
-          onViewableItemsChanged={onCategoryViewableItemsChanged}
-          viewabilityConfig={{ itemVisiblePercentThreshold: 65 }}
-          onScrollBeginDrag={() => {
-            isCategoryDraggingRef.current = true;
-            lastCategoryHapticKeyRef.current = null;
-          }}
-          onMomentumScrollBegin={() => {
-            isCategoryMomentumRef.current = true;
-          }}
-          onScrollEndDrag={() => {
-            setTimeout(() => {
-              if (!isCategoryMomentumRef.current) {
-                isCategoryDraggingRef.current = false;
-              }
-            }, 0);
-          }}
-          onMomentumScrollEnd={() => {
-            isCategoryMomentumRef.current = false;
-            isCategoryDraggingRef.current = false;
-          }}
-          renderItem={({ item, index }) => (
-            <Pressable
-              style={styles.categoryTile}
-              onPress={() => {
-                if (item.action === "favorites") {
-                  navigation.navigate("Favorites");
-                  return;
-                }
-
-                navigation.getParent()?.navigate("SearchTab", { category: item.label });
-              }}
-            >
-              <View style={[styles.categoryIconCard, { backgroundColor: categoryBgPalette[index % categoryBgPalette.length] }]}>
-                {item.iconUrl ? (
-                  <Image source={{ uri: item.iconUrl }} style={styles.categoryImage} resizeMode="contain" />
-                ) : (
-                  <View style={styles.categoryImageFallback}>
-                    <Text style={[styles.categoryImageFallbackText, item.action === "favorites" && styles.favoriteFallbackIcon]}>
-                      {item.action === "favorites" ? "❤️" : "★"}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.categoryLabel}>{item.label}</Text>
-            </Pressable>
-          )}
-          showsHorizontalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={{ width: 4 }} />}
-          style={styles.fullBleedList}
-          contentContainerStyle={styles.chips}
-        />
-
-        {showEmptySearchState ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconWrap}>
-              <SearchX size={24} stroke={colors.muted} />
-            </View>
-            <Text style={styles.emptyTitle}>{tr("Niciun rezultat", "No results")}</Text>
-            <Text style={styles.emptyText}>{tr(`Nu există rezultate pentru „${search.trim()}”.`, `No results for "${search.trim()}".`)}</Text>
-          </View>
-        ) : (
-          <>
-            <View style={[styles.sectionBlock, styles.firstSectionBlock, styles.promotedCarouselBlock]}>
-              <View style={styles.promotedViewport}>
-                <FlatList
-                  ref={promotedListRef}
-                  horizontal
-                  data={promotedCarouselData}
-                  keyExtractor={(item) => item.id}
-                  initialScrollIndex={promotedBaseLength}
-                  renderItem={({ item }) => (
-                    <View style={[styles.promotedBanner, { width: promotedCardWidth }]}>
-                      <Image source={{ uri: item.imageUrl }} style={styles.promotedBannerImage} resizeMode="cover" />
-                      <View style={styles.promotedOverlay}>
-                        <Text style={styles.promotedBadge}>{tr("SLOT DISPONIBIL", "AVAILABLE SLOT")}</Text>
-                        <Text style={styles.promotedTitle}>{tr("Loc de reclamă", "Ad placement")}</Text>
-                      </View>
-                    </View>
-                  )}
-                  showsHorizontalScrollIndicator={false}
-                  ItemSeparatorComponent={() => <View style={{ width: promotedItemGap }} />}
-                  contentContainerStyle={styles.promotedCarouselContent}
-                  snapToInterval={promotedItemSize}
-                  decelerationRate="fast"
-                  disableIntervalMomentum
-                  onScrollBeginDrag={(event) => {
-                    const index = Math.round(event.nativeEvent.contentOffset.x / promotedItemSize);
-                    promotedIndexRef.current = Number.isFinite(index) ? Math.max(0, Math.min(promotedCarouselData.length - 1, index)) : promotedBaseLength;
-                    if (promotedAutoTimerRef.current) {
-                      clearInterval(promotedAutoTimerRef.current);
-                      promotedAutoTimerRef.current = null;
-                    }
-                    if (promotedResumeTimerRef.current) {
-                      clearTimeout(promotedResumeTimerRef.current);
-                    }
-                  }}
-                  onMomentumScrollBegin={() => {
-                    if (promotedAutoTimerRef.current) {
-                      clearInterval(promotedAutoTimerRef.current);
-                      promotedAutoTimerRef.current = null;
-                    }
-                  }}
-                  onScrollEndDrag={(event) => {
-                    const index = Math.round(event.nativeEvent.contentOffset.x / promotedItemSize);
-                    promotedIndexRef.current = Number.isFinite(index) ? Math.max(0, Math.min(promotedCarouselData.length - 1, index)) : promotedBaseLength;
-                    if (promotedResumeTimerRef.current) {
-                      clearTimeout(promotedResumeTimerRef.current);
-                    }
-                    promotedResumeTimerRef.current = setTimeout(() => {
-                      if (promotedAutoTimerRef.current) {
-                        clearInterval(promotedAutoTimerRef.current);
-                      }
-                      promotedAutoTimerRef.current = setInterval(() => {
-                        const nextIndex = promotedIndexRef.current + 1;
-                        promotedListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
-                        promotedIndexRef.current = nextIndex;
-                      }, 4000);
-                    }, 2500);
-                  }}
-                  onMomentumScrollEnd={(event) => {
-                    const index = Math.round(event.nativeEvent.contentOffset.x / promotedItemSize);
-                    let normalizedIndex = Number.isFinite(index) ? Math.max(0, Math.min(promotedCarouselData.length - 1, index)) : promotedBaseLength;
-
-                    if (normalizedIndex < promotedBaseLength) {
-                      normalizedIndex += promotedBaseLength;
-                      promotedListRef.current?.scrollToIndex({ index: normalizedIndex, animated: false });
-                    } else if (normalizedIndex >= promotedBaseLength * 2) {
-                      normalizedIndex -= promotedBaseLength;
-                      promotedListRef.current?.scrollToIndex({ index: normalizedIndex, animated: false });
-                    }
-
-                    promotedIndexRef.current = normalizedIndex;
-                  }}
-                  getItemLayout={(_, index) => ({ length: promotedItemSize, offset: promotedItemSize * index, index })}
-                  onScrollToIndexFailed={() => {
-                    promotedListRef.current?.scrollToOffset({
-                      offset: promotedItemSize * promotedIndexRef.current,
-                      animated: false,
-                    });
-                  }}
-                />
-              </View>
-            </View>
-
-            <View style={styles.sectionBlock}>
-              <SectionHeader
-                title={tr("Aproape de tine", "Near you")}
-                actionLabel={tr("Toate >", "All >")}
-                onPressAction={() => navigation.navigate("SectionRestaurants", { mode: "nearby", title: tr("Aproape de tine", "Near you") })}
-              />
-              <FlatList
-                horizontal
-                data={nearbyCarouselRestaurants}
-                keyExtractor={(item) => `nearby-${item.id}`}
-                renderItem={({ item }) => (
-                  <RestaurantCard medium smallImageOnly restaurant={item} onPress={() => navigation.navigate("RestaurantDetails", { restaurant: item })} />
-                )}
-                showsHorizontalScrollIndicator={false}
-                ItemSeparatorComponent={() => <View style={{ width: 14 }} />}
-                style={styles.fullBleedList}
-                contentContainerStyle={styles.horizontalCardsContent}
-              />
-            </View>
-
-            <View style={styles.sectionBlock}>
-              <SectionHeader
-                title={tr("Recomandate", "Recommended")}
-                actionLabel={tr("Toate >", "All >")}
-                onPressAction={() => navigation.navigate("SectionRestaurants", { mode: "recommended", title: tr("Recomandate", "Recommended") })}
-              />
-              <FlatList
-                horizontal
-                data={recommendedCarouselRestaurants}
-                keyExtractor={(item) => String(item.id)}
-                renderItem={({ item }) => (
-                  <RestaurantCard medium smallImageOnly restaurant={item} onPress={() => navigation.navigate("RestaurantDetails", { restaurant: item })} />
-                )}
-                showsHorizontalScrollIndicator={false}
-                ItemSeparatorComponent={() => <View style={{ width: 14 }} />}
-                style={styles.fullBleedList}
-                contentContainerStyle={styles.horizontalCardsContent}
-              />
-            </View>
-
-            <View style={styles.sectionBlock}>
-              <SectionHeader title={tr("Toate restaurantele", "All restaurants")} />
-              <View style={styles.allRestaurantsList}>
-                {allRestaurants.map((restaurant) => (
-                  <RestaurantCard
-                    key={`all-${restaurant.id}`}
-                    compact
-                    restaurant={restaurant}
-                    onPress={() => navigation.navigate("RestaurantDetails", { restaurant })}
-                  />
-                ))}
-              </View>
-            </View>
-          </>
-        )}
-      </ScrollView>
-
-      {showSplashOverlay ? (
-        <HomeLoadingOverlay opacity={splashOpacity} />
-      ) : null}
-    </Screen>
-  );
-}
-
-function HomeLoadingOverlay({
-  opacity,
-}: {
-  opacity: Animated.Value;
-}) {
-  const shimmer = useRef(new Animated.Value(0.45)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmer, {
-          toValue: 1,
-          duration: 700,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmer, {
-          toValue: 0.45,
-          duration: 700,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]),
+        <ActivityIndicator color={colors.white} />
+        <Text style={styles.loadingTitle}>ONE DINING CLUB</Text>
+        <Text style={styles.loadingText}>{tr("Pregătim feedul video", "Preparing the video feed")}</Text>
+      </View>
     );
-    loop.start();
-    return () => loop.stop();
-  }, [shimmer]);
+  }
 
   return (
-    <Modal
-      animationType="none"
-      navigationBarTranslucent
-      onRequestClose={() => undefined}
-      presentationStyle="overFullScreen"
-      statusBarTranslucent
-      transparent
-      visible
+    <View
+      style={styles.container}
+      onLayout={(event) => {
+        const nextHeight = event.nativeEvent.layout.height;
+        if (nextHeight > 0 && Math.abs(nextHeight - feedHeight) > 1) {
+          setFeedHeight(nextHeight);
+        }
+      }}
     >
-      <Animated.View pointerEvents="auto" style={[styles.loadingOverlay, { opacity }]}>
-        <View style={styles.skeletonStage}>
-          <Animated.View style={[styles.skeletonBlock, styles.skeletonHeaderStrip, { opacity: shimmer }]} />
-          <Animated.View style={[styles.skeletonBlock, styles.skeletonAddressMain, { opacity: shimmer }]} />
-          <Animated.View style={[styles.skeletonBlock, styles.skeletonAddressSub, { opacity: shimmer }]} />
-          <Animated.View style={[styles.skeletonBlock, styles.skeletonSearchBar, { opacity: shimmer }]} />
-          <View style={styles.skeletonChipRow}>
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Animated.View key={index} style={[styles.skeletonBlock, styles.skeletonChip, { opacity: shimmer }]} />
-            ))}
-          </View>
-          <Animated.View style={[styles.skeletonBlock, styles.skeletonBanner, { opacity: shimmer }]} />
-          {Array.from({ length: 3 }).map((_, index) => (
-            <View key={`section-${index}`} style={styles.skeletonSection}>
-              <Animated.View style={[styles.skeletonBlock, styles.skeletonSectionTitle, { opacity: shimmer }]} />
-              <View style={styles.skeletonRestaurantRow}>
-                {Array.from({ length: 2 }).map((__, cardIndex) => (
-                  <Animated.View key={cardIndex} style={[styles.skeletonBlock, styles.skeletonRestaurantCard, { opacity: shimmer }]} />
-                ))}
-              </View>
-            </View>
-          ))}
-        </View>
-      </Animated.View>
-    </Modal>
-  );
-}
+      <FlatList
+        data={feedData}
+        keyExtractor={(item) => String(item.restaurant.id)}
+        renderItem={({ item, index }) => (
+          <RestaurantFeedPage
+            item={item}
+            pageHeight={pageHeight}
+            pageWidth={screenWidth}
+            isActive={index === activeRestaurantIndex}
+            activeProductIndex={activeProductByRestaurant[item.restaurant.id] ?? 0}
+            likedPosts={likedPosts}
+            commentBumps={commentBumps}
+            onProductIndexChange={(productIndex) => {
+              setActiveProductByRestaurant((current) => ({ ...current, [item.restaurant.id]: productIndex }));
+            }}
+            onOpenRestaurant={() => navigation.navigate("RestaurantDetails", { restaurant: item.restaurant })}
+            onOpenProduct={(product) => navigation.navigate("ProductDetails", { restaurant: item.restaurant, product })}
+            onQuickAdd={(product) => quickAdd(item.restaurant, product)}
+            onLike={(product) => toggleLike(item.restaurant, product)}
+            onComment={(product) => addCommentBump(item.restaurant, product)}
+            onShare={(product) => shareProduct(item.restaurant, product)}
+          />
+        )}
+        pagingEnabled
+        snapToInterval={pageHeight}
+        decelerationRate="fast"
+        disableIntervalMomentum
+        showsVerticalScrollIndicator={false}
+        viewabilityConfig={restaurantViewabilityConfig}
+        onViewableItemsChanged={onRestaurantViewableItemsChanged}
+        getItemLayout={(_, index) => ({ length: pageHeight, offset: pageHeight * index, index })}
+        initialNumToRender={1}
+        maxToRenderPerBatch={2}
+        windowSize={3}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.white} />}
+        onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+          const nextIndex = Math.round(event.nativeEvent.contentOffset.y / pageHeight);
+          if (nextIndex !== activeRestaurantIndex && nextIndex >= 0 && nextIndex < feedData.length) {
+            setActiveRestaurantIndex(nextIndex);
+          }
+        }}
+        scrollEventThrottle={16}
+        removeClippedSubviews={false}
+      />
 
-function SectionHeader({ title, actionLabel, onPressAction }: { title: string; actionLabel?: string; onPressAction?: () => void }) {
-  return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {actionLabel && onPressAction ? (
-        <Pressable onPress={onPressAction} hitSlop={8}>
-          <Text style={styles.sectionAction}>{actionLabel}</Text>
-        </Pressable>
-      ) : null}
     </View>
   );
 }
 
+type RestaurantFeedPageProps = {
+  item: FeedRestaurant;
+  pageHeight: number;
+  pageWidth: number;
+  isActive: boolean;
+  activeProductIndex: number;
+  likedPosts: Record<string, boolean>;
+  commentBumps: Record<string, number>;
+  onProductIndexChange: (index: number) => void;
+  onOpenRestaurant: () => void;
+  onOpenProduct: (product: Product) => void;
+  onQuickAdd: (product: Product) => void;
+  onLike: (product: Product) => void;
+  onComment: (product: Product) => void;
+  onShare: (product: Product) => void;
+};
+
+function RestaurantFeedPage({
+  item,
+  pageHeight,
+  pageWidth,
+  isActive,
+  activeProductIndex,
+  likedPosts,
+  commentBumps,
+  onProductIndexChange,
+  onOpenRestaurant,
+  onOpenProduct,
+  onQuickAdd,
+  onLike,
+  onComment,
+  onShare,
+}: RestaurantFeedPageProps) {
+  const productViewabilityConfig = useRef({ itemVisiblePercentThreshold: 65 }).current;
+  const onProductViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: Array<ViewToken<Product>> }) => {
+      const next = viewableItems.find((token) => token.isViewable && token.index != null);
+      if (next?.index != null) {
+        onProductIndexChange(next.index);
+      }
+    },
+  ).current;
+
+  return (
+    <View style={[styles.page, { width: pageWidth, height: pageHeight }]}>
+      <FlatList
+        horizontal
+        data={item.products}
+        keyExtractor={(product) => String(product.id)}
+        renderItem={({ item: product, index }) => {
+          const key = productKey(item.restaurant.id, product.id);
+          return (
+            <ProductVideoSlide
+              restaurant={item.restaurant}
+              product={product}
+              index={index}
+              productCount={item.products.length}
+              width={pageWidth}
+              height={pageHeight}
+              isActive={isActive && index === activeProductIndex}
+              isLiked={Boolean(likedPosts[key])}
+              commentBump={commentBumps[key] ?? 0}
+              onOpenRestaurant={onOpenRestaurant}
+              onOpenProduct={() => onOpenProduct(product)}
+              onQuickAdd={() => onQuickAdd(product)}
+              onLike={() => onLike(product)}
+              onComment={() => onComment(product)}
+              onShare={() => onShare(product)}
+            />
+          );
+        }}
+        pagingEnabled
+        snapToInterval={pageWidth}
+        decelerationRate="fast"
+        disableIntervalMomentum
+        showsHorizontalScrollIndicator={false}
+        viewabilityConfig={productViewabilityConfig}
+        onViewableItemsChanged={onProductViewableItemsChanged}
+        getItemLayout={(_, index) => ({ length: pageWidth, offset: pageWidth * index, index })}
+        initialNumToRender={1}
+        maxToRenderPerBatch={2}
+        windowSize={3}
+        removeClippedSubviews={false}
+      />
+    </View>
+  );
+}
+
+type ProductVideoSlideProps = {
+  restaurant: Restaurant;
+  product: Product;
+  index: number;
+  productCount: number;
+  width: number;
+  height: number;
+  isActive: boolean;
+  isLiked: boolean;
+  commentBump: number;
+  onOpenRestaurant: () => void;
+  onOpenProduct: () => void;
+  onQuickAdd: () => void;
+  onLike: () => void;
+  onComment: () => void;
+  onShare: () => void;
+};
+
+function ProductVideoSlide({
+  restaurant,
+  product,
+  index,
+  productCount,
+  width,
+  height,
+  isActive,
+  isLiked,
+  commentBump,
+  onOpenRestaurant,
+  onOpenProduct,
+  onQuickAdd,
+  onLike,
+  onComment,
+  onShare,
+}: ProductVideoSlideProps) {
+  const { tr } = useI18n();
+  const insets = useSafeAreaInsets();
+  const stats = statsFor(restaurant, product);
+  const posterIndex = Math.abs(restaurant.id * 7 + product.id * 3 + index) % VIDEO_POSTERS.length;
+  const productPrice = product.effective_price ?? product.discount_price ?? product.price;
+  const posterUri = product.image ? resolveProductImageUri(product.image, product.id) : VIDEO_POSTERS[posterIndex];
+  const videoUri = MOCK_VIDEO_SOURCES[(restaurant.id + product.id + index) % MOCK_VIDEO_SOURCES.length];
+  const videoSource = useMemo(
+    () => ({
+      uri: videoUri,
+      contentType: "progressive" as const,
+      useCaching: true,
+    }),
+    [videoUri],
+  );
+  const restaurantPosterUri = resolveRestaurantImageUri(restaurant.cover_image, restaurant.id);
+  const comments = stats.comments + commentBump;
+  const [hasRenderedFrame, setHasRenderedFrame] = useState(false);
+  const [hasPlaybackError, setHasPlaybackError] = useState(false);
+  const player = useVideoPlayer(videoSource, (videoPlayer) => {
+    videoPlayer.loop = true;
+    videoPlayer.muted = true;
+    videoPlayer.volume = 0;
+    videoPlayer.audioMixingMode = "mixWithOthers";
+    videoPlayer.bufferOptions = {
+      preferredForwardBufferDuration: 3,
+      minBufferForPlayback: 0.25,
+      prioritizeTimeOverSizeThreshold: true,
+    };
+  });
+  const statusEvent = useEvent(player, "statusChange", { status: player.status });
+  const playingEvent = useEvent(player, "playingChange", { isPlaying: player.playing });
+  const playerStatus = statusEvent?.status ?? player.status;
+  const isPlaying = playingEvent?.isPlaying ?? player.playing;
+
+  useEffect(() => {
+    setHasRenderedFrame(false);
+    setHasPlaybackError(false);
+  }, [videoUri]);
+
+  useEffect(() => {
+    if (playerStatus === "error") {
+      setHasPlaybackError(true);
+      return;
+    }
+
+    if (playerStatus === "loading" || playerStatus === "readyToPlay") {
+      setHasPlaybackError(false);
+    }
+  }, [playerStatus]);
+
+  useEffect(() => {
+    if (!isActive) {
+      player.pause();
+      return undefined;
+    }
+
+    if (playerStatus !== "error" && !isPlaying) {
+      player.play();
+    }
+
+    return undefined;
+  }, [isActive, isPlaying, player, playerStatus]);
+
+  return (
+    <View style={[styles.slide, { width, height }]}>
+      <VideoView
+        player={player}
+        style={[styles.videoSurface, hasPlaybackError && styles.videoSurfaceHidden]}
+        contentFit="cover"
+        nativeControls={false}
+        fullscreenOptions={{ enable: false }}
+        allowsPictureInPicture={false}
+        pointerEvents="none"
+        surfaceType="textureView"
+        useExoShutter={false}
+        onFirstFrameRender={() => setHasRenderedFrame(true)}
+      />
+      {hasPlaybackError ? (
+        <Image source={{ uri: posterUri }} style={styles.videoFallbackImage} resizeMode="cover" />
+      ) : null}
+      {isActive && playerStatus === "loading" && !hasPlaybackError ? (
+        <View pointerEvents="none" style={styles.videoLoadingLayer}>
+          <ActivityIndicator color={colors.white} />
+        </View>
+      ) : null}
+      <View style={styles.dimLayer} />
+
+      <Pressable style={styles.fullSlidePressable} onPress={onOpenProduct} />
+
+      <View style={styles.productPagers} pointerEvents="none">
+        {Array.from({ length: Math.min(productCount, 8) }).map((_, dotIndex) => (
+          <View key={dotIndex} style={[styles.productDot, dotIndex === index && styles.productDotActive]} />
+        ))}
+      </View>
+
+      <View style={styles.actionStack}>
+        <SocialButton
+          label={compactCount(stats.likes + (isLiked ? 1 : 0))}
+          active={isLiked}
+          onPress={onLike}
+          icon={<Heart size={26} stroke={colors.white} fill={isLiked ? colors.red : "transparent"} />}
+        />
+        <SocialButton
+          label={compactCount(comments)}
+          onPress={onComment}
+          icon={<MessageCircle size={25} stroke={colors.white} />}
+        />
+        <SocialButton
+          label={compactCount(stats.shares)}
+          onPress={onShare}
+          icon={<Share2 size={25} stroke={colors.white} />}
+        />
+        <SocialButton
+          label={tr("Trimite", "Send")}
+          onPress={onShare}
+          icon={<Send size={24} stroke={colors.white} />}
+        />
+      </View>
+
+      <View style={styles.contentOverlay}>
+        <Pressable style={styles.restaurantHeader} onPress={onOpenRestaurant}>
+          <Image source={{ uri: restaurantPosterUri }} style={styles.restaurantAvatar} />
+          <View style={styles.restaurantTextBlock}>
+            <View style={styles.restaurantNameRow}>
+              <Text numberOfLines={1} style={styles.restaurantName}>@{restaurant.slug || restaurant.name.toLowerCase().replace(/\s+/g, "")}</Text>
+              <View style={styles.followPill}>
+                <Text style={styles.followText}>{tr("Vezi", "View")}</Text>
+              </View>
+            </View>
+            <Text numberOfLines={1} style={styles.restaurantMeta}>
+              {Number(restaurant.rating).toFixed(1)} ★ · {restaurant.estimated_delivery_time_min}-{restaurant.estimated_delivery_time_max} min · {money(restaurant.delivery_fee)} livrare
+            </Text>
+          </View>
+        </Pressable>
+
+        <Pressable onPress={onOpenProduct}>
+          <Text numberOfLines={2} style={styles.productTitle}>{product.name}</Text>
+          <Text numberOfLines={2} style={styles.productDescription}>{product.description || restaurant.description}</Text>
+        </Pressable>
+
+        <View style={styles.tagsRow}>
+          <View style={styles.tagPill}>
+            <Star size={12} stroke="#111111" fill="#111111" />
+            <Text style={styles.tagText}>{product.category_name ?? tr("Recomandat", "Recommended")}</Text>
+          </View>
+          {product.is_popular ? (
+            <View style={styles.tagPillMuted}>
+              <Text style={styles.tagTextMuted}>{tr("Popular", "Popular")}</Text>
+            </View>
+          ) : null}
+        </View>
+
+      </View>
+      <View style={[styles.ctaRow, { bottom: insets.bottom + 58 }]}>
+        <Pressable style={styles.orderButton} onPress={onQuickAdd}>
+          <ShoppingBag size={18} stroke="#111111" />
+          <Text style={styles.orderButtonText}>{tr("Adaugă", "Add")}</Text>
+          <Text style={styles.orderButtonPrice}>{money(productPrice)}</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+type SocialButtonProps = {
+  icon: ReactNode;
+  label: string;
+  active?: boolean;
+  onPress: () => void;
+};
+
+function SocialButton({ icon, label, active, onPress }: SocialButtonProps) {
+  return (
+    <Pressable style={({ pressed }) => [styles.socialButton, pressed && styles.socialButtonPressed]} onPress={onPress}>
+      <View style={[styles.socialIconWrap, active && styles.socialIconWrapActive]}>{icon}</View>
+      <Text style={styles.socialLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  content: {
-    paddingHorizontal: 22,
-    paddingTop: 18,
-    paddingBottom: 120,
+  container: {
+    flex: 1,
+    backgroundColor: "#050505",
+  },
+  loadingScreen: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
     gap: 14,
+    backgroundColor: "#050505",
+    paddingHorizontal: 28,
   },
-  header: {
-    flexDirection: "row",
+  loadingBrandMark: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
   },
-  headerTextBlock: {
-    gap: 7,
-    width: "100%",
-  },
-  eyebrowBadge: {
-    alignSelf: "stretch",
-    backgroundColor: colors.red,
-    marginHorizontal: -22,
-    paddingHorizontal: 22,
-    paddingVertical: 6,
-    borderRadius: 0,
-  },
-  eyebrowRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  eyebrow: {
+  loadingTitle: {
     color: colors.white,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.2,
+    fontSize: 18,
+    fontWeight: "900",
+    letterSpacing: 2.4,
   },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    marginTop: 4,
-  },
-  locationTextBlock: {
-    gap: 2,
-  },
-  locationStreet: {
-    color: colors.text,
+  loadingText: {
+    color: "rgba(255,255,255,0.62)",
     fontSize: 14,
     fontWeight: "700",
   },
-  locationCity: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "600",
+  page: {
+    backgroundColor: "#050505",
   },
-  searchBar: {
-    height: 54,
-    borderRadius: 16,
-    backgroundColor: colors.cardSoft,
+  slide: {
+    overflow: "hidden",
+    backgroundColor: "#050505",
+  },
+  videoSurface: {
+    ...StyleSheet.absoluteFillObject,
+    width: undefined,
+    height: undefined,
+    zIndex: 1,
+  },
+  videoSurfaceHidden: {
+    opacity: 0,
+  },
+  videoFallbackImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: undefined,
+    height: undefined,
+    zIndex: 1,
+  },
+  videoLoadingLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#050505",
+  },
+  dimLayer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.18)",
+    zIndex: 3,
+  },
+  fullSlidePressable: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
+  },
+  productPagers: {
+    position: "absolute",
+    top: 58,
+    left: 12,
+    right: 12,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 15,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: 5,
+    zIndex: 12,
   },
-  searchStickyWrap: {
-    backgroundColor: colors.background,
-    paddingVertical: 6,
+  productDot: {
+    width: 18,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.34)",
   },
-  searchStickyOverlay: {
+  productDotActive: {
+    width: 34,
+    backgroundColor: colors.white,
+  },
+  actionStack: {
     position: "absolute",
-    top: 0,
+    right: 12,
+    bottom: 136,
+    alignItems: "center",
+    gap: 16,
+    zIndex: 12,
+  },
+  socialButton: {
+    alignItems: "center",
+    gap: 5,
+  },
+  socialButtonPressed: {
+    transform: [{ scale: 0.94 }],
+  },
+  socialIconWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
+    borderWidth: 0,
+  },
+  socialIconWrapActive: {
+    backgroundColor: "transparent",
+    borderColor: "transparent",
+  },
+  socialLabel: {
+    color: colors.white,
+    fontSize: 11,
+    lineHeight: 13,
+    fontWeight: "900",
+    textShadowColor: "rgba(0,0,0,0.7)",
+    textShadowRadius: 8,
+  },
+  contentOverlay: {
+    position: "absolute",
+    left: 18,
+    right: 82,
+    bottom: 176,
+    zIndex: 11,
+  },
+  restaurantHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 13,
+  },
+  restaurantAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 2,
+    borderColor: colors.white,
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+  restaurantTextBlock: {
+    flex: 1,
+  },
+  restaurantNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  restaurantName: {
+    flexShrink: 1,
+    color: colors.white,
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: "900",
+  },
+  followPill: {
+    height: 24,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.white,
+  },
+  followText: {
+    color: "#111111",
+    fontSize: 11,
+    lineHeight: 13,
+    fontWeight: "900",
+  },
+  restaurantMeta: {
+    marginTop: 4,
+    color: "rgba(255,255,255,0.76)",
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "800",
+  },
+  productTitle: {
+    marginTop: 2,
+    color: colors.white,
+    fontSize: 25,
+    lineHeight: 31,
+    fontWeight: "900",
+    letterSpacing: -0.8,
+    textShadowColor: "rgba(0,0,0,0.58)",
+    textShadowRadius: 14,
+  },
+  productDescription: {
+    marginTop: 6,
+    paddingRight: 8,
+    color: "rgba(255,255,255,0.88)",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "600",
+    textShadowColor: "rgba(0,0,0,0.62)",
+    textShadowRadius: 10,
+  },
+  tagsRow: {
+    marginTop: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  tagPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    minHeight: 28,
+    paddingHorizontal: 11,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.92)",
+  },
+  tagText: {
+    color: "#111111",
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: "900",
+  },
+  tagPillMuted: {
+    minHeight: 28,
+    paddingHorizontal: 11,
+    borderRadius: 14,
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.36)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.16)",
+  },
+  tagTextMuted: {
+    color: colors.white,
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: "900",
+  },
+  ctaRow: {
+    position: "absolute",
     left: 0,
     right: 0,
-    zIndex: 30,
-    paddingHorizontal: 22,
-    paddingTop: 4,
-    paddingBottom: 8,
-    backgroundColor: colors.background,
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.text,
-    fontSize: 17,
-  },
-  searchInputProxy: {
-    flex: 1,
-  },
-  chips: {
-    paddingVertical: 0,
-    paddingHorizontal: 22,
-  },
-  fullBleedList: {
-    marginHorizontal: -22,
-  },
-  horizontalCardsContent: {
-    paddingHorizontal: 22,
-  },
-  categoryTile: {
-    width: 84,
     alignItems: "center",
-    gap: 6,
+    zIndex: 14,
   },
-  categoryIconCard: {
-    width: 84,
-    height: 74,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  categoryImage: {
-    width: 48,
-    height: 48,
-  },
-  categoryImageFallback: {
-    width: 48,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  categoryImageFallbackText: {
-    color: colors.muted,
-    fontSize: 16,
-    fontWeight: "800",
-  },
-  favoriteFallbackIcon: {
-    fontSize: 30,
-    lineHeight: 34,
-    textShadowColor: "rgba(0, 0, 0, 0.2)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 3,
-  },
-  categoryLabel: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: "600",
-    textAlign: "center",
-    paddingHorizontal: 4,
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: "800",
-    letterSpacing: -0.4,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  sectionAction: {
-    color: colors.red,
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 30,
-    gap: 8,
-  },
-  emptyIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 2,
-  },
-  emptyTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  emptyText: {
-    color: colors.muted,
-    fontSize: 14,
-    textAlign: "center",
-  },
-  allRestaurantsList: {
-    gap: 30,
-  },
-  sectionBlock: {
-    gap: 14,
-    marginTop: 24,
-  },
-  firstSectionBlock: {
-    marginTop: 0,
-  },
-  promotedCarouselBlock: {
-    marginTop: 8,
-  },
-  promotedCarouselContent: {
-    paddingHorizontal: 22,
-  },
-  promotedViewport: {
-    overflow: "visible",
-    marginHorizontal: -22,
-  },
-  promotedBanner: {
-    height: 134,
-    borderRadius: 14,
-    overflow: "hidden",
-    backgroundColor: "#B8162A",
-  },
-  promotedBannerImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: "100%",
-    height: "100%",
-  },
-  promotedOverlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-    padding: 12,
-    gap: 4,
-    backgroundColor: "rgba(0,0,0,0.28)",
-  },
-  promotedBadge: {
-    alignSelf: "flex-start",
-    color: "#1A1A1A",
-    fontSize: 11,
-    fontWeight: "800",
-    backgroundColor: "#F9EDC3",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    overflow: "hidden",
-  },
-  promotedTitle: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  promotedSubtitle: {
-    color: "rgba(255,255,255,0.92)",
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  loadingOverlay: {
-    flex: 1,
-    zIndex: 100,
-    backgroundColor: colors.background,
-  },
-  skeletonStage: {
-    flex: 1,
-    paddingHorizontal: 22,
-    paddingTop: 24,
-    paddingBottom: 24,
-    gap: 12,
-  },
-  skeletonBlock: {
-    backgroundColor: colors.cardSoft,
-    borderRadius: 12,
-  },
-  skeletonHeaderStrip: {
-    height: 24,
-    marginHorizontal: -22,
-  },
-  skeletonAddressMain: {
-    width: "68%",
-    height: 14,
-    marginTop: 10,
-  },
-  skeletonAddressSub: {
-    width: "52%",
-    height: 12,
-  },
-  skeletonSearchBar: {
-    height: 54,
+  orderButton: {
+    width: "76%",
+    minHeight: 52,
     borderRadius: 16,
-    marginTop: 6,
-  },
-  skeletonChipRow: {
+    paddingHorizontal: 16,
+    alignItems: "center",
     flexDirection: "row",
+    justifyContent: "center",
     gap: 8,
-    marginTop: 2,
+    backgroundColor: colors.white,
   },
-  skeletonChip: {
-    width: 84,
-    height: 74,
-    borderRadius: 14,
+  orderButtonText: {
+    color: "#111111",
+    fontSize: 15,
+    lineHeight: 18,
+    fontWeight: "900",
   },
-  skeletonBanner: {
-    height: 134,
-    borderRadius: 14,
-    marginTop: 8,
-  },
-  skeletonSection: {
-    gap: 12,
-    marginTop: 14,
-  },
-  skeletonSectionTitle: {
-    width: "40%",
-    height: 20,
-    borderRadius: 8,
-  },
-  skeletonRestaurantRow: {
-    flexDirection: "row",
-    gap: 14,
-  },
-  skeletonRestaurantCard: {
-    width: 206,
-    height: 170,
-    borderRadius: 12,
+  orderButtonPrice: {
+    color: colors.red,
+    fontSize: 15,
+    lineHeight: 18,
+    fontWeight: "900",
   },
 });

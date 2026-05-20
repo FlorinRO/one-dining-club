@@ -3,7 +3,7 @@ import { AppLanguage } from "../store/preferencesStore";
 type Dictionary = Record<string, string>;
 
 const ro: Dictionary = {
-  "tabs.home": "Acasă",
+  "tabs.home": "Feed",
   "tabs.search": "Căutare",
   "tabs.cart": "Coș",
   "tabs.orders": "Comenzi",
@@ -45,7 +45,7 @@ const ro: Dictionary = {
 };
 
 const en: Dictionary = {
-  "tabs.home": "Home",
+  "tabs.home": "Feed",
   "tabs.search": "Search",
   "tabs.cart": "Cart",
   "tabs.orders": "Orders",
