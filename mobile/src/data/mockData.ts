@@ -1,5 +1,4 @@
 import { Address, Order, Product, ProductCategory, Restaurant } from "../types/models";
-import { demoProductVideoIds, getDemoProductVideoUrl } from "./demoVideos";
 
 const baseMockRestaurants: Restaurant[] = [
   {
@@ -860,12 +859,27 @@ const baseMockProducts: Product[] = [
 ];
 
 const generatedCategoryName = "Chef Picks";
-const generatedProductStyles = ["Classic", "Spicy", "Smoky", "Crispy", "House", "Loaded", "Fresh", "Fire", "Signature", "Street"];
-const generatedProductBaseNames = [
-  "Burger", "Pizza", "Pasta", "Ramen", "Bowl", "Wrap", "Salad", "Taco", "Quesadilla", "Soup",
-  "Sandwich", "Schnitzel", "Rice Box", "Noodle Box", "Bao", "Dumplings", "Sushi Roll", "Poke",
-  "Steak", "Wings", "Halloumi", "Falafel", "Shawarma", "Risotto", "Gnocchi", "Lasagna", "Kebab",
-  "Burrito", "Udon", "Pho", "Maki", "Nigiri", "Bibimbap", "Curry", "Brisket", "Ribs",
+const generatedProductNames = [
+  "Crispy Chicken Burger",
+  "Margherita Pizza",
+  "Truffle Mushroom Pasta",
+  "Spicy Beef Ramen",
+  "Grilled Halloumi Bowl",
+  "Chicken Caesar Wrap",
+  "Avocado Salmon Salad",
+  "Pulled Beef Tacos",
+  "Cheese Quesadilla",
+  "Roasted Tomato Soup",
+  "Turkey Club Sandwich",
+  "Chicken Schnitzel Plate",
+  "Teriyaki Rice Box",
+  "Spicy Noodle Box",
+  "Pork Bao Buns",
+  "Shrimp Dumplings",
+  "Salmon Sushi Roll",
+  "Tuna Poke Bowl",
+  "Pepper Steak Plate",
+  "Buffalo Wings",
 ];
 const generatedProductImagePool = [
   "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000&auto=format&fit=crop",
@@ -896,18 +910,14 @@ const generatedProducts: Product[] = mockRestaurants.flatMap((restaurant, restau
   const targetProductCount = isExpandedDemoRestaurant ? 10 : 5;
   const productsToGenerate = Math.max(targetProductCount - existingProductCount, 0);
 
-  return generatedProductStyles.slice(0, productsToGenerate).map((style, productIndex) => {
+  return Array.from({ length: productsToGenerate }).map((_, productIndex) => {
     const sequence = productIndex + 1;
-    const globalSequence = restaurantIndex * generatedProductStyles.length + sequence;
-    const dishIndex = (globalSequence * 7 + restaurant.id * 3) % generatedProductBaseNames.length;
+    const globalSequence = restaurantIndex * 10 + sequence;
     const basePrice = 24 + restaurantIndex + productIndex * 3;
     const hasDiscount = sequence % 3 === 0;
     const discountPrice = hasDiscount ? Math.max(basePrice - 5, 10) : null;
-    const productName = `${style} ${generatedProductBaseNames[dishIndex]} ${restaurant.slug}`;
+    const productName = generatedProductNames[(globalSequence + restaurant.id) % generatedProductNames.length];
     const imageBase = generatedProductImagePool[globalSequence % generatedProductImagePool.length];
-    const demoVideoIndex = isExpandedDemoRestaurant ? (restaurant.id - 29) * 10 + productIndex : -1;
-    const demoVideoId = demoProductVideoIds[demoVideoIndex];
-
     return {
       id: 10000 + restaurant.id * 100 + sequence,
       restaurant: restaurant.id,
@@ -917,8 +927,8 @@ const generatedProducts: Product[] = mockRestaurants.flatMap((restaurant, restau
       name: productName,
       description: `Produs demo distinct pentru ${restaurant.name}, categoria ${category.name.toLowerCase()}, util la testare search și filtre.`,
       image: `${imageBase}&sig=${restaurant.id}-${sequence}`,
-      video_url: demoVideoId ? getDemoProductVideoUrl(demoVideoIndex) : null,
-      has_audio: false,
+      video_url: null,
+      has_audio: true,
       price: basePrice,
       discount_price: discountPrice,
       effective_price: discountPrice ?? basePrice,

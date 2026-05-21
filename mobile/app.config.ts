@@ -11,9 +11,12 @@ function appendFacebookScheme(scheme: ExpoConfig["scheme"], facebookClientId?: s
 
 export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
   const facebookClientId = env("EXPO_PUBLIC_FACEBOOK_CLIENT_ID", config.extra?.facebookClientId) as string | undefined;
+  const basePlugins = Array.isArray(config.plugins) ? config.plugins : [];
+  const plugins = basePlugins.includes("expo-audio") ? basePlugins : [...basePlugins, "expo-audio"];
 
   return {
     ...config,
+    plugins,
     scheme: appendFacebookScheme(config.scheme, facebookClientId),
     extra: {
       ...(config.extra ?? {}),

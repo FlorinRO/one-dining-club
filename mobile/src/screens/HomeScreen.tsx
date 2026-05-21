@@ -1,5 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEvent, useEventListener } from "expo";
+import { type AudioSource, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -33,7 +34,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
-import { getDemoProductVideoUrl } from "../data/demoVideos";
+import { getDemoProductAudioSource } from "../data/demoAudio";
+import { getDemoProductVideoLabel, getDemoProductVideoSource } from "../data/demoVideos";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
 import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
@@ -65,6 +67,12 @@ const VIDEO_POSTERS = [
 ];
 
 const productKey = (restaurantId: number, productId: number) => `${restaurantId}:${productId}`;
+const FEED_STANDALONE_AUDIO_VOLUME = 0.82;
+const FEED_VIDEO_LOAD_TIMEOUT_MS = 12000;
+const FEED_VIDEO_DEBUG = false;
+const logFeedVideo = (...args: Parameters<typeof console.log>) => {
+  if (FEED_VIDEO_DEBUG) console.log(...args);
+};
 
 const compactCount = (value: number) => {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
@@ -113,6 +121,7 @@ export function HomeScreen({ navigation }: Props) {
   const [activeRestaurantIndex, setActiveRestaurantIndex] = useState(0);
   const [activeProductByRestaurant, setActiveProductByRestaurant] = useState<Record<number, number>>({});
   const [audiblePostKey, setAudiblePostKey] = useState<string | null>(null);
+  const [hasAutoSelectedAudiblePost, setHasAutoSelectedAudiblePost] = useState(false);
   const [isRestaurantScrollEnabled, setIsRestaurantScrollEnabled] = useState(true);
   const [feedHeight, setFeedHeight] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -132,7 +141,7 @@ export function HomeScreen({ navigation }: Props) {
     const productEntries = await Promise.all(
       visibleRestaurants.map(async (restaurant) => {
         const products = await restaurantsApi.products(restaurant.id);
-        return [restaurant.id, products.slice(0, 10)] as const;
+        return [restaurant.id, products.slice(0, 3)] as const;
       }),
     );
 
@@ -235,10 +244,16 @@ export function HomeScreen({ navigation }: Props) {
       return;
     }
 
-    if (audiblePostKey !== activePostKey) {
+    if (!hasAutoSelectedAudiblePost) {
+      setAudiblePostKey(activePostKey);
+      setHasAutoSelectedAudiblePost(true);
+      return;
+    }
+
+    if (audiblePostKey !== null && audiblePostKey !== activePostKey) {
       setAudiblePostKey(activePostKey);
     }
-  }, [activePostKey, audiblePostKey]);
+  }, [activePostKey, audiblePostKey, hasAutoSelectedAudiblePost]);
 
   if (isLoading && !feedData.length) {
     return (
@@ -272,6 +287,7 @@ export function HomeScreen({ navigation }: Props) {
             pageHeight={pageHeight}
             pageWidth={screenWidth}
             isActive={index === activeRestaurantIndex}
+            isRestaurantAudible={Boolean(audiblePostKey?.startsWith(`${item.restaurant.id}:`))}
             activeProductIndex={activeProductByRestaurant[item.restaurant.id] ?? item.initialProductIndex}
             audiblePostKey={audiblePostKey}
             likedPosts={likedPosts}
@@ -291,7 +307,6 @@ export function HomeScreen({ navigation }: Props) {
             onAudioChange={(key, shouldEnableAudio) => {
               setAudiblePostKey(shouldEnableAudio ? key : null);
             }}
-            onClearAudio={() => setAudiblePostKey(null)}
           />
         )}
         pagingEnabled
@@ -308,7 +323,6 @@ export function HomeScreen({ navigation }: Props) {
         maxToRenderPerBatch={2}
         windowSize={3}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.white} />}
-        onScrollBeginDrag={() => setAudiblePostKey(null)}
         onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
           const nextIndex = Math.round(event.nativeEvent.contentOffset.y / pageHeight);
           if (nextIndex !== activeRestaurantIndex && nextIndex >= 0 && nextIndex < feedData.length) {
@@ -328,6 +342,7 @@ type RestaurantFeedPageProps = {
   pageHeight: number;
   pageWidth: number;
   isActive: boolean;
+  isRestaurantAudible: boolean;
   activeProductIndex: number;
   audiblePostKey: string | null;
   likedPosts: Record<string, boolean>;
@@ -341,7 +356,6 @@ type RestaurantFeedPageProps = {
   onComment: (product: Product) => void;
   onShare: (product: Product) => void;
   onAudioChange: (key: string, shouldEnableAudio: boolean) => void;
-  onClearAudio: () => void;
 };
 
 function RestaurantFeedPage({
@@ -349,6 +363,7 @@ function RestaurantFeedPage({
   pageHeight,
   pageWidth,
   isActive,
+  isRestaurantAudible,
   activeProductIndex,
   audiblePostKey,
   likedPosts,
@@ -362,7 +377,6 @@ function RestaurantFeedPage({
   onComment,
   onShare,
   onAudioChange,
-  onClearAudio,
 }: RestaurantFeedPageProps) {
   const productListRef = useRef<FlatList<Product>>(null);
   const horizontalLockReleaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -370,6 +384,16 @@ function RestaurantFeedPage({
   const touchGestureLockRef = useRef<"horizontal" | "vertical" | null>(null);
   const productViewabilityConfig = useRef({ itemVisiblePercentThreshold: 65 }).current;
   const clampedActiveProductIndex = Math.min(Math.max(activeProductIndex, 0), item.products.length - 1);
+  const hasRestaurantAudio = true;
+  const restaurantAudioSource = useMemo<AudioSource>(
+    () => getDemoProductAudioSource(item.restaurant.id - 1),
+    [item.restaurant.id],
+  );
+  const restaurantAudioPlayer = useAudioPlayer(restaurantAudioSource, {
+    updateInterval: 1000,
+    keepAudioSessionActive: true,
+  });
+  const restaurantAudioStatus = useAudioPlayerStatus(restaurantAudioPlayer);
   const onProductViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: Array<ViewToken<Product>> }) => {
       const next = viewableItems.find((token) => token.isViewable && token.index != null);
@@ -401,6 +425,43 @@ function RestaurantFeedPage({
       }
     };
   }, []);
+
+  useEffect(() => {
+    const shouldPlay = isActive && isRestaurantAudible;
+    try {
+      restaurantAudioPlayer.loop = true;
+      restaurantAudioPlayer.volume = shouldPlay ? FEED_STANDALONE_AUDIO_VOLUME : 0;
+      restaurantAudioPlayer.muted = !shouldPlay;
+      if (shouldPlay) {
+        if (restaurantAudioStatus.isLoaded && !restaurantAudioStatus.playing) {
+          restaurantAudioPlayer.play();
+        }
+      } else if (restaurantAudioStatus.playing) {
+        restaurantAudioPlayer.pause();
+      }
+    } catch {
+      // Keep feed usable even if audio player state fails to update.
+    }
+  }, [
+    isActive,
+    isRestaurantAudible,
+    restaurantAudioPlayer,
+    restaurantAudioStatus.isLoaded,
+    restaurantAudioStatus.playing,
+  ]);
+
+  const handleStepProduct = useCallback(
+    (direction: "prev" | "next") => {
+      const nextIndex = direction === "prev"
+        ? Math.max(clampedActiveProductIndex - 1, 0)
+        : Math.min(clampedActiveProductIndex + 1, item.products.length - 1);
+
+      if (nextIndex === clampedActiveProductIndex) return;
+      onProductIndexChange(nextIndex);
+      productListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+    },
+    [clampedActiveProductIndex, item.products.length, onProductIndexChange],
+  );
 
   return (
     <View
@@ -461,10 +522,12 @@ function RestaurantFeedPage({
               height={pageHeight}
               isActive={isSlideActive}
               isAudible={audiblePostKey === key && isSlideActive}
+              hasRestaurantAudio
               isLiked={Boolean(likedPosts[key])}
               commentBump={commentBumps[key] ?? 0}
               onOpenRestaurant={onOpenRestaurant}
               onOpenProduct={() => onOpenProduct(product)}
+              onStepProduct={handleStepProduct}
               onQuickAdd={() => onQuickAdd(product)}
               onLike={() => onLike(product)}
               onComment={() => onComment(product)}
@@ -484,7 +547,6 @@ function RestaurantFeedPage({
             clearTimeout(horizontalLockReleaseTimeoutRef.current);
             horizontalLockReleaseTimeoutRef.current = null;
           }
-          onClearAudio();
           onHorizontalSwipeStateChange(true);
         }}
         onMomentumScrollEnd={releaseHorizontalScrollLock}
@@ -510,10 +572,12 @@ type ProductVideoSlideProps = {
   height: number;
   isActive: boolean;
   isAudible: boolean;
+  hasRestaurantAudio: boolean;
   isLiked: boolean;
   commentBump: number;
   onOpenRestaurant: () => void;
   onOpenProduct: () => void;
+  onStepProduct: (direction: "prev" | "next") => void;
   onQuickAdd: () => void;
   onLike: () => void;
   onComment: () => void;
@@ -553,10 +617,12 @@ function ProductVideoSlide({
   height,
   isActive,
   isAudible,
+  hasRestaurantAudio,
   isLiked,
   commentBump,
   onOpenRestaurant,
   onOpenProduct,
+  onStepProduct,
   onQuickAdd,
   onLike,
   onComment,
@@ -569,18 +635,24 @@ function ProductVideoSlide({
   const posterIndex = Math.abs(restaurant.id * 7 + product.id * 3 + index) % VIDEO_POSTERS.length;
   const productPrice = product.effective_price ?? product.discount_price ?? product.price;
   const posterUri = product.image ? resolveProductImageUri(product.image, product.id) : VIDEO_POSTERS[posterIndex];
-  const videoUri = product.video_url ?? getDemoProductVideoUrl((restaurant.id - 1) * 10 + index);
+  const mediaIndex = (restaurant.id - 1) * 10 + index;
+  const fallbackVideoSource = getDemoProductVideoSource(mediaIndex);
+  const videoUri = product.video_url ?? getDemoProductVideoLabel(mediaIndex);
   const feedVideoKey = productKey(restaurant.id, product.id);
   const [hasAudioTrack, setHasAudioTrack] = useState(product.has_audio ?? true);
-  const canPlayAudio = hasAudioTrack;
-  const shouldMute = !isActive || !isAudible || !canPlayAudio;
+  const canPlayAudio = hasRestaurantAudio || hasAudioTrack || product.has_audio === true;
+  const shouldMuteOutput = !isActive || !isAudible || !canPlayAudio;
+  const shouldMuteVideo = shouldMuteOutput || hasRestaurantAudio;
   const videoSource = useMemo(
-    () => ({
-      uri: videoUri,
-      contentType: "progressive" as const,
-      useCaching: true,
-    }),
-    [videoUri],
+    () =>
+      product.video_url
+        ? ({
+            uri: product.video_url,
+            contentType: "progressive" as const,
+            useCaching: false,
+          } as const)
+        : fallbackVideoSource,
+    [fallbackVideoSource, product.video_url],
   );
   const restaurantPosterUri = resolveRestaurantImageUri(restaurant.cover_image, restaurant.id);
   const comments = stats.comments + commentBump;
@@ -592,7 +664,7 @@ function ProductVideoSlide({
     videoPlayer.loop = true;
     videoPlayer.muted = true;
     videoPlayer.volume = 0;
-    videoPlayer.audioMixingMode = "mixWithOthers";
+    videoPlayer.audioMixingMode = "duckOthers";
     videoPlayer.bufferOptions = {
       preferredForwardBufferDuration: 3,
       minBufferForPlayback: 0.25,
@@ -607,7 +679,7 @@ function ProductVideoSlide({
   useEventListener(player, "sourceLoad", (payload) => {
     const audioTrackCount = payload.availableAudioTracks?.length ?? 0;
     setHasAudioTrack(audioTrackCount > 0);
-    console.log("[FeedVideo] video loaded", {
+    logFeedVideo("[FeedVideo] video loaded", {
       key: feedVideoKey,
       uri: videoUri,
       duration: payload.duration,
@@ -620,7 +692,7 @@ function ProductVideoSlide({
 
   useEventListener(player, "availableAudioTracksChange", ({ availableAudioTracks }) => {
     setHasAudioTrack(availableAudioTracks.length > 0);
-    console.log("[FeedVideo] audio tracks changed", {
+    logFeedVideo("[FeedVideo] audio tracks changed", {
       key: feedVideoKey,
       uri: videoUri,
       hasAudioTrack: availableAudioTracks.length > 0,
@@ -629,7 +701,7 @@ function ProductVideoSlide({
   });
 
   useEventListener(player, "mutedChange", ({ muted }) => {
-    console.log("[FeedVideo] muted state changed", {
+    logFeedVideo("[FeedVideo] muted state changed", {
       key: feedVideoKey,
       muted,
       volume: player.volume,
@@ -637,7 +709,7 @@ function ProductVideoSlide({
   });
 
   useEventListener(player, "volumeChange", ({ volume }) => {
-    console.log("[FeedVideo] volume changed", {
+    logFeedVideo("[FeedVideo] volume changed", {
       key: feedVideoKey,
       muted: player.muted,
       volume,
@@ -658,7 +730,7 @@ function ProductVideoSlide({
     setHasRenderedFrame(false);
     setHasPlaybackError(false);
     setHasAudioTrack(product.has_audio ?? true);
-  }, [videoUri]);
+  }, [product.has_audio, videoUri]);
 
   useEffect(() => {
     if (playerStatus === "error") {
@@ -671,12 +743,43 @@ function ProductVideoSlide({
     }
   }, [playerStatus]);
 
-  const applyAudioState = useCallback(
+  useEffect(() => {
+    if (!isActive || hasRenderedFrame || hasPlaybackError) return undefined;
+    if (playerStatus !== "loading" && playerStatus !== "readyToPlay") return undefined;
+
+    const timeoutId = setTimeout(() => {
+      setHasPlaybackError(true);
+      try {
+        player.pause();
+      } catch {
+        // Keep feed usable even if pause fails.
+      }
+      console.warn("[FeedVideo] loading timeout fallback", {
+        key: feedVideoKey,
+        uri: videoUri,
+        status: playerStatus,
+        timeoutMs: FEED_VIDEO_LOAD_TIMEOUT_MS,
+      });
+    }, FEED_VIDEO_LOAD_TIMEOUT_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [feedVideoKey, hasPlaybackError, hasRenderedFrame, isActive, player, playerStatus, videoUri]);
+
+  const applyVideoAudioState = useCallback(
     (muted: boolean, volume: number, reason: string) => {
       try {
+        const nextAudioMixingMode = muted ? "mixWithOthers" : "duckOthers";
+        if (
+          player.muted === muted &&
+          Math.abs(player.volume - volume) < 0.001 &&
+          player.audioMixingMode === nextAudioMixingMode
+        ) {
+          return;
+        }
+        player.audioMixingMode = nextAudioMixingMode;
         player.muted = muted;
         player.volume = volume;
-        console.log("[FeedVideo] audio state applied", {
+        logFeedVideo("[FeedVideo] video audio state applied", {
           key: feedVideoKey,
           reason,
           isActive,
@@ -698,7 +801,7 @@ function ProductVideoSlide({
     (reason: string) => {
       try {
         const playResult = player.play() as unknown;
-        console.log("[FeedVideo] play() requested", {
+        logFeedVideo("[FeedVideo] play() requested", {
           key: feedVideoKey,
           reason,
           isActive,
@@ -728,8 +831,12 @@ function ProductVideoSlide({
   );
 
   useEffect(() => {
-    applyAudioState(shouldMute, shouldMute ? 0 : 1, shouldMute ? "inactive-or-muted" : "active-user-unmuted");
-  }, [applyAudioState, shouldMute]);
+    applyVideoAudioState(
+      shouldMuteVideo,
+      shouldMuteVideo ? 0 : 1,
+      shouldMuteOutput ? "inactive-or-muted" : hasRestaurantAudio ? "standalone-audio-active" : "active-user-unmuted",
+    );
+  }, [applyVideoAudioState, hasRestaurantAudio, shouldMuteOutput, shouldMuteVideo]);
 
   useEffect(() => {
     if (!isActive) {
@@ -738,17 +845,17 @@ function ProductVideoSlide({
     }
 
     if (playerStatus !== "error" && !isPlaying) {
-      requestPlay(shouldMute ? "active-muted-autoplay" : "active-audible-user-play");
+      requestPlay(shouldMuteOutput ? "active-muted-autoplay" : "active-audible-user-play");
     }
 
     return undefined;
-  }, [isActive, isPlaying, player, playerStatus, requestPlay, shouldMute]);
+  }, [isActive, isPlaying, player, playerStatus, requestPlay, shouldMuteOutput]);
 
   const handleAudioPress = useCallback(() => {
     void Haptics.selectionAsync();
 
     if (!isActive) {
-      console.log("[FeedVideo] audio button ignored for inactive video", {
+      logFeedVideo("[FeedVideo] audio button ignored for inactive video", {
         key: feedVideoKey,
         muted: player.muted,
         volume: player.volume,
@@ -757,24 +864,35 @@ function ProductVideoSlide({
     }
 
     if (!canPlayAudio) {
-      console.log("[FeedVideo] audio button ignored because video has no audio track", {
+      logFeedVideo("[FeedVideo] audio button ignored because no audio source is available", {
         key: feedVideoKey,
         uri: videoUri,
       });
-      applyAudioState(true, 0, "no-audio-track");
+      applyVideoAudioState(true, 0, "no-audio-source");
       return;
     }
 
     if (isAudible) {
       onAudioChange(false);
-      applyAudioState(true, 0, "user-muted");
+      applyVideoAudioState(true, 0, "user-muted");
       return;
     }
 
     onAudioChange(true);
-    applyAudioState(false, 1, "user-unmuted");
+    applyVideoAudioState(hasRestaurantAudio, hasRestaurantAudio ? 0 : 1, "user-unmuted");
     requestPlay("user-unmuted");
-  }, [applyAudioState, canPlayAudio, feedVideoKey, isActive, isAudible, onAudioChange, player, requestPlay, videoUri]);
+  }, [
+    applyVideoAudioState,
+    canPlayAudio,
+    feedVideoKey,
+    hasRestaurantAudio,
+    isActive,
+    isAudible,
+    onAudioChange,
+    player,
+    requestPlay,
+    videoUri,
+  ]);
 
   const handleLikePress = useCallback(() => {
     const willLike = !isLiked;
@@ -800,6 +918,13 @@ function ProductVideoSlide({
     setLikeHearts((current) => current.filter((heart) => heart.id !== id));
   }, []);
 
+  const handleVideoPress = useCallback(
+    (tapX: number) => {
+      onStepProduct(tapX < width / 2 ? "prev" : "next");
+    },
+    [onStepProduct, width],
+  );
+
   return (
     <View style={[styles.slide, { width, height }]}>
       <VideoView
@@ -815,7 +940,7 @@ function ProductVideoSlide({
         useExoShutter={false}
         onFirstFrameRender={() => {
           setHasRenderedFrame(true);
-          console.log("[FeedVideo] first frame rendered", {
+          logFeedVideo("[FeedVideo] first frame rendered", {
             key: feedVideoKey,
             uri: videoUri,
             muted: player.muted,
@@ -847,7 +972,10 @@ function ProductVideoSlide({
         style={styles.topFadeOverlay}
       />
 
-      <Pressable style={styles.fullSlidePressable} onPress={onOpenProduct} />
+      <Pressable
+        style={styles.fullSlidePressable}
+        onPress={(event) => handleVideoPress(event.nativeEvent.locationX)}
+      />
 
       <View style={styles.productPagers} pointerEvents="none">
         {Array.from({ length: Math.min(productCount, 10) }).map((_, dotIndex) => (
@@ -889,6 +1017,7 @@ function ProductVideoSlide({
         <SocialButton
           onPress={handleAudioPress}
           active={isAudible && canPlayAudio}
+          hideLabel
           label={canPlayAudio ? (isAudible ? tr("Sunet", "Sound") : tr("Mut", "Muted")) : tr("Fără audio", "No audio")}
           icon={
             isAudible && canPlayAudio
@@ -918,16 +1047,22 @@ function ProductVideoSlide({
 
       </View>
       <View style={[styles.ctaRow, { bottom: insets.bottom + 58 }]}>
-        <Pressable style={styles.orderButton} onPress={onQuickAdd}>
-          <ShoppingBag size={18} stroke="#111111" />
-          <Text style={styles.orderButtonText}>+ {tr("Adaugă", "Add")}</Text>
-          <View style={styles.orderButtonPriceBadge}>
-            <View style={styles.orderButtonPriceWrap}>
-              <Text style={styles.orderButtonPrice}>{money(productPrice).replace(",", ".")}</Text>
-              <View pointerEvents="none" style={styles.orderPriceLineGreenStrike} />
+        <View style={styles.ctaButtonsWrap}>
+          <Pressable style={styles.menuButton} onPress={onOpenRestaurant}>
+            <UtensilsCrossed size={16} stroke={colors.white} />
+            <Text style={styles.menuButtonText}>{tr("Meniu", "Menu")}</Text>
+          </Pressable>
+          <Pressable style={styles.orderButton} onPress={onQuickAdd}>
+            <ShoppingBag size={18} stroke="#111111" />
+            <Text style={styles.orderButtonText}>+ {tr("Adaugă", "Add")}</Text>
+            <View style={styles.orderButtonPriceBadge}>
+              <View style={styles.orderButtonPriceWrap}>
+                <Text style={styles.orderButtonPrice}>{money(productPrice).replace(",", ".")}</Text>
+                <View pointerEvents="none" style={styles.orderPriceLineGreenStrike} />
+              </View>
             </View>
-          </View>
-        </Pressable>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -1180,7 +1315,7 @@ const styles = StyleSheet.create({
   actionStack: {
     position: "absolute",
     right: 12,
-    bottom: 138,
+    bottom: 159,
     alignItems: "center",
     gap: 4,
     zIndex: 12,
@@ -1309,8 +1444,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 14,
   },
-  orderButton: {
+  ctaButtonsWrap: {
     width: "88%",
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 10,
+  },
+  menuButton: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.white,
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  menuButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: "600",
+    letterSpacing: 0.15,
+  },
+  orderButton: {
+    flex: 1,
     minHeight: 44,
     borderTopLeftRadius: 14,
     borderBottomLeftRadius: 14,

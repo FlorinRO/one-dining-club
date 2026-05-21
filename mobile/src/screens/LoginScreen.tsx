@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -6,26 +7,21 @@ import {
   EyeOff,
   LockKeyhole,
   Mail,
-  LogIn,
-  Star,
 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
-import BottomSheet, {
-  BottomSheetBackdrop,
-  BottomSheetScrollView,
-  BottomSheetTextInput,
-} from "@gorhom/bottom-sheet";
 import {
-  Keyboard,
+  Animated,
+  Easing,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import LottieView from "lottie-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { authApi } from "../api/authApi";
@@ -37,25 +33,126 @@ import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
 
+const LOGIN_BACKGROUND_VIDEOS: VideoSource[] = [
+  { uri: "https://assets.mixkit.co/videos/12171/12171-1080.mp4", contentType: "progressive", useCaching: false },
+  { uri: "https://assets.mixkit.co/videos/2433/2433-1080.mp4", contentType: "progressive", useCaching: false },
+  { uri: "https://assets.mixkit.co/videos/51238/51238-1080.mp4", contentType: "progressive", useCaching: false },
+  { uri: "https://assets.mixkit.co/videos/51236/51236-1080.mp4", contentType: "progressive", useCaching: false },
+  { uri: "https://assets.mixkit.co/videos/41350/41350-1080.mp4", contentType: "progressive", useCaching: false },
+  { uri: "https://assets.mixkit.co/videos/40830/40830-1080.mp4", contentType: "progressive", useCaching: false },
+  { uri: "https://assets.mixkit.co/videos/372/372-720.mp4", contentType: "progressive", useCaching: false },
+];
+const VIDEO_MAX_VISIBLE_DURATION_MS = 4000;
+const VIDEO_CROSSFADE_DURATION_MS = 1000;
+const VIDEO_TRANSITION_START_DELAY_MS = VIDEO_MAX_VISIBLE_DURATION_MS - VIDEO_CROSSFADE_DURATION_MS;
+const VIDEO_POST_SWAP_HOLD_MS = 120;
+
 export function LoginScreen({ navigation }: Props) {
   const { tr } = useI18n();
+  const insets = useSafeAreaInsets();
   const setSession = useAuthStore((state) => state.setSession);
   const continueAsGuest = useAuthStore((state) => state.continueAsGuest);
+
   const [email, setEmail] = useState("demo@onedining.club");
   const [password, setPassword] = useState("password123");
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState(email);
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useRef(["74%"]).current;
-  const insets = useSafeAreaInsets();
+  const [slotAIndex, setSlotAIndex] = useState(0);
+  const [slotBIndex, setSlotBIndex] = useState(1);
+  const [visibleSlot, setVisibleSlot] = useState<"A" | "B">("A");
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [slotAReady, setSlotAReady] = useState(false);
+  const [slotBReady, setSlotBReady] = useState(false);
+  const [nextQueueIndex, setNextQueueIndex] = useState(2 % LOGIN_BACKGROUND_VIDEOS.length);
+  const layerBOpacity = useRef(new Animated.Value(0)).current;
+  const visibleSlotRef = useRef<"A" | "B">("A");
+  const isTransitioningRef = useRef(false);
+
+  useEffect(() => {
+    visibleSlotRef.current = visibleSlot;
+  }, [visibleSlot]);
+
+  useEffect(() => {
+    isTransitioningRef.current = isTransitioning;
+  }, [isTransitioning]);
+
+  const slotAVideoSource = LOGIN_BACKGROUND_VIDEOS[slotAIndex];
+  const slotBVideoSource = LOGIN_BACKGROUND_VIDEOS[slotBIndex];
+
+  const slotAPlayer = useVideoPlayer(slotAVideoSource, (videoPlayer) => {
+    videoPlayer.loop = true;
+    videoPlayer.muted = true;
+  });
+  const slotBPlayer = useVideoPlayer(slotBVideoSource, (videoPlayer) => {
+    videoPlayer.loop = true;
+    videoPlayer.muted = true;
+  });
+
+  useEffect(() => {
+    slotAPlayer.loop = true;
+    slotAPlayer.muted = true;
+    slotAPlayer.currentTime = 0;
+    slotAPlayer.play();
+  }, [slotAPlayer, slotAIndex]);
+
+  useEffect(() => {
+    slotBPlayer.loop = true;
+    slotBPlayer.muted = true;
+    slotBPlayer.currentTime = 0;
+    slotBPlayer.play();
+  }, [slotBPlayer, slotBIndex]);
+
+  useEffect(() => {
+    if (isTransitioning) return undefined;
+
+    const transitionTimer = setTimeout(() => {
+      if (isTransitioningRef.current) return;
+      const currentVisible = visibleSlotRef.current;
+      const hiddenReady = currentVisible === "A" ? slotBReady : slotAReady;
+      if (!hiddenReady) return;
+
+      isTransitioningRef.current = true;
+      setIsTransitioning(true);
+      const targetOpacity = currentVisible === "A" ? 1 : 0;
+      Animated.timing(layerBOpacity, {
+        toValue: targetOpacity,
+        duration: VIDEO_CROSSFADE_DURATION_MS,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (!finished) {
+          isTransitioningRef.current = false;
+          setIsTransitioning(false);
+          return;
+        }
+
+        const nowVisible = currentVisible === "A" ? "B" : "A";
+        setVisibleSlot(nowVisible);
+
+        setTimeout(() => {
+          if (nowVisible === "A") {
+            setSlotBReady(false);
+            setSlotBIndex(nextQueueIndex);
+          } else {
+            setSlotAReady(false);
+            setSlotAIndex(nextQueueIndex);
+          }
+          setNextQueueIndex((current) => (current + 1) % LOGIN_BACKGROUND_VIDEOS.length);
+          isTransitioningRef.current = false;
+          setIsTransitioning(false);
+        }, VIDEO_POST_SWAP_HOLD_MS);
+      });
+    }, VIDEO_TRANSITION_START_DELAY_MS);
+
+    return () => clearTimeout(transitionTimer);
+  }, [isTransitioning, layerBOpacity, nextQueueIndex, slotAReady, slotBReady]);
 
   const goToHome = () => {
     continueAsGuest();
@@ -72,12 +169,6 @@ export function LoginScreen({ navigation }: Props) {
     onSuccess: handleSocialSuccess,
     onError: handleSocialError,
   });
-  const renderBackdrop = useCallback(
-    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
-      <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.34} />
-    ),
-    [],
-  );
 
   const submit = async () => {
     if (!email || !password) {
@@ -114,7 +205,12 @@ export function LoginScreen({ navigation }: Props) {
     setForgotMessage(null);
     try {
       await authApi.forgotPassword(forgotEmail.trim());
-      setForgotMessage(tr("Dacă există un cont activ, vei primi instrucțiuni de resetare.", "If an active account exists, you will receive reset instructions."));
+      setForgotMessage(
+        tr(
+          "Dacă există un cont activ, vei primi instrucțiuni de resetare.",
+          "If an active account exists, you will receive reset instructions.",
+        ),
+      );
     } catch {
       setForgotMessage(tr("Nu am putut trimite cererea. Încearcă din nou.", "Could not send request. Try again."));
     } finally {
@@ -122,241 +218,200 @@ export function LoginScreen({ navigation }: Props) {
     }
   };
 
-  useEffect(() => {
-    if (!bottomSheetRef.current) return;
-    if (sheetOpen) {
-      bottomSheetRef.current.snapToIndex(0);
-    } else {
-      bottomSheetRef.current.close();
-    }
-  }, [sheetOpen]);
-
-  useEffect(() => {
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const hideListener = Keyboard.addListener(hideEvent, () => {
-      if (sheetOpen) {
-        bottomSheetRef.current?.snapToIndex(0);
-      }
-    });
-    return () => hideListener.remove();
-  }, [sheetOpen]);
-
   return (
     <View style={styles.screen}>
-        <View style={styles.hero}>
-          <Pressable style={styles.backButton} onPress={goToHome}>
-            <ArrowLeft color={colors.white} size={24} strokeWidth={2.3} />
-          </Pressable>
+      <VideoView
+        player={slotAPlayer}
+        style={styles.videoBackground}
+        contentFit="cover"
+        surfaceType="textureView"
+        nativeControls={false}
+        playsInline
+        allowsPictureInPicture={false}
+        onFirstFrameRender={() => setSlotAReady(true)}
+        pointerEvents="none"
+      />
+      <Animated.View style={[styles.videoBackground, styles.crossfadeLayer, { opacity: layerBOpacity }]}>
+        <VideoView
+          player={slotBPlayer}
+          style={styles.videoBackground}
+          contentFit="cover"
+          surfaceType="textureView"
+          nativeControls={false}
+          playsInline
+          allowsPictureInPicture={false}
+          onFirstFrameRender={() => setSlotBReady(true)}
+          pointerEvents="none"
+        />
+      </Animated.View>
 
-          <View style={styles.heroBrandRow}>
-            <View style={styles.heroBrandTopRow}>
-              <Text style={styles.heroBrand}>ONE DINING CLUB</Text>
-              <View style={styles.brandStarWrap}>
-                <Star color={colors.white} fill={colors.white} size={11} strokeWidth={2} />
-              </View>
-            </View>
-          </View>
-          <View style={styles.heroHeadlineWrap}>
-            <View style={styles.heroHeadlineAccent} />
-            <Text style={styles.heroHeadline}>
-              {tr("Mâncarea ta preferată", "Your favorite food")}
-              {"\n"}{tr("la un", "just")} <Text style={styles.heroHeadlineHighlight}>login</Text> {tr("distanță", "away")}
-            </Text>
-            <Text style={styles.heroHeadlineSub}>{tr("Rapid, simplu și gata de comandă în câteva secunde.", "Fast, simple, and ready to order in seconds.")}</Text>
-          </View>
-          <View style={styles.heroBottomBrandBar}>
-            <View style={styles.heroBottomBrandRow}>
-              <Text style={styles.heroBottomBrandText}>ONE DINING CLUB</Text>
-              <Star color={colors.red} fill={colors.red} size={11} strokeWidth={2} />
-            </View>
-          </View>
+      <View pointerEvents="none" style={styles.videoBlurMask} />
+      <View pointerEvents="none" style={styles.videoGlassTint} />
 
-          <View style={styles.animationWrap} pointerEvents="none">
-            <LottieView
-              source={require("../../assets/man-delivery.lottie")}
-              autoPlay
-              loop
-              style={styles.lottieAnimation}
-            />
-          </View>
+      <Pressable style={[styles.backButton, { top: insets.top + 10 }]} onPress={goToHome}>
+        <ArrowLeft color={colors.white} size={24} strokeWidth={2.3} />
+      </Pressable>
 
-          <View style={styles.heroBubbleSmall} />
-
-          <Pressable
-            style={({ pressed }) => [styles.openSheetButton, pressed && styles.openSheetButtonPressed]}
-            onPress={() => setSheetOpen(true)}
-          >
-            <View style={styles.openSheetIconBubble}>
-              <LogIn color={colors.red} size={20} strokeWidth={2.4} />
-            </View>
-            <View style={styles.openSheetTextGroup}>
-              <Text style={styles.openSheetLabel}>{tr("Continuă", "Continue")}</Text>
-              <Text style={styles.openSheetHint}>{tr("Deschide autentificarea", "Open authentication")}</Text>
-            </View>
-          </Pressable>
-        </View>
-
-        <BottomSheet
-          ref={bottomSheetRef}
-          index={-1}
-          snapPoints={snapPoints}
-          enablePanDownToClose
-          onClose={() => setSheetOpen(false)}
-          style={styles.sheet}
-          backgroundStyle={styles.sheetBackground}
-          handleIndicatorStyle={styles.handleBar}
-          keyboardBehavior="interactive"
-          keyboardBlurBehavior="none"
-          android_keyboardInputMode="adjustResize"
-          backdropComponent={renderBackdrop}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={insets.top + 24}
+        style={styles.overlayLayout}
+      >
+        <ScrollView
+          keyboardShouldPersistTaps="always"
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 72, paddingBottom: insets.bottom + 24 }]}
+          showsVerticalScrollIndicator={false}
         >
-          <BottomSheetScrollView
-            keyboardShouldPersistTaps="always"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 24 }]}
-          >
-            <View style={styles.card}>
-              <Text style={styles.title}>{tr("Intră în cont", "Sign in")}</Text>
-              <Text style={styles.subtitle}>{tr("Bine ai revenit. Alege metoda preferată pentru autentificare.", "Welcome back. Choose your preferred sign-in method.")}</Text>
+          <View style={styles.headerWrap}>
+            <Text style={styles.brand}>ONE DINING CLUB</Text>
+            <Text style={styles.headline}>{tr("Intră în cont", "Sign in")}</Text>
+            <Text style={styles.headlineSub}>
+              {tr(
+                "Fundalul e dinamic, comanda rămâne simplă. Te autentifici în câteva secunde.",
+                "Dynamic background, simple ordering. Sign in in a few seconds.",
+              )}
+            </Text>
+          </View>
 
-              <View style={styles.socialRow}>
-                <SocialButton
-                  label="G"
-                  title="Google"
-                  color="#FFFFFF"
-                  textColor="#DB4437"
-                  loading={socialLoading === "google"}
-                  onPress={() => {
-                    setError(null);
-                    startSocialLogin("google");
-                  }}
-                />
+          <View style={styles.formCard}>
+            <View style={styles.socialRow}>
+              <SocialButton
+                label="G"
+                title="Google"
+                color="#FFFFFF"
+                textColor="#DB4437"
+                loading={socialLoading === "google"}
+                onPress={() => {
+                  setError(null);
+                  startSocialLogin("google");
+                }}
+              />
 
-                <SocialButton
-                  label="f"
-                  title="Facebook"
-                  color="#1877F2"
-                  textColor="#FFFFFF"
-                  loading={socialLoading === "facebook"}
-                  onPress={() => {
-                    setError(null);
-                    startSocialLogin("facebook");
-                  }}
-                />
-              </View>
-
-              <View style={styles.dividerRow}>
-                <View style={styles.divider} />
-                <Text style={styles.dividerText}>{tr("sau cu email", "or with email")}</Text>
-                <View style={styles.divider} />
-              </View>
-
-              <View style={styles.form}>
-                <View style={[styles.inputWrap, focusedField === "email" && styles.inputWrapFocused]}>
-                  <Mail color={colors.red} size={20} strokeWidth={2.2} />
-                  <BottomSheetTextInput
-                    value={email}
-                    onChangeText={setEmail}
-                    onFocus={() => setFocusedField("email")}
-                    onBlur={() => setFocusedField(null)}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    placeholder="Email"
-                    placeholderTextColor="#A1A1AA"
-                    style={styles.input}
-                  />
-                </View>
-
-                <View style={[styles.inputWrap, focusedField === "password" && styles.inputWrapFocused]}>
-                  <LockKeyhole color={colors.red} size={20} strokeWidth={2.2} />
-                  <BottomSheetTextInput
-                    value={password}
-                    onChangeText={setPassword}
-                    onFocus={() => setFocusedField("password")}
-                    onBlur={() => setFocusedField(null)}
-                    secureTextEntry={!showPassword}
-                    placeholder={tr("Parolă", "Password")}
-                    placeholderTextColor="#A1A1AA"
-                    style={styles.input}
-                  />
-
-                  <Pressable onPress={() => setShowPassword((value) => !value)}>
-                    {showPassword ? <EyeOff color="#71717A" size={20} /> : <Eye color="#71717A" size={20} />}
-                  </Pressable>
-                </View>
-              </View>
-
-              <View style={styles.optionsRow}>
-                <Pressable style={styles.rememberRow} onPress={() => setRememberMe((value) => !value)}>
-                  <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
-                    {rememberMe && <CheckCircle2 color={colors.white} size={16} />}
-                  </View>
-                  <Text style={styles.optionText}>{tr("Ține-mă minte", "Remember me")}</Text>
-                </Pressable>
-
-                <Pressable onPress={openForgotPassword}>
-                  <Text style={styles.forgotText}>{tr("Ai uitat parola?", "Forgot password?")}</Text>
-                </Pressable>
-              </View>
-
-              {error && <Text style={styles.error}>{error}</Text>}
-
-              <Pressable
-                disabled={loading}
-                onPress={submit}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  pressed && !loading && styles.pressed,
-                  loading && styles.disabled,
-                ]}
-              >
-                <Text style={styles.primaryText}>{loading ? tr("Se conectează...", "Signing in...") : tr("Intră în cont", "Sign in")}</Text>
-              </Pressable>
-
-              <Pressable style={styles.footerLink} onPress={() => navigation.navigate("Register")}>
-                <Text style={styles.footerText}>
-                  {tr("Nu ai cont?", "No account?")} <Text style={styles.footerAccent}>{tr("Creează unul", "Create one")}</Text>
-                </Text>
-              </Pressable>
+              <SocialButton
+                label="f"
+                title="Facebook"
+                color="#1877F2"
+                textColor="#FFFFFF"
+                loading={socialLoading === "facebook"}
+                onPress={() => {
+                  setError(null);
+                  startSocialLogin("facebook");
+                }}
+              />
             </View>
-          </BottomSheetScrollView>
-        </BottomSheet>
 
-        <Modal visible={forgotOpen} animationType="fade" transparent onRequestClose={() => setForgotOpen(false)}>
-          <View style={styles.modalBackdrop}>
-            <View style={styles.forgotCard}>
-              <Text style={styles.forgotTitle}>{tr("Resetare parolă", "Password reset")}</Text>
-              <Text style={styles.forgotSubtitle}>{tr("Primești un link pe email pentru setarea unei parole noi.", "You will receive an email link to set a new password.")}</Text>
-              <View style={[styles.forgotInputWrap, focusedField === "forgotEmail" && styles.forgotInputWrapFocused]}>
+            <View style={styles.dividerRow}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>{tr("sau cu email", "or with email")}</Text>
+              <View style={styles.divider} />
+            </View>
+
+            <View style={styles.form}>
+              <View style={[styles.inputWrap, focusedField === "email" && styles.inputWrapFocused]}>
                 <Mail color={colors.red} size={20} strokeWidth={2.2} />
                 <TextInput
-                  value={forgotEmail}
-                  onChangeText={setForgotEmail}
-                  onFocus={() => setFocusedField("forgotEmail")}
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setFocusedField("email")}
                   onBlur={() => setFocusedField(null)}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   placeholder="Email"
-                  placeholderTextColor="#A1A1AA"
+                  placeholderTextColor="#CFCFD6"
                   style={styles.input}
                 />
               </View>
-              {forgotMessage && <Text style={styles.forgotMessage}>{forgotMessage}</Text>}
-              <View style={styles.forgotActions}>
-                <Pressable onPress={() => setForgotOpen(false)} style={styles.secondaryButton}>
-                  <Text style={styles.secondaryText}>{tr("Închide", "Close")}</Text>
-                </Pressable>
-                <Pressable
-                  disabled={forgotLoading}
-                  onPress={submitForgotPassword}
-                  style={[styles.forgotSubmitButton, forgotLoading && styles.disabled]}
-                >
-                  <Text style={styles.forgotSubmitText}>{forgotLoading ? tr("Se trimite...", "Sending...") : tr("Trimite", "Send")}</Text>
+
+              <View style={[styles.inputWrap, focusedField === "password" && styles.inputWrapFocused]}>
+                <LockKeyhole color={colors.red} size={20} strokeWidth={2.2} />
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => setFocusedField("password")}
+                  onBlur={() => setFocusedField(null)}
+                  secureTextEntry={!showPassword}
+                  placeholder={tr("Parolă", "Password")}
+                  placeholderTextColor="#CFCFD6"
+                  style={styles.input}
+                />
+
+                <Pressable onPress={() => setShowPassword((value) => !value)}>
+                  {showPassword ? <EyeOff color="#B0B0BC" size={20} /> : <Eye color="#B0B0BC" size={20} />}
                 </Pressable>
               </View>
             </View>
+
+            <View style={styles.optionsRow}>
+              <Pressable style={styles.rememberRow} onPress={() => setRememberMe((value) => !value)}>
+                <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
+                  {rememberMe && <CheckCircle2 color={colors.white} size={16} />}
+                </View>
+                <Text style={styles.optionText}>{tr("Ține-mă minte", "Remember me")}</Text>
+              </Pressable>
+
+              <Pressable onPress={openForgotPassword}>
+                <Text style={styles.forgotText}>{tr("Ai uitat parola?", "Forgot password?")}</Text>
+              </Pressable>
+            </View>
+
+            {error && <Text style={styles.error}>{error}</Text>}
+
+            <Pressable
+              disabled={loading}
+              onPress={submit}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                pressed && !loading && styles.pressed,
+                loading && styles.disabled,
+              ]}
+            >
+              <Text style={styles.primaryText}>{loading ? tr("Se conectează...", "Signing in...") : tr("Intră în cont", "Sign in")}</Text>
+            </Pressable>
+
+            <Pressable style={styles.footerLink} onPress={() => navigation.navigate("Register")}>
+              <Text style={styles.footerText}>
+                {tr("Nu ai cont?", "No account?")} <Text style={styles.footerAccent}>{tr("Creează unul", "Create one")}</Text>
+              </Text>
+            </Pressable>
           </View>
-        </Modal>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <Modal visible={forgotOpen} animationType="fade" transparent onRequestClose={() => setForgotOpen(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.forgotCard}>
+            <Text style={styles.forgotTitle}>{tr("Resetare parolă", "Password reset")}</Text>
+            <Text style={styles.forgotSubtitle}>{tr("Primești un link pe email pentru setarea unei parole noi.", "You will receive an email link to set a new password.")}</Text>
+            <View style={[styles.forgotInputWrap, focusedField === "forgotEmail" && styles.forgotInputWrapFocused]}>
+              <Mail color={colors.red} size={20} strokeWidth={2.2} />
+              <TextInput
+                value={forgotEmail}
+                onChangeText={setForgotEmail}
+                onFocus={() => setFocusedField("forgotEmail")}
+                onBlur={() => setFocusedField(null)}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholder="Email"
+                placeholderTextColor="#A1A1AA"
+                style={styles.input}
+              />
+            </View>
+            {forgotMessage && <Text style={styles.forgotMessage}>{forgotMessage}</Text>}
+            <View style={styles.forgotActions}>
+              <Pressable onPress={() => setForgotOpen(false)} style={styles.secondaryButton}>
+                <Text style={styles.secondaryText}>{tr("Închide", "Close")}</Text>
+              </Pressable>
+              <Pressable
+                disabled={forgotLoading}
+                onPress={submitForgotPassword}
+                style={[styles.forgotSubmitButton, forgotLoading && styles.disabled]}
+              >
+                <Text style={styles.forgotSubmitText}>{forgotLoading ? tr("Se trimite...", "Sending...") : tr("Trimite", "Send")}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -394,263 +449,109 @@ function getLoginErrorMessage(error: unknown, tr: (ro: string, en: string) => st
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: "#0F0E12",
   },
-  hero: {
+  videoBackground: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+    elevation: 0,
+  },
+  crossfadeLayer: {
+    zIndex: 1,
+    elevation: 1,
+  },
+  videoBlurMask: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(10, 8, 12, 0.40)",
+    zIndex: 2,
+    elevation: 2,
+  },
+  videoGlassTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    zIndex: 3,
+    elevation: 3,
+  },
+  overlayLayout: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 56,
-    overflow: "hidden",
-    backgroundColor: colors.white,
+    position: "relative",
+    zIndex: 20,
+    elevation: 20,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    justifyContent: "flex-end",
+    gap: 16,
   },
   backButton: {
     position: "absolute",
-    top: 56,
-    left: 24,
-    zIndex: 40,
+    left: 16,
+    zIndex: 30,
+    elevation: 30,
     width: 42,
     height: 42,
     borderRadius: 21,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.red,
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.35)",
   },
-  heroBrandRow: {
-    position: "absolute",
-    top: 136,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 22,
-    paddingVertical: 6,
-    backgroundColor: colors.red,
+  headerWrap: {
+    gap: 10,
   },
-  heroBrandTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  heroBrand: {
-    color: colors.white,
-    fontSize: 11,
+  brand: {
+    color: "rgba(255,255,255,0.92)",
+    fontSize: 12,
     fontWeight: "800",
-    letterSpacing: 1.2,
+    letterSpacing: 1.6,
   },
-  brandStarWrap: {
-    alignItems: "center",
-    justifyContent: "center",
+  headline: {
+    color: colors.white,
+    fontSize: 34,
+    lineHeight: 39,
+    fontWeight: "800",
+    letterSpacing: -0.8,
   },
-  heroHeadlineWrap: {
-    position: "absolute",
-    top: 192,
-    left: 24,
-    right: 24,
-    zIndex: 12,
-    paddingLeft: 14,
-  },
-  heroHeadlineAccent: {
-    position: "absolute",
-    left: 0,
-    top: 4,
-    bottom: 10,
-    width: 5,
-    borderRadius: 999,
-    backgroundColor: colors.red,
-  },
-  heroHeadline: {
-    color: "#121212",
-    fontSize: 32,
-    lineHeight: 38,
-    fontWeight: "700",
-    letterSpacing: -0.7,
-    maxWidth: 330,
-  },
-  heroHeadlineHighlight: {
-    color: colors.red,
-  },
-  heroHeadlineSub: {
-    marginTop: 8,
-    color: "#52525B",
+  headlineSub: {
+    color: "rgba(255,255,255,0.86)",
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: "500",
-    maxWidth: 300,
-  },
-  heroBottomBrandBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 350,
-    paddingHorizontal: 22,
-    paddingVertical: 6,
-    backgroundColor: colors.red,
-  },
-  heroBottomBrandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  heroBottomBrandText: {
-    color: colors.red,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.2,
-  },
-  heroTitle: {
-    marginTop: 10,
-    maxWidth: 310,
-    alignSelf: "center",
-    textAlign: "center",
-    color: "#18181B",
-    fontSize: 31,
-    lineHeight: 37,
-    fontWeight: "700",
-  },
-  heroSubtitle: {
-    marginTop: 12,
-    maxWidth: 310,
-    alignSelf: "center",
-    textAlign: "center",
-    color: "#71717A",
-    fontSize: 16,
-    lineHeight: 23,
-    fontWeight: "400",
-  },
-  animationWrap: {
-    position: "absolute",
-    left: 8,
-    right: 10,
-    bottom: 112,
-    height: 350,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  lottieAnimation: {
-    width: 430,
-    height: 430,
-  },
-  heroBubbleSmall: {
-    position: "absolute",
-    left: 38,
-    bottom: 118,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#FFE1E1",
-  },
-  openSheetButton: {
-    position: "absolute",
-    left: 24,
-    right: 24,
-    bottom: 38,
-    minHeight: 68,
-    borderRadius: 28,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.red,
-    shadowColor: "#B91C1C",
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  openSheetButtonPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.92,
-  },
-  openSheetIconBubble: {
-    width: 46,
-    height: 46,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.white,
-  },
-  openSheetTextGroup: {
-    flex: 1,
-    paddingHorizontal: 14,
-  },
-  openSheetLabel: {
-    color: colors.white,
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  openSheetHint: {
-    marginTop: 2,
-    color: "#FFE1E1",
-    fontSize: 13,
+    maxWidth: 320,
     fontWeight: "500",
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(24, 24, 27, 0.34)",
-  },
-
-  sheet: {
-    borderTopLeftRadius: 38,
-    borderTopRightRadius: 38,
-    shadowColor: "#18181B",
-    shadowOffset: { width: 0, height: -12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 14,
-  },
-  sheetBackground: {
-    borderTopLeftRadius: 38,
-    borderTopRightRadius: 38,
-    backgroundColor: colors.white,
-  },
-  handleBar: {
-    width: 48,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: "#FFE1E1",
-  },
-  sheetContent: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
-    paddingBottom: 34,
-  },
-  card: {
-    backgroundColor: colors.white,
-  },
-  title: {
-    color: "#121212",
-    fontSize: 31,
-    fontWeight: "700",
-    transform: [{ translateY: 8 }],
-  },
-  subtitle: {
-    marginTop: 8,
-    color: "#71717A",
-    fontSize: 16,
-    lineHeight: 23,
-    fontWeight: "400",
-    transform: [{ translateY: 8 }],
+  formCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.38)",
+    backgroundColor: "rgba(20, 20, 28, 0.58)",
+    padding: 16,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    elevation: 9,
   },
   socialRow: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 24,
+    gap: 10,
   },
   socialButton: {
     flex: 1,
-    minHeight: 46,
-    borderRadius: 15,
+    minHeight: 44,
+    borderRadius: 14,
     paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: "#F6DADA",
+    backgroundColor: "rgba(255,255,255,0.86)",
   },
   socialIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -659,126 +560,119 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   socialText: {
-    color: "#202124",
-    fontSize: 15,
-    fontWeight: "600",
+    color: "#1F1F25",
+    fontSize: 14,
+    fontWeight: "700",
   },
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginVertical: 24,
+    gap: 10,
+    marginVertical: 16,
   },
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: "#EFEFF1",
+    backgroundColor: "rgba(255,255,255,0.34)",
   },
   dividerText: {
-    color: "#A1A1AA",
-    fontSize: 13,
-    fontWeight: "600",
+    color: "rgba(255,255,255,0.82)",
+    fontSize: 12,
+    fontWeight: "700",
     textTransform: "uppercase",
   },
   form: {
-    gap: 12,
+    gap: 10,
   },
   inputWrap: {
-    minHeight: 60,
-    borderRadius: 20,
-    paddingHorizontal: 16,
+    minHeight: 56,
+    borderRadius: 17,
+    paddingHorizontal: 14,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    backgroundColor: "#FAFAFA",
+    gap: 10,
     borderWidth: 1,
-    borderColor: "#F0F0F2",
+    borderColor: "rgba(255,255,255,0.30)",
+    backgroundColor: "rgba(255,255,255,0.12)",
   },
   inputWrapFocused: {
-    borderColor: colors.red,
-    backgroundColor: colors.white,
+    borderColor: "rgba(255,255,255,0.72)",
+    backgroundColor: "rgba(255,255,255,0.18)",
   },
   input: {
     flex: 1,
-    color: "#18181B",
+    color: colors.white,
     fontSize: 16,
-    fontWeight: "400",
+    fontWeight: "500",
   },
   optionsRow: {
-    marginTop: 16,
+    marginTop: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 12,
+    gap: 10,
   },
   rememberRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 9,
+    gap: 8,
   },
   checkbox: {
     width: 24,
     height: 24,
-    borderRadius: 9,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E4E4E7",
+    borderColor: "rgba(255,255,255,0.4)",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.10)",
   },
   checkboxActive: {
     backgroundColor: colors.red,
     borderColor: colors.red,
   },
   optionText: {
-    color: "#3F3F46",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  forgotText: {
-    color: colors.red,
-    fontSize: 14,
+    color: "rgba(255,255,255,0.92)",
+    fontSize: 13,
     fontWeight: "600",
   },
+  forgotText: {
+    color: "#FFD7D7",
+    fontSize: 13,
+    fontWeight: "700",
+  },
   error: {
-    marginTop: 16,
-    color: colors.redDark,
-    fontSize: 14,
-    fontWeight: "500",
+    marginTop: 14,
+    color: "#FFD3D3",
+    fontSize: 13,
+    fontWeight: "600",
   },
   primaryButton: {
-    alignSelf: "center",
-    marginTop: 22,
-    minWidth: 210,
-    minHeight: 52,
-    borderRadius: 18,
-    paddingHorizontal: 28,
+    marginTop: 16,
+    minHeight: 50,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.red,
-    shadowColor: "#B91C1C",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    elevation: 5,
   },
   primaryText: {
     color: colors.white,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "800",
     letterSpacing: 0.3,
   },
   footerLink: {
     alignItems: "center",
-    paddingTop: 20,
+    paddingTop: 16,
   },
   footerText: {
-    color: "#71717A",
-    fontSize: 16,
-    fontWeight: "400",
+    color: "rgba(255,255,255,0.82)",
+    fontSize: 15,
+    fontWeight: "500",
   },
   footerAccent: {
-    color: colors.red,
-    fontWeight: "700",
+    color: "#FFD1D1",
+    fontWeight: "800",
   },
   pressed: {
     transform: [{ scale: 0.98 }],
@@ -789,7 +683,7 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.38)",
+    backgroundColor: "rgba(0, 0, 0, 0.42)",
   },
   forgotCard: {
     width: "100%",
