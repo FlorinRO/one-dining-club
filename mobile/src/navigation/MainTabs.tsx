@@ -21,7 +21,8 @@ export function MainTabs() {
   const { t } = useI18n();
   const rootState = useNavigationState((state) => state);
   const activeRouteName = getDeepActiveRouteName(rootState);
-  const isFeedRoute = activeRouteName === "Home";
+  const isFeedRoute = activeRouteName === "Home" || activeRouteName === "HomeTab";
+  const tabBarBackgroundColor = isFeedRoute ? "transparent" : "rgba(10, 10, 10, 0.94)";
   const hideFloatingCart =
     activeRouteName === "Home" ||
     activeRouteName === "CartHome" ||
@@ -40,7 +41,7 @@ export function MainTabs() {
           tabBarStyle: {
             display: hideBottomBar ? "none" : "flex",
             height: 46 + insets.bottom,
-            backgroundColor: "transparent",
+            backgroundColor: tabBarBackgroundColor,
             borderTopColor: "transparent",
             elevation: 0,
             shadowOpacity: 0,

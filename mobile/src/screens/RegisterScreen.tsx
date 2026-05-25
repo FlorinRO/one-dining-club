@@ -1,5 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Eye, EyeOff, LockKeyhole, Mail, Phone, Star, UserRound } from "lucide-react-native";
+import Svg, { Path } from "react-native-svg";
+import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, Phone, UserPlus, UserRound } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Keyboard,
@@ -24,6 +25,8 @@ type Props = NativeStackScreenProps<AuthStackParamList, "Register">;
 
 type FieldKey = "firstName" | "lastName" | "email" | "phone" | "password";
 
+const KEYBOARD_FORM_GAP = 5;
+
 export function RegisterScreen({ navigation }: Props) {
   const { tr } = useI18n();
   const setSession = useAuthStore((state) => state.setSession);
@@ -34,13 +37,7 @@ export function RegisterScreen({ navigation }: Props) {
   const emailInputRef = useRef<TextInput>(null);
   const phoneInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
-  const fieldY = useRef<Record<FieldKey, number>>({
-    firstName: 0,
-    lastName: 0,
-    email: 0,
-    phone: 0,
-    password: 0,
-  });
+  const focusedFieldRef = useRef<FieldKey | null>(null);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -56,6 +53,51 @@ export function RegisterScreen({ navigation }: Props) {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
 
+  const scrollAuthFormIntoView = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, Platform.OS === "ios" ? 260 : 120);
+  }, []);
+
+  const focusAuthField = useCallback(
+    (field: FieldKey) => {
+      focusedFieldRef.current = field;
+      setFocusedField(field);
+      if (keyboardHeight > 0) {
+        scrollAuthFormIntoView();
+      }
+    },
+    [keyboardHeight, scrollAuthFormIntoView],
+  );
+
+  const clearFocusedField = useCallback(() => {
+    focusedFieldRef.current = null;
+    setFocusedField(null);
+  }, []);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSubscription = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+      if (focusedFieldRef.current) {
+        scrollAuthFormIntoView();
+      }
+    });
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [scrollAuthFormIntoView]);
+
   const handleSocialSuccess = useCallback(
     (session: Awaited<ReturnType<typeof authApi.socialLogin>>) => setSession(session),
     [setSession],
@@ -67,33 +109,25 @@ export function RegisterScreen({ navigation }: Props) {
     onError: handleSocialError,
   });
 
-  const scrollToField = (field: FieldKey) => {
-    setFocusedField(field);
-    requestAnimationFrame(() => {
-      const extraOffset = field === "password" ? 340 : field === "phone" ? 300 : 150;
-      const y = Math.max(0, fieldY.current[field] - extraOffset);
-      scrollRef.current?.scrollTo({ y, animated: true });
-    });
+  const keyboardScreenOffset = keyboardHeight > 0 ? -keyboardHeight : 0;
+  const scrollBottomPadding = keyboardHeight > 0 ? keyboardHeight + KEYBOARD_FORM_GAP : insets.bottom + 24;
+
+  const goToLogin = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate("Login");
   };
 
-  useEffect(() => {
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const showSub = Keyboard.addListener(showEvent, (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
-    });
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
   const submit = async () => {
-    if (!firstName || !email || password.length < 8) {
-      setError(tr("Completează prenumele, emailul și o parolă de minimum 8 caractere.", "Fill in first name, email, and a password of at least 8 characters."));
+    if (!firstName.trim() || !email.trim() || password.length < 8) {
+      setError(
+        tr(
+          "Completează prenumele, emailul și o parolă de minimum 8 caractere.",
+          "Fill in first name, email, and a password of at least 8 characters.",
+        ),
+      );
       return;
     }
 
@@ -102,16 +136,26 @@ export function RegisterScreen({ navigation }: Props) {
     try {
       const result = await authApi.register({
         email: email.trim(),
-        phone,
+        phone: phone.trim(),
         password,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
       });
       setPassword("");
       setVerificationEmail(result.email || email.trim());
-      setResendMessage(tr("Ți-am trimis un link de confirmare. Verifică Inbox și Spam.", "We sent you a confirmation link. Check Inbox and Spam."));
+      setResendMessage(
+        tr(
+          "Ți-am trimis un link de confirmare. Verifică Inbox și Spam.",
+          "We sent you a confirmation link. Check Inbox and Spam.",
+        ),
+      );
     } catch {
-      setError(tr("Nu am putut crea contul. Verifică dacă emailul nu este deja folosit.", "Could not create account. Check if email is already in use."));
+      setError(
+        tr(
+          "Nu am putut crea contul. Verifică dacă emailul nu este deja folosit.",
+          "Could not create account. Check if email is already in use.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -123,7 +167,7 @@ export function RegisterScreen({ navigation }: Props) {
     setResendMessage(null);
     try {
       await authApi.resendEmailVerification(verificationEmail);
-      setResendMessage("Am retrimis linkul de confirmare.");
+      setResendMessage(tr("Am retrimis linkul de confirmare.", "We resent the confirmation link."));
     } catch {
       setResendMessage(tr("Nu am putut retrimite emailul. Încearcă din nou.", "Could not resend email. Try again."));
     } finally {
@@ -133,283 +177,514 @@ export function RegisterScreen({ navigation }: Props) {
 
   return (
     <View style={styles.screen}>
-      <ScrollView
-        ref={scrollRef}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + keyboardHeight + 24 }]}
+      <Pressable
+        style={[styles.backButton, { top: insets.top + 10, transform: [{ translateY: keyboardScreenOffset }] }]}
+        onPress={goToLogin}
+        accessibilityRole="button"
+        accessibilityLabel={tr("Înapoi la conectare", "Back to sign in")}
       >
-        <View style={styles.brandBar}>
-          <View style={styles.brandRow}>
-            <Text style={styles.brandText}>ONE DINING CLUB</Text>
-            <Star color={colors.white} fill={colors.white} size={11} strokeWidth={2} />
+        <ArrowLeft color={colors.white} size={24} strokeWidth={2.3} />
+      </Pressable>
+
+      <View style={styles.overlayLayout}>
+        <ScrollView
+          ref={scrollRef}
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingTop: insets.top + 72,
+              paddingBottom: scrollBottomPadding,
+            },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.headerWrap}>
+            <View style={styles.brandRow}>
+              <Text style={styles.headline}>
+                {verificationEmail ? tr("Confirmare", "Confirm") : tr("Înregistrare", "Register")}
+              </Text>
+            </View>
           </View>
-        </View>
 
-        {verificationEmail ? (
-          <View style={styles.verificationBox}>
-            <View style={styles.verificationIcon}>
-              <Mail color={colors.red} size={26} strokeWidth={2.2} />
-            </View>
-            <Text style={styles.title}>{tr("Confirmă emailul", "Confirm email")}</Text>
-            <Text style={styles.subtitle}>
-              {tr(`Am creat contul pentru ${verificationEmail}. Deschide linkul primit pe email, apoi revino la autentificare.`, `We created the account for ${verificationEmail}. Open the link received by email, then return to sign in.`)}
-            </Text>
-            {resendMessage && <Text style={styles.successMessage}>{resendMessage}</Text>}
-            <Pressable
-              disabled={resendLoading}
-              onPress={resendVerification}
-              style={({ pressed }) => [
-                styles.secondaryWideButton,
-                pressed && !resendLoading && styles.pressed,
-                resendLoading && styles.disabled,
-              ]}
-            >
-              <Text style={styles.secondaryWideText}>{resendLoading ? tr("Se retrimite...", "Resending...") : tr("Retrimite emailul", "Resend email")}</Text>
-            </Pressable>
-            <Pressable onPress={() => navigation.navigate("Login")} style={styles.primaryButton}>
-              <Text style={styles.primaryText}>{tr("Am confirmat, intră în cont", "Confirmed, sign in")}</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.title}>{tr("Creează cont", "Create account")}</Text>
-            <Text style={styles.subtitle}>
-              {tr("Salvăm adresele, comenzile și restaurantele preferate după confirmarea emailului.", "We save addresses, orders, and favorite restaurants after email confirmation.")}
-            </Text>
-
-            <View style={styles.socialRow}>
-              <SocialButton
-                label="G"
-                title="Google"
-                color="#FFFFFF"
-                textColor="#DB4437"
-                loading={socialLoading === "google"}
-                onPress={() => {
-                  setError(null);
-                  startSocialLogin("google");
-                }}
-              />
-              <SocialButton
-                label="f"
-                title="Facebook"
-                color="#1877F2"
-                textColor="#FFFFFF"
-                loading={socialLoading === "facebook"}
-                onPress={() => {
-                  setError(null);
-                  startSocialLogin("facebook");
-                }}
-              />
-            </View>
-
-            <View style={styles.dividerRow}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>{tr("sau cu email", "or with email")}</Text>
-              <View style={styles.divider} />
-            </View>
-
-            <View style={styles.form}>
-              <View style={styles.nameRow}>
-                <View
-                  style={[styles.inputWrap, styles.nameInput, focusedField === "firstName" && styles.inputWrapFocused]}
-                  onLayout={(event) => {
-                    fieldY.current.firstName = event.nativeEvent.layout.y;
-                  }}
-                >
-                  <UserRound color={colors.muted} size={19} />
-                  <TextInput
-                    ref={firstNameInputRef}
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    onFocus={() => scrollToField("firstName")}
-                    onBlur={() => setFocusedField(null)}
-                    returnKeyType="next"
-                    blurOnSubmit={false}
-                    onSubmitEditing={() => {
-                      scrollToField("lastName");
-                      lastNameInputRef.current?.focus();
-                    }}
-                    placeholder={tr("Prenume", "First name")}
-                    placeholderTextColor={colors.muted}
-                    style={styles.input}
-                  />
+          <View style={styles.formCard}>
+            {verificationEmail ? (
+              <View style={styles.verificationBox}>
+                <View style={styles.verificationIcon}>
+                  <Mail color={colors.white} size={25} strokeWidth={2.3} />
                 </View>
-                <View
-                  style={[styles.inputWrap, styles.nameInput, focusedField === "lastName" && styles.inputWrapFocused]}
-                  onLayout={(event) => {
-                    fieldY.current.lastName = event.nativeEvent.layout.y;
-                  }}
+                <Text style={styles.verificationTitle}>{tr("Confirmă emailul", "Confirm email")}</Text>
+                <Text style={styles.verificationSubtitle}>
+                  {tr(
+                    `Am creat contul pentru ${verificationEmail}. Deschide linkul primit pe email, apoi revino la autentificare.`,
+                    `We created the account for ${verificationEmail}. Open the link received by email, then return to sign in.`,
+                  )}
+                </Text>
+                {resendMessage && <Text style={styles.successMessage}>{resendMessage}</Text>}
+
+                <Pressable
+                  disabled={resendLoading}
+                  onPress={resendVerification}
+                  style={({ pressed }) => [
+                    styles.secondaryWideButton,
+                    pressed && !resendLoading && styles.pressed,
+                    resendLoading && styles.disabled,
+                  ]}
                 >
-                  <UserRound color={colors.muted} size={19} />
-                  <TextInput
-                    ref={lastNameInputRef}
-                    value={lastName}
-                    onChangeText={setLastName}
-                    onFocus={() => scrollToField("lastName")}
-                    onBlur={() => setFocusedField(null)}
-                    returnKeyType="next"
-                    blurOnSubmit={false}
-                    onSubmitEditing={() => {
-                      scrollToField("email");
-                      emailInputRef.current?.focus();
-                    }}
-                    placeholder={tr("Nume", "Last name")}
-                    placeholderTextColor={colors.muted}
-                    style={styles.input}
-                  />
-                </View>
-              </View>
-              <View
-                style={[styles.inputWrap, focusedField === "email" && styles.inputWrapFocused]}
-                onLayout={(event) => {
-                  fieldY.current.email = event.nativeEvent.layout.y;
-                }}
-              >
-                <Mail color={colors.muted} size={20} />
-                <TextInput
-                  ref={emailInputRef}
-                  value={email}
-                  onChangeText={setEmail}
-                  onFocus={() => scrollToField("email")}
-                  onBlur={() => setFocusedField(null)}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  returnKeyType="next"
-                  blurOnSubmit={false}
-                  onSubmitEditing={() => {
-                    phoneInputRef.current?.focus();
-                  }}
-                  placeholder="Email"
-                  placeholderTextColor={colors.muted}
-                  style={styles.input}
-                />
-              </View>
-              <View
-                style={[styles.inputWrap, focusedField === "phone" && styles.inputWrapFocused]}
-                onLayout={(event) => {
-                  fieldY.current.phone = event.nativeEvent.layout.y;
-                }}
-              >
-                <Phone color={colors.muted} size={20} />
-                <TextInput
-                  ref={phoneInputRef}
-                  value={phone}
-                  onChangeText={setPhone}
-                  onFocus={() => {
-                    scrollToField("phone");
-                    requestAnimationFrame(() => {
-                      scrollRef.current?.scrollToEnd({ animated: true });
-                    });
-                  }}
-                  onBlur={() => setFocusedField(null)}
-                  keyboardType="name-phone-pad"
-                  returnKeyType="next"
-                  blurOnSubmit={false}
-                  onSubmitEditing={() => {
-                    scrollToField("password");
-                    passwordInputRef.current?.focus();
-                  }}
-                  placeholder="Telefon"
-                  placeholderTextColor={colors.muted}
-                  style={styles.input}
-                />
-              </View>
-              <View
-                style={[styles.inputWrap, focusedField === "password" && styles.inputWrapFocused]}
-                onLayout={(event) => {
-                  fieldY.current.password = event.nativeEvent.layout.y;
-                }}
-              >
-                <LockKeyhole color={colors.muted} size={20} />
-                <TextInput
-                  ref={passwordInputRef}
-                  value={password}
-                  onChangeText={setPassword}
-                  onFocus={() => {
-                      scrollToField("password");
-                      requestAnimationFrame(() => {
-                        scrollRef.current?.scrollToEnd({ animated: true });
-                      });
-                    }}
-                    onBlur={() => setFocusedField(null)}
-                  secureTextEntry={!showPassword}
-                  returnKeyType="done"
-                  placeholder={tr("Parolă", "Password")}
-                  placeholderTextColor={colors.muted}
-                  style={styles.input}
-                />
-                <Pressable onPress={() => setShowPassword((value) => !value)}>
-                  {showPassword ? <EyeOff color={colors.muted} size={20} /> : <Eye color={colors.muted} size={20} />}
+                  <Text style={styles.secondaryWideText}>
+                    {resendLoading ? tr("Se retrimite...", "Resending...") : tr("Retrimite emailul", "Resend email")}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => navigation.navigate("Login")}
+                  style={({ pressed }) => [styles.primaryWideButton, pressed && styles.pressed]}
+                >
+                  <Text style={styles.primaryWideText}>
+                    {tr("Am confirmat, intră în cont", "Confirmed, sign in")}
+                  </Text>
                 </Pressable>
               </View>
-            </View>
+            ) : (
+              <>
+                <View style={styles.socialRow}>
+                  <SocialButton
+                    provider="google"
+                    loading={socialLoading === "google"}
+                    onPress={() => {
+                      setError(null);
+                      startSocialLogin("google");
+                    }}
+                  />
 
-            {error && <Text style={styles.error}>{error}</Text>}
+                  <SocialButton
+                    provider="facebook"
+                    loading={socialLoading === "facebook"}
+                    onPress={() => {
+                      setError(null);
+                      startSocialLogin("facebook");
+                    }}
+                  />
 
-            <Pressable
-              disabled={loading}
-              onPress={submit}
-              style={({ pressed }) => [styles.primaryButton, pressed && !loading && styles.pressed, loading && styles.disabled]}
-            >
-              <Text style={styles.primaryText}>{loading ? tr("Se creează...", "Creating...") : tr("Creează cont", "Create account")}</Text>
-            </Pressable>
+                  <SocialButton
+                    provider="apple"
+                    loading={false}
+                    onPress={() => {}}
+                  />
+                </View>
 
-            <Pressable style={styles.footerLink} onPress={() => navigation.navigate("Login")}>
-              <Text style={styles.footerText}>
-                {tr("Ai deja cont?", "Already have an account?")} <Text style={styles.footerAccent}>{tr("Intră în cont", "Sign in")}</Text>
-              </Text>
-            </Pressable>
-          </>
-        )}
-      </ScrollView>
+                <View style={styles.dividerRow}>
+                  <View style={styles.divider} />
+                  <Text style={styles.dividerText}>{tr("sau cu email", "or with email")}</Text>
+                  <View style={styles.divider} />
+                </View>
+
+                <View style={styles.form}>
+                  <View style={styles.nameRow}>
+                    <Pressable
+                      style={[styles.inputWrap, styles.nameInput, focusedField === "firstName" && styles.inputWrapFocused]}
+                      onPress={() => firstNameInputRef.current?.focus()}
+                    >
+                      <UserRound color="#FFFFFF" size={19} strokeWidth={2.2} />
+                      <TextInput
+                        ref={firstNameInputRef}
+                        value={firstName}
+                        onChangeText={setFirstName}
+                        onFocus={() => focusAuthField("firstName")}
+                        onBlur={clearFocusedField}
+                        returnKeyType="next"
+                        blurOnSubmit={false}
+                        onSubmitEditing={() => {
+                          focusAuthField("lastName");
+                          lastNameInputRef.current?.focus();
+                        }}
+                        placeholder={tr("Prenume", "First name")}
+                        placeholderTextColor="#CFCFD6"
+                        style={styles.input}
+                      />
+                    </Pressable>
+
+                    <Pressable
+                      style={[styles.inputWrap, styles.nameInput, focusedField === "lastName" && styles.inputWrapFocused]}
+                      onPress={() => lastNameInputRef.current?.focus()}
+                    >
+                      <UserRound color="#FFFFFF" size={19} strokeWidth={2.2} />
+                      <TextInput
+                        ref={lastNameInputRef}
+                        value={lastName}
+                        onChangeText={setLastName}
+                        onFocus={() => focusAuthField("lastName")}
+                        onBlur={clearFocusedField}
+                        returnKeyType="next"
+                        blurOnSubmit={false}
+                        onSubmitEditing={() => {
+                          focusAuthField("email");
+                          emailInputRef.current?.focus();
+                        }}
+                        placeholder={tr("Nume", "Last name")}
+                        placeholderTextColor="#CFCFD6"
+                        style={styles.input}
+                      />
+                    </Pressable>
+                  </View>
+
+                  <Pressable
+                    style={[styles.inputWrap, focusedField === "email" && styles.inputWrapFocused]}
+                    onPress={() => emailInputRef.current?.focus()}
+                  >
+                    <Mail color="#FFFFFF" size={20} strokeWidth={2.2} />
+                    <TextInput
+                      ref={emailInputRef}
+                      value={email}
+                      onChangeText={setEmail}
+                      onFocus={() => focusAuthField("email")}
+                      onBlur={clearFocusedField}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      returnKeyType="next"
+                      blurOnSubmit={false}
+                      onSubmitEditing={() => {
+                        focusAuthField("phone");
+                        phoneInputRef.current?.focus();
+                      }}
+                      placeholder="Email"
+                      placeholderTextColor="#CFCFD6"
+                      style={styles.input}
+                    />
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.inputWrap, focusedField === "phone" && styles.inputWrapFocused]}
+                    onPress={() => phoneInputRef.current?.focus()}
+                  >
+                    <Phone color="#FFFFFF" size={20} strokeWidth={2.2} />
+                    <TextInput
+                      ref={phoneInputRef}
+                      value={phone}
+                      onChangeText={setPhone}
+                      onFocus={() => focusAuthField("phone")}
+                      onBlur={clearFocusedField}
+                      keyboardType="name-phone-pad"
+                      returnKeyType="next"
+                      blurOnSubmit={false}
+                      onSubmitEditing={() => {
+                        focusAuthField("password");
+                        passwordInputRef.current?.focus();
+                      }}
+                      placeholder={tr("Telefon", "Phone")}
+                      placeholderTextColor="#CFCFD6"
+                      style={styles.input}
+                    />
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.inputWrap, focusedField === "password" && styles.inputWrapFocused]}
+                    onPress={() => passwordInputRef.current?.focus()}
+                  >
+                    <LockKeyhole color="#FFFFFF" size={20} strokeWidth={2.2} />
+                    <TextInput
+                      ref={passwordInputRef}
+                      value={password}
+                      onChangeText={setPassword}
+                      onFocus={() => focusAuthField("password")}
+                      onBlur={clearFocusedField}
+                      secureTextEntry={!showPassword}
+                      returnKeyType="done"
+                      placeholder={tr("Parolă", "Password")}
+                      placeholderTextColor="#CFCFD6"
+                      style={styles.input}
+                    />
+                    <Pressable onPress={() => setShowPassword((value) => !value)}>
+                      {showPassword ? <EyeOff color="#B0B0BC" size={20} /> : <Eye color="#B0B0BC" size={20} />}
+                    </Pressable>
+                  </Pressable>
+                </View>
+
+                {error && <Text style={styles.error}>{error}</Text>}
+
+                <Pressable
+                  disabled={loading}
+                  onPress={submit}
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    pressed && !loading && styles.pressed,
+                    loading && styles.disabled,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr("Creează cont", "Create account")}
+                >
+                  <UserPlus color="#FFFFFF" size={19} strokeWidth={2.5} />
+                </Pressable>
+
+                <Pressable
+                  style={[styles.footerLink, keyboardHeight > 0 && styles.footerLinkKeyboardOpen]}
+                  onPress={() => navigation.navigate("Login")}
+                >
+                  <Text style={styles.footerText}>
+                    {tr("Ai deja cont?", "Already have an account?")}{" "}
+                    <Text style={styles.footerAccent}>{tr("Intră în cont", "Sign in")}</Text>
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        </ScrollView>
+      </View>
     </View>
   );
 }
 
 type SocialButtonProps = {
-  label: string;
-  title: string;
-  color: string;
-  textColor: string;
+  provider: "google" | "facebook" | "apple";
   loading: boolean;
   onPress: () => void;
 };
 
-function SocialButton({ label, title, color, textColor, loading, onPress }: SocialButtonProps) {
+function SocialButton({ provider, loading, onPress }: SocialButtonProps) {
+  const isApple = provider === "apple";
+  const disabled = loading || isApple;
   return (
-    <Pressable onPress={onPress} disabled={loading} style={({ pressed }) => [styles.socialButton, pressed && styles.pressed]}>
-      <View style={[styles.socialIcon, { backgroundColor: color }]}>
-        <Text style={[styles.socialLetter, { color: textColor }]}>{label}</Text>
-      </View>
-      <Text style={styles.socialText}>{loading ? "Se deschide..." : title}</Text>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [styles.socialButton, disabled && styles.disabled, pressed && !disabled && styles.pressed]}
+    >
+      {provider === "google" ? (
+        <GoogleGIcon size={28} />
+      ) : provider === "facebook" ? (
+        <FacebookIcon size={28} />
+      ) : (
+        <AppleIcon size={28} />
+      )}
     </Pressable>
   );
 }
 
+function GoogleGIcon({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        fill="#4285F4"
+        d="M23.49 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h6.45a5.52 5.52 0 0 1-2.39 3.62v3h3.87c2.27-2.09 3.56-5.16 3.56-8.65Z"
+      />
+      <Path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.95-1.07 7.93-2.9l-3.87-3A7.17 7.17 0 0 1 12 19.3a7.2 7.2 0 0 1-6.77-4.97H1.23v3.1A12 12 0 0 0 12 24Z"
+      />
+      <Path
+        fill="#FBBC05"
+        d="M5.23 14.33a7.2 7.2 0 0 1 0-4.66v-3.1H1.23a12 12 0 0 0 0 10.86l4-3.1Z"
+      />
+      <Path
+        fill="#EA4335"
+        d="M12 4.77c1.76 0 3.34.6 4.58 1.8l3.43-3.43A11.53 11.53 0 0 0 12 0 12 12 0 0 0 1.23 6.57l4 3.1A7.2 7.2 0 0 1 12 4.77Z"
+      />
+    </Svg>
+  );
+}
+
+function FacebookIcon({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        fill="#1877F2"
+        d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.09 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.23 2.68.23v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.09 24 18.1 24 12.07Z"
+      />
+    </Svg>
+  );
+}
+
+function AppleIcon({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        fill="#FFFFFF"
+        d="M16.37 1.54c.1 1.08-.3 2.15-1.03 2.94-.74.8-1.95 1.42-3.03 1.34-.12-1.04.34-2.16 1.02-2.9.77-.84 2.09-1.47 3.04-1.38Zm3.35 16.96c-.62 1.41-.92 2.04-1.72 3.29-1.12 1.72-2.7 3.86-4.66 3.88-1.74.02-2.19-1.13-4.55-1.12-2.36.01-2.86 1.15-4.6 1.13-1.96-.02-3.45-1.95-4.57-3.67-3.12-4.78-3.45-10.39-1.52-13.37 1.37-2.12 3.55-3.36 5.6-3.36 2.08 0 3.4 1.14 5.13 1.14 1.67 0 2.69-1.14 5.1-1.14 1.82 0 3.75 1 5.12 2.72-4.5 2.47-3.77 8.9.67 10.5Z"
+        transform="scale(.82) translate(2.6 -.8)"
+      />
+    </Svg>
+  );
+}
+
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.white },
-  content: { paddingHorizontal: 24, paddingTop: 76 },
-  brandBar: {
-    marginHorizontal: -24,
-    backgroundColor: colors.red,
-    paddingHorizontal: 22,
-    paddingVertical: 6,
-    marginBottom: 34,
+  screen: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  overlayLayout: {
+    flex: 1,
+    position: "relative",
+    zIndex: 20,
+    elevation: 20,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    justifyContent: "flex-end",
+    gap: 20,
+  },
+  backButton: {
+    position: "absolute",
+    left: 16,
+    zIndex: 30,
+    elevation: 30,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.35)",
+  },
+  headerWrap: {
+    gap: 14,
   },
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 12,
+    transform: [{ translateY: -30 }],
   },
-  brandText: {
-    color: colors.white,
-    fontSize: 11,
+  brand: {
+    color: "#000000",
+    fontSize: 20,
     fontWeight: "800",
-    letterSpacing: 1.2,
+    letterSpacing: 0,
+    alignSelf: "flex-start",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    overflow: "hidden",
   },
-  verificationBox: { alignItems: "center", paddingVertical: 10 },
+  headline: {
+    color: colors.white,
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: "600",
+  },
+  formCard: {
+    paddingHorizontal: 2,
+    paddingVertical: 4,
+    gap: 8,
+  },
+  socialRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.28)",
+    backgroundColor: "rgba(0,0,0,0.34)",
+    borderRadius: 22,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  socialButton: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 12,
+    marginBottom: 18,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.26)",
+  },
+  dividerText: {
+    color: "rgba(255,255,255,0.60)",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0,
+    textTransform: "uppercase",
+  },
+  form: {
+    gap: 14,
+  },
+  nameRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  nameInput: {
+    flex: 1,
+    paddingHorizontal: 12,
+  },
+  inputWrap: {
+    minHeight: 50,
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.44)",
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+  inputWrapFocused: {
+    borderColor: "#BFECCF",
+    backgroundColor: "rgba(191,236,207,0.18)",
+  },
+  input: {
+    flex: 1,
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: "500",
+    paddingVertical: 0,
+  },
+  error: {
+    marginTop: 18,
+    color: "#FFD3D3",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  primaryButton: {
+    marginTop: 24,
+    width: 62,
+    height: 50,
+    alignSelf: "center",
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.46)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.62)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  footerLink: {
+    alignItems: "center",
+    paddingTop: 24,
+  },
+  footerLinkKeyboardOpen: {
+    paddingBottom: 14,
+  },
+  footerText: {
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 15,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  footerAccent: {
+    color: "#BFECCF",
+    fontWeight: "800",
+  },
+  verificationBox: {
+    alignItems: "center",
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
   verificationIcon: {
     width: 58,
     height: 58,
@@ -417,82 +692,72 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
-    backgroundColor: "#FFF1F1",
-  },
-  title: { color: "#121212", fontSize: 31, fontWeight: "700" },
-  subtitle: { marginTop: 12, color: "#71717A", fontSize: 16, lineHeight: 23, fontWeight: "400" },
-  successMessage: { marginTop: 16, color: colors.redDark, fontSize: 14, lineHeight: 20, fontWeight: "500", textAlign: "center" },
-  socialRow: { flexDirection: "row", gap: 12, marginTop: 30 },
-  socialButton: {
-    flex: 1,
-    minHeight: 46,
-    borderRadius: 15,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: colors.white,
+    backgroundColor: "rgba(0,0,0,0.46)",
     borderWidth: 1,
-    borderColor: "#F6DADA",
+    borderColor: "rgba(255,255,255,0.46)",
   },
-  socialIcon: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
-  socialLetter: { fontSize: 16, fontWeight: "700" },
-  socialText: { color: "#202124", fontSize: 15, fontWeight: "600" },
-  dividerRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 28 },
-  divider: { flex: 1, height: 1, backgroundColor: "#EFEFF1" },
-  dividerText: { color: "#A1A1AA", fontSize: 13, fontWeight: "600", textTransform: "uppercase" },
-  form: { gap: 14, marginTop: 2 },
-  nameRow: { flexDirection: "row", gap: 10 },
-  nameInput: { flex: 1, paddingHorizontal: 12 },
-  inputWrap: {
-    minHeight: 54,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#FAFAFA",
-    borderWidth: 1,
-    borderColor: "#F0F0F2",
+  verificationTitle: {
+    color: colors.white,
+    fontSize: 25,
+    lineHeight: 30,
+    fontWeight: "800",
+    textAlign: "center",
   },
-  inputWrapFocused: { borderColor: colors.red, backgroundColor: colors.white },
-  input: { flex: 1, color: "#18181B", fontSize: 16, fontWeight: "400" },
-  error: { marginTop: 16, color: colors.redDark, fontSize: 14, fontWeight: "500" },
-  primaryButton: {
-    alignSelf: "center",
-    marginTop: 28,
-    minWidth: 210,
-    minHeight: 52,
-    borderRadius: 18,
-    paddingHorizontal: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.red,
-    shadowColor: "#B91C1C",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    elevation: 5,
+  verificationSubtitle: {
+    marginTop: 12,
+    color: "rgba(255,255,255,0.82)",
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "500",
+    textAlign: "center",
   },
-  primaryText: { color: colors.white, fontSize: 15, fontWeight: "700", letterSpacing: 0.3 },
+  successMessage: {
+    marginTop: 16,
+    color: "#BFECCF",
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "700",
+    textAlign: "center",
+  },
   secondaryWideButton: {
-    alignSelf: "center",
+    alignSelf: "stretch",
     marginTop: 22,
-    minWidth: 210,
-    minHeight: 52,
-    borderRadius: 18,
-    paddingHorizontal: 28,
+    minHeight: 50,
+    borderRadius: 25,
+    paddingHorizontal: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFF1F1",
+    backgroundColor: "rgba(255,255,255,0.16)",
     borderWidth: 1,
-    borderColor: "#F6DADA",
+    borderColor: "rgba(255,255,255,0.44)",
   },
-  secondaryWideText: { color: colors.redDark, fontSize: 15, fontWeight: "700" },
-  footerLink: { alignItems: "center", paddingTop: 26 },
-  footerText: { color: "#71717A", fontSize: 16, fontWeight: "400" },
-  footerAccent: { color: colors.red, fontWeight: "700" },
-  pressed: { transform: [{ scale: 0.98 }], opacity: 0.9 },
-  disabled: { opacity: 0.55 },
+  secondaryWideText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  primaryWideButton: {
+    alignSelf: "stretch",
+    marginTop: 12,
+    minHeight: 50,
+    borderRadius: 25,
+    paddingHorizontal: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.46)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.62)",
+  },
+  primaryWideText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  pressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.9,
+  },
+  disabled: {
+    opacity: 0.55,
+  },
 });

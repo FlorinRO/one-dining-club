@@ -1,7 +1,8 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
+import Svg, { Path } from "react-native-svg";
 import {
   ArrowLeft,
+  LogIn,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -10,9 +11,7 @@ import {
 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Animated,
-  Easing,
-  KeyboardAvoidingView,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -33,19 +32,7 @@ import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
 
-const LOGIN_BACKGROUND_VIDEOS: VideoSource[] = [
-  { uri: "https://assets.mixkit.co/videos/12171/12171-1080.mp4", contentType: "progressive", useCaching: false },
-  { uri: "https://assets.mixkit.co/videos/2433/2433-1080.mp4", contentType: "progressive", useCaching: false },
-  { uri: "https://assets.mixkit.co/videos/51238/51238-1080.mp4", contentType: "progressive", useCaching: false },
-  { uri: "https://assets.mixkit.co/videos/51236/51236-1080.mp4", contentType: "progressive", useCaching: false },
-  { uri: "https://assets.mixkit.co/videos/41350/41350-1080.mp4", contentType: "progressive", useCaching: false },
-  { uri: "https://assets.mixkit.co/videos/40830/40830-1080.mp4", contentType: "progressive", useCaching: false },
-  { uri: "https://assets.mixkit.co/videos/372/372-720.mp4", contentType: "progressive", useCaching: false },
-];
-const VIDEO_MAX_VISIBLE_DURATION_MS = 4000;
-const VIDEO_CROSSFADE_DURATION_MS = 1000;
-const VIDEO_TRANSITION_START_DELAY_MS = VIDEO_MAX_VISIBLE_DURATION_MS - VIDEO_CROSSFADE_DURATION_MS;
-const VIDEO_POST_SWAP_HOLD_MS = 120;
+const KEYBOARD_FORM_GAP = 5;
 
 export function LoginScreen({ navigation }: Props) {
   const { tr } = useI18n();
@@ -64,95 +51,56 @@ export function LoginScreen({ navigation }: Props) {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const [slotAIndex, setSlotAIndex] = useState(0);
-  const [slotBIndex, setSlotBIndex] = useState(1);
-  const [visibleSlot, setVisibleSlot] = useState<"A" | "B">("A");
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [slotAReady, setSlotAReady] = useState(false);
-  const [slotBReady, setSlotBReady] = useState(false);
-  const [nextQueueIndex, setNextQueueIndex] = useState(2 % LOGIN_BACKGROUND_VIDEOS.length);
-  const layerBOpacity = useRef(new Animated.Value(0)).current;
-  const visibleSlotRef = useRef<"A" | "B">("A");
-  const isTransitioningRef = useRef(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
+  const focusedFieldRef = useRef<string | null>(null);
+
+  const scrollAuthFormIntoView = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, Platform.OS === "ios" ? 260 : 120);
+  }, []);
+
+  const focusAuthField = useCallback(
+    (field: "email" | "password") => {
+      focusedFieldRef.current = field;
+      setFocusedField(field);
+      if (keyboardHeight > 0) {
+        scrollAuthFormIntoView();
+      }
+    },
+    [keyboardHeight, scrollAuthFormIntoView],
+  );
+
+  const clearFocusedField = useCallback(() => {
+    focusedFieldRef.current = null;
+    setFocusedField(null);
+  }, []);
 
   useEffect(() => {
-    visibleSlotRef.current = visibleSlot;
-  }, [visibleSlot]);
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
 
-  useEffect(() => {
-    isTransitioningRef.current = isTransitioning;
-  }, [isTransitioning]);
+    const showSubscription = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+      if (focusedFieldRef.current === "email" || focusedFieldRef.current === "password") {
+        scrollAuthFormIntoView();
+      }
+    });
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
 
-  const slotAVideoSource = LOGIN_BACKGROUND_VIDEOS[slotAIndex];
-  const slotBVideoSource = LOGIN_BACKGROUND_VIDEOS[slotBIndex];
-
-  const slotAPlayer = useVideoPlayer(slotAVideoSource, (videoPlayer) => {
-    videoPlayer.loop = true;
-    videoPlayer.muted = true;
-  });
-  const slotBPlayer = useVideoPlayer(slotBVideoSource, (videoPlayer) => {
-    videoPlayer.loop = true;
-    videoPlayer.muted = true;
-  });
-
-  useEffect(() => {
-    slotAPlayer.loop = true;
-    slotAPlayer.muted = true;
-    slotAPlayer.currentTime = 0;
-    slotAPlayer.play();
-  }, [slotAPlayer, slotAIndex]);
-
-  useEffect(() => {
-    slotBPlayer.loop = true;
-    slotBPlayer.muted = true;
-    slotBPlayer.currentTime = 0;
-    slotBPlayer.play();
-  }, [slotBPlayer, slotBIndex]);
-
-  useEffect(() => {
-    if (isTransitioning) return undefined;
-
-    const transitionTimer = setTimeout(() => {
-      if (isTransitioningRef.current) return;
-      const currentVisible = visibleSlotRef.current;
-      const hiddenReady = currentVisible === "A" ? slotBReady : slotAReady;
-      if (!hiddenReady) return;
-
-      isTransitioningRef.current = true;
-      setIsTransitioning(true);
-      const targetOpacity = currentVisible === "A" ? 1 : 0;
-      Animated.timing(layerBOpacity, {
-        toValue: targetOpacity,
-        duration: VIDEO_CROSSFADE_DURATION_MS,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (!finished) {
-          isTransitioningRef.current = false;
-          setIsTransitioning(false);
-          return;
-        }
-
-        const nowVisible = currentVisible === "A" ? "B" : "A";
-        setVisibleSlot(nowVisible);
-
-        setTimeout(() => {
-          if (nowVisible === "A") {
-            setSlotBReady(false);
-            setSlotBIndex(nextQueueIndex);
-          } else {
-            setSlotAReady(false);
-            setSlotAIndex(nextQueueIndex);
-          }
-          setNextQueueIndex((current) => (current + 1) % LOGIN_BACKGROUND_VIDEOS.length);
-          isTransitioningRef.current = false;
-          setIsTransitioning(false);
-        }, VIDEO_POST_SWAP_HOLD_MS);
-      });
-    }, VIDEO_TRANSITION_START_DELAY_MS);
-
-    return () => clearTimeout(transitionTimer);
-  }, [isTransitioning, layerBOpacity, nextQueueIndex, slotAReady, slotBReady]);
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [scrollAuthFormIntoView]);
 
   const goToHome = () => {
     continueAsGuest();
@@ -169,6 +117,8 @@ export function LoginScreen({ navigation }: Props) {
     onSuccess: handleSocialSuccess,
     onError: handleSocialError,
   });
+  const keyboardScreenOffset = keyboardHeight > 0 ? -keyboardHeight : 0;
+  const scrollBottomPadding = keyboardHeight > 0 ? keyboardHeight + KEYBOARD_FORM_GAP : insets.bottom + 24;
 
   const submit = async () => {
     if (!email || !password) {
@@ -220,66 +170,37 @@ export function LoginScreen({ navigation }: Props) {
 
   return (
     <View style={styles.screen}>
-      <VideoView
-        player={slotAPlayer}
-        style={styles.videoBackground}
-        contentFit="cover"
-        surfaceType="textureView"
-        nativeControls={false}
-        playsInline
-        allowsPictureInPicture={false}
-        onFirstFrameRender={() => setSlotAReady(true)}
-        pointerEvents="none"
-      />
-      <Animated.View style={[styles.videoBackground, styles.crossfadeLayer, { opacity: layerBOpacity }]}>
-        <VideoView
-          player={slotBPlayer}
-          style={styles.videoBackground}
-          contentFit="cover"
-          surfaceType="textureView"
-          nativeControls={false}
-          playsInline
-          allowsPictureInPicture={false}
-          onFirstFrameRender={() => setSlotBReady(true)}
-          pointerEvents="none"
-        />
-      </Animated.View>
-
-      <View pointerEvents="none" style={styles.videoBlurMask} />
-      <View pointerEvents="none" style={styles.videoGlassTint} />
-
-      <Pressable style={[styles.backButton, { top: insets.top + 10 }]} onPress={goToHome}>
+      <Pressable
+        style={[styles.backButton, { top: insets.top + 10, transform: [{ translateY: keyboardScreenOffset }] }]}
+        onPress={goToHome}
+      >
         <ArrowLeft color={colors.white} size={24} strokeWidth={2.3} />
       </Pressable>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={insets.top + 24}
-        style={styles.overlayLayout}
-      >
+      <View style={styles.overlayLayout}>
         <ScrollView
+          ref={scrollRef}
           keyboardShouldPersistTaps="always"
-          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 72, paddingBottom: insets.bottom + 24 }]}
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingTop: insets.top + 72,
+              paddingBottom: scrollBottomPadding,
+            },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.headerWrap}>
-            <Text style={styles.brand}>ONE DINING CLUB</Text>
-            <Text style={styles.headline}>{tr("Intră în cont", "Sign in")}</Text>
-            <Text style={styles.headlineSub}>
-              {tr(
-                "Fundalul e dinamic, comanda rămâne simplă. Te autentifici în câteva secunde.",
-                "Dynamic background, simple ordering. Sign in in a few seconds.",
-              )}
-            </Text>
+            <View style={styles.brandRow}>
+              <Text style={styles.headline}>Conectare</Text>
+            </View>
           </View>
 
           <View style={styles.formCard}>
             <View style={styles.socialRow}>
               <SocialButton
-                label="G"
-                title="Google"
-                color="#FFFFFF"
-                textColor="#DB4437"
+                provider="google"
                 loading={socialLoading === "google"}
                 onPress={() => {
                   setError(null);
@@ -288,15 +209,18 @@ export function LoginScreen({ navigation }: Props) {
               />
 
               <SocialButton
-                label="f"
-                title="Facebook"
-                color="#1877F2"
-                textColor="#FFFFFF"
+                provider="facebook"
                 loading={socialLoading === "facebook"}
                 onPress={() => {
                   setError(null);
                   startSocialLogin("facebook");
                 }}
+              />
+
+              <SocialButton
+                provider="apple"
+                loading={false}
+                onPress={() => {}}
               />
             </View>
 
@@ -307,28 +231,36 @@ export function LoginScreen({ navigation }: Props) {
             </View>
 
             <View style={styles.form}>
-              <View style={[styles.inputWrap, focusedField === "email" && styles.inputWrapFocused]}>
-                <Mail color={colors.red} size={20} strokeWidth={2.2} />
+              <Pressable
+                style={[styles.inputWrap, focusedField === "email" && styles.inputWrapFocused]}
+                onPress={() => emailInputRef.current?.focus()}
+              >
+                <Mail color="#FFFFFF" size={20} strokeWidth={2.2} />
                 <TextInput
+                  ref={emailInputRef}
                   value={email}
                   onChangeText={setEmail}
-                  onFocus={() => setFocusedField("email")}
-                  onBlur={() => setFocusedField(null)}
+                  onFocus={() => focusAuthField("email")}
+                  onBlur={clearFocusedField}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   placeholder="Email"
                   placeholderTextColor="#CFCFD6"
                   style={styles.input}
                 />
-              </View>
+              </Pressable>
 
-              <View style={[styles.inputWrap, focusedField === "password" && styles.inputWrapFocused]}>
-                <LockKeyhole color={colors.red} size={20} strokeWidth={2.2} />
+              <Pressable
+                style={[styles.inputWrap, focusedField === "password" && styles.inputWrapFocused]}
+                onPress={() => passwordInputRef.current?.focus()}
+              >
+                <LockKeyhole color="#FFFFFF" size={20} strokeWidth={2.2} />
                 <TextInput
+                  ref={passwordInputRef}
                   value={password}
                   onChangeText={setPassword}
-                  onFocus={() => setFocusedField("password")}
-                  onBlur={() => setFocusedField(null)}
+                  onFocus={() => focusAuthField("password")}
+                  onBlur={clearFocusedField}
                   secureTextEntry={!showPassword}
                   placeholder={tr("Parolă", "Password")}
                   placeholderTextColor="#CFCFD6"
@@ -338,13 +270,13 @@ export function LoginScreen({ navigation }: Props) {
                 <Pressable onPress={() => setShowPassword((value) => !value)}>
                   {showPassword ? <EyeOff color="#B0B0BC" size={20} /> : <Eye color="#B0B0BC" size={20} />}
                 </Pressable>
-              </View>
+              </Pressable>
             </View>
 
             <View style={styles.optionsRow}>
               <Pressable style={styles.rememberRow} onPress={() => setRememberMe((value) => !value)}>
                 <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
-                  {rememberMe && <CheckCircle2 color={colors.white} size={16} />}
+                  {rememberMe && <CheckCircle2 color="#101014" size={16} />}
                 </View>
                 <Text style={styles.optionText}>{tr("Ține-mă minte", "Remember me")}</Text>
               </Pressable>
@@ -364,18 +296,23 @@ export function LoginScreen({ navigation }: Props) {
                 pressed && !loading && styles.pressed,
                 loading && styles.disabled,
               ]}
+              accessibilityRole="button"
+              accessibilityLabel={tr("Intră în cont", "Sign in")}
             >
-              <Text style={styles.primaryText}>{loading ? tr("Se conectează...", "Signing in...") : tr("Intră în cont", "Sign in")}</Text>
+              <LogIn color="#FFFFFF" size={18} strokeWidth={2.5} />
             </Pressable>
 
-            <Pressable style={styles.footerLink} onPress={() => navigation.navigate("Register")}>
+            <Pressable
+              style={[styles.footerLink, keyboardHeight > 0 && styles.footerLinkKeyboardOpen]}
+              onPress={() => navigation.navigate("Register")}
+            >
               <Text style={styles.footerText}>
                 {tr("Nu ai cont?", "No account?")} <Text style={styles.footerAccent}>{tr("Creează unul", "Create one")}</Text>
               </Text>
             </Pressable>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
 
       <Modal visible={forgotOpen} animationType="fade" transparent onRequestClose={() => setForgotOpen(false)}>
         <View style={styles.modalBackdrop}>
@@ -417,22 +354,74 @@ export function LoginScreen({ navigation }: Props) {
 }
 
 type SocialButtonProps = {
-  label: string;
-  title: string;
-  color: string;
-  textColor: string;
+  provider: "google" | "facebook" | "apple";
   loading: boolean;
   onPress: () => void;
 };
 
-function SocialButton({ label, title, color, textColor, loading, onPress }: SocialButtonProps) {
+function SocialButton({ provider, loading, onPress }: SocialButtonProps) {
+  const isApple = provider === "apple";
+  const disabled = loading || isApple;
   return (
-    <Pressable onPress={onPress} disabled={loading} style={({ pressed }) => [styles.socialButton, pressed && styles.pressed]}>
-      <View style={[styles.socialIcon, { backgroundColor: color }]}>
-        <Text style={[styles.socialLetter, { color: textColor }]}>{label}</Text>
-      </View>
-      <Text style={styles.socialText}>{loading ? "Opening..." : title}</Text>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [styles.socialButton, disabled && styles.disabled, pressed && !disabled && styles.pressed]}
+    >
+      {provider === "google" ? (
+        <GoogleGIcon size={28} />
+      ) : provider === "facebook" ? (
+        <FacebookIcon size={28} />
+      ) : (
+        <AppleIcon size={28} />
+      )}
     </Pressable>
+  );
+}
+
+function GoogleGIcon({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        fill="#4285F4"
+        d="M23.49 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h6.45a5.52 5.52 0 0 1-2.39 3.62v3h3.87c2.27-2.09 3.56-5.16 3.56-8.65Z"
+      />
+      <Path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.95-1.07 7.93-2.9l-3.87-3A7.17 7.17 0 0 1 12 19.3a7.2 7.2 0 0 1-6.77-4.97H1.23v3.1A12 12 0 0 0 12 24Z"
+      />
+      <Path
+        fill="#FBBC05"
+        d="M5.23 14.33a7.2 7.2 0 0 1 0-4.66v-3.1H1.23a12 12 0 0 0 0 10.86l4-3.1Z"
+      />
+      <Path
+        fill="#EA4335"
+        d="M12 4.77c1.76 0 3.34.6 4.58 1.8l3.43-3.43A11.53 11.53 0 0 0 12 0 12 12 0 0 0 1.23 6.57l4 3.1A7.2 7.2 0 0 1 12 4.77Z"
+      />
+    </Svg>
+  );
+}
+
+function FacebookIcon({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        fill="#1877F2"
+        d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.09 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.23 2.68.23v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.09 24 18.1 24 12.07Z"
+      />
+    </Svg>
+  );
+}
+
+function AppleIcon({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        fill="#FFFFFF"
+        d="M16.37 1.54c.1 1.08-.3 2.15-1.03 2.94-.74.8-1.95 1.42-3.03 1.34-.12-1.04.34-2.16 1.02-2.9.77-.84 2.09-1.47 3.04-1.38Zm3.35 16.96c-.62 1.41-.92 2.04-1.72 3.29-1.12 1.72-2.7 3.86-4.66 3.88-1.74.02-2.19-1.13-4.55-1.12-2.36.01-2.86 1.15-4.6 1.13-1.96-.02-3.45-1.95-4.57-3.67-3.12-4.78-3.45-10.39-1.52-13.37 1.37-2.12 3.55-3.36 5.6-3.36 2.08 0 3.4 1.14 5.13 1.14 1.67 0 2.69-1.14 5.1-1.14 1.82 0 3.75 1 5.12 2.72-4.5 2.47-3.77 8.9.67 10.5Z"
+        transform="scale(.82) translate(2.6 -.8)"
+      />
+    </Svg>
   );
 }
 
@@ -449,28 +438,7 @@ function getLoginErrorMessage(error: unknown, tr: (ro: string, en: string) => st
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#0F0E12",
-  },
-  videoBackground: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 0,
-    elevation: 0,
-  },
-  crossfadeLayer: {
-    zIndex: 1,
-    elevation: 1,
-  },
-  videoBlurMask: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(10, 8, 12, 0.40)",
-    zIndex: 2,
-    elevation: 2,
-  },
-  videoGlassTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    zIndex: 3,
-    elevation: 3,
+    backgroundColor: "transparent",
   },
   overlayLayout: {
     flex: 1,
@@ -482,7 +450,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 20,
     justifyContent: "flex-end",
-    gap: 16,
+    gap: 24,
   },
   backButton: {
     position: "absolute",
@@ -499,20 +467,31 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255, 255, 255, 0.35)",
   },
   headerWrap: {
-    gap: 10,
+    gap: 14,
+  },
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    transform: [{ translateY: -70 }],
   },
   brand: {
-    color: "rgba(255,255,255,0.92)",
-    fontSize: 12,
+    color: "#000000",
+    fontSize: 20,
     fontWeight: "800",
-    letterSpacing: 1.6,
+    letterSpacing: 2.2,
+    alignSelf: "flex-start",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    overflow: "hidden",
   },
   headline: {
     color: colors.white,
-    fontSize: 34,
-    lineHeight: 39,
-    fontWeight: "800",
-    letterSpacing: -0.8,
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: "600",
+    letterSpacing: -0.2,
   },
   headlineSub: {
     color: "rgba(255,255,255,0.86)",
@@ -522,91 +501,76 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   formCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.38)",
-    backgroundColor: "rgba(20, 20, 28, 0.58)",
-    padding: 16,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 18,
-    elevation: 9,
+    paddingHorizontal: 2,
+    paddingVertical: 4,
+    gap: 8,
   },
   socialRow: {
     flexDirection: "row",
     gap: 10,
+    marginTop: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.28)",
+    backgroundColor: "rgba(0,0,0,0.34)",
+    borderRadius: 22,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   socialButton: {
     flex: 1,
-    minHeight: 44,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    flexDirection: "row",
+    minHeight: 52,
+    borderRadius: 26,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    backgroundColor: "rgba(255,255,255,0.86)",
-  },
-  socialIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  socialLetter: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  socialText: {
-    color: "#1F1F25",
-    fontSize: 14,
-    fontWeight: "700",
+    backgroundColor: "transparent",
   },
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginVertical: 16,
+    marginTop: 12,
+    marginBottom: 22,
   },
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.34)",
+    backgroundColor: "rgba(255,255,255,0.26)",
   },
   dividerText: {
-    color: "rgba(255,255,255,0.82)",
+    color: "rgba(255,255,255,0.60)",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "800",
+    letterSpacing: 0.4,
     textTransform: "uppercase",
   },
   form: {
-    gap: 10,
+    gap: 16,
   },
   inputWrap: {
-    minHeight: 56,
-    borderRadius: 17,
-    paddingHorizontal: 14,
+    minHeight: 50,
+    borderRadius: 25,
+    paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.30)",
-    backgroundColor: "rgba(255,255,255,0.12)",
+    borderColor: "rgba(255,255,255,0.44)",
+    backgroundColor: "rgba(255,255,255,0.16)",
   },
   inputWrapFocused: {
-    borderColor: "rgba(255,255,255,0.72)",
-    backgroundColor: "rgba(255,255,255,0.18)",
+    borderColor: "#BFECCF",
+    backgroundColor: "rgba(191,236,207,0.18)",
   },
   input: {
     flex: 1,
     color: colors.white,
     fontSize: 16,
     fontWeight: "500",
+    paddingVertical: 0,
   },
   optionsRow: {
-    marginTop: 14,
+    marginTop: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -622,56 +586,62 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
+    borderColor: "rgba(255,255,255,0.48)",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.10)",
+    backgroundColor: "rgba(255,255,255,0.16)",
   },
   checkboxActive: {
-    backgroundColor: colors.red,
-    borderColor: colors.red,
+    backgroundColor: "#FFFFFF",
+    borderColor: "#FFFFFF",
   },
   optionText: {
-    color: "rgba(255,255,255,0.92)",
+    color: "rgba(255,255,255,0.88)",
     fontSize: 13,
     fontWeight: "600",
   },
   forgotText: {
-    color: "#FFD7D7",
+    color: "#BFECCF",
     fontSize: 13,
     fontWeight: "700",
   },
   error: {
-    marginTop: 14,
+    marginTop: 18,
     color: "#FFD3D3",
     fontSize: 13,
     fontWeight: "600",
   },
   primaryButton: {
-    marginTop: 16,
-    minHeight: 50,
-    borderRadius: 16,
+    marginTop: 24,
+    width: 62,
+    height: 50,
+    alignSelf: "center",
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.red,
-  },
-  primaryText: {
-    color: colors.white,
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 0.3,
+    backgroundColor: "rgba(0,0,0,0.46)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.62)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    elevation: 4,
   },
   footerLink: {
     alignItems: "center",
-    paddingTop: 16,
+    paddingTop: 24,
+  },
+  footerLinkKeyboardOpen: {
+    paddingBottom: 14,
   },
   footerText: {
-    color: "rgba(255,255,255,0.82)",
+    color: "rgba(255,255,255,0.78)",
     fontSize: 15,
     fontWeight: "500",
   },
   footerAccent: {
-    color: "#FFD1D1",
+    color: "#BFECCF",
     fontWeight: "800",
   },
   pressed: {
@@ -704,8 +674,8 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   forgotInputWrap: {
-    minHeight: 56,
-    borderRadius: 18,
+    minHeight: 50,
+    borderRadius: 16,
     paddingHorizontal: 14,
     flexDirection: "row",
     alignItems: "center",
