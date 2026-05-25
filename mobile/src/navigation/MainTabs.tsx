@@ -21,15 +21,19 @@ export function MainTabs() {
   const { t } = useI18n();
   const rootState = useNavigationState((state) => state);
   const activeRouteName = getDeepActiveRouteName(rootState);
-  const isFeedRoute = activeRouteName === "Home" || activeRouteName === "HomeTab";
-  const tabBarBackgroundColor = isFeedRoute ? "transparent" : "rgba(10, 10, 10, 0.94)";
-  const hideFloatingCart =
+  const isFeedRoute =
+    activeRouteName === undefined ||
+    activeRouteName === "MainTabs" ||
     activeRouteName === "Home" ||
+    activeRouteName === "HomeTab";
+  const hideFloatingCart =
+    isFeedRoute ||
     activeRouteName === "CartHome" ||
     activeRouteName === "CartFlow" ||
+    activeRouteName === "ProductDetails" ||
     activeRouteName === "DeliveryAddress" ||
     activeRouteName === "DeliveryAddressMap";
-  const hideBottomBar = activeRouteName === "CartHome" || activeRouteName === "CartFlow";
+  const hideBottomBar = activeRouteName === "CartHome" || activeRouteName === "CartFlow" || activeRouteName === "ProductDetails";
 
   return (
     <View style={styles.container}>
@@ -41,7 +45,8 @@ export function MainTabs() {
           tabBarStyle: {
             display: hideBottomBar ? "none" : "flex",
             height: 46 + insets.bottom,
-            backgroundColor: tabBarBackgroundColor,
+            backgroundColor: "transparent",
+            borderTopWidth: 0,
             borderTopColor: "transparent",
             elevation: 0,
             shadowOpacity: 0,
@@ -49,6 +54,9 @@ export function MainTabs() {
             paddingTop: 6,
             paddingBottom: 2 + insets.bottom,
           },
+          tabBarBackground: () => (
+            isFeedRoute ? null : <View pointerEvents="none" style={styles.solidTabBarBackground} />
+          ),
           tabBarActiveTintColor: "#FFFFFF",
           tabBarInactiveTintColor: "#FFFFFF",
           tabBarLabelStyle: {
@@ -120,5 +128,9 @@ function getDeepActiveRouteName(state: NavigationState | PartialState<Navigation
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  solidTabBarBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(10, 10, 10, 0.94)",
   },
 });

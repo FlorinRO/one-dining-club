@@ -43,6 +43,8 @@ class ProductSerializer(serializers.ModelSerializer):
             "is_popular",
             "preparation_time",
             "allergens",
+            "ingredients",
+            "calories",
             "option_groups",
             "created_at",
             "updated_at",
@@ -85,6 +87,8 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
             "is_popular",
             "preparation_time",
             "allergens",
+            "ingredients",
+            "calories",
             "created_at",
             "updated_at",
         )
@@ -113,4 +117,3 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
         if category and category.restaurant_id != attrs.get("restaurant", restaurant).id:
             raise serializers.ValidationError({"category_id": "Category must belong to the selected restaurant."})
         return attrs
-

@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useIsFocused } from "@react-navigation/native";
 import { useEvent, useEventListener } from "expo";
 import { type AudioSource, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import * as Haptics from "expo-haptics";
@@ -110,6 +111,7 @@ const buildFallbackProduct = (restaurant: Restaurant): Product => ({
 
 export function HomeScreen({ navigation }: Props) {
   const { tr } = useI18n();
+  const isHomeFocused = useIsFocused();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const addItem = useCartStore((state) => state.addItem);
   const favoriteRestaurantIds = useFavoritesStore((state) => state.restaurantIds);
@@ -213,10 +215,10 @@ export function HomeScreen({ navigation }: Props) {
   }, []);
 
   const quickAdd = useCallback(
-    (restaurant: Restaurant, product: Product) => {
+    (restaurant: Restaurant, product: Product, mediaFallbackIndex?: number) => {
       const hasRequiredOptions = (product.option_groups ?? []).some((group) => group.is_required || group.min_select > 0);
       if (hasRequiredOptions) {
-        navigation.navigate("ProductDetails", { restaurant, product });
+        navigation.navigate("ProductDetails", { restaurant, product, mediaFallbackIndex });
         return;
       }
 
@@ -239,6 +241,19 @@ export function HomeScreen({ navigation }: Props) {
   }, []);
 
   useEffect(() => {
+    if (!isHomeFocused) {
+      setAudiblePostKey(null);
+      return;
+    }
+
+    if (isHomeFocused && activePostKey && audiblePostKey === null) {
+      setAudiblePostKey(activePostKey);
+    }
+  }, [activePostKey, audiblePostKey, isHomeFocused]);
+
+  useEffect(() => {
+    if (!isHomeFocused) return;
+
     if (!activePostKey) {
       setAudiblePostKey(null);
       return;
@@ -253,7 +268,7 @@ export function HomeScreen({ navigation }: Props) {
     if (audiblePostKey !== null && audiblePostKey !== activePostKey) {
       setAudiblePostKey(activePostKey);
     }
-  }, [activePostKey, audiblePostKey, hasAutoSelectedAudiblePost]);
+  }, [activePostKey, audiblePostKey, hasAutoSelectedAudiblePost, isHomeFocused]);
 
   if (isLoading && !feedData.length) {
     return (
@@ -287,6 +302,7 @@ export function HomeScreen({ navigation }: Props) {
             pageHeight={pageHeight}
             pageWidth={screenWidth}
             isActive={index === activeRestaurantIndex}
+            isScreenFocused={isHomeFocused}
             isRestaurantAudible={Boolean(audiblePostKey?.startsWith(`${item.restaurant.id}:`))}
             activeProductIndex={activeProductByRestaurant[item.restaurant.id] ?? item.initialProductIndex}
             audiblePostKey={audiblePostKey}
@@ -298,9 +314,14 @@ export function HomeScreen({ navigation }: Props) {
             onHorizontalSwipeStateChange={(isSwipingHorizontally) => {
               setIsRestaurantScrollEnabled(!isSwipingHorizontally);
             }}
-            onOpenRestaurant={() => navigation.navigate("RestaurantDetails", { restaurant: item.restaurant })}
-            onOpenProduct={(product) => navigation.navigate("ProductDetails", { restaurant: item.restaurant, product })}
-            onQuickAdd={(product) => quickAdd(item.restaurant, product)}
+            onOpenRestaurant={() => navigation.navigate("RestaurantDetails", { restaurant: item.restaurant, products: item.products })}
+            onOpenProduct={(product, productIndex) =>
+              navigation.navigate("ProductDetails", {
+                restaurant: item.restaurant,
+                product,
+                mediaFallbackIndex: (item.restaurant.id - 1) * 10 + productIndex,
+              })}
+            onQuickAdd={(product, productIndex) => quickAdd(item.restaurant, product, (item.restaurant.id - 1) * 10 + productIndex)}
             onLike={(product) => toggleLike(item.restaurant, product)}
             onComment={(product) => addCommentBump(item.restaurant, product)}
             onShare={(product) => shareProduct(item.restaurant, product)}
@@ -342,6 +363,7 @@ type RestaurantFeedPageProps = {
   pageHeight: number;
   pageWidth: number;
   isActive: boolean;
+  isScreenFocused: boolean;
   isRestaurantAudible: boolean;
   activeProductIndex: number;
   audiblePostKey: string | null;
@@ -350,8 +372,8 @@ type RestaurantFeedPageProps = {
   onProductIndexChange: (index: number) => void;
   onHorizontalSwipeStateChange: (isSwipingHorizontally: boolean) => void;
   onOpenRestaurant: () => void;
-  onOpenProduct: (product: Product) => void;
-  onQuickAdd: (product: Product) => void;
+  onOpenProduct: (product: Product, index: number) => void;
+  onQuickAdd: (product: Product, index: number) => void;
   onLike: (product: Product) => void;
   onComment: (product: Product) => void;
   onShare: (product: Product) => void;
@@ -363,6 +385,7 @@ function RestaurantFeedPage({
   pageHeight,
   pageWidth,
   isActive,
+  isScreenFocused,
   isRestaurantAudible,
   activeProductIndex,
   audiblePostKey,
@@ -427,7 +450,7 @@ function RestaurantFeedPage({
   }, []);
 
   useEffect(() => {
-    const shouldPlay = isActive && isRestaurantAudible;
+    const shouldPlay = isScreenFocused && isActive && isRestaurantAudible;
     try {
       restaurantAudioPlayer.loop = true;
       restaurantAudioPlayer.volume = shouldPlay ? FEED_STANDALONE_AUDIO_VOLUME : 0;
@@ -444,6 +467,7 @@ function RestaurantFeedPage({
     }
   }, [
     isActive,
+    isScreenFocused,
     isRestaurantAudible,
     restaurantAudioPlayer,
     restaurantAudioStatus.isLoaded,
@@ -526,9 +550,9 @@ function RestaurantFeedPage({
               isLiked={Boolean(likedPosts[key])}
               commentBump={commentBumps[key] ?? 0}
               onOpenRestaurant={onOpenRestaurant}
-              onOpenProduct={() => onOpenProduct(product)}
+              onOpenProduct={() => onOpenProduct(product, index)}
               onStepProduct={handleStepProduct}
-              onQuickAdd={() => onQuickAdd(product)}
+              onQuickAdd={() => onQuickAdd(product, index)}
               onLike={() => onLike(product)}
               onComment={() => onComment(product)}
               onShare={() => onShare(product)}

@@ -15,6 +15,19 @@ class Command(BaseCommand):
     help = "Seed demo data for local MVP development."
 
     def handle(self, *args, **options):
+        ingredient_profiles = [
+            "pui, salata, rosii, ceapa rosie, sos house",
+            "vita, cheddar, castraveti murati, mustar, ketchup",
+            "somon, avocado, orez, susan, sos ponzu",
+            "tofu, ardei, morcov, noodles, sos de soia",
+            "halloumi, quinoa, castravete, masline, dressing lamaie",
+            "pork belly, varza, ceapa verde, maioneza picanta",
+            "creveti, usturoi, unt, patrunjel, chili flakes",
+            "ciuperci, parmezan, usturoi, ulei de masline, busuioc",
+            "falafel, hummus, rosii, tahini, patrunjel",
+            "curcan, orez brun, broccoli, porumb, lime",
+        ]
+
         customer, _ = User.objects.get_or_create(
             email="demo@onedining.club",
             defaults={
@@ -414,6 +427,8 @@ class Command(BaseCommand):
 
             for idx, row in enumerate(product_rows, start=1):
                 category_name, name, description, price, discount_price, prep_time, allergens = row
+                ingredients = ingredient_profiles[(restaurant.id + idx) % len(ingredient_profiles)]
+                calories = 360 + ((restaurant.id * 41 + idx * 57) % 640)
                 menu_category, _ = ProductCategory.objects.get_or_create(
                     restaurant=restaurant,
                     name=category_name,
@@ -431,8 +446,21 @@ class Command(BaseCommand):
                         "is_popular": True,
                         "preparation_time": prep_time,
                         "allergens": allergens,
+                        "ingredients": ingredients,
+                        "calories": calories,
                     },
                 )
+                product.category = menu_category
+                product.description = description
+                product.price = price
+                product.discount_price = discount_price
+                product.preparation_time = prep_time
+                product.allergens = allergens
+                product.ingredients = ingredients
+                product.calories = calories
+                product.is_available = True
+                product.is_popular = True
+                product.save()
                 if restaurant.slug == "luna-rossa-kitchen" and name == "Pizza Diavola":
                     pizza = product
 

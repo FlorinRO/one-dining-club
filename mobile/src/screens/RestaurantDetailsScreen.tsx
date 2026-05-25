@@ -1,337 +1,437 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ArrowLeft, Bike, Clock3, Heart, Search, SearchX, Share2, Star, X } from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Image, Keyboard, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View, useColorScheme } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
+import { ArrowLeft, Heart, Play, Search, Share2, X } from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Animated,
+  FlatList,
+  Image,
+  Keyboard,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
+import { getDemoProductVideoSource } from "../data/demoVideos";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
-import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
-import { useFavoritesStore } from "../store/favoritesStore";
+import { resolveRestaurantImageUri } from "../lib/images";
 import { HomeStackParamList } from "../navigation/types";
+import { useFavoritesStore } from "../store/favoritesStore";
 import { colors } from "../theme/colors";
 import { Product, Restaurant } from "../types/models";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "RestaurantDetails">;
 
+type ProfileProductTileProps = {
+  product: Product;
+  restaurant: Restaurant;
+  index: number;
+  tileSize: number;
+  onPress: () => void;
+};
+
+const PROFILE_COLUMNS = 3;
+const PROFILE_GAP = 2;
+const dark = {
+  background: "#050505",
+  card: "#111111",
+  cardSoft: "#181818",
+  border: "rgba(255,255,255,0.12)",
+  text: "#FFFFFF",
+  muted: "rgba(255,255,255,0.68)",
+  faint: "rgba(255,255,255,0.45)",
+};
+
+const compactCount = (value: number) => {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1000) return `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)}K`;
+  return String(value);
+};
+
+const videoSourceForProduct = (_restaurant: Restaurant, product: Product, fallbackIndex: number): VideoSource => {
+  if (product.video_url) {
+    return {
+      uri: product.video_url,
+      contentType: "progressive",
+      useCaching: false,
+    };
+  }
+
+  return getDemoProductVideoSource(fallbackIndex);
+};
+
+const buildFallbackProduct = (restaurant: Restaurant): Product => ({
+  id: restaurant.id * 10000,
+  restaurant: restaurant.id,
+  restaurant_name: restaurant.name,
+  category: null,
+  category_name: "Chef pick",
+  name: `${restaurant.name} tasting plate`,
+  description: restaurant.description || "Mock video dish prepared for the new swipe-first feed.",
+  image: null,
+  price: Number(restaurant.minimum_order || 49) || 49,
+  discount_price: null,
+  effective_price: Number(restaurant.minimum_order || 49) || 49,
+  is_available: true,
+  is_popular: true,
+  preparation_time: restaurant.estimated_delivery_time_min || 20,
+  allergens: "",
+  option_groups: [],
+});
+
+const productViews = (restaurant: Restaurant, product: Product) => {
+  const seed = restaurant.id * 53 + product.id * 19;
+  return 1800 + (seed % 91) * 173;
+};
 
 export function RestaurantDetailsScreen({ navigation, route }: Props) {
   const { tr } = useI18n();
-  const colorScheme = useColorScheme();
-  const stickyBorderWidth = colorScheme === "dark" ? 0 : 1;
-  const HERO_HEIGHT = 258;
-  const SHEET_OVERLAP = 34;
-  const SHEET_WAVE_HEIGHT = 42;
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const initialRestaurant = route.params.restaurant;
-  const [restaurant, setRestaurant] = useState<Restaurant>(initialRestaurant);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isRestaurantSearchOpen, setIsRestaurantSearchOpen] = useState(false);
-  const [restaurantSearchQuery, setRestaurantSearchQuery] = useState("");
-  const [isSearchInputFocused, setIsSearchInputFocused] = useState(false);
-  const restaurantSearchInputRef = useRef<TextInput>(null);
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const toggleRestaurant = useFavoritesStore((state) => state.toggleRestaurant);
-  const isFavorite = useFavoritesStore((state) => state.isRestaurantFavorite(restaurant.id));
+  const initialProducts = route.params.products;
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
+  const toggleRestaurant = useFavoritesStore((state) => state.toggleRestaurant);
+  const isFavorite = useFavoritesStore((state) => state.isRestaurantFavorite(initialRestaurant.id));
+
+  const [restaurant, setRestaurant] = useState<Restaurant>(initialRestaurant);
+  const [products, setProducts] = useState<Product[]>(initialProducts ?? []);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
+  const headerTitleProgress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    restaurantsApi.detail(initialRestaurant.id).then(setRestaurant);
-    restaurantsApi.products(initialRestaurant.id).then(setProducts);
-  }, [initialRestaurant.id]);
+    let isMounted = true;
 
-  const selectedProducts = useMemo(() => products.slice(0, 10), [products]);
+    restaurantsApi.detail(initialRestaurant.id).then((nextRestaurant) => {
+      if (isMounted) setRestaurant(nextRestaurant);
+    });
+    if (initialProducts?.length) {
+      setProducts(initialProducts);
+    } else {
+      restaurantsApi.products(initialRestaurant.id).then((nextProducts) => {
+        if (isMounted) setProducts(nextProducts);
+      });
+    }
 
-  const restaurantSearchResults = useMemo(() => {
-    const query = restaurantSearchQuery.trim().toLowerCase();
-    if (!query) return [];
-    return selectedProducts.filter((product) =>
+    return () => {
+      isMounted = false;
+    };
+  }, [initialProducts, initialRestaurant.id]);
+
+  const profileProducts = useMemo(() => {
+    const restaurantProducts = products.filter((product) => Number(product.restaurant) === restaurant.id);
+    return restaurantProducts.length ? restaurantProducts : [buildFallbackProduct(restaurant)];
+  }, [products, restaurant]);
+
+  const filteredProducts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return profileProducts;
+
+    return profileProducts.filter((product) =>
       `${product.name} ${product.description} ${product.category_name ?? ""}`.toLowerCase().includes(query),
     );
-  }, [selectedProducts, restaurantSearchQuery]);
-  const hasSearchQuery = restaurantSearchQuery.trim().length > 0;
+  }, [profileProducts, searchQuery]);
 
-  const heroScale = scrollY.interpolate({
-    inputRange: [-220, 0],
-    outputRange: [1.5, 1],
-    extrapolate: "clamp",
-  });
-  const heroScrollOut = scrollY.interpolate({
-    inputRange: [0, HERO_HEIGHT],
-    outputRange: [0, -HERO_HEIGHT],
-    extrapolate: "clamp",
-  });
-  const overscrollCompensation = scrollY.interpolate({
-    inputRange: [-220, 0],
-    outputRange: [-220, 0],
-    extrapolate: "clamp",
-  });
-  const stickyHeaderTranslateY = scrollY.interpolate({
-    inputRange: [70, 140],
-    outputRange: [-16, 0],
-    extrapolate: "clamp",
-  });
-  const stickyHeaderOpacity = scrollY.interpolate({
-    inputRange: [70, 140],
-    outputRange: [0, 1],
-    extrapolate: "clamp",
-  });
-  const handleMainScroll = useMemo(
-    () =>
-      Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-        useNativeDriver: true,
-        listener: trackFloatingCartScrollDirection,
-      }),
-    [scrollY, trackFloatingCartScrollDirection],
-  );
-  const shareRestaurant = async () => {
+  const tileSize = Math.floor((width - PROFILE_GAP * (PROFILE_COLUMNS - 1)) / PROFILE_COLUMNS);
+  const likeCount = profileProducts.reduce((total, product) => total + productViews(restaurant, product), 0);
+  const restaurantHandle = `@${restaurant.slug || restaurant.name.toLowerCase().replace(/\s+/g, "")}`;
+
+  const shareRestaurant = useCallback(async () => {
     await Share.share({
       title: restaurant.name,
       message: `${restaurant.name}\n${restaurant.description}`,
     });
-  };
-  const openRestaurantSearch = () => {
-    setIsRestaurantSearchOpen(true);
-    setTimeout(() => restaurantSearchInputRef.current?.focus(), 50);
-  };
-  const closeRestaurantSearch = () => {
-    setIsRestaurantSearchOpen(false);
-    setRestaurantSearchQuery("");
-    setIsSearchInputFocused(false);
-  };
+  }, [restaurant]);
+
+  const openSearch = useCallback(() => {
+    setIsSearchOpen(true);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    Keyboard.dismiss();
+    setIsSearchOpen(false);
+    setSearchQuery("");
+    setIsSearchFocused(false);
+  }, []);
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      trackFloatingCartScrollDirection(event);
+    },
+    [trackFloatingCartScrollDirection],
+  );
+
+  const renderProduct = useCallback(
+    ({ item, index }: { item: Product; index: number }) => (
+      <ProfileProductTile
+        product={item}
+        restaurant={restaurant}
+        index={index}
+        tileSize={tileSize}
+        onPress={() => navigation.navigate("ProductDetails", { restaurant, product: item, mediaFallbackIndex: (restaurant.id - 1) * 10 + index })}
+      />
+    ),
+    [navigation, restaurant, tileSize],
+  );
+
+  const listHeader = (
+    <View style={[styles.profileHeader, { paddingTop: insets.top + 76 }]}>
+      <View style={styles.identityActionsRow}>
+        <View style={styles.identityActionsSpacer} />
+        <Pressable style={styles.shareIconButton} onPress={shareRestaurant}>
+          <Share2 size={16} stroke={dark.text} />
+        </Pressable>
+      </View>
+
+      <View style={styles.identityStack}>
+        <View style={styles.avatarRing}>
+          <Image source={{ uri: resolveRestaurantImageUri(restaurant.logo || restaurant.cover_image, restaurant.id) }} style={styles.avatar} />
+        </View>
+        <View style={styles.identityCopy}>
+          <Text style={styles.restaurantName}>{restaurant.name}</Text>
+          <Text numberOfLines={1} style={styles.restaurantHandle}>{restaurantHandle}</Text>
+          <Text numberOfLines={1} style={styles.restaurantMeta}>
+            {Number(restaurant.rating).toFixed(1)} ★ · {restaurant.estimated_delivery_time_min}-{restaurant.estimated_delivery_time_max} min · {money(restaurant.delivery_fee)} livrare
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.statsRow}>
+        <ProfileStat value={String(profileProducts.length)} label={tr("Produse", "Products")} />
+        <ProfileStat value={compactCount(likeCount)} label={tr("Vizualizări", "Views")} />
+        <ProfileStat value={Number(restaurant.rating).toFixed(1)} label={tr("Rating", "Rating")} />
+      </View>
+
+      <Text style={styles.bioText}>{restaurant.description}</Text>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.heroWrap, { transform: [{ translateY: heroScrollOut }] }]}>
-        <Animated.Image
-          source={{ uri: resolveRestaurantImageUri(restaurant.cover_image, restaurant.id) }}
+      <View style={styles.backdropDim} />
+
+      <Animated.FlatList
+        data={profileProducts}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={renderProduct}
+        numColumns={PROFILE_COLUMNS}
+        ListHeaderComponent={listHeader}
+        contentContainerStyle={[styles.gridContent, { paddingBottom: insets.bottom + 104 }]}
+        columnWrapperStyle={styles.gridRow}
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: headerTitleProgress } } }],
+          { useNativeDriver: true, listener: handleScroll },
+        )}
+        scrollEventThrottle={16}
+      />
+
+      <View style={[styles.topControls, { paddingTop: insets.top + 8 }]}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.iconButton}>
+          <ArrowLeft stroke={dark.text} size={22} />
+        </Pressable>
+        <Animated.Text
+          numberOfLines={1}
           style={[
-            styles.hero,
+            styles.topTitle,
             {
-              height: HERO_HEIGHT,
-              transform: [{ scale: heroScale }],
+              opacity: headerTitleProgress.interpolate({
+                inputRange: [44, 90],
+                outputRange: [0, 1],
+                extrapolate: "clamp",
+              }),
+              transform: [
+                {
+                  translateY: headerTitleProgress.interpolate({
+                    inputRange: [44, 90],
+                    outputRange: [8, 0],
+                    extrapolate: "clamp",
+                  }),
+                },
+              ],
             },
           ]}
-        />
-        <View style={styles.heroOverlay}>
-          <Text style={styles.heroName}>{restaurant.name}</Text>
-          <Text style={styles.heroInfo}>Info &gt;</Text>
-        </View>
-      </Animated.View>
-      <Animated.ScrollView
-        style={styles.contentScroller}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-        scrollEventThrottle={16}
-        onScroll={handleMainScroll}
-      >
-        <Animated.View style={{ transform: [{ translateY: overscrollCompensation }] }}>
-          <View style={[styles.bodySheetWrap, { marginTop: HERO_HEIGHT - SHEET_OVERLAP }]} pointerEvents="box-none">
-            <Svg
-              width="100%"
-              height={SHEET_WAVE_HEIGHT}
-              viewBox="0 0 1440 120"
-              preserveAspectRatio="none"
-              style={styles.sheetWave}
-              pointerEvents="none"
-            >
-              <Path
-                d="M0,52 C120,8 240,8 360,52 C480,96 600,96 720,52 C840,8 960,8 1080,52 C1200,96 1320,96 1440,52 L1440,120 L0,120 Z"
-                fill={colors.card}
-              />
-            </Svg>
-            <View style={styles.bodySheet}>
-              <View style={styles.metaRow}>
-                <View style={styles.metaItem}>
-                  <Star size={16} stroke={colors.lime} fill={colors.lime} />
-                  <Text style={styles.metaText}>
-                    {Number(restaurant.rating).toFixed(1)} ({restaurant.reviews_count ?? 0})
-                  </Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Bike size={16} stroke={colors.muted} />
-                  <Text style={styles.metaText}>{money(restaurant.delivery_fee)}</Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Clock3 size={16} stroke={colors.muted} />
-                  <Text style={styles.metaText}>
-                    {restaurant.estimated_delivery_time_min}-{restaurant.estimated_delivery_time_max} min
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.products}>
-                <View style={styles.menuSeparator} />
-                <View style={styles.menuHeaderBlock}>
-                  <View style={styles.menuIntroLine}>
-                    <Text style={styles.menuIntroText}>Selecție </Text>
-                    <View style={styles.menuBrandMark}>
-                      <Text style={styles.menuBrandText}>ONE DINING CLUB</Text>
-                      <Star size={10} stroke={colors.red} fill={colors.red} />
-                    </View>
-                    <Text style={styles.menuIntroText}> {restaurant.name}</Text>
-                  </View>
-                </View>
-                <View style={styles.showcaseList}>
-                  {selectedProducts.map((product) => (
-                    <ShowcaseProductCard
-                      key={product.id}
-                      product={product}
-                      onPress={() => navigation.navigate("ProductDetails", { restaurant, product })}
-                    />
-                  ))}
-                </View>
-              </View>
-            </View>
-          </View>
-        </Animated.View>
-      </Animated.ScrollView>
-      <View style={styles.headerControls} pointerEvents="box-none">
-        <Pressable onPress={() => navigation.goBack()} style={styles.iconButton}>
-          <ArrowLeft stroke={colors.text} size={22} />
-        </Pressable>
-        <View style={styles.rightControls}>
-          <Pressable onPress={() => toggleRestaurant(restaurant.id)} style={[styles.iconButton, isFavorite && styles.iconButtonActive]}>
-            <Heart stroke={isFavorite ? colors.red : colors.text} fill={isFavorite ? colors.red : "transparent"} size={20} />
+        >
+          {restaurant.name}
+        </Animated.Text>
+        <View style={styles.topRightControls}>
+          <Pressable onPress={() => toggleRestaurant(restaurant.id)} style={styles.iconButton}>
+            <Heart stroke={isFavorite ? colors.red : dark.text} fill={isFavorite ? colors.red : "transparent"} size={20} />
           </Pressable>
-          <Pressable onPress={shareRestaurant} style={styles.iconButton}>
-            <Share2 stroke={colors.text} size={20} />
-          </Pressable>
-          <Pressable onPress={openRestaurantSearch} style={styles.iconButton}>
-            <Search stroke={colors.text} size={20} />
+          <Pressable onPress={openSearch} style={styles.iconButton}>
+            <Search stroke={dark.text} size={20} />
           </Pressable>
         </View>
       </View>
-      <Animated.View
-        style={[
-          styles.stickyHeader,
-          { borderBottomWidth: stickyBorderWidth },
-          {
-            opacity: stickyHeaderOpacity,
-            transform: [{ translateY: stickyHeaderTranslateY }],
-          },
-        ]}
-      >
-        <Text numberOfLines={1} style={styles.stickyHeaderTitle}>
-          {restaurant.name}
-        </Text>
-        <View style={styles.stickyMenuMeta}>
-          <Text numberOfLines={1} style={styles.stickyMenuText}>
-            {restaurant.estimated_delivery_time_min}-{restaurant.estimated_delivery_time_max} min
-          </Text>
-        </View>
-      </Animated.View>
-      {isRestaurantSearchOpen && (
+
+      {isSearchOpen ? (
         <View style={styles.searchOverlay}>
-          <View style={styles.searchHeader}>
-            <View style={[styles.searchBar, isSearchInputFocused && styles.searchBarFocused]}>
-              <Search stroke={colors.muted} size={18} />
+          <View style={[styles.searchHeader, { paddingTop: insets.top + 12 }]}>
+            <View style={[styles.searchBar, isSearchFocused && styles.searchBarFocused]}>
+              <Search stroke={dark.muted} size={18} />
               <TextInput
-                ref={restaurantSearchInputRef}
-                value={restaurantSearchQuery}
-                onChangeText={setRestaurantSearchQuery}
-                onFocus={() => setIsSearchInputFocused(true)}
-                onBlur={() => setIsSearchInputFocused(false)}
-                placeholder={tr("Caută în acest restaurant", "Search in this restaurant")}
-                placeholderTextColor={colors.muted}
+                ref={searchInputRef}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                placeholder={tr("Caută în acest profil", "Search this profile")}
+                placeholderTextColor={dark.faint}
                 style={styles.searchInput}
                 autoFocus
                 returnKeyType="search"
               />
             </View>
-            <Pressable onPress={closeRestaurantSearch} style={styles.searchCloseButton}>
-              <X stroke={colors.text} size={18} />
+            <Pressable onPress={closeSearch} style={styles.searchCloseButton}>
+              <X stroke={dark.text} size={18} />
             </Pressable>
           </View>
-          <View style={styles.searchBody}>
-            {!hasSearchQuery && (
-              <Pressable style={styles.searchIdleSurface} onPress={closeRestaurantSearch} />
-            )}
-            {hasSearchQuery && (
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.searchContent}
-                keyboardDismissMode="interactive"
-                keyboardShouldPersistTaps="handled"
-                onScroll={trackFloatingCartScrollDirection}
-                scrollEventThrottle={16}
-                onScrollBeginDrag={() => Keyboard.dismiss()}
-              >
-                <Text style={styles.searchCount}>
-                  {restaurantSearchResults.length} rezultat{restaurantSearchResults.length === 1 ? "" : "e"}
+          <FlatList
+            data={filteredProducts}
+            keyExtractor={(item) => `search-${item.id}`}
+            renderItem={renderProduct}
+            numColumns={PROFILE_COLUMNS}
+            ListHeaderComponent={(
+              <View style={styles.searchResultHeader}>
+                <Text style={styles.searchResultText}>
+                  {filteredProducts.length} rezultat{filteredProducts.length === 1 ? "" : "e"}
                 </Text>
-                {restaurantSearchResults.length === 0 ? (
-                  <View style={styles.noResultsWrap}>
-                    <View style={styles.noResultsIcon}>
-                      <SearchX stroke={colors.muted} size={22} />
-                    </View>
-                    <Text style={styles.noResultsTitle}>N-am găsit nimic</Text>
-                    <Text style={styles.noResultsText}>Încearcă alt cuvânt cheie pentru produsele acestui restaurant.</Text>
-                  </View>
-                ) : (
-                  <View style={styles.searchResults}>
-                    {restaurantSearchResults.map((product) => (
-                      <ShowcaseProductCard
-                        key={product.id}
-                        product={product}
-                        onPress={() => {
-                          closeRestaurantSearch();
-                          navigation.navigate("ProductDetails", { restaurant, product });
-                        }}
-                      />
-                    ))}
-                  </View>
-                )}
-              </ScrollView>
+              </View>
             )}
-          </View>
+            columnWrapperStyle={styles.gridRow}
+            contentContainerStyle={[styles.searchGridContent, { paddingBottom: insets.bottom + 42 }]}
+            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          />
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
 
-type ShowcaseProductCardProps = {
-  product: Product;
-  onPress: () => void;
-};
+function ProfileStat({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={styles.statItem}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
 
-function ShowcaseProductCard({ product, onPress }: ShowcaseProductCardProps) {
-  const effectivePrice = product.effective_price ?? product.discount_price ?? product.price;
-  const isUnavailable = product.is_available === false;
+function VideoSkeletonBuffer() {
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 760,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 760,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    animation.start();
+    return () => animation.stop();
+  }, [pulse]);
+
+  const opacity = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.42, 0.86],
+  });
 
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={isUnavailable}
-      style={({ pressed }) => [
-        styles.showcaseCard,
-        pressed && styles.showcaseCardPressed,
-        isUnavailable && styles.showcaseCardDisabled,
-      ]}
-    >
-      <View style={styles.showcaseImageFrame}>
-        <Image
-          source={{ uri: resolveProductImageUri(product.image, product.id) }}
-          style={styles.showcaseImage}
-          resizeMode="cover"
-        />
-        <View style={styles.showcaseImageOverlay} />
+    <View pointerEvents="none" style={styles.tileSkeleton}>
+      <Animated.View style={[styles.tileSkeletonGlow, { opacity }]} />
+      <View style={styles.tileSkeletonTopPill} />
+      <View style={styles.tileSkeletonCaption}>
+        <Animated.View style={[styles.tileSkeletonLine, { opacity }]} />
+        <Animated.View style={[styles.tileSkeletonLineShort, { opacity }]} />
       </View>
-      <View style={styles.showcaseNameBadge}>
-        <Text numberOfLines={1} style={styles.showcaseName}>
-          {product.name}
-        </Text>
-        <View style={styles.showcasePriceCta}>
-          <View style={styles.showcasePriceRow}>
-            <Text style={styles.showcasePrice}>{money(effectivePrice)}</Text>
-          </View>
-        </View>
+    </View>
+  );
+}
+
+function ProfileProductTile({ product, restaurant, index, tileSize, onPress }: ProfileProductTileProps) {
+  const fallbackIndex = (restaurant.id - 1) * 10 + index;
+  const videoSource = useMemo(
+    () => videoSourceForProduct(restaurant, product, fallbackIndex),
+    [fallbackIndex, product, restaurant],
+  );
+  const [hasRenderedFrame, setHasRenderedFrame] = useState(false);
+  const price = product.effective_price ?? product.discount_price ?? product.price;
+  const player = useVideoPlayer(videoSource, (videoPlayer) => {
+    videoPlayer.loop = true;
+    videoPlayer.muted = true;
+    videoPlayer.volume = 0;
+    videoPlayer.audioMixingMode = "mixWithOthers";
+  });
+
+  useEffect(() => {
+    try {
+      player.play();
+    } catch {
+      // Tile thumbnails stay tappable even if a preview fails to autoplay.
+    }
+
+    return () => {
+      try {
+        player.pause();
+      } catch {
+        // Ignore preview cleanup failures from native video state.
+      }
+    };
+  }, [player]);
+
+  useEffect(() => {
+    setHasRenderedFrame(false);
+  }, [videoSource]);
+
+  return (
+    <Pressable onPress={onPress} style={[styles.tile, { width: tileSize, height: Math.round(tileSize * 1.38) }]}>
+      <VideoView
+        player={player}
+        style={styles.tileVideo}
+        contentFit="cover"
+        nativeControls={false}
+        fullscreenOptions={{ enable: false }}
+        allowsPictureInPicture={false}
+        playsInline
+        pointerEvents="none"
+        surfaceType="textureView"
+        useExoShutter={false}
+        onFirstFrameRender={() => setHasRenderedFrame(true)}
+      />
+      {!hasRenderedFrame ? <VideoSkeletonBuffer /> : null}
+      <View style={styles.tileGradient} />
+      <View style={styles.tileTopBadge}>
+        <Play size={10} stroke={dark.text} fill={dark.text} />
+        <Text style={styles.tileViews}>{compactCount(productViews(restaurant, product))}</Text>
       </View>
-      <View style={styles.showcaseContent}>
-        <Text numberOfLines={2} style={styles.showcaseDescription}>
-          {product.description}
-        </Text>
+      <View style={styles.tileCaption}>
+        <Text numberOfLines={1} style={styles.tileName}>{product.name}</Text>
+        <Text numberOfLines={1} style={styles.tilePrice}>{money(price)}</Text>
       </View>
     </Pressable>
   );
@@ -340,290 +440,254 @@ function ShowcaseProductCard({ product, onPress }: ShowcaseProductCardProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.card,
+    backgroundColor: dark.background,
   },
-  content: {
-    paddingBottom: 110,
+  backdropDim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.72)",
   },
-  contentScroller: {
-    zIndex: 2,
+  gridContent: {
+    backgroundColor: "transparent",
   },
-  hero: {
-    width: "100%",
-    height: 258,
-    backgroundColor: colors.cardSoft,
+  gridRow: {
+    gap: PROFILE_GAP,
+    marginBottom: PROFILE_GAP,
   },
-  heroWrap: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 258,
-    overflow: "hidden",
-    zIndex: 1,
+  profileHeader: {
+    paddingHorizontal: 18,
+    paddingBottom: 0,
   },
-  headerControls: {
-    position: "absolute",
-    top: 54,
-    left: 16,
-    right: 16,
-    zIndex: 10,
+  identityActionsRow: {
+    marginBottom: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  rightControls: {
-    flexDirection: "row",
-    gap: 8,
+  identityActionsSpacer: {
+    width: 34,
+    height: 34,
   },
-  stickyHeader: {
+  identityStack: {
+    alignItems: "center",
+  },
+  avatarRing: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    padding: 3,
+    marginBottom: 16,
+    backgroundColor: dark.text,
+  },
+  avatar: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 45,
+    backgroundColor: dark.cardSoft,
+  },
+  identityCopy: {
+    width: "100%",
+    gap: 3,
+    alignItems: "center",
+  },
+  restaurantName: {
+    color: dark.text,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  restaurantHandle: {
+    color: dark.muted,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  restaurantMeta: {
+    color: dark.faint,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  statsRow: {
+    marginTop: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+  },
+  statItem: {
+    minWidth: 86,
+    alignItems: "center",
+  },
+  statValue: {
+    color: dark.text,
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  statLabel: {
+    marginTop: 3,
+    color: dark.faint,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  bioText: {
+    marginTop: 18,
+    marginBottom: 36,
+    color: dark.text,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  shareIconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderColor: dark.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  topControls: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    height: 120,
     zIndex: 8,
-    paddingHorizontal: 16,
-    justifyContent: "flex-start",
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  stickyHeaderTitle: {
-    position: "absolute",
-    top: 64,
-    left: 72,
-    right: 16,
-    color: colors.text,
-    fontSize: 19,
-    fontWeight: "700",
-    textAlign: "left",
-  },
-  stickyMenuMeta: {
-    position: "absolute",
-    top: 91,
-    left: 72,
-    right: 16,
+    minHeight: 64,
+    paddingHorizontal: 14,
+    paddingBottom: 8,
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(5,5,5,0.94)",
+  },
+  topTitle: {
+    flex: 1,
+    color: dark.text,
+    fontSize: 16,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  topRightControls: {
+    flexDirection: "row",
     gap: 8,
   },
-  stickyMenuText: {
-    flexShrink: 1,
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: "700",
-  },
   iconButton: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: 999,
-    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.card,
   },
-  iconButtonActive: {
-    backgroundColor: colors.cardSoft,
+  tile: {
+    overflow: "hidden",
+    backgroundColor: dark.card,
   },
-  heroOverlay: {
+  tileVideo: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  tileSkeleton: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#101012",
+    overflow: "hidden",
+  },
+  tileSkeletonGlow: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.13)",
+  },
+  tileSkeletonTopPill: {
     position: "absolute",
-    top: 0,
+    left: 8,
+    top: 8,
+    width: 54,
+    height: 18,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+  tileSkeletonCaption: {
+    position: "absolute",
+    left: 8,
+    right: 8,
+    bottom: 9,
+    gap: 6,
+  },
+  tileSkeletonLine: {
+    width: "82%",
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  tileSkeletonLineShort: {
+    width: "48%",
+    height: 9,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  tileGradient: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.08)",
+  },
+  tileTopBadge: {
+    position: "absolute",
+    left: 7,
+    top: 7,
+    minHeight: 20,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.36)",
+  },
+  tileViews: {
+    color: dark.text,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  tileCaption: {
+    position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    alignItems: "center",
-    justifyContent: "flex-end",
-    paddingHorizontal: 20,
-    paddingBottom: 58,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    zIndex: 2,
+    paddingHorizontal: 7,
+    paddingTop: 18,
+    paddingBottom: 7,
+    backgroundColor: "rgba(0,0,0,0.32)",
   },
-  heroName: {
-    color: colors.white,
-    fontSize: 28,
-    lineHeight: 32,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  heroInfo: {
-    marginTop: 4,
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  bodySheetWrap: {
-    backgroundColor: "transparent",
-    zIndex: 5,
-  },
-  sheetWave: {
-    marginBottom: -1,
-  },
-  bodySheet: {
-    padding: 18,
-    gap: 16,
-    backgroundColor: colors.card,
-    paddingTop: 12,
-    overflow: "hidden",
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    minWidth: 92,
-  },
-  metaText: {
-    color: colors.text,
-    fontWeight: "600",
-  },
-  products: {
-    marginTop: 10,
-    gap: 14,
-  },
-  menuSeparator: {
-    height: 2,
-    marginHorizontal: -18,
-    backgroundColor: colors.border,
-  },
-  menuHeaderBlock: {
-    marginBottom: 2,
-  },
-  menuIntroLine: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-  },
-  menuIntroText: {
-    color: colors.text,
+  tileName: {
+    color: dark.text,
     fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "400",
+    lineHeight: 15,
+    fontWeight: "900",
   },
-  menuBrandMark: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  menuBrandText: {
-    color: colors.red,
+  tilePrice: {
+    marginTop: 2,
+    color: dark.muted,
     fontSize: 11,
-    lineHeight: 18,
     fontWeight: "800",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-  },
-  showcaseList: {
-    gap: 32,
-    marginHorizontal: -18,
-  },
-  showcaseCard: {
-    overflow: "hidden",
-    borderRadius: 0,
-    backgroundColor: colors.card,
-    borderWidth: 0,
-  },
-  showcaseCardPressed: {
-    transform: [{ scale: 0.99 }],
-  },
-  showcaseCardDisabled: {
-    opacity: 0.58,
-  },
-  showcaseImageFrame: {
-    height: 184,
-    position: "relative",
-    backgroundColor: colors.cardSoft,
-  },
-  showcaseImage: {
-    width: "100%",
-    height: "100%",
-  },
-  showcaseImageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.16)",
-  },
-  showcaseContent: {
-    padding: 14,
-    gap: 13,
-  },
-  showcaseName: {
-    color: colors.white,
-    fontFamily: "Georgia",
-    fontSize: 16,
-    lineHeight: 20,
-    fontStyle: "italic",
-    fontWeight: "400",
-    textAlign: "center",
-  },
-  showcaseNameBadge: {
-    minHeight: 36,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.red,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 10,
-  },
-  showcaseDescription: {
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "500",
-  },
-  showcasePriceCta: {
-    minHeight: 28,
-    borderRadius: 6,
-    borderWidth: 0,
-    backgroundColor: colors.cardSoft,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  showcasePriceRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 8,
-  },
-  showcasePrice: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "600",
   },
   searchOverlay: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 10,
-    backgroundColor: "rgba(0,0,0,0.52)",
+    zIndex: 20,
+    backgroundColor: dark.background,
   },
   searchHeader: {
-    backgroundColor: colors.card,
-    paddingTop: 58,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingBottom: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    zIndex: 2,
-  },
-  searchBody: {
-    flex: 1,
-    backgroundColor: "transparent",
+    borderBottomColor: dark.border,
+    backgroundColor: dark.background,
   },
   searchBar: {
     flex: 1,
     height: 44,
-    borderRadius: 14,
-    backgroundColor: colors.card,
+    borderRadius: 12,
+    backgroundColor: dark.cardSoft,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: dark.border,
     paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -634,69 +698,28 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    backgroundColor: colors.card,
-    color: colors.text,
+    color: dark.text,
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   searchCloseButton: {
     width: 42,
     height: 42,
     borderRadius: 999,
-    overflow: "hidden",
-    backgroundColor: colors.card,
+    backgroundColor: dark.cardSoft,
     alignItems: "center",
     justifyContent: "center",
   },
-  searchContent: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-    padding: 16,
-    paddingBottom: 120,
-    gap: 14,
+  searchGridContent: {
+    backgroundColor: dark.background,
   },
-  searchIdleSurface: {
-    flex: 1,
-    backgroundColor: "transparent",
+  searchResultHeader: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  searchCount: {
-    color: colors.muted,
-    fontWeight: "700",
-  },
-  searchResults: {
-    gap: 12,
-  },
-  noResultsWrap: {
-    marginTop: 8,
-    borderRadius: 16,
-    paddingVertical: 28,
-    paddingHorizontal: 18,
-    alignItems: "center",
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  noResultsIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: colors.cardSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  noResultsTitle: {
-    marginTop: 12,
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  noResultsText: {
-    marginTop: 6,
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "500",
-    textAlign: "center",
+  searchResultText: {
+    color: dark.muted,
+    fontSize: 13,
+    fontWeight: "800",
   },
 });

@@ -31,7 +31,7 @@ export function HomeStack() {
       <Stack.Screen
         name="ProductDetails"
         component={ProductDetailsModal}
-        options={{ presentation: "modal", animation: "slide_from_bottom" }}
+        options={{ animation: "slide_from_right" }}
       />
       <Stack.Screen name="CartFlow" component={CartStack} />
     </Stack.Navigator>

@@ -182,6 +182,7 @@ export function CartScreen({ navigation }: Props) {
                         {option.name} +{money(option.extra_price)}
                       </Text>
                     ))}
+                    {item.notes ? <Text style={styles.itemNotes}>{item.notes}</Text> : null}
                     <Text style={styles.itemPrice}>{money(Number(item.product.effective_price ?? item.product.discount_price ?? item.product.price) * item.quantity)}</Text>
                   </View>
                   <View style={styles.itemActions}>
@@ -535,6 +536,12 @@ const styles = StyleSheet.create({
   optionText: {
     color: colors.muted,
     fontSize: 13,
+  },
+  itemNotes: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "600",
   },
   itemPrice: {
     color: colors.text,

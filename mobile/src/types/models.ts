@@ -84,6 +84,8 @@ export type Product = {
   is_popular: boolean;
   preparation_time: number;
   allergens?: string;
+  ingredients?: string;
+  calories?: number;
   option_groups?: ProductOptionGroup[];
 };
 

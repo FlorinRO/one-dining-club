@@ -25,6 +25,8 @@ class Product(models.Model):
     is_popular = models.BooleanField(default=False)
     preparation_time = models.PositiveIntegerField(default=15)
     allergens = models.TextField(blank=True)
+    ingredients = models.TextField(blank=True)
+    calories = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -72,4 +74,3 @@ class ProductOption(models.Model):
 
     def __str__(self):
         return f"{self.option_group.name} - {self.name}"
-

@@ -13,8 +13,8 @@ export type HomeStackParamList = {
   DeliveryAddressMap: undefined;
   Favorites: undefined;
   SectionRestaurants: { mode: "nearby" | "recommended"; title: string };
-  RestaurantDetails: { restaurant: Restaurant };
-  ProductDetails: { restaurant: Restaurant; product: Product };
+  RestaurantDetails: { restaurant: Restaurant; products?: Product[] };
+  ProductDetails: { restaurant: Restaurant; product: Product; mediaFallbackIndex?: number };
   CartFlow: NavigatorScreenParams<CartStackParamList>;
 };
 

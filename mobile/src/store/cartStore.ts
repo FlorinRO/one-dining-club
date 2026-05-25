@@ -35,8 +35,14 @@ type CartState = {
 
 const price = (value: string | number | null | undefined) => Number(value ?? 0);
 
-const itemKey = (product: Product, selectedOptions: ProductOption[]) =>
-  [product.id, ...selectedOptions.map((option) => option.id).sort((a, b) => a - b)].join(":");
+const itemKey = (product: Product, selectedOptions: ProductOption[], notes?: string) =>
+  [
+    product.id,
+    ...selectedOptions.map((option) => option.id).sort((a, b) => a - b),
+    notes?.trim() ? `notes=${notes.trim()}` : "",
+  ]
+    .filter(Boolean)
+    .join(":");
 
 const lineTotal = (item: CartItem) => {
   const unit = price(item.product.effective_price ?? item.product.discount_price ?? item.product.price);
@@ -50,7 +56,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   promoCode: "",
   setPromoCode: (promoCode) => set({ promoCode }),
   addItem: ({ product, restaurant, quantity = 1, selectedOptions = [], notes }) => {
-    const id = itemKey(product, selectedOptions);
+    const id = itemKey(product, selectedOptions, notes);
     const currentRestaurant = get().restaurant;
     const currentItems = currentRestaurant?.id === restaurant.id ? get().items : [];
     const existing = currentItems.find((item) => item.id === id);
@@ -95,4 +101,3 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
   calculateTotal: () => get().calculateSubtotal() + get().calculateDeliveryFee() - get().calculateDiscount(),
 }));
-

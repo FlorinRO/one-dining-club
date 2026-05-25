@@ -764,6 +764,8 @@ const baseMockProducts: Product[] = [
     is_popular: true,
     preparation_time: 18,
     allergens: "Gluten, lactoza",
+    ingredients: "Sos San Marzano, mozzarella, salam picant, ardei iute, busuioc",
+    calories: 920,
     option_groups: [
       {
         id: 1001,
@@ -793,6 +795,8 @@ const baseMockProducts: Product[] = [
     is_popular: true,
     preparation_time: 16,
     allergens: "Gluten, ou, lactoza",
+    ingredients: "Tagliatelle, parmezan, ciuperci, unt, ulei de trufe",
+    calories: 780,
   },
   {
     id: 201,
@@ -808,6 +812,8 @@ const baseMockProducts: Product[] = [
     is_available: true,
     is_popular: true,
     preparation_time: 12,
+    ingredients: "Pui grill, orez jasmine, avocado, porumb, salsa verde",
+    calories: 640,
   },
   {
     id: 202,
@@ -824,6 +830,8 @@ const baseMockProducts: Product[] = [
     is_popular: false,
     preparation_time: 10,
     allergens: "Lactoza",
+    ingredients: "Halloumi, mix salata, rosii cherry, castravete, quinoa",
+    calories: 520,
   },
   {
     id: 301,
@@ -839,6 +847,8 @@ const baseMockProducts: Product[] = [
     is_available: true,
     is_popular: true,
     preparation_time: 14,
+    ingredients: "Bao buns, pork belly, castraveti murati, sos hoisin, coriandru",
+    calories: 590,
   },
   {
     id: 302,
@@ -855,6 +865,8 @@ const baseMockProducts: Product[] = [
     is_popular: true,
     preparation_time: 20,
     allergens: "Gluten, ou, soia",
+    ingredients: "Supa miso, noodles, ou marinat, porumb, ceapa verde, chili oil",
+    calories: 710,
   },
 ];
 
@@ -890,6 +902,18 @@ const generatedProductImagePool = [
   "https://images.unsplash.com/photo-1526318896980-cf78c088247c?q=80&w=1000&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?q=80&w=1000&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?q=80&w=1000&auto=format&fit=crop",
+];
+const generatedIngredientPool = [
+  "pui, salata, rosii, ceapa rosie, sos house",
+  "vita, cheddar, castraveti murati, mustar, ketchup",
+  "somon, avocado, orez, susan, sos ponzu",
+  "tofu, ardei, morcov, noodles, sos de soia",
+  "halloumi, quinoa, castravete, masline, dressing lamaie",
+  "pork belly, varza, ceapa verde, maioneza picanta",
+  "creveti, usturoi, unt, patrunjel, chili flakes",
+  "ciuperci, parmezan, usturoi, ulei de masline, busuioc",
+  "falafel, hummus, rosii, tahini, patrunjel",
+  "curcan, orez brun, broccoli, porumb, lime",
 ];
 const expandedDemoRestaurantIds = new Set(expandedDemoRestaurants.map((restaurant) => restaurant.id));
 
@@ -936,6 +960,8 @@ const generatedProducts: Product[] = mockRestaurants.flatMap((restaurant, restau
       is_popular: sequence % 2 === 0,
       preparation_time: 10 + ((restaurantIndex + productIndex) % 16),
       allergens: sequence % 4 === 0 ? "Gluten, lactoza" : "Fără alergeni majori",
+      ingredients: generatedIngredientPool[(restaurantIndex + productIndex + restaurant.id) % generatedIngredientPool.length],
+      calories: 380 + ((restaurantIndex * 37 + sequence * 53) % 620),
     };
   });
 });
