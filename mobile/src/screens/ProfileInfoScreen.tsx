@@ -1,6 +1,8 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { LinearGradient } from "expo-linear-gradient";
 import { ArrowLeft } from "lucide-react-native";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Screen } from "../components/Screen";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
@@ -9,6 +11,7 @@ import { ProfileStackParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileInfo">;
+const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
 
 type InfoContent = {
   title: string;
@@ -87,39 +90,57 @@ const CONTENT_EN: Record<"privacy" | "about" | "support", InfoContent> = {
 
 export function ProfileInfoScreen({ navigation, route }: Props) {
   const { language } = useI18n();
+  const insets = useSafeAreaInsets();
   const content = (language === "en" ? CONTENT_EN : CONTENT_RO)[route.params.topic];
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   return (
-    <Screen>
-      <View style={styles.container}>
-        <View style={styles.headerRow}>
-          <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-            <ArrowLeft size={30} color={colors.text} strokeWidth={2.2} />
-          </Pressable>
+    <Screen padded={false}>
+      <View style={styles.screen}>
+        <Image source={SEARCH_BACKGROUND_IMAGE} style={[styles.backgroundImage, { top: -insets.top }]} resizeMode="cover" blurRadius={24} />
+        <LinearGradient
+          pointerEvents="none"
+          colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
+          locations={[0, 0.48, 1]}
+          style={[StyleSheet.absoluteFillObject, { top: -insets.top }]}
+        />
+        <View style={styles.container}>
+          <View style={styles.headerRow}>
+            <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+              <ArrowLeft size={30} color={colors.text} strokeWidth={2.2} />
+            </Pressable>
+          </View>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.content}
+            onScroll={trackFloatingCartScrollDirection}
+            scrollEventThrottle={16}
+          >
+            <Text style={styles.title}>{content.title}</Text>
+            <Text style={styles.subtitle}>{content.subtitle}</Text>
+            {content.body.map((paragraph) => (
+              <Text key={paragraph} style={styles.paragraph}>
+                {paragraph}
+              </Text>
+            ))}
+          </ScrollView>
         </View>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.content}
-          onScroll={trackFloatingCartScrollDirection}
-          scrollEventThrottle={16}
-        >
-          <Text style={styles.title}>{content.title}</Text>
-          <Text style={styles.subtitle}>{content.subtitle}</Text>
-          {content.body.map((paragraph) => (
-            <Text key={paragraph} style={styles.paragraph}>
-              {paragraph}
-            </Text>
-          ))}
-        </ScrollView>
       </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.9,
+  },
   container: {
     flex: 1,
+    paddingHorizontal: 22,
   },
   headerRow: {
     minHeight: 40,

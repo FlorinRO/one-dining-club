@@ -1,17 +1,18 @@
 import { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Edge, SafeAreaView } from "react-native-safe-area-context";
 
 import { colors } from "../theme/colors";
 
 type Props = {
   children: ReactNode;
   padded?: boolean;
+  edges?: Edge[];
 };
 
-export function Screen({ children, padded = true }: Props) {
+export function Screen({ children, padded = true, edges = ["top", "left", "right"] }: Props) {
   return (
-    <SafeAreaView edges={["top", "left", "right"]} style={styles.safe}>
+    <SafeAreaView edges={edges} style={styles.safe}>
       <View style={[styles.container, padded && styles.padded]}>{children}</View>
     </SafeAreaView>
   );

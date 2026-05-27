@@ -115,7 +115,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   const optionGroups = product.option_groups ?? [];
   const basePrice = product.effective_price ?? product.discount_price ?? product.price;
   const heroHeight = Math.max(470, Math.round(height * 0.67));
-  const restaurantLogoUri = resolveRestaurantImageUri(restaurant.logo || restaurant.cover_image, restaurant.id);
+  const restaurantLogoUri = resolveRestaurantImageUri(restaurant.logo || restaurant.cover_image, restaurant.id, restaurant);
   const videoSource = useMemo(
     () => videoSourceForProduct(restaurant, product, mediaFallbackIndex),
     [mediaFallbackIndex, product, restaurant],
@@ -414,8 +414,8 @@ export function ProductDetailsModal({ navigation, route }: Props) {
                       <Text numberOfLines={1} style={[styles.ingredientName, ingredient.grams === 0 && styles.ingredientNameMuted]}>
                         {ingredient.name}
                       </Text>
-                      <Text style={styles.ingredientGrams}>{ingredient.grams}g</Text>
                     </View>
+                    <Text style={styles.ingredientGrams}>{ingredient.grams}g</Text>
                     <Text style={styles.ingredientCalories}>
                       {ingredient.calories != null ? `~${ingredient.calories} kcal` : tr("kcal n/a", "kcal n/a")}
                     </Text>
@@ -452,8 +452,8 @@ export function ProductDetailsModal({ navigation, route }: Props) {
                 {parseCaloriesValue(productNutrition.calories) != null ? (
                   <Text style={styles.ingredientEstimateNote}>
                     {tr(
-                      "Estimare împărțită după ordinea ingredientelor.",
-                      "Estimate split by ingredient order.",
+                      "* Unele ingrediente nu pot fi eliminate complet, iar ingredientele extra pot crește prețul final.",
+                      "* Some ingredients cannot be fully removed, and extra ingredients may increase the final price.",
                     )}
                   </Text>
                 ) : null}
@@ -774,8 +774,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
+    gap: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "rgba(17,17,17,0.22)",
     paddingVertical: 7,
@@ -806,13 +805,15 @@ const styles = StyleSheet.create({
     textDecorationLine: "line-through",
   },
   ingredientGrams: {
+    width: 44,
     color: "rgba(17,17,17,0.58)",
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "800",
+    textAlign: "right",
   },
   ingredientCalories: {
-    width: 70,
+    width: 76,
     color: "#111111",
     fontSize: 12,
     lineHeight: 16,
@@ -820,49 +821,54 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   ingredientAdjustControls: {
+    width: 57,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.18)",
+    borderRadius: 16,
+    backgroundColor: "rgba(17,17,17,0.055)",
+    overflow: "hidden",
   },
   ingredientAdjustButton: {
-    width: 30,
+    width: 28,
     height: 30,
-    borderRadius: 15,
-    borderWidth: 1,
+    borderRadius: 0,
+    borderWidth: 0,
     alignItems: "center",
     justifyContent: "center",
   },
   ingredientMinusButton: {
-    borderColor: "rgba(255,77,69,0.44)",
-    backgroundColor: "rgba(255,77,69,0.1)",
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: "rgba(17,17,17,0.18)",
   },
   ingredientPlusButton: {
-    borderColor: "rgba(22,122,58,0.42)",
-    backgroundColor: "rgba(22,122,58,0.1)",
+    backgroundColor: "transparent",
   },
   ingredientAdjustButtonPressed: {
-    opacity: 0.7,
+    backgroundColor: "rgba(17,17,17,0.1)",
   },
   ingredientAdjustButtonDisabled: {
     opacity: 0.32,
   },
   ingredientAdjustText: {
-    fontSize: 17,
-    lineHeight: 19,
-    fontWeight: "600",
+    color: "#111111",
+    fontSize: 16,
+    lineHeight: 18,
+    fontWeight: "700",
   },
   ingredientMinusText: {
-    color: dark.accent,
+    color: "#111111",
   },
   ingredientPlusText: {
-    color: "#167A3A",
+    color: "#111111",
   },
   ingredientEstimateNote: {
     marginTop: 10,
     color: "rgba(17,17,17,0.52)",
     fontSize: 10,
-    lineHeight: 13,
-    fontWeight: "800",
+    lineHeight: 14,
+    fontWeight: "500",
   },
   ingredientMuted: {
     color: "rgba(17,17,17,0.58)",

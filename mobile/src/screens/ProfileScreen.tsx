@@ -1,5 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   Check,
   ChevronRight,
@@ -7,7 +8,6 @@ import {
   Hand,
   Info,
   Mail,
-  MapPin,
   Phone,
   Plus,
   RefreshCw,
@@ -16,20 +16,19 @@ import {
   UserRound,
   Wallet,
 } from "lucide-react-native";
-import LottieView from "lottie-react-native";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Appearance,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  useColorScheme,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { addressesApi } from "../api/addressesApi";
 import { authApi } from "../api/authApi";
@@ -39,11 +38,13 @@ import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDi
 import { useI18n } from "../i18n/useI18n";
 import { ProfileStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
-import { ThemePreference, usePreferencesStore } from "../store/preferencesStore";
 import { colors } from "../theme/colors";
 import { Address, Order, PaymentMethod } from "../types/models";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileHome">;
+const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
+const PROFILE_GREEN = "#22C55E";
+const PROFILE_GREEN_DARK = "#16A34A";
 
 type AccountRowProps = {
   icon: ReactElement;
@@ -62,14 +63,12 @@ type OtherRowProps = {
 
 export function ProfileScreen({ navigation }: Props) {
   const { t, tr } = useI18n();
-  const systemScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
   const isGuest = useAuthStore((state) => state.isGuest);
   const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
-  const themePreference = usePreferencesStore((state) => state.themePreference);
-  const setThemePreference = usePreferencesStore((state) => state.setThemePreference);
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -83,7 +82,6 @@ export function ProfileScreen({ navigation }: Props) {
     [isGuest, user?.first_name, user?.full_name, user?.last_name],
   );
   const greetingName = useMemo(() => firstWord(displayName) || firstWord(user?.email?.split("@")[0]) || tr("Client", "Customer"), [displayName, tr, user?.email]);
-  const defaultAddress = addresses.find((address) => address.is_default) ?? addresses[0];
   const lastPaymentOrder = orders.find((order) => order.payment_method !== "cash") ?? orders[0];
   const paymentMethod = lastPaymentOrder?.payment_method;
   const paymentTitle = paymentMethod ? paymentMethodLabel(paymentMethod, tr) : tr("Adaugă metodă de plată", "Add payment method");
@@ -134,11 +132,6 @@ export function ProfileScreen({ navigation }: Props) {
     }, [loadAccount]),
   );
 
-  const setTheme = (preference: ThemePreference) => {
-    setThemePreference(preference);
-    Appearance.setColorScheme(preference === "system" ? null : preference);
-  };
-
   const openCart = () => navigation.getParent()?.navigate("CartTab", { screen: "CartHome" });
   const openOrders = () => navigation.getParent()?.navigate("OrdersTab", { screen: "OrdersHome" });
 
@@ -153,40 +146,67 @@ export function ProfileScreen({ navigation }: Props) {
   if (isGuest) {
     return (
       <Screen padded={false}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.content}
-          onScroll={trackFloatingCartScrollDirection}
-          scrollEventThrottle={16}
-        >
-          <Text style={[styles.heroTitle, styles.guestHeroTitle]}>{tr("Bună, Oaspete", "Hi, Guest")}</Text>
-          <View style={styles.guestPanel}>
-            <Text style={styles.guestTitle}>{tr("Intră în cont pentru sincronizare", "Sign in to sync")}</Text>
-            <Text style={styles.guestText}>{tr("Profilul, adresele și istoricul comenzilor sunt salvate în backend după autentificare.", "Profile, addresses, and order history are saved in backend after authentication.")}</Text>
-            <Pressable style={({ pressed }) => [styles.guestCta, pressed && styles.guestCtaPressed]} onPress={logout}>
-              <Text style={styles.guestCtaLabel}>{tr("Intră sau creează cont", "Sign in or create account")}</Text>
-              <ChevronRight size={18} color={colors.white} strokeWidth={2.8} />
-            </Pressable>
-          </View>
-        </ScrollView>
+        <View style={styles.screen}>
+          <Image
+            source={SEARCH_BACKGROUND_IMAGE}
+            style={[styles.backgroundImage, { top: -insets.top }]}
+            resizeMode="cover"
+            blurRadius={24}
+          />
+          <LinearGradient
+            pointerEvents="none"
+            colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
+            locations={[0, 0.48, 1]}
+            style={[StyleSheet.absoluteFillObject, { top: -insets.top }]}
+          />
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.content}
+            onScroll={trackFloatingCartScrollDirection}
+            scrollEventThrottle={16}
+          >
+            <Text style={[styles.heroTitle, styles.guestHeroTitle]}>{tr("Bună, Oaspete", "Hi, Guest")}</Text>
+            <View style={styles.guestPanel}>
+              <Text style={styles.guestTitle}>{tr("Intră în cont pentru sincronizare", "Sign in to sync")}</Text>
+              <Text style={styles.guestText}>{tr("Profilul, adresele și istoricul comenzilor sunt salvate în backend după autentificare.", "Profile, addresses, and order history are saved in backend after authentication.")}</Text>
+              <Pressable style={({ pressed }) => [styles.guestCta, pressed && styles.guestCtaPressed]} onPress={logout}>
+                <Text style={styles.guestCtaLabel}>{tr("Intră sau creează cont", "Sign in or create account")}</Text>
+                <ChevronRight size={18} color={colors.white} strokeWidth={2.8} />
+              </Pressable>
+            </View>
+          </ScrollView>
+        </View>
       </Screen>
     );
   }
 
   return (
     <Screen padded={false}>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        onScroll={trackFloatingCartScrollDirection}
-        scrollEventThrottle={16}
-        refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.red} onRefresh={() => loadAccount("refresh")} />}
-        contentContainerStyle={styles.content}
-      >
+      <View style={styles.screen}>
+        <Image
+          source={SEARCH_BACKGROUND_IMAGE}
+          style={[styles.backgroundImage, { top: -insets.top }]}
+          resizeMode="cover"
+          blurRadius={24}
+        />
+        <LinearGradient
+          pointerEvents="none"
+          colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
+          locations={[0, 0.48, 1]}
+          style={[StyleSheet.absoluteFillObject, { top: -insets.top }]}
+        />
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          onScroll={trackFloatingCartScrollDirection}
+          scrollEventThrottle={16}
+          refreshControl={<RefreshControl refreshing={refreshing} tintColor={PROFILE_GREEN} onRefresh={() => loadAccount("refresh")} />}
+          contentContainerStyle={styles.content}
+        >
         <View style={styles.heroRow}>
           <Text style={styles.heroTitle}>{tr("Bună", "Hi")}, {greetingName}</Text>
           <Pressable style={styles.refreshButton} onPress={() => loadAccount("refresh")} disabled={refreshing || loading}>
-            {refreshing || loading ? <ActivityIndicator color={colors.red} /> : <RefreshCw size={18} color={colors.text} strokeWidth={2.6} />}
+            {refreshing || loading ? <ActivityIndicator color={PROFILE_GREEN} /> : <RefreshCw size={18} color={colors.text} strokeWidth={2.6} />}
           </Pressable>
         </View>
 
@@ -245,16 +265,6 @@ export function ProfileScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.sectionBlock}>
-          <SectionTitle title={tr("Temă", "Theme")} />
-          <View style={styles.themeGrid}>
-            <ThemeOption label={tr("Sistem", "System")} value="system" selected={themePreference === "system"} onPress={setTheme} />
-            <ThemeOption label={tr("Luminos", "Light")} value="light" selected={themePreference === "light"} onPress={setTheme} />
-            <ThemeOption label={tr("Întunecat", "Dark")} value="dark" selected={themePreference === "dark"} onPress={setTheme} />
-          </View>
-          <Text style={styles.themeFootnote}>{tr("Tema dispozitivului", "Device theme")}: {systemScheme === "dark" ? tr("întunecată", "dark") : tr("luminoasă", "light")}</Text>
-        </View>
-
-        <View style={styles.sectionBlock}>
           <SectionTitle title={tr("Altele", "Other")} />
           <View style={styles.otherList}>
             <OtherRow
@@ -279,8 +289,8 @@ export function ProfileScreen({ navigation }: Props) {
           </View>
         </View>
 
-        <CourierCard defaultAddress={defaultAddress} tr={tr} />
-      </ScrollView>
+        </ScrollView>
+      </View>
     </Screen>
   );
 }
@@ -309,7 +319,7 @@ function AccountRow({ icon, children, action, showCheck, onPress }: AccountRowPr
         <Text style={styles.accountValue} numberOfLines={1}>
           {children}
         </Text>
-        {showCheck && <Check size={18} color={colors.redDark} strokeWidth={3} />}
+        {showCheck && <Check size={18} color={PROFILE_GREEN_DARK} strokeWidth={3} />}
       </View>
       {action && <Text style={styles.rowAction}>{action}</Text>}
     </>
@@ -324,43 +334,6 @@ function AccountRow({ icon, children, action, showCheck, onPress }: AccountRowPr
       {content}
     </Pressable>
   );
-}
-
-function ThemeOption({
-  label,
-  value,
-  selected,
-  onPress,
-}: {
-  label: string;
-  value: ThemePreference;
-  selected: boolean;
-  onPress: (value: ThemePreference) => void;
-}) {
-  return (
-    <Pressable style={({ pressed }) => [styles.themeOption, pressed && styles.pressed]} onPress={() => onPress(value)}>
-      <View style={[styles.themeOuter, selected && styles.themeOuterSelected]}>
-        <ThemeSymbol value={value} />
-      </View>
-      <Text style={styles.themeLabel}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function ThemeSymbol({ value }: { value: ThemePreference }) {
-  if (value === "system") {
-    return (
-      <View style={styles.systemSymbol}>
-        <View style={styles.systemDarkHalf} />
-      </View>
-    );
-  }
-
-  if (value === "dark") {
-    return <View style={styles.darkSymbol} />;
-  }
-
-  return <View style={styles.lightSymbol} />;
 }
 
 function OtherRow({ title, icon, onPress, accent }: OtherRowProps) {
@@ -379,31 +352,6 @@ function OtherRow({ title, icon, onPress, accent }: OtherRowProps) {
     <Pressable style={({ pressed }) => [styles.otherRow, pressed && styles.pressed]} onPress={onPress}>
       {content}
     </Pressable>
-  );
-}
-
-function CourierCard({ defaultAddress, tr }: { defaultAddress?: Address; tr: (ro: string, en: string) => string }) {
-  const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === "dark";
-
-  return (
-    <View style={styles.courierCard}>
-      <View style={styles.courierCopy}>
-        <Text style={[styles.courierTitle, isDarkMode && styles.courierTextDark]}>{tr("Devino curier", "Become a courier")}</Text>
-        <Text style={[styles.courierText, isDarkMode && styles.courierTextDark]}>{tr("Câștigă în ritmul tău", "Earn at your own pace")}</Text>
-        {defaultAddress && (
-          <View style={styles.addressPill}>
-            <MapPin size={14} color={colors.redDark} strokeWidth={2.4} />
-            <Text style={styles.addressPillText} numberOfLines={1}>
-              {defaultAddress.city}
-            </Text>
-          </View>
-        )}
-      </View>
-      <View style={styles.deliveryVisual}>
-        <LottieView source={require("../../assets/man-delivery.lottie")} autoPlay loop style={styles.deliveryLottie} />
-      </View>
-    </View>
   );
 }
 
@@ -433,6 +381,13 @@ function formatLei(value: number) {
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.9,
+  },
   content: {
     paddingHorizontal: 20,
     paddingTop: 24,
@@ -469,8 +424,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: 14,
     overflow: "hidden",
-    backgroundColor: "#FDE8E8",
-    color: colors.redDark,
+    backgroundColor: "rgba(34,197,94,0.14)",
+    color: PROFILE_GREEN_DARK,
     padding: 13,
     fontSize: 14,
     lineHeight: 19,
@@ -518,7 +473,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 26,
     borderRadius: 6,
-    backgroundColor: colors.redDark,
+    backgroundColor: PROFILE_GREEN_DARK,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -532,7 +487,7 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
   inlineAction: {
-    color: colors.redDark,
+    color: PROFILE_GREEN_DARK,
     fontSize: 13,
     fontWeight: "500",
   },
@@ -593,71 +548,9 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
   rowAction: {
-    color: colors.redDark,
+    color: PROFILE_GREEN_DARK,
     fontSize: 15,
     fontWeight: "400",
-  },
-  themeGrid: {
-    marginTop: 2,
-    marginBottom: 8,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-  },
-  themeOption: {
-    alignItems: "center",
-    gap: 8,
-  },
-  themeOuter: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    borderWidth: 8,
-    borderColor: "#EEF1F1",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  themeOuterSelected: {
-    borderColor: colors.redDark,
-  },
-  systemSymbol: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.white,
-    overflow: "hidden",
-  },
-  systemDarkHalf: {
-    position: "absolute",
-    right: -12,
-    bottom: -12,
-    width: 50,
-    height: 50,
-    backgroundColor: "#000000",
-    transform: [{ rotate: "45deg" }],
-  },
-  lightSymbol: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.white,
-  },
-  darkSymbol: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#000000",
-  },
-  themeLabel: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "400",
-  },
-  themeFootnote: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "400",
-    textAlign: "center",
   },
   otherList: {
     gap: 16,
@@ -681,77 +574,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.redDark,
+    backgroundColor: PROFILE_GREEN_DARK,
   },
   otherTitle: {
     color: colors.text,
     fontSize: 17,
     lineHeight: 22,
     fontWeight: "400",
-  },
-  courierCard: {
-    height: 116,
-    marginTop: 44,
-    borderRadius: 12,
-    backgroundColor: "#FDE8E8",
-    overflow: "hidden",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingLeft: 20,
-  },
-  courierCopy: {
-    flex: 1,
-    gap: 7,
-    zIndex: 2,
-  },
-  courierTitle: {
-    color: colors.text,
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: "700",
-  },
-  courierText: {
-    maxWidth: 210,
-    color: colors.text,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "400",
-  },
-  courierTextDark: {
-    color: "#000000",
-  },
-  addressPill: {
-    marginTop: 4,
-    alignSelf: "flex-start",
-    maxWidth: 170,
-    minHeight: 28,
-    paddingHorizontal: 9,
-    borderRadius: 14,
-    backgroundColor: colors.white,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  addressPillText: {
-    color: colors.redDark,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  deliveryVisual: {
-    width: 124,
-    height: "100%",
-    borderTopLeftRadius: 26,
-    borderBottomLeftRadius: 26,
-    borderBottomRightRadius: 22,
-    overflow: "hidden",
-  },
-  deliveryLottie: {
-    position: "absolute",
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 144,
-    height: "100%",
   },
   guestPanel: {
     marginTop: 4,
@@ -775,14 +604,14 @@ const styles = StyleSheet.create({
     marginTop: 12,
     minHeight: 52,
     borderRadius: 14,
-    backgroundColor: colors.redDark,
+    backgroundColor: PROFILE_GREEN_DARK,
     paddingHorizontal: 16,
     alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    shadowColor: "#7A0A0A",
+    shadowColor: "#166534",
     shadowOpacity: 0.24,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },

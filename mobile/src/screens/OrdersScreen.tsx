@@ -1,11 +1,12 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { LinearGradient } from "expo-linear-gradient";
 import { ListOrdered, RotateCcw } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ordersApi } from "../api/ordersApi";
-import { Screen } from "../components/Screen";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
@@ -16,9 +17,11 @@ import { Order } from "../types/models";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrdersHome">;
 type OrderWithImage = Order & { mockImage?: string };
+const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
 
 export function OrdersScreen({ navigation }: Props) {
   const { tr, language } = useI18n();
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const separatorColor = colorScheme === "dark" ? "#1A1A1A" : colors.border;
   const orders = useOrdersStore((state) => state.orders);
@@ -58,60 +61,67 @@ export function OrdersScreen({ navigation }: Props) {
   );
 
   return (
-    <Screen>
+    <View style={styles.root}>
+      <Image source={SEARCH_BACKGROUND_IMAGE} style={styles.backgroundImage} resizeMode="cover" blurRadius={24} />
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
+        locations={[0, 0.48, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
       <ScrollView
         showsVerticalScrollIndicator={false}
         onScroll={trackFloatingCartScrollDirection}
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.red} onRefresh={() => loadOrders("refresh")} />}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 22, paddingBottom: Math.max(insets.bottom, 18) + 86 }]}
       >
         <Text style={styles.title}>{tr("Comenzile mele", "My orders")}</Text>
 
-        {error && <Text style={styles.errorBanner}>{error}</Text>}
+          {error && <Text style={styles.errorBanner}>{error}</Text>}
 
-        {loading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator color={colors.red} />
-            <Text style={styles.mutedText}>{tr("Se încarcă comenzile...", "Loading orders...")}</Text>
-          </View>
-        ) : orders.length ? (
-          <View style={[styles.list, { borderTopColor: separatorColor }]} pointerEvents="box-none">
-            {(orders as OrderWithImage[]).map((order) => (
-              <Pressable
-                key={order.id}
-                style={({ pressed }) => [styles.order, { borderBottomColor: separatorColor }, pressed && styles.pressed]}
-                onPress={() => navigation.navigate("OrderDetails", { order })}
-              >
-                {order.mockImage ? (
-                  <Image source={{ uri: order.mockImage }} style={styles.orderThumbImage} />
-                ) : (
-                  <View style={styles.orderThumb}>
-                    <Text style={styles.orderThumbText}>{restaurantInitials(order.restaurant_name)}</Text>
+          {loading ? (
+            <View style={styles.loadingBox}>
+              <ActivityIndicator color={colors.red} />
+              <Text style={styles.mutedText}>{tr("Se încarcă comenzile...", "Loading orders...")}</Text>
+            </View>
+          ) : orders.length ? (
+            <View style={[styles.list, { borderTopColor: separatorColor }]} pointerEvents="box-none">
+              {(orders as OrderWithImage[]).map((order) => (
+                <Pressable
+                  key={order.id}
+                  style={({ pressed }) => [styles.order, { borderBottomColor: separatorColor }, pressed && styles.pressed]}
+                  onPress={() => navigation.navigate("OrderDetails", { order })}
+                >
+                  {order.mockImage ? (
+                    <Image source={{ uri: order.mockImage }} style={styles.orderThumbImage} />
+                  ) : (
+                    <View style={styles.orderThumb}>
+                      <Text style={styles.orderThumbText}>{restaurantInitials(order.restaurant_name)}</Text>
+                    </View>
+                  )}
+                  <View style={styles.main}>
+                    <Text style={styles.restaurant} numberOfLines={1}>
+                      {order.restaurant_name}
+                    </Text>
+                    <Text style={styles.total}>{money(order.total)}</Text>
+                    <Text style={styles.meta}>{formatOrderMeta(order.created_at, order.order_status, language === "en" ? "en-US" : "ro-RO", tr)}</Text>
                   </View>
-                )}
-                <View style={styles.main}>
-                  <Text style={styles.restaurant} numberOfLines={1}>
-                    {order.restaurant_name}
-                  </Text>
-                  <Text style={styles.total}>{money(order.total)}</Text>
-                  <Text style={styles.meta}>{formatOrderMeta(order.created_at, order.order_status, language === "en" ? "en-US" : "ro-RO", tr)}</Text>
-                </View>
-                <View style={styles.trailingButton}>
-                  <RotateCcw size={20} color={colors.text} strokeWidth={2} />
-                </View>
-              </Pressable>
-            ))}
-          </View>
-        ) : (
-          <View style={styles.emptyBox}>
-            <ListOrdered size={28} color={colors.red} strokeWidth={2.2} />
-            <Text style={styles.emptyTitle}>{tr("Nu ai comenzi încă", "No orders yet")}</Text>
-            <Text style={styles.emptyText}>{tr("După prima comandă plasată cu backend-ul, istoricul apare aici.", "After your first backend order, history will show up here.")}</Text>
-          </View>
-        )}
+                  <View style={styles.trailingButton}>
+                    <RotateCcw size={20} color={colors.text} strokeWidth={2} />
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyBox}>
+              <ListOrdered size={28} color={colors.red} strokeWidth={2.2} />
+              <Text style={styles.emptyTitle}>{tr("Nu ai comenzi încă", "No orders yet")}</Text>
+              <Text style={styles.emptyText}>{tr("După prima comandă plasată cu backend-ul, istoricul apare aici.", "After your first backend order, history will show up here.")}</Text>
+            </View>
+          )}
       </ScrollView>
-    </Screen>
+    </View>
   );
 }
 
@@ -230,9 +240,15 @@ const MOCK_ORDERS: OrderWithImage[] = [
 ];
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.9,
+  },
   content: {
-    paddingTop: 22,
-    paddingBottom: 120,
+    paddingHorizontal: 22,
   },
   title: {
     color: colors.text,

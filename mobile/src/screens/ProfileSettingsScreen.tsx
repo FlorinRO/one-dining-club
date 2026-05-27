@@ -1,8 +1,9 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { LinearGradient } from "expo-linear-gradient";
 import { Globe, LogOut, Trash2, X } from "lucide-react-native";
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { authApi } from "../api/authApi";
 import { useI18n } from "../i18n/useI18n";
@@ -12,8 +13,11 @@ import { AppLanguage, usePreferencesStore } from "../store/preferencesStore";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileSettings">;
+const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
+const PROFILE_GREEN_DARK = "#16A34A";
 export function ProfileSettingsScreen({ navigation }: Props) {
   const { language, t } = useI18n();
+  const insets = useSafeAreaInsets();
   const refreshToken = useAuthStore((state) => state.refreshToken);
   const isGuest = useAuthStore((state) => state.isGuest);
   const logout = useAuthStore((state) => state.logout);
@@ -66,32 +70,41 @@ export function ProfileSettingsScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Pressable style={styles.closeButton} onPress={() => navigation.goBack()}>
-            <X size={24} stroke={colors.text} />
-          </Pressable>
-          <Text style={styles.title}>{t("settings.title")}</Text>
-        </View>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <View style={styles.screen}>
+        <Image source={SEARCH_BACKGROUND_IMAGE} style={[styles.backgroundImage, { top: -insets.top }]} resizeMode="cover" blurRadius={24} />
+        <LinearGradient
+          pointerEvents="none"
+          colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
+          locations={[0, 0.48, 1]}
+          style={[StyleSheet.absoluteFillObject, { top: -insets.top }]}
+        />
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Pressable style={styles.closeButton} onPress={() => navigation.goBack()}>
+              <X size={24} stroke={colors.text} />
+            </Pressable>
+            <Text style={styles.title}>{t("settings.title")}</Text>
+          </View>
 
-        <View style={styles.list}>
-          <Pressable style={styles.row} onPress={openLanguagePicker}>
-            <Globe size={22} color={colors.text} strokeWidth={2.4} />
-            <Text style={styles.rowTitle}>
-              {t("settings.language")}: {language === "ro" ? t("settings.language.ro") : t("settings.language.en")}
-            </Text>
-          </Pressable>
+          <View style={styles.list}>
+            <Pressable style={styles.row} onPress={openLanguagePicker}>
+              <Globe size={22} color={colors.text} strokeWidth={2.4} />
+              <Text style={styles.rowTitle}>
+                {t("settings.language")}: {language === "ro" ? t("settings.language.ro") : t("settings.language.en")}
+              </Text>
+            </Pressable>
 
-          <Pressable style={styles.row} onPress={handleLogout} disabled={logoutLoading}>
-            <LogOut size={22} color={colors.text} strokeWidth={2.4} />
-            <Text style={styles.rowTitle}>{logoutLoading ? t("settings.loggingOut") : t("settings.logout")}</Text>
-          </Pressable>
+            <Pressable style={styles.row} onPress={handleLogout} disabled={logoutLoading}>
+              <LogOut size={22} color={colors.text} strokeWidth={2.4} />
+              <Text style={styles.rowTitle}>{logoutLoading ? t("settings.loggingOut") : t("settings.logout")}</Text>
+            </Pressable>
 
-          <Pressable style={styles.row} onPress={requestDeleteAccount}>
-            <Trash2 size={22} color={colors.redDark} strokeWidth={2.4} />
-            <Text style={[styles.rowTitle, styles.destructive]}>{t("settings.delete")}</Text>
-          </Pressable>
+            <Pressable style={styles.row} onPress={requestDeleteAccount}>
+              <Trash2 size={22} color={PROFILE_GREEN_DARK} strokeWidth={2.4} />
+              <Text style={[styles.rowTitle, styles.destructive]}>{t("settings.delete")}</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -102,6 +115,13 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  screen: {
+    flex: 1,
+  },
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.9,
   },
   container: {
     flex: 1,
@@ -142,6 +162,6 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
   destructive: {
-    color: colors.redDark,
+    color: PROFILE_GREEN_DARK,
   },
 });

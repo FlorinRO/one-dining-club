@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { LinearGradient } from "expo-linear-gradient";
 import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
 import { ArrowLeft, Heart, Play, Search, Share2, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -42,6 +43,12 @@ type ProfileProductTileProps = {
 
 const PROFILE_COLUMNS = 3;
 const PROFILE_GAP = 2;
+const PROFILE_PRODUCT_LIMIT = 3;
+
+const getVisibleRestaurantProducts = (products: Product[], restaurantId: number) =>
+  products
+    .filter((product) => Number(product.restaurant) === restaurantId)
+    .slice(0, PROFILE_PRODUCT_LIMIT);
 const dark = {
   background: "#050505",
   card: "#111111",
@@ -50,6 +57,7 @@ const dark = {
   text: "#FFFFFF",
   muted: "rgba(255,255,255,0.68)",
   faint: "rgba(255,255,255,0.45)",
+  success: "#22C55E",
 };
 
 const compactCount = (value: number) => {
@@ -105,7 +113,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
   const isFavorite = useFavoritesStore((state) => state.isRestaurantFavorite(initialRestaurant.id));
 
   const [restaurant, setRestaurant] = useState<Restaurant>(initialRestaurant);
-  const [products, setProducts] = useState<Product[]>(initialProducts ?? []);
+  const [products, setProducts] = useState<Product[]>(() => getVisibleRestaurantProducts(initialProducts ?? [], initialRestaurant.id));
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -119,10 +127,10 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
       if (isMounted) setRestaurant(nextRestaurant);
     });
     if (initialProducts?.length) {
-      setProducts(initialProducts);
+      setProducts(getVisibleRestaurantProducts(initialProducts, initialRestaurant.id));
     } else {
       restaurantsApi.products(initialRestaurant.id).then((nextProducts) => {
-        if (isMounted) setProducts(nextProducts);
+        if (isMounted) setProducts(getVisibleRestaurantProducts(nextProducts, initialRestaurant.id));
       });
     }
 
@@ -132,7 +140,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
   }, [initialProducts, initialRestaurant.id]);
 
   const profileProducts = useMemo(() => {
-    const restaurantProducts = products.filter((product) => Number(product.restaurant) === restaurant.id);
+    const restaurantProducts = getVisibleRestaurantProducts(products, restaurant.id);
     return restaurantProducts.length ? restaurantProducts : [buildFallbackProduct(restaurant)];
   }, [products, restaurant]);
 
@@ -148,6 +156,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
   const tileSize = Math.floor((width - PROFILE_GAP * (PROFILE_COLUMNS - 1)) / PROFILE_COLUMNS);
   const likeCount = profileProducts.reduce((total, product) => total + productViews(restaurant, product), 0);
   const restaurantHandle = `@${restaurant.slug || restaurant.name.toLowerCase().replace(/\s+/g, "")}`;
+  const restaurantBackdropUri = resolveRestaurantImageUri(restaurant.logo || restaurant.cover_image, restaurant.id, restaurant);
 
   const shareRestaurant = useCallback(async () => {
     await Share.share({
@@ -199,7 +208,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
 
       <View style={styles.identityStack}>
         <View style={styles.avatarRing}>
-          <Image source={{ uri: resolveRestaurantImageUri(restaurant.logo || restaurant.cover_image, restaurant.id) }} style={styles.avatar} />
+          <Image source={{ uri: restaurantBackdropUri }} style={styles.avatar} />
         </View>
         <View style={styles.identityCopy}>
           <Text style={styles.restaurantName}>{restaurant.name}</Text>
@@ -222,7 +231,18 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.backdropDim} />
+      <Image
+        source={{ uri: restaurantBackdropUri }}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+        blurRadius={24}
+      />
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
+        locations={[0, 0.48, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
 
       <Animated.FlatList
         data={profileProducts}
@@ -241,6 +261,19 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
       />
 
       <View style={[styles.topControls, { paddingTop: insets.top + 8 }]}>
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.topControlsBackdrop,
+            {
+              opacity: headerTitleProgress.interpolate({
+                inputRange: [12, 56],
+                outputRange: [0, 1],
+                extrapolate: "clamp",
+              }),
+            },
+          ]}
+        />
         <Pressable onPress={() => navigation.goBack()} style={styles.iconButton}>
           <ArrowLeft stroke={dark.text} size={22} />
         </Pressable>
@@ -424,14 +457,20 @@ function ProfileProductTile({ product, restaurant, index, tileSize, onPress }: P
         onFirstFrameRender={() => setHasRenderedFrame(true)}
       />
       {!hasRenderedFrame ? <VideoSkeletonBuffer /> : null}
-      <View style={styles.tileGradient} />
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.24)", "rgba(0,0,0,0.56)"]}
+        locations={[0, 0.45, 1]}
+        style={styles.tileGradient}
+      />
       <View style={styles.tileTopBadge}>
         <Play size={10} stroke={dark.text} fill={dark.text} />
         <Text style={styles.tileViews}>{compactCount(productViews(restaurant, product))}</Text>
       </View>
       <View style={styles.tileCaption}>
-        <Text numberOfLines={1} style={styles.tileName}>{product.name}</Text>
+        <Text numberOfLines={2} style={styles.tileName}>{product.name}</Text>
         <Text numberOfLines={1} style={styles.tilePrice}>{money(price)}</Text>
+        <View style={styles.tilePriceAccent} />
       </View>
     </Pressable>
   );
@@ -442,9 +481,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: dark.background,
   },
-  backdropDim: {
+  backgroundImage: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.72)",
   },
   gridContent: {
     backgroundColor: "transparent",
@@ -558,13 +596,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    backgroundColor: "transparent",
+  },
+  topControlsBackdrop: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(5,5,5,0.94)",
   },
   topTitle: {
     flex: 1,
     color: dark.text,
     fontSize: 16,
-    fontWeight: "900",
+    fontWeight: "600",
     textAlign: "center",
   },
   topRightControls: {
@@ -624,8 +666,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
   },
   tileGradient: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.08)",
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 92,
   },
   tileTopBadge: {
     position: "absolute",
@@ -646,25 +691,28 @@ const styles = StyleSheet.create({
   },
   tileCaption: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 7,
-    paddingTop: 18,
-    paddingBottom: 7,
-    backgroundColor: "rgba(0,0,0,0.32)",
+    left: 8,
+    right: 8,
+    bottom: 8,
+    gap: 2,
   },
   tileName: {
     color: dark.text,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: "900",
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "600",
   },
   tilePrice: {
+    color: dark.text,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  tilePriceAccent: {
+    width: 26,
+    height: 2,
+    borderRadius: 999,
+    backgroundColor: dark.success,
     marginTop: 2,
-    color: dark.muted,
-    fontSize: 11,
-    fontWeight: "800",
   },
   searchOverlay: {
     ...StyleSheet.absoluteFillObject,

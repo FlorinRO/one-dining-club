@@ -7,6 +7,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useVideoPlayer, VideoView } from "expo-video";
 import {
   Heart,
+  MapPin,
   MessageSquare,
   Repeat2,
   ShoppingBag,
@@ -34,6 +35,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { addressesApi } from "../api/addressesApi";
 import { restaurantsApi } from "../api/restaurantsApi";
 import { getDemoProductAudioSource } from "../data/demoAudio";
 import { getDemoProductVideoLabel, getDemoProductVideoSource } from "../data/demoVideos";
@@ -41,10 +43,10 @@ import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
 import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
 import { HomeStackParamList } from "../navigation/types";
-import { useCartStore } from "../store/cartStore";
+import { useAuthStore } from "../store/authStore";
 import { useFavoritesStore } from "../store/favoritesStore";
 import { colors } from "../theme/colors";
-import { Product, Restaurant } from "../types/models";
+import { Address, Product, Restaurant } from "../types/models";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "Home">;
 
@@ -112,8 +114,9 @@ const buildFallbackProduct = (restaurant: Restaurant): Product => ({
 export function HomeScreen({ navigation }: Props) {
   const { tr } = useI18n();
   const isHomeFocused = useIsFocused();
+  const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const addItem = useCartStore((state) => state.addItem);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const favoriteRestaurantIds = useFavoritesStore((state) => state.restaurantIds);
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -124,10 +127,12 @@ export function HomeScreen({ navigation }: Props) {
   const [activeProductByRestaurant, setActiveProductByRestaurant] = useState<Record<number, number>>({});
   const [audiblePostKey, setAudiblePostKey] = useState<string | null>(null);
   const [hasAutoSelectedAudiblePost, setHasAutoSelectedAudiblePost] = useState(false);
+  const [isFeedAudioMutedByUser, setIsFeedAudioMutedByUser] = useState(false);
   const [isRestaurantScrollEnabled, setIsRestaurantScrollEnabled] = useState(true);
   const [feedHeight, setFeedHeight] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [locationLabel, setLocationLabel] = useState<string>("");
 
   const pageHeight = feedHeight || screenHeight;
 
@@ -186,6 +191,40 @@ export function HomeScreen({ navigation }: Props) {
     });
   }, [productsByRestaurant, restaurants]);
 
+  const loadCurrentLocationLabel = useCallback(async () => {
+    if (!accessToken) {
+      setLocationLabel("");
+      return;
+    }
+
+    try {
+      const addresses = await addressesApi.list();
+      const normalize = (value: string) => value.trim().toLowerCase();
+      const isAutoLabel = (label: string) => {
+        const text = normalize(label);
+        return text.includes("loca") || text.includes("automat") || text.includes("auto");
+      };
+      const autoAddress = addresses.find((item) => isAutoLabel(item.label));
+      const defaultAddress = addresses.find((item) => item.is_default);
+      const resolvedAddress: Address | undefined = autoAddress ?? defaultAddress ?? addresses[0];
+
+      if (!resolvedAddress) {
+        setLocationLabel("");
+        return;
+      }
+
+      const nextLabel = [resolvedAddress.address_line_1, resolvedAddress.city].filter(Boolean).join(", ");
+      setLocationLabel(nextLabel);
+    } catch {
+      setLocationLabel("");
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (!isHomeFocused) return;
+    void loadCurrentLocationLabel();
+  }, [isHomeFocused, loadCurrentLocationLabel]);
+
   const activeFeedItem = feedData[activeRestaurantIndex];
   const activeFeedProductIndex = activeFeedItem
     ? activeProductByRestaurant[activeFeedItem.restaurant.id] ?? activeFeedItem.initialProductIndex
@@ -216,16 +255,9 @@ export function HomeScreen({ navigation }: Props) {
 
   const quickAdd = useCallback(
     (restaurant: Restaurant, product: Product, mediaFallbackIndex?: number) => {
-      const hasRequiredOptions = (product.option_groups ?? []).some((group) => group.is_required || group.min_select > 0);
-      if (hasRequiredOptions) {
-        navigation.navigate("ProductDetails", { restaurant, product, mediaFallbackIndex });
-        return;
-      }
-
-      addItem({ restaurant, product, quantity: 1 });
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      navigation.navigate("ProductDetails", { restaurant, product, mediaFallbackIndex });
     },
-    [addItem, navigation],
+    [navigation],
   );
 
   const toggleLike = useCallback((restaurant: Restaurant, product: Product) => {
@@ -246,18 +278,12 @@ export function HomeScreen({ navigation }: Props) {
       return;
     }
 
-    if (isHomeFocused && activePostKey && audiblePostKey === null) {
-      setAudiblePostKey(activePostKey);
-    }
-  }, [activePostKey, audiblePostKey, isHomeFocused]);
-
-  useEffect(() => {
-    if (!isHomeFocused) return;
-
     if (!activePostKey) {
       setAudiblePostKey(null);
       return;
     }
+
+    if (isFeedAudioMutedByUser) return;
 
     if (!hasAutoSelectedAudiblePost) {
       setAudiblePostKey(activePostKey);
@@ -265,10 +291,8 @@ export function HomeScreen({ navigation }: Props) {
       return;
     }
 
-    if (audiblePostKey !== null && audiblePostKey !== activePostKey) {
-      setAudiblePostKey(activePostKey);
-    }
-  }, [activePostKey, audiblePostKey, hasAutoSelectedAudiblePost, isHomeFocused]);
+    setAudiblePostKey((current) => (current === activePostKey ? current : activePostKey));
+  }, [activePostKey, hasAutoSelectedAudiblePost, isFeedAudioMutedByUser, isHomeFocused]);
 
   if (isLoading && !feedData.length) {
     return (
@@ -326,6 +350,7 @@ export function HomeScreen({ navigation }: Props) {
             onComment={(product) => addCommentBump(item.restaurant, product)}
             onShare={(product) => shareProduct(item.restaurant, product)}
             onAudioChange={(key, shouldEnableAudio) => {
+              setIsFeedAudioMutedByUser(!shouldEnableAudio);
               setAudiblePostKey(shouldEnableAudio ? key : null);
             }}
           />
@@ -353,6 +378,26 @@ export function HomeScreen({ navigation }: Props) {
         scrollEventThrottle={16}
         removeClippedSubviews={false}
       />
+      <Pressable
+        style={[styles.locationChip, { top: insets.top + 20 }]}
+        onPress={() => navigation.navigate("DeliveryAddress")}
+      >
+        <MapPin size={15} stroke={colors.white} />
+        <Text numberOfLines={1} style={styles.locationChipText}>
+          {locationLabel || tr("Setează locația", "Set location")}
+        </Text>
+      </Pressable>
+      <View pointerEvents="none" style={styles.feedTopProductPagers}>
+        {Array.from({ length: Math.min(activeFeedItem?.products.length ?? 0, 10) }).map((_, dotIndex) => (
+          <View
+            key={dotIndex}
+            style={[
+              styles.feedTopProductDot,
+              dotIndex === activeFeedProductIndex && styles.feedTopProductDotActive,
+            ]}
+          />
+        ))}
+      </View>
 
     </View>
   );
@@ -541,12 +586,12 @@ function RestaurantFeedPage({
               restaurant={item.restaurant}
               product={product}
               index={index}
-              productCount={item.products.length}
               width={pageWidth}
               height={pageHeight}
               isActive={isSlideActive}
               isAudible={audiblePostKey === key && isSlideActive}
-              hasRestaurantAudio
+              hasRestaurantAudio={hasRestaurantAudio}
+              isRestaurantAudioActive={isRestaurantAudible}
               isLiked={Boolean(likedPosts[key])}
               commentBump={commentBumps[key] ?? 0}
               onOpenRestaurant={onOpenRestaurant}
@@ -591,12 +636,12 @@ type ProductVideoSlideProps = {
   restaurant: Restaurant;
   product: Product;
   index: number;
-  productCount: number;
   width: number;
   height: number;
   isActive: boolean;
   isAudible: boolean;
   hasRestaurantAudio: boolean;
+  isRestaurantAudioActive: boolean;
   isLiked: boolean;
   commentBump: number;
   onOpenRestaurant: () => void;
@@ -636,12 +681,12 @@ function ProductVideoSlide({
   restaurant,
   product,
   index,
-  productCount,
   width,
   height,
   isActive,
   isAudible,
   hasRestaurantAudio,
+  isRestaurantAudioActive,
   isLiked,
   commentBump,
   onOpenRestaurant,
@@ -666,7 +711,7 @@ function ProductVideoSlide({
   const [hasAudioTrack, setHasAudioTrack] = useState(product.has_audio ?? true);
   const canPlayAudio = hasRestaurantAudio || hasAudioTrack || product.has_audio === true;
   const shouldMuteOutput = !isActive || !isAudible || !canPlayAudio;
-  const shouldMuteVideo = shouldMuteOutput || hasRestaurantAudio;
+  const shouldMuteVideo = shouldMuteOutput || isRestaurantAudioActive;
   const videoSource = useMemo(
     () =>
       product.video_url
@@ -678,7 +723,7 @@ function ProductVideoSlide({
         : fallbackVideoSource,
     [fallbackVideoSource, product.video_url],
   );
-  const restaurantPosterUri = resolveRestaurantImageUri(restaurant.cover_image, restaurant.id);
+  const restaurantPosterUri = resolveRestaurantImageUri(restaurant.cover_image, restaurant.id, restaurant);
   const comments = stats.comments + commentBump;
   const [hasRenderedFrame, setHasRenderedFrame] = useState(false);
   const [hasPlaybackError, setHasPlaybackError] = useState(false);
@@ -858,9 +903,9 @@ function ProductVideoSlide({
     applyVideoAudioState(
       shouldMuteVideo,
       shouldMuteVideo ? 0 : 1,
-      shouldMuteOutput ? "inactive-or-muted" : hasRestaurantAudio ? "standalone-audio-active" : "active-user-unmuted",
+      shouldMuteOutput ? "inactive-or-muted" : isRestaurantAudioActive ? "standalone-audio-active" : "active-user-unmuted",
     );
-  }, [applyVideoAudioState, hasRestaurantAudio, shouldMuteOutput, shouldMuteVideo]);
+  }, [applyVideoAudioState, isRestaurantAudioActive, shouldMuteOutput, shouldMuteVideo]);
 
   useEffect(() => {
     if (!isActive) {
@@ -1000,12 +1045,6 @@ function ProductVideoSlide({
         style={styles.fullSlidePressable}
         onPress={(event) => handleVideoPress(event.nativeEvent.locationX)}
       />
-
-      <View style={styles.productPagers} pointerEvents="none">
-        {Array.from({ length: Math.min(productCount, 10) }).map((_, dotIndex) => (
-          <View key={dotIndex} style={[styles.productDot, dotIndex === index && styles.productDotActive]} />
-        ))}
-      </View>
 
       <View style={styles.actionStack}>
         <View style={styles.likeButtonWrap}>
@@ -1266,6 +1305,27 @@ const styles = StyleSheet.create({
   page: {
     backgroundColor: "#050505",
   },
+  locationChip: {
+    position: "absolute",
+    left: 14,
+    maxWidth: "72%",
+    flexDirection: "row",
+    alignItems: "center",
+    columnGap: 8,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "rgba(0,0,0,0.42)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
+    zIndex: 18,
+  },
+  locationChipText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: "700",
+    flexShrink: 1,
+  },
   slide: {
     overflow: "hidden",
     backgroundColor: "#050505",
@@ -1317,7 +1377,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 10,
   },
-  productPagers: {
+  feedTopProductPagers: {
     position: "absolute",
     top: 58,
     left: 12,
@@ -1327,13 +1387,13 @@ const styles = StyleSheet.create({
     gap: 5,
     zIndex: 12,
   },
-  productDot: {
+  feedTopProductDot: {
     flex: 1,
     height: 3,
     borderRadius: 2,
     backgroundColor: "rgba(255,255,255,0.34)",
   },
-  productDotActive: {
+  feedTopProductDotActive: {
     backgroundColor: colors.white,
   },
   actionStack: {

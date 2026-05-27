@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "rea
 import MapView, { Region } from "react-native-maps";
 import * as Location from "expo-location";
 import { AxiosError } from "axios";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { addressesApi } from "../api/addressesApi";
 import { useI18n } from "../i18n/useI18n";
@@ -23,6 +24,7 @@ const fallback: Coordinates = {
   latitude: 44.4268,
   longitude: 26.1025,
 };
+const ACCENT_GREEN = "#22C55E";
 
 const toBackendDecimalString = (value: number) => value.toFixed(6);
 
@@ -35,6 +37,7 @@ function buildLabel(line1: string) {
 
 export function DeliveryAddressMapScreen({ navigation }: Props) {
   const { tr } = useI18n();
+  const insets = useSafeAreaInsets();
   const accessToken = useAuthStore((state) => state.accessToken);
   const user = useAuthStore((state) => state.user);
   const [coordinate, setCoordinate] = useState<Coordinates>(fallback);
@@ -203,11 +206,11 @@ export function DeliveryAddressMapScreen({ navigation }: Props) {
         <X size={22} color={colors.text} />
       </Pressable>
 
-      <Pressable style={styles.locateButton} onPress={centerOnCurrentLocation}>
+      <Pressable style={[styles.locateButton, { bottom: 288 + insets.bottom }]} onPress={centerOnCurrentLocation}>
         <LocateFixed size={18} color={colors.text} />
       </Pressable>
 
-      <View style={styles.bottomSheet}>
+      <View style={[styles.bottomSheet, { paddingBottom: 24 + insets.bottom }]}>
         {!locationReady || resolving ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={colors.red} />
@@ -276,15 +279,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingHorizontal: 18,
-    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 24,
-    gap: 10,
+    gap: 14,
   },
   sheetTitle: {
     color: colors.text,
     fontSize: 19,
     fontWeight: "500",
+    marginBottom: 10,
   },
   addressInput: {
     minHeight: 52,
@@ -296,6 +300,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    marginBottom: 10,
   },
   addressLine: {
     flex: 1,
@@ -307,6 +312,7 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 14,
     lineHeight: 20,
+    marginBottom: 12,
   },
   loadingRow: {
     minHeight: 46,
@@ -328,20 +334,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   saveButton: {
-    marginTop: 4,
-    minHeight: 52,
+    marginTop: 12,
+    minHeight: 44,
     borderRadius: 999,
-    backgroundColor: colors.red,
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: ACCENT_GREEN,
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 16,
   },
   saveButtonDisabled: {
     opacity: 0.5,
   },
   saveButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: "500",
+    color: ACCENT_GREEN,
+    fontSize: 14,
+    fontWeight: "600",
   },
   centerPinWrap: {
     position: "absolute",

@@ -24,7 +24,7 @@ export function RestaurantCard({ restaurant, onPress, compact, small, smallImage
     <Pressable onPress={onPress} style={[styles.card, compact && styles.compact, small && styles.smallCard, medium && styles.mediumCard]}>
       <View style={styles.mediaWrap}>
         <Image
-          source={{ uri: resolveRestaurantImageUri(restaurant.cover_image, restaurant.id) }}
+          source={{ uri: resolveRestaurantImageUri(restaurant.cover_image, restaurant.id, restaurant) }}
           style={[styles.image, small && styles.smallImage, smallImageOnly && styles.smallImageOnly]}
         />
         <Pressable

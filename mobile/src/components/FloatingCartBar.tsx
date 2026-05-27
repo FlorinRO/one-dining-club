@@ -1,6 +1,6 @@
 import { ShoppingBag } from "lucide-react-native";
 import { useEffect, useRef } from "react";
-import { Animated, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Animated, Easing, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle, useWindowDimensions } from "react-native";
 
 import { useI18n } from "../i18n/useI18n";
 import { useCartStore } from "../store/cartStore";
@@ -9,9 +9,12 @@ import { colors } from "../theme/colors";
 
 type Props = {
   onPress: () => void;
+  mode?: "animated" | "compact";
+  style?: StyleProp<ViewStyle>;
+  compactStyle?: "default" | "feed";
 };
 
-export function FloatingCartBar({ onPress }: Props) {
+export function FloatingCartBar({ onPress, mode = "animated", style, compactStyle = "default" }: Props) {
   const { tr } = useI18n();
   const { width: screenWidth } = useWindowDimensions();
   const items = useCartStore((state) => state.items);
@@ -32,6 +35,20 @@ export function FloatingCartBar({ onPress }: Props) {
     return null;
   }
 
+  if (mode === "compact") {
+    const isFeedCompact = compactStyle === "feed";
+    return (
+      <View style={[styles.button, styles.buttonCompact, isFeedCompact && styles.buttonCompactFeed, style]}>
+        <Pressable onPress={onPress} style={styles.pressable}>
+          <ShoppingBag size={20} stroke={isFeedCompact ? "#22C55E" : "#000000"} />
+          <View style={[styles.badge, styles.badgeCollapsed, isFeedCompact && styles.badgeCompactFeed]}>
+            <Text style={styles.badgeText}>{itemsCount}</Text>
+          </View>
+        </Pressable>
+      </View>
+    );
+  }
+
   const expandedWidth = 170;
   const expandedRight = (screenWidth - expandedWidth) / 2;
   const animatedButtonStyle = {
@@ -47,10 +64,10 @@ export function FloatingCartBar({ onPress }: Props) {
   const collapsedBadgeOpacity = progress.interpolate({ inputRange: [0, 0.45, 1], outputRange: [1, 0, 0] });
 
   return (
-    <Animated.View style={[styles.button, styles.buttonCollapsed, animatedButtonStyle]}>
+    <Animated.View style={[styles.button, styles.buttonCollapsed, animatedButtonStyle, style]}>
       <Pressable onPress={onPress} style={styles.pressable}>
         <View style={styles.content}>
-          <ShoppingBag size={20} stroke={colors.white} />
+          <ShoppingBag size={20} stroke="#000000" />
           <Animated.View style={{ width: iconSpacing }} />
           <Animated.View style={[styles.inlineContent, { width: inlineContentWidth, opacity: inlineContentOpacity }]}>
             <Text numberOfLines={1} style={styles.buttonLabel}>
@@ -73,7 +90,7 @@ const styles = StyleSheet.create({
   button: {
     position: "absolute",
     bottom: 94,
-    backgroundColor: colors.red,
+    backgroundColor: "#22C55E",
     borderWidth: 1,
     borderColor: "#000000",
     zIndex: 25,
@@ -81,6 +98,18 @@ const styles = StyleSheet.create({
   },
   buttonCollapsed: {
     right: 18,
+  },
+  buttonCompact: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    right: 18,
+    bottom: 94,
+  },
+  buttonCompactFeed: {
+    backgroundColor: "transparent",
+    borderColor: "#22C55E",
+    borderWidth: 2,
   },
   pressable: {
     flex: 1,
@@ -98,7 +127,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   buttonLabel: {
-    color: colors.white,
+    color: "#000000",
     fontSize: 16,
     fontWeight: "600",
     lineHeight: 20,
@@ -120,6 +149,9 @@ const styles = StyleSheet.create({
   },
   badgeExpanded: {
     marginLeft: 10,
+  },
+  badgeCompactFeed: {
+    backgroundColor: "#000000",
   },
   badgeText: {
     color: colors.white,

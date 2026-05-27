@@ -18,6 +18,12 @@ export type HomeStackParamList = {
   CartFlow: NavigatorScreenParams<CartStackParamList>;
 };
 
+export type SearchStackParamList = {
+  SearchHome: { category?: string; openFilters?: boolean; focusSearch?: boolean } | undefined;
+  RestaurantDetails: { restaurant: Restaurant; products?: Product[] };
+  ProductDetails: { restaurant: Restaurant; product: Product; mediaFallbackIndex?: number };
+};
+
 export type CartStackParamList = {
   CartHome: undefined;
 };
@@ -36,7 +42,7 @@ export type ProfileStackParamList = {
 
 export type MainTabsParamList = {
   HomeTab: NavigatorScreenParams<HomeStackParamList>;
-  SearchTab: { category?: string; openFilters?: boolean; focusSearch?: boolean } | undefined;
+  SearchTab: NavigatorScreenParams<SearchStackParamList> | undefined;
   CartTab: NavigatorScreenParams<CartStackParamList>;
   OrdersTab: NavigatorScreenParams<OrdersStackParamList>;
   ProfileTab: NavigatorScreenParams<ProfileStackParamList>;

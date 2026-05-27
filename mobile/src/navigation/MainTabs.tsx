@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationState, PartialState, useNavigation, useNavigationState } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { LinearGradient } from "expo-linear-gradient";
 import { Home, ListOrdered, Search, UserRound } from "lucide-react-native";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,7 +11,7 @@ import { HomeStack } from "./HomeStack";
 import { MainTabsParamList } from "./types";
 import { OrdersStack } from "./OrdersStack";
 import { ProfileStack } from "./ProfileStack";
-import { SearchScreen } from "../screens/SearchScreen";
+import { SearchStack } from "./SearchStack";
 import { useI18n } from "../i18n/useI18n";
 
 const Tab = createBottomTabNavigator<MainTabsParamList>();
@@ -27,13 +28,17 @@ export function MainTabs() {
     activeRouteName === "Home" ||
     activeRouteName === "HomeTab";
   const hideFloatingCart =
-    isFeedRoute ||
     activeRouteName === "CartHome" ||
     activeRouteName === "CartFlow" ||
     activeRouteName === "ProductDetails" ||
     activeRouteName === "DeliveryAddress" ||
     activeRouteName === "DeliveryAddressMap";
-  const hideBottomBar = activeRouteName === "CartHome" || activeRouteName === "CartFlow" || activeRouteName === "ProductDetails";
+  const hideBottomBar =
+    activeRouteName === "CartHome" ||
+    activeRouteName === "CartFlow" ||
+    activeRouteName === "ProductDetails" ||
+    activeRouteName === "DeliveryAddress" ||
+    activeRouteName === "DeliveryAddressMap";
 
   return (
     <View style={styles.container}>
@@ -55,7 +60,14 @@ export function MainTabs() {
             paddingBottom: 2 + insets.bottom,
           },
           tabBarBackground: () => (
-            isFeedRoute ? null : <View pointerEvents="none" style={styles.solidTabBarBackground} />
+            isFeedRoute ? null : (
+              <LinearGradient
+                pointerEvents="none"
+                colors={["rgba(10,10,10,0.08)", "rgba(10,10,10,0.72)", "rgba(10,10,10,0.98)"]}
+                locations={[0, 0.4, 1]}
+                style={styles.tabBarFadeBackground}
+              />
+            )
           ),
           tabBarActiveTintColor: "#FFFFFF",
           tabBarInactiveTintColor: "#FFFFFF",
@@ -75,7 +87,7 @@ export function MainTabs() {
         />
         <Tab.Screen
           name="SearchTab"
-          component={SearchScreen}
+          component={SearchStack}
           options={{
             title: t("tabs.search", "Search"),
             tabBarIcon: ({ color, size }) => <Search stroke={color} size={size - 2} />,
@@ -100,6 +112,9 @@ export function MainTabs() {
       </Tab.Navigator>
       {!hideFloatingCart ? (
         <FloatingCartBar
+          mode={isFeedRoute ? "compact" : "animated"}
+          compactStyle={isFeedRoute ? "feed" : "default"}
+          style={isFeedRoute ? { top: insets.top + 84, left: 14, right: undefined, bottom: undefined } : undefined}
           onPress={() =>
             navigation.navigate("MainTabs", {
               screen: "HomeTab",
@@ -129,8 +144,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  solidTabBarBackground: {
+  tabBarFadeBackground: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(10, 10, 10, 0.94)",
+    top: -18,
   },
 });

@@ -1,8 +1,10 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 import { AlertTriangle, ArrowLeft, Bike, ChevronRight, Clock3, CreditCard, MapPin, PlusCircle, Trash2, Wallet } from "lucide-react-native";
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Animated, Image, PanResponder, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Animated, Image, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { addressesApi } from "../api/addressesApi";
 import { ordersApi } from "../api/ordersApi";
@@ -20,9 +22,13 @@ import { Address, PaymentMethod } from "../types/models";
 type Props = NativeStackScreenProps<CartStackParamList, "CartHome">;
 
 const tipOptions = [0, 3, 5, 10];
+const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
 
 export function CartScreen({ navigation }: Props) {
   const { tr } = useI18n();
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === "dark";
+  const insets = useSafeAreaInsets();
   const items = useCartStore((state) => state.items);
   const restaurant = useCartStore((state) => state.restaurant);
   const increaseQuantity = useCartStore((state) => state.increaseQuantity);
@@ -41,7 +47,9 @@ export function CartScreen({ navigation }: Props) {
   const [tip, setTip] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isSlidingConfirm, setIsSlidingConfirm] = useState(false);
+  const [isCourierNoteFocused, setIsCourierNoteFocused] = useState(false);
   const courierNoteInputRef = useRef<TextInput>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     addressesApi.list().then(setAddresses).catch(() => setAddresses([]));
@@ -152,159 +160,186 @@ export function CartScreen({ navigation }: Props) {
   };
 
   return (
-    <Screen padded={false}>
-      <View style={styles.topHeader}>
-        <Pressable onPress={() => navigation.canGoBack() && navigation.goBack()} style={styles.headerButton}>
-          <ArrowLeft size={22} stroke={colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{restaurant?.name ?? tr("Coș", "Cart")}</Text>
-        <Pressable onPress={clearAll} style={styles.headerButton}>
-          <Trash2 size={21} stroke={colors.text} />
-        </Pressable>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} scrollEnabled={!isSlidingConfirm}>
-        {!items.length ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>{tr("Coșul este gol", "Cart is empty")}</Text>
-            <Text style={styles.emptyText}>{tr("Alege un restaurant și adaugă preparatele preferate.", "Pick a restaurant and add your favorite dishes.")}</Text>
-          </View>
-        ) : (
-          <>
-            <View style={styles.card}>
-              {items.map((item, index) => (
-                <View key={item.id} style={[styles.item, index !== items.length - 1 && styles.itemDivider]}>
-                  <Image source={{ uri: resolveProductImageUri(item.product.image, item.product.id) }} resizeMode="cover" style={styles.itemImage} />
-                  <View style={styles.itemInfo}>
-                    <Text style={styles.itemName}>{item.product.name}</Text>
-                    {item.selectedOptions.map((option) => (
-                      <Text key={option.id} style={styles.optionText}>
-                        {option.name} +{money(option.extra_price)}
-                      </Text>
-                    ))}
-                    {item.notes ? <Text style={styles.itemNotes}>{item.notes}</Text> : null}
-                    <Text style={styles.itemPrice}>{money(Number(item.product.effective_price ?? item.product.discount_price ?? item.product.price) * item.quantity)}</Text>
-                  </View>
-                  <View style={styles.itemActions}>
-                    <QuantityStepper value={item.quantity} onIncrease={() => increaseQuantity(item.id)} onDecrease={() => decreaseQuantity(item.id)} />
-                  </View>
-                </View>
-              ))}
-            </View>
-
-            <Pressable style={styles.addMoreRow} onPress={openRestaurantMenu}>
-              <PlusCircle size={24} stroke={colors.red} />
-              <Text style={styles.addMoreText}>{tr("Adaugă produse", "Add more")}</Text>
+    <Screen padded={false} edges={["left", "right"]}>
+      <View style={styles.screen}>
+        <Image source={SEARCH_BACKGROUND_IMAGE} style={styles.backgroundImage} resizeMode="cover" blurRadius={24} />
+        <LinearGradient
+          pointerEvents="none"
+          colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
+          locations={[0, 0.48, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <KeyboardAvoidingView
+          style={[styles.contentLayer, { paddingTop: insets.top }]}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+        >
+          <View style={styles.topHeader}>
+            <Pressable onPress={() => navigation.canGoBack() && navigation.goBack()} style={styles.headerButton}>
+              <ArrowLeft size={22} stroke={colors.text} />
             </Pressable>
+            <Text style={styles.headerTitle}>{restaurant?.name ?? tr("Coș", "Cart")}</Text>
+            <Pressable onPress={clearAll} style={styles.headerButton}>
+              <Trash2 size={21} stroke={colors.text} />
+            </Pressable>
+          </View>
 
-            <View style={styles.card}>
-              <OptionRow
-                icon={<Bike size={20} stroke={colors.text} />}
-                label={tr("Livrare", "Delivery")}
-                description={`${restaurant?.estimated_delivery_time_min ?? 25}-${restaurant?.estimated_delivery_time_max ?? 40} min`}
-                value={money(deliveryFee)}
-                selected={fulfillmentType === "delivery"}
-                onPress={() => setFulfillmentType("delivery")}
-              />
-              <View style={styles.rowDivider} />
-              <OptionRow
-                icon={<Clock3 size={20} stroke={colors.text} />}
-                label={tr("Pickup", "Pickup")}
-                description={tr("15-20 min", "15-20 min")}
-                value={money(0)}
-                selected={fulfillmentType === "pickup"}
-                onPress={() => setFulfillmentType("pickup")}
-              />
-            </View>
-
-            <View style={styles.card}>
-              <Pressable style={styles.addressRow} onPress={openDeliveryAddressChooser}>
-                <View style={styles.addressLeft}>
-                  <MapPin size={22} stroke={colors.text} />
-                  <Text numberOfLines={1} style={styles.addressText}>
-                    {selectedAddress ? `${selectedAddress.address_line_1}, ${selectedAddress.city}` : tr("Adaugă adresa de livrare", "Add delivery address")}
-                  </Text>
-                </View>
-                <ChevronRight size={22} stroke={colors.muted} />
-              </Pressable>
-              <View style={styles.warningBox}>
-                <AlertTriangle size={20} stroke={colors.redDark} />
-                <Text style={styles.warningText}>{tr("Verifică adresa înainte de a plasa comanda.", "Check your address before placing the order.")}</Text>
+          <ScrollView
+            ref={scrollRef}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.content}
+            scrollEnabled={!isSlidingConfirm}
+            keyboardShouldPersistTaps="handled"
+          >
+            {!items.length ? (
+              <View style={styles.empty}>
+                <Text style={styles.emptyTitle}>{tr("Coșul este gol", "Cart is empty")}</Text>
+                <Text style={styles.emptyText}>{tr("Alege un restaurant și adaugă preparatele preferate.", "Pick a restaurant and add your favorite dishes.")}</Text>
               </View>
-              <Text style={styles.inputPersistentLabel}>{tr("Instrucțiuni pentru curier", "Instructions for courier")}</Text>
-              <TextInput
-                ref={courierNoteInputRef}
-                value={note}
-                onChangeText={setNote}
+            ) : (
+              <>
+                <View style={[styles.card, styles.firstCard]}>
+                  {items.map((item, index) => (
+                    <View key={item.id} style={[styles.item, index !== items.length - 1 && styles.itemDivider]}>
+                      <Image source={{ uri: resolveProductImageUri(item.product.image, item.product.id) }} resizeMode="cover" style={styles.itemImage} />
+                      <View style={styles.itemInfo}>
+                        <Text style={styles.itemName}>{item.product.name}</Text>
+                        {item.selectedOptions.map((option) => (
+                          <Text key={option.id} style={styles.optionText}>
+                            {option.name} +{money(option.extra_price)}
+                          </Text>
+                        ))}
+                        {item.notes ? <Text style={styles.itemNotes}>{item.notes}</Text> : null}
+                        <Text style={styles.itemPrice}>{money(Number(item.product.effective_price ?? item.product.discount_price ?? item.product.price) * item.quantity)}</Text>
+                      </View>
+                      <View style={styles.itemActions}>
+                        <QuantityStepper value={item.quantity} onIncrease={() => increaseQuantity(item.id)} onDecrease={() => decreaseQuantity(item.id)} />
+                      </View>
+                    </View>
+                  ))}
+                </View>
+
+                <Pressable style={styles.addMoreRow} onPress={openRestaurantMenu}>
+                  <PlusCircle size={24} stroke={colors.green} />
+                  <Text style={styles.addMoreText}>{tr("Adaugă produse", "Add more")}</Text>
+                </Pressable>
+
+                <View style={styles.card}>
+                  <OptionRow
+                    icon={<Bike size={20} stroke={colors.text} />}
+                    label={tr("Livrare", "Delivery")}
+                    description={`${restaurant?.estimated_delivery_time_min ?? 25}-${restaurant?.estimated_delivery_time_max ?? 40} min`}
+                    value={money(deliveryFee)}
+                    selected={fulfillmentType === "delivery"}
+                    onPress={() => setFulfillmentType("delivery")}
+                  />
+                  <View style={styles.rowDivider} />
+                  <OptionRow
+                    icon={<Clock3 size={20} stroke={colors.text} />}
+                    label={tr("Pickup", "Pickup")}
+                    description={tr("15-20 min", "15-20 min")}
+                    value={money(0)}
+                    selected={fulfillmentType === "pickup"}
+                    onPress={() => setFulfillmentType("pickup")}
+                  />
+                </View>
+
+                <View style={styles.card}>
+                  <Pressable style={styles.addressRow} onPress={openDeliveryAddressChooser}>
+                    <View style={styles.addressLeft}>
+                      <MapPin size={22} stroke={colors.text} />
+                      <Text numberOfLines={1} style={styles.addressText}>
+                        {selectedAddress ? `${selectedAddress.address_line_1}, ${selectedAddress.city}` : tr("Adaugă adresa de livrare", "Add delivery address")}
+                      </Text>
+                    </View>
+                    <ChevronRight size={22} stroke={colors.muted} />
+                  </Pressable>
+                  <View style={styles.warningBox}>
+                    <AlertTriangle size={20} stroke={colors.redDark} />
+                    <Text style={styles.warningText}>{tr("Verifică adresa înainte de a plasa comanda.", "Check your address before placing the order.")}</Text>
+                  </View>
+                  <Text style={styles.inputPersistentLabel}>{tr("Instrucțiuni pentru curier", "Instructions for courier")}</Text>
+                  <TextInput
+                    ref={courierNoteInputRef}
+                    value={note}
+                    onChangeText={setNote}
                 placeholder={tr("Ex: interfon 12, etaj 3", "Ex: intercom 12, floor 3")}
                 placeholderTextColor={colors.muted}
-                style={styles.input}
+                style={[styles.input, isCourierNoteFocused && styles.inputFocused]}
                 multiline={false}
                 returnKeyType="done"
                 blurOnSubmit
-                onSubmitEditing={() => courierNoteInputRef.current?.blur()}
-              />
-            </View>
-
-            <View style={[styles.card, styles.airySection]}>
-              <Text style={styles.sectionTitle}>{tr("Instrucțiuni predare", "Dropoff instructions")}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsRow}>
-                <Pill label={tr("La ușă", "Meet at my door")} active={dropoffType === "meet"} onPress={() => setDropoffType("meet")} />
-                <Pill label={tr("Lasă la ușă", "Leave at my door")} active={dropoffType === "leave"} onPress={() => setDropoffType("leave")} />
-                <Pill label={tr("Afară", "Meet outside")} active={dropoffType === "outside"} onPress={() => setDropoffType("outside")} />
-              </ScrollView>
-            </View>
-
-            {fulfillmentType === "delivery" ? (
-              <View style={[styles.card, styles.airySection]}>
-                <Text style={styles.sectionTitle}>{tr("Tip curier", "Tip the courier?")}</Text>
-                <Text style={styles.sectionMuted}>{tr("Curierul primește 100% din bacșiș.", "The courier receives 100% of your tip.")}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsRow}>
-                  {tipOptions.map((amount) => (
-                    <Pill key={amount} label={amount === 0 ? tr("Fără tip", "No tip") : money(amount)} active={tip === amount} onPress={() => setTip(amount)} />
-                  ))}
-                </ScrollView>
-              </View>
-            ) : null}
-
-            <View style={[styles.card, styles.airySection]}>
-              <SummaryRow label={tr("Total produse", "Item total")} value={money(subtotal)} />
-              <SummaryRow label={tr("Reducere", "Discount")} value={`-${money(discount)}`} />
-              <SummaryRow label={tr("Subtotal", "Subtotal")} value={money(Math.max(0, subtotal - discount))} strong />
-              <SummaryRow label={tr("Taxă comandă mică", "Small order fee")} value={money(smallOrderFee)} />
-              <SummaryRow label={tr("Taxă servicii", "Service fee")} value={money(serviceFee)} />
-              <SummaryRow label={tr("Tips", "Tips")} value={money(tip)} />
-              <SummaryRow label={tr("Taxă livrare", "Delivery fee")} value={money(deliveryCost)} />
-              <View style={styles.divider} />
-              <SummaryRow label="Total" value={money(total)} total />
-
-              <View style={styles.paymentRow}>
-                <View style={styles.paymentLeft}>
-                  <CreditCard size={20} stroke={colors.text} />
-                  <Text style={styles.paymentText}>{paymentLabel(paymentMethod, tr)}</Text>
+                    onFocus={() => {
+                      setIsCourierNoteFocused(true);
+                      setTimeout(() => scrollRef.current?.scrollTo({ y: 520, animated: true }), 120);
+                    }}
+                    onBlur={() => setIsCourierNoteFocused(false)}
+                    onSubmitEditing={() => courierNoteInputRef.current?.blur()}
+                  />
                 </View>
-                <Text style={styles.paymentValue}>{money(total)}</Text>
-              </View>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.methodGrid}>
-                {(["cash", "card", "apple_pay", "google_pay"] as PaymentMethod[]).map((method) => (
-                  <PaymentMethodPill key={method} method={method} active={paymentMethod === method} onPress={() => setPaymentMethod(method)} tr={tr} />
-                ))}
-              </ScrollView>
-            </View>
+                <View style={[styles.card, styles.airySection]}>
+                  <Text style={styles.sectionTitle}>{tr("Instrucțiuni predare", "Dropoff instructions")}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsRow}>
+                    <Pill label={tr("La ușă", "Meet at my door")} active={dropoffType === "meet"} onPress={() => setDropoffType("meet")} />
+                    <Pill label={tr("Lasă la ușă", "Leave at my door")} active={dropoffType === "leave"} onPress={() => setDropoffType("leave")} />
+                    <Pill label={tr("Afară", "Meet outside")} active={dropoffType === "outside"} onPress={() => setDropoffType("outside")} />
+                  </ScrollView>
+                </View>
 
-            <View style={styles.footerInline}>
-              <SwipeToConfirm
-                label={loading ? tr("Se plasează...", "Placing...") : tr("Plasează comanda", "Place order")}
-                hint={tr("Derulează la dreapta pentru confirmare", "Slide right to confirm")}
-                disabled={loading || !selectedAddress}
-                onSlidingChange={setIsSlidingConfirm}
-                onConfirm={submit}
-              />
-            </View>
-          </>
-        )}
-      </ScrollView>
+                {fulfillmentType === "delivery" ? (
+                  <View style={[styles.card, styles.airySection]}>
+                    <Text style={styles.sectionTitle}>{tr("Tip curier", "Tip the courier?")}</Text>
+                    <Text style={styles.sectionMuted}>{tr("Curierul primește 100% din bacșiș.", "The courier receives 100% of your tip.")}</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsRow}>
+                      {tipOptions.map((amount) => (
+                        <Pill key={amount} label={amount === 0 ? tr("Fără tip", "No tip") : money(amount)} active={tip === amount} onPress={() => setTip(amount)} />
+                      ))}
+                    </ScrollView>
+                  </View>
+                ) : null}
+
+                <View style={[styles.card, styles.airySection]}>
+                  <SummaryRow label={tr("Total produse", "Item total")} value={money(subtotal)} />
+                  <SummaryRow label={tr("Reducere", "Discount")} value={`-${money(discount)}`} />
+                  <SummaryRow label={tr("Subtotal", "Subtotal")} value={money(Math.max(0, subtotal - discount))} strong />
+                  <SummaryRow label={tr("Taxă comandă mică", "Small order fee")} value={money(smallOrderFee)} />
+                  <SummaryRow label={tr("Taxă servicii", "Service fee")} value={money(serviceFee)} />
+                  <SummaryRow label={tr("Tips", "Tips")} value={money(tip)} />
+                  <SummaryRow label={tr("Taxă livrare", "Delivery fee")} value={money(deliveryCost)} />
+                  <View style={styles.divider} />
+                  <SummaryRow label="Total" value={money(total)} total />
+
+                  <View style={styles.paymentRow}>
+                    <View style={styles.paymentLeft}>
+                      <CreditCard size={20} stroke={colors.text} />
+                      <Text style={styles.paymentText}>{paymentLabel(paymentMethod, tr)}</Text>
+                    </View>
+                    <Text style={styles.paymentValue}>{money(total)}</Text>
+                  </View>
+
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.methodGrid}>
+                    {(["cash", "card", "apple_pay", "google_pay"] as PaymentMethod[]).map((method) => (
+                      <PaymentMethodPill key={method} method={method} active={paymentMethod === method} onPress={() => setPaymentMethod(method)} tr={tr} />
+                    ))}
+                  </ScrollView>
+                </View>
+
+                <View style={styles.footerInline}>
+                  <SwipeToConfirm
+                    label={loading ? tr("Se plasează...", "Placing...") : tr("Plasează comanda", "Place order")}
+                    hint={tr("Derulează la dreapta pentru confirmare", "Slide right to confirm")}
+                    disabled={loading || !selectedAddress}
+                    isDarkMode={isDarkMode}
+                    onSlidingChange={setIsSlidingConfirm}
+                    onConfirm={submit}
+                  />
+                </View>
+              </>
+            )}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
     </Screen>
   );
 }
@@ -360,8 +395,8 @@ function PaymentMethodPill({
 
   return (
     <Pressable style={[styles.pill, styles.paymentPill, active && styles.pillActive]} onPress={onPress}>
-      {isCash ? <Wallet size={16} stroke="#16A34A" /> : null}
-      {isCard ? <CreditCard size={16} stroke="#2563EB" /> : null}
+      {isCash ? <Wallet size={16} stroke={colors.green} /> : null}
+      {isCard ? <CreditCard size={16} stroke={colors.green} /> : null}
       {isApple ? <Text style={styles.applePayLogo}> Pay</Text> : null}
       {isGoogle ? <Text style={styles.googleIcon}>G</Text> : null}
       {isGoogle ? <Text style={[styles.pillText, styles.googlePayText, active && styles.pillTextActive]}>Pay</Text> : null}
@@ -383,20 +418,22 @@ function SwipeToConfirm({
   label,
   hint,
   disabled,
+  isDarkMode,
   onSlidingChange,
   onConfirm,
 }: {
   label: string;
   hint: string;
   disabled?: boolean;
+  isDarkMode?: boolean;
   onSlidingChange?: (isSliding: boolean) => void;
   onConfirm: () => void;
 }) {
-  const KNOB_SIZE = 44;
+  const KNOB_SIZE = 50;
   const THRESHOLD = 0.8;
   const [trackWidth, setTrackWidth] = useState(0);
   const translateX = useRef(new Animated.Value(0)).current;
-  const maxX = Math.max(0, trackWidth - KNOB_SIZE - 6);
+  const maxX = Math.max(0, trackWidth - KNOB_SIZE - 8);
 
   useEffect(() => {
     if (disabled) translateX.setValue(0);
@@ -439,24 +476,37 @@ function SwipeToConfirm({
 
   return (
     <View style={styles.slideWrap}>
-      <View style={[styles.slideTrack, disabled && styles.slideTrackDisabled]} onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}>
+      <View
+        style={[styles.slideTrack, isDarkMode && styles.slideTrackDark, disabled && styles.slideTrackDisabled]}
+        onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}
+      >
         <Text style={[styles.slideLabel, disabled && styles.slideLabelDisabled]}>{label}</Text>
-        <Animated.View style={[styles.slideKnob, disabled && styles.slideKnobDisabled, { transform: [{ translateX }] }]} {...panResponder.panHandlers}>
-          <ChevronRight size={20} stroke={colors.red} />
+        <Animated.View style={[styles.slideKnob, isDarkMode && styles.slideKnobDark, disabled && styles.slideKnobDisabled, { transform: [{ translateX }] }]} {...panResponder.panHandlers}>
+          <ChevronRight size={20} stroke="#000000" />
         </Animated.View>
       </View>
-      <Text style={styles.slideHint}>{hint}</Text>
+      <Text style={[styles.slideHint, isDarkMode && styles.slideHintDark]}>{hint}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.9,
+  },
+  contentLayer: {
+    flex: 1,
+  },
   content: {
     paddingHorizontal: 18,
     paddingTop: 16,
     paddingBottom: 32,
     gap: 24,
-    backgroundColor: colors.background,
+    backgroundColor: "transparent",
   },
   topHeader: {
     minHeight: 58,
@@ -465,8 +515,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#E6E6E6",
-    backgroundColor: colors.background,
+    borderBottomColor: colors.border,
+    backgroundColor: "transparent",
   },
   headerButton: {
     width: 42,
@@ -499,14 +549,18 @@ const styles = StyleSheet.create({
   },
   card: {
     borderTopWidth: 1,
-    borderTopColor: "#E6E6E6",
+    borderTopColor: colors.border,
     paddingTop: 18,
     paddingHorizontal: 0,
-    backgroundColor: colors.background,
+    backgroundColor: "transparent",
     gap: 14,
   },
+  firstCard: {
+    borderTopWidth: 0,
+    paddingTop: 0,
+  },
   airySection: {
-    marginTop: 12,
+    marginTop: 2,
     paddingBottom: 10,
   },
   item: {
@@ -556,14 +610,14 @@ const styles = StyleSheet.create({
   addMoreRow: {
     minHeight: 60,
     borderTopWidth: 1,
-    borderTopColor: "#E6E6E6",
+    borderTopColor: colors.border,
     paddingHorizontal: 0,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
   },
   addMoreText: {
-    color: colors.redDark,
+    color: colors.greenDark,
     fontSize: 16,
     fontWeight: "500",
   },
@@ -577,7 +631,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   optionRowSelected: {
-    backgroundColor: "#FFF3F3",
+    backgroundColor: colors.successSoft,
   },
   optionRowPressed: {
     opacity: 0.9,
@@ -613,23 +667,23 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: "#9AA0A0",
+    borderColor: colors.muted,
     alignItems: "center",
     justifyContent: "center",
   },
   radioActive: {
-    borderColor: colors.red,
+    borderColor: colors.green,
     backgroundColor: colors.white,
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.red,
+    backgroundColor: colors.green,
   },
   rowDivider: {
     height: 1,
-    backgroundColor: "#E6E6E6",
+    backgroundColor: colors.border,
   },
   addressRow: {
     minHeight: 54,
@@ -653,7 +707,8 @@ const styles = StyleSheet.create({
   warningBox: {
     minHeight: 62,
     borderRadius: 14,
-    backgroundColor: "#FCEBEB",
+    backgroundColor: colors.dangerSoft,
+    marginBottom: 20,
     paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -671,13 +726,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     color: colors.text,
     backgroundColor: colors.cardSoft,
+    borderWidth: 1,
+    borderColor: "transparent",
     fontSize: 14,
+  },
+  inputFocused: {
+    borderColor: colors.green,
+    shadowColor: colors.green,
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 2,
   },
   inputPersistentLabel: {
     color: colors.muted,
     fontSize: 12,
     fontWeight: "600",
-    marginBottom: -4,
+    marginBottom: 0,
   },
   sectionTitle: {
     color: colors.text,
@@ -705,7 +770,7 @@ const styles = StyleSheet.create({
   },
   pillActive: {
     backgroundColor: colors.cardSoft,
-    borderColor: colors.red,
+    borderColor: colors.green,
   },
   pillText: {
     color: colors.text,
@@ -792,49 +857,60 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingTop: 16,
     paddingBottom: 12,
-    backgroundColor: colors.background,
+    backgroundColor: "transparent",
   },
   slideWrap: {
     gap: 8,
   },
   slideTrack: {
-    height: 50,
+    height: 58,
     borderRadius: 14,
-    backgroundColor: colors.red,
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: colors.green,
     justifyContent: "center",
     paddingHorizontal: 14,
     overflow: "hidden",
+  },
+  slideTrackDark: {
+    backgroundColor: "transparent",
   },
   slideTrackDisabled: {
     opacity: 0.5,
   },
   slideLabel: {
-    color: colors.white,
+    color: colors.green,
     textAlign: "center",
     fontSize: 13,
     fontWeight: "500",
   },
   slideLabelDisabled: {
-    color: "#F4F4F4",
+    color: colors.green,
   },
   slideKnob: {
     position: "absolute",
-    top: 3,
-    left: 3,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.white,
+    top: 4,
+    left: 4,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: colors.green,
     alignItems: "center",
     justifyContent: "center",
   },
+  slideKnobDark: {
+    backgroundColor: colors.green,
+  },
   slideKnobDisabled: {
-    backgroundColor: "#9A9A9A",
+    backgroundColor: colors.muted,
   },
   slideHint: {
     color: colors.muted,
     fontSize: 12,
     fontWeight: "500",
     textAlign: "center",
+  },
+  slideHintDark: {
+    color: "#C8C8C8",
   },
 });

@@ -320,7 +320,14 @@ const selectDemoProductVideo = (request: DemoProductVideoRequest) => {
 
   if (bestScore <= 0) return getFallbackVideo(request.fallbackIndex ?? 0);
 
-  const candidates = scoredVideos.filter((item) => item.score === bestScore).map((item) => item.video);
+  const relevantVideos = scoredVideos
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+  const candidates = relevantVideos
+    .filter((item) => item.score >= Math.max(1, bestScore - 6))
+    .slice(0, 6)
+    .map((item) => item.video);
+
   return candidates[positiveModulo(request.fallbackIndex ?? 0, candidates.length)];
 };
 

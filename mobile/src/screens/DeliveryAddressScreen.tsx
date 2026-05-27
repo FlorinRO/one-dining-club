@@ -1,8 +1,9 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Check, Crosshair, MapPin, X } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 
@@ -21,6 +22,10 @@ type AddressOption = {
   displayLabel: string;
   address: Address;
 };
+
+const DELIVERY_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
+const ACCENT_GREEN = "#22C55E";
+const ACCENT_GREEN_DARK = "#16A34A";
 
 export function DeliveryAddressScreen({ navigation }: Props) {
   const { tr } = useI18n();
@@ -188,6 +193,13 @@ export function DeliveryAddressScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
+      <Image source={DELIVERY_BACKGROUND_IMAGE} style={styles.backgroundImage} resizeMode="cover" blurRadius={24} />
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
+        locations={[0, 0.48, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
       <View style={styles.container}>
         <View style={styles.header}>
           <Pressable style={styles.closeButton} onPress={() => navigation.goBack()}>
@@ -198,7 +210,7 @@ export function DeliveryAddressScreen({ navigation }: Props) {
 
         <Pressable style={styles.mapRow} onPress={() => navigation.navigate("DeliveryAddressMap")}>
           <View style={[styles.mapIconWrap, { borderColor: separatorColor }]}>
-            <MapPin size={14} stroke={colors.red} />
+            <MapPin size={14} stroke={ACCENT_GREEN} />
           </View>
           <Text style={styles.mapText}>{tr("Alege pe hartă", "Choose on map")}</Text>
         </Pressable>
@@ -210,11 +222,11 @@ export function DeliveryAddressScreen({ navigation }: Props) {
           showsVerticalScrollIndicator={false}
           onScroll={trackFloatingCartScrollDirection}
           scrollEventThrottle={16}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadAddresses("refresh")} tintColor={colors.red} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadAddresses("refresh")} tintColor={ACCENT_GREEN} />}
         >
           {loading ? (
             <View style={styles.statusBox}>
-              <ActivityIndicator color={colors.red} />
+              <ActivityIndicator color={ACCENT_GREEN} />
               <Text style={styles.statusText}>{tr("Se încarcă adresele...", "Loading addresses...")}</Text>
             </View>
           ) : null}
@@ -271,7 +283,12 @@ function iconFor(label: string) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: "#050505",
+  },
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.92,
+    transform: [{ scale: 1.16 }],
   },
   container: {
     flex: 1,
@@ -315,7 +332,7 @@ const styles = StyleSheet.create({
   mapText: {
     fontSize: 16,
     lineHeight: 22,
-    color: colors.red,
+    color: ACCENT_GREEN,
     fontWeight: "600",
   },
   autoLocationText: {
@@ -367,7 +384,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.red,
+    backgroundColor: ACCENT_GREEN,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -381,19 +398,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   errorText: {
-    color: colors.redDark,
+    color: ACCENT_GREEN_DARK,
     fontSize: 14,
   },
   retryButton: {
     marginTop: 2,
     borderWidth: 1,
-    borderColor: colors.red,
+    borderColor: ACCENT_GREEN,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   retryText: {
-    color: colors.red,
+    color: ACCENT_GREEN,
     fontWeight: "600",
     fontSize: 13,
   },
