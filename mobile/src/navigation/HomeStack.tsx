@@ -31,7 +31,11 @@ export function HomeStack() {
       <Stack.Screen name="DeliveryAddressMap" component={DeliveryAddressMapScreen} />
       <Stack.Screen name="Favorites" component={FavoritesScreen} />
       <Stack.Screen name="SectionRestaurants" component={SectionRestaurantsScreen} />
-      <Stack.Screen name="RestaurantDetails" component={RestaurantDetailsScreen} />
+      <Stack.Screen
+        name="RestaurantDetails"
+        component={RestaurantDetailsScreen}
+        options={{ animation: "fade" }}
+      />
       <Stack.Screen
         name="ProductDetails"
         component={ProductDetailsModal}

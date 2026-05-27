@@ -1,8 +1,11 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Path } from "react-native-svg";
 import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, Phone, UserPlus, UserRound } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Animated,
+  Easing,
   Keyboard,
   Platform,
   Pressable,
@@ -38,6 +41,8 @@ export function RegisterScreen({ navigation }: Props) {
   const phoneInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const focusedFieldRef = useRef<FieldKey | null>(null);
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const contentTranslateX = useRef(new Animated.Value(24)).current;
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -98,6 +103,27 @@ export function RegisterScreen({ navigation }: Props) {
     };
   }, [scrollAuthFormIntoView]);
 
+  useFocusEffect(
+    useCallback(() => {
+      contentOpacity.setValue(0);
+      contentTranslateX.setValue(24);
+      Animated.parallel([
+        Animated.timing(contentOpacity, {
+          toValue: 1,
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentTranslateX, {
+          toValue: 0,
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, [contentOpacity, contentTranslateX]),
+  );
+
   const handleSocialSuccess = useCallback(
     (session: Awaited<ReturnType<typeof authApi.socialLogin>>) => setSession(session),
     [setSession],
@@ -113,11 +139,7 @@ export function RegisterScreen({ navigation }: Props) {
   const scrollBottomPadding = keyboardHeight > 0 ? keyboardHeight + KEYBOARD_FORM_GAP : insets.bottom + 24;
 
   const goToLogin = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-      return;
-    }
-    navigation.navigate("Login");
+    navigation.replace("Login");
   };
 
   const submit = async () => {
@@ -186,7 +208,12 @@ export function RegisterScreen({ navigation }: Props) {
         <ArrowLeft color={colors.white} size={24} strokeWidth={2.3} />
       </Pressable>
 
-      <View style={styles.overlayLayout}>
+      <Animated.View
+        style={[
+          styles.overlayLayout,
+          { opacity: contentOpacity, transform: [{ translateX: contentTranslateX }] },
+        ]}
+      >
         <ScrollView
           ref={scrollRef}
           keyboardShouldPersistTaps="always"
@@ -237,7 +264,7 @@ export function RegisterScreen({ navigation }: Props) {
                   </Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => navigation.navigate("Login")}
+                  onPress={() => navigation.replace("Login")}
                   style={({ pressed }) => [styles.primaryWideButton, pressed && styles.pressed]}
                 >
                   <Text style={styles.primaryWideText}>
@@ -416,10 +443,10 @@ export function RegisterScreen({ navigation }: Props) {
                   <UserPlus color="#FFFFFF" size={19} strokeWidth={2.5} />
                 </Pressable>
 
-                <Pressable
-                  style={[styles.footerLink, keyboardHeight > 0 && styles.footerLinkKeyboardOpen]}
-                  onPress={() => navigation.navigate("Login")}
-                >
+              <Pressable
+                style={[styles.footerLink, keyboardHeight > 0 && styles.footerLinkKeyboardOpen]}
+                onPress={() => navigation.replace("Login")}
+              >
                   <Text style={styles.footerText}>
                     {tr("Ai deja cont?", "Already have an account?")}{" "}
                     <Text style={styles.footerAccent}>{tr("Intră în cont", "Sign in")}</Text>
@@ -429,7 +456,7 @@ export function RegisterScreen({ navigation }: Props) {
             )}
           </View>
         </ScrollView>
-      </View>
+      </Animated.View>
     </View>
   );
 }

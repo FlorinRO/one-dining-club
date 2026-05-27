@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ChevronRight, CreditCard } from "lucide-react-native";
+import { ChevronRight, CreditCard, LifeBuoy, RotateCcw } from "lucide-react-native";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -9,10 +9,12 @@ import { useI18n } from "../i18n/useI18n";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrderDetails">;
+const ORDER_ACTION_GREEN = "#22C55E";
 
 export function OrderDetailsScreen({ route }: Props) {
   const { tr, language } = useI18n();
   const insets = useSafeAreaInsets();
+  const bottomSafeSpacing = Math.max(insets.bottom, 18) + 86;
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
   const { order } = route.params;
   const subtotal = Number(order.subtotal || 0);
@@ -41,7 +43,7 @@ export function OrderDetailsScreen({ route }: Props) {
         bounces={false}
         onScroll={trackFloatingCartScrollDirection}
         scrollEventThrottle={16}
-        contentContainerStyle={[styles.content, { paddingBottom: 0 }]}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomSafeSpacing }]}
       >
         <View style={[styles.card, styles.topInfoCard]}>
           <Text style={styles.metaText}>
@@ -96,13 +98,19 @@ export function OrderDetailsScreen({ route }: Props) {
           </View>
         </Pressable>
 
-        <View style={[styles.actionsCard, { paddingBottom: 28 + insets.bottom, marginBottom: -(insets.bottom + 18) }]}>
+        <View style={styles.actionsCard}>
           <View style={styles.actionsBlock}>
             <Pressable style={styles.orderAgainButton} onPress={() => Alert.alert(tr("Comandă din nou", "Order again"), tr("Funcția de reorder se poate conecta acum la coș.", "Reorder can now be connected to cart."))}>
-              <Text style={styles.orderAgainText}>{tr("Comandă din nou", "Order again")}</Text>
+              <View style={styles.actionButtonContent}>
+                <RotateCcw size={15} color={ORDER_ACTION_GREEN} strokeWidth={2.4} />
+                <Text style={styles.orderAgainText}>{tr("Comandă din nou", "Order again")}</Text>
+              </View>
             </Pressable>
             <Pressable style={styles.helpButton} onPress={() => Alert.alert(tr("Ajutor", "Help"), tr("Suportul pentru această comandă va fi conectat aici.", "Support for this order will be connected here."))}>
-              <Text style={styles.helpText}>{tr("Ajutor", "Help")}</Text>
+              <View style={styles.actionButtonContent}>
+                <LifeBuoy size={15} color={colors.text} strokeWidth={2.4} />
+                <Text style={styles.helpText}>{tr("Ajutor", "Help")}</Text>
+              </View>
             </Pressable>
           </View>
         </View>
@@ -284,6 +292,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   actionsBlock: {
+    flexDirection: "row",
     gap: 14,
   },
   actionsCard: {
@@ -293,30 +302,39 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     marginHorizontal: 0,
   },
+  actionButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
   orderAgainButton: {
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: colors.red,
+    flex: 1,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "transparent",
+    borderWidth: 2,
+    borderColor: ORDER_ACTION_GREEN,
     alignItems: "center",
     justifyContent: "center",
   },
   orderAgainText: {
-    color: colors.white,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: "700",
+    color: ORDER_ACTION_GREEN,
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "500",
   },
   helpButton: {
-    height: 62,
-    borderRadius: 31,
+    flex: 1,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: colors.cardSoft,
     alignItems: "center",
     justifyContent: "center",
   },
   helpText: {
     color: colors.text,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: "700",
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "500",
   },
 });

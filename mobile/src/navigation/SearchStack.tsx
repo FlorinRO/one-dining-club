@@ -18,7 +18,11 @@ export function SearchStack() {
       }}
     >
       <Stack.Screen name="SearchHome" component={SearchScreen} />
-      <Stack.Screen name="RestaurantDetails" component={RestaurantDetailsScreen} />
+      <Stack.Screen
+        name="RestaurantDetails"
+        component={RestaurantDetailsScreen}
+        options={{ animation: "fade" }}
+      />
       <Stack.Screen
         name="ProductDetails"
         component={ProductDetailsModal}

@@ -44,7 +44,6 @@ import { money } from "../lib/format";
 import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
 import { HomeStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
-import { useFavoritesStore } from "../store/favoritesStore";
 import { colors } from "../theme/colors";
 import { Address, Product, Restaurant } from "../types/models";
 
@@ -117,7 +116,6 @@ export function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const accessToken = useAuthStore((state) => state.accessToken);
-  const favoriteRestaurantIds = useFavoritesStore((state) => state.restaurantIds);
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [productsByRestaurant, setProductsByRestaurant] = useState<Record<number, Product[]>>({});
@@ -139,10 +137,7 @@ export function HomeScreen({ navigation }: Props) {
   const fetchFeed = useCallback(async () => {
     const restaurantItems = await restaurantsApi.list({ ordering: "-rating" });
     const openRestaurants = restaurantItems.filter((item) => item.is_open !== false);
-    const scopedRestaurants = favoriteRestaurantIds.length
-      ? openRestaurants.filter((item) => favoriteRestaurantIds.includes(item.id))
-      : openRestaurants;
-    const visibleRestaurants = scopedRestaurants.slice(0, 12);
+    const visibleRestaurants = openRestaurants.slice(0, 12);
     setRestaurants(visibleRestaurants);
 
     const productEntries = await Promise.all(
@@ -153,7 +148,7 @@ export function HomeScreen({ navigation }: Props) {
     );
 
     setProductsByRestaurant(Object.fromEntries(productEntries));
-  }, [favoriteRestaurantIds]);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -501,7 +496,7 @@ function RestaurantFeedPage({
       restaurantAudioPlayer.volume = shouldPlay ? FEED_STANDALONE_AUDIO_VOLUME : 0;
       restaurantAudioPlayer.muted = !shouldPlay;
       if (shouldPlay) {
-        if (restaurantAudioStatus.isLoaded && !restaurantAudioStatus.playing) {
+        if (!restaurantAudioStatus.playing) {
           restaurantAudioPlayer.play();
         }
       } else if (restaurantAudioStatus.playing) {
@@ -515,7 +510,6 @@ function RestaurantFeedPage({
     isScreenFocused,
     isRestaurantAudible,
     restaurantAudioPlayer,
-    restaurantAudioStatus.isLoaded,
     restaurantAudioStatus.playing,
   ]);
 

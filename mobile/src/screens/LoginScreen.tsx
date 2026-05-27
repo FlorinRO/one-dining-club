@@ -1,3 +1,4 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Path } from "react-native-svg";
 import {
@@ -11,6 +12,8 @@ import {
 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Animated,
+  Easing,
   Keyboard,
   Modal,
   Platform,
@@ -56,6 +59,8 @@ export function LoginScreen({ navigation }: Props) {
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const focusedFieldRef = useRef<string | null>(null);
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const contentTranslateX = useRef(new Animated.Value(24)).current;
 
   const scrollAuthFormIntoView = useCallback(() => {
     requestAnimationFrame(() => {
@@ -101,6 +106,27 @@ export function LoginScreen({ navigation }: Props) {
       hideSubscription.remove();
     };
   }, [scrollAuthFormIntoView]);
+
+  useFocusEffect(
+    useCallback(() => {
+      contentOpacity.setValue(0);
+      contentTranslateX.setValue(24);
+      Animated.parallel([
+        Animated.timing(contentOpacity, {
+          toValue: 1,
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentTranslateX, {
+          toValue: 0,
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, [contentOpacity, contentTranslateX]),
+  );
 
   const goToHome = () => {
     continueAsGuest();
@@ -177,7 +203,12 @@ export function LoginScreen({ navigation }: Props) {
         <ArrowLeft color={colors.white} size={24} strokeWidth={2.3} />
       </Pressable>
 
-      <View style={styles.overlayLayout}>
+      <Animated.View
+        style={[
+          styles.overlayLayout,
+          { opacity: contentOpacity, transform: [{ translateX: contentTranslateX }] },
+        ]}
+      >
         <ScrollView
           ref={scrollRef}
           keyboardShouldPersistTaps="always"
@@ -304,7 +335,7 @@ export function LoginScreen({ navigation }: Props) {
 
             <Pressable
               style={[styles.footerLink, keyboardHeight > 0 && styles.footerLinkKeyboardOpen]}
-              onPress={() => navigation.navigate("Register")}
+              onPress={() => navigation.replace("Register")}
             >
               <Text style={styles.footerText}>
                 {tr("Nu ai cont?", "No account?")} <Text style={styles.footerAccent}>{tr("Creează unul", "Create one")}</Text>
@@ -312,7 +343,7 @@ export function LoginScreen({ navigation }: Props) {
             </Pressable>
           </View>
         </ScrollView>
-      </View>
+      </Animated.View>
 
       <Modal visible={forgotOpen} animationType="fade" transparent onRequestClose={() => setForgotOpen(false)}>
         <View style={styles.modalBackdrop}>

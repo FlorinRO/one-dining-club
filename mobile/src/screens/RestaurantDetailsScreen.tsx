@@ -119,6 +119,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const headerTitleProgress = useRef(new Animated.Value(0)).current;
+  const searchOverlayProgress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let isMounted = true;
@@ -167,15 +168,27 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
 
   const openSearch = useCallback(() => {
     setIsSearchOpen(true);
-    setTimeout(() => searchInputRef.current?.focus(), 50);
-  }, []);
+    Animated.timing(searchOverlayProgress, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+    setTimeout(() => searchInputRef.current?.focus(), 120);
+  }, [searchOverlayProgress]);
 
   const closeSearch = useCallback(() => {
     Keyboard.dismiss();
-    setIsSearchOpen(false);
-    setSearchQuery("");
-    setIsSearchFocused(false);
-  }, []);
+    Animated.timing(searchOverlayProgress, {
+      toValue: 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished) return;
+      setIsSearchOpen(false);
+      setSearchQuery("");
+      setIsSearchFocused(false);
+    });
+  }, [searchOverlayProgress]);
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -199,12 +212,6 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
 
   const listHeader = (
     <View style={[styles.profileHeader, { paddingTop: insets.top + 76 }]}>
-      <View style={styles.identityActionsRow}>
-        <View style={styles.identityActionsSpacer} />
-        <Pressable style={styles.shareIconButton} onPress={shareRestaurant}>
-          <Share2 size={16} stroke={dark.text} />
-        </Pressable>
-      </View>
 
       <View style={styles.identityStack}>
         <View style={styles.avatarRing}>
@@ -279,6 +286,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
         </Pressable>
         <Animated.Text
           numberOfLines={1}
+          ellipsizeMode="tail"
           style={[
             styles.topTitle,
             {
@@ -302,6 +310,9 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
           {restaurant.name}
         </Animated.Text>
         <View style={styles.topRightControls}>
+          <Pressable onPress={shareRestaurant} style={styles.iconButton}>
+            <Share2 stroke={dark.text} size={20} />
+          </Pressable>
           <Pressable onPress={() => toggleRestaurant(restaurant.id)} style={styles.iconButton}>
             <Heart stroke={isFavorite ? colors.red : dark.text} fill={isFavorite ? colors.red : "transparent"} size={20} />
           </Pressable>
@@ -312,7 +323,23 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
       </View>
 
       {isSearchOpen ? (
-        <View style={styles.searchOverlay}>
+        <Animated.View
+          style={[
+            styles.searchOverlay,
+            {
+              opacity: searchOverlayProgress,
+              transform: [
+                {
+                  translateY: searchOverlayProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [10, 0],
+                    extrapolate: "clamp",
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
           <View style={[styles.searchHeader, { paddingTop: insets.top + 12 }]}>
             <View style={[styles.searchBar, isSearchFocused && styles.searchBarFocused]}>
               <Search stroke={dark.muted} size={18} />
@@ -351,7 +378,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           />
-        </View>
+        </Animated.View>
       ) : null}
     </View>
   );
@@ -495,16 +522,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingBottom: 0,
   },
-  identityActionsRow: {
-    marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  identityActionsSpacer: {
-    width: 34,
-    height: 34,
-  },
   identityStack: {
     alignItems: "center",
   },
@@ -600,7 +617,7 @@ const styles = StyleSheet.create({
   },
   topControlsBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(5,5,5,0.94)",
+    backgroundColor: dark.background,
   },
   topTitle: {
     flex: 1,
@@ -611,7 +628,10 @@ const styles = StyleSheet.create({
   },
   topRightControls: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 8,
+    width: 144,
+    justifyContent: "flex-end",
   },
   iconButton: {
     width: 40,
@@ -742,13 +762,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   searchBarFocused: {
-    borderColor: colors.red,
+    borderColor: dark.success,
   },
   searchInput: {
     flex: 1,
     color: dark.text,
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "500",
   },
   searchCloseButton: {
     width: 42,
@@ -768,6 +788,6 @@ const styles = StyleSheet.create({
   searchResultText: {
     color: dark.muted,
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "500",
   },
 });

@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Clock3,
   Footprints,
+  Heart,
   Play,
   Route,
   Search,
@@ -264,6 +265,7 @@ export function SearchScreen() {
   const [maximumDeliveryFee, setMaximumDeliveryFee] = useState<number | null>(null);
   const [maximumDeliveryTime, setMaximumDeliveryTime] = useState<number | null>(null);
   const [maximumDistance, setMaximumDistance] = useState<number | null>(null);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [activeCategories, setActiveCategories] = useState<string[]>(route.params?.category ? [route.params.category] : []);
   const [activeSheet, setActiveSheet] = useState<ActiveSheetKey | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -271,6 +273,8 @@ export function SearchScreen() {
   const searchInputRef = useRef<TextInput>(null);
   const entryAnimation = useRef(new Animated.Value(1)).current;
   const focusAnimation = useRef(new Animated.Value(0)).current;
+  const resultsRevealAnimation = useRef(new Animated.Value(1)).current;
+  const discoveryRevealAnimation = useRef(new Animated.Value(1)).current;
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
   const sheetPaddingBottom = Math.max(insets.bottom, 18) + 14;
   const bottomSheetMaxHeight = Math.max(320, windowHeight - insets.top - 24);
@@ -383,10 +387,7 @@ export function SearchScreen() {
       try {
         const feedRestaurants = await restaurantsApi.list({ ordering: "-rating" });
         const openRestaurants = feedRestaurants.filter((restaurant) => restaurant.is_open !== false);
-        const scopedRestaurants = favoriteRestaurantIds.length
-          ? openRestaurants.filter((restaurant) => favoriteRestaurantIds.includes(restaurant.id))
-          : openRestaurants;
-        const visibleRestaurants = scopedRestaurants.slice(0, FEED_RESTAURANT_LIMIT);
+        const visibleRestaurants = openRestaurants.slice(0, FEED_RESTAURANT_LIMIT);
         const productEntries = await Promise.all(
           visibleRestaurants.map(async (restaurant) => {
             const restaurantProducts = (await restaurantsApi.products(restaurant.id))
@@ -468,7 +469,43 @@ export function SearchScreen() {
     };
   }, []);
 
-  const hasSearchIntent = query.trim().length > 0 || activeCategories.length > 0;
+  const hasSearchIntent = query.trim().length > 0 || activeCategories.length > 0 || favoritesOnly;
+
+  useEffect(() => {
+    if (isLoading || !hasSearchIntent) return;
+    resultsRevealAnimation.setValue(0);
+    Animated.timing(resultsRevealAnimation, {
+      toValue: 1,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [
+    activeCategories,
+    favoritesOnly,
+    hasSearchIntent,
+    isLoading,
+    maximumDeliveryFee,
+    maximumDeliveryTime,
+    maximumDistance,
+    minimumRating,
+    offersOnly,
+    pickupOnly,
+    query,
+    resultsRevealAnimation,
+    sort,
+  ]);
+
+  useEffect(() => {
+    if (isLoading || hasSearchIntent) return;
+    discoveryRevealAnimation.setValue(0);
+    Animated.timing(discoveryRevealAnimation, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [discoveryRevealAnimation, hasSearchIntent, isLoading]);
 
   const restaurantMatchesSearchQuery = (restaurant: Restaurant, queryText: string) => {
     const restaurantHaystack = normalizeText(`${restaurant.name} ${restaurant.description} ${(restaurant.categories ?? []).map((c) => c.name).join(" ")}`);
@@ -514,6 +551,7 @@ export function SearchScreen() {
         const matchesDeliveryFee = maximumDeliveryFee === null || Number(restaurant.delivery_fee) <= maximumDeliveryFee;
         const matchesDeliveryTime = maximumDeliveryTime === null || restaurant.estimated_delivery_time_min <= maximumDeliveryTime;
         const matchesDistance = maximumDistance === null || Number(restaurant.distance_km ?? 99) <= maximumDistance;
+        const matchesFavorites = !favoritesOnly || favoriteRestaurantIds.includes(restaurant.id);
 
         return (
           matchesQuery &&
@@ -523,7 +561,8 @@ export function SearchScreen() {
           matchesRating &&
           matchesDeliveryFee &&
           matchesDeliveryTime &&
-          matchesDistance
+          matchesDistance &&
+          matchesFavorites
         );
       })
       .sort((a, b) => {
@@ -533,7 +572,7 @@ export function SearchScreen() {
         if (sort === "rating") return Number(b.rating) - Number(a.rating);
         return (feedOrder.get(a.id) ?? 999) - (feedOrder.get(b.id) ?? 999);
       });
-  }, [activeCategories, feedProductsByRestaurant, hasSearchIntent, maximumDeliveryFee, maximumDeliveryTime, maximumDistance, minimumRating, offersOnly, pickupOnly, query, restaurants, sort]);
+  }, [activeCategories, favoriteRestaurantIds, favoritesOnly, feedProductsByRestaurant, hasSearchIntent, maximumDeliveryFee, maximumDeliveryTime, maximumDistance, minimumRating, offersOnly, pickupOnly, query, restaurants, sort]);
 
   const commitRecentSearch = () => {
     const value = query.trim();
@@ -544,6 +583,7 @@ export function SearchScreen() {
   const clearSearchContext = () => {
     setQuery("");
     setActiveCategories([]);
+    setFavoritesOnly(false);
   };
 
   const resetFilter = (key: FilterKey) => {
@@ -603,7 +643,8 @@ export function SearchScreen() {
     (maximumDeliveryFee !== null ? 1 : 0) +
     (maximumDeliveryTime !== null ? 1 : 0) +
     (maximumDistance !== null ? 1 : 0) +
-    (activeCategories.length > 0 ? 1 : 0);
+    (activeCategories.length > 0 ? 1 : 0) +
+    (favoritesOnly ? 1 : 0);
 
   const onFilterChipPress = (key: FilterKey) => {
     if (key === "offers") {
@@ -628,6 +669,7 @@ export function SearchScreen() {
     setMaximumDeliveryTime(null);
     setMaximumDistance(null);
     setActiveCategories([]);
+    setFavoritesOnly(false);
   };
 
   return (
@@ -760,7 +802,25 @@ export function SearchScreen() {
             <SearchDiscoverySkeleton />
           )
         ) : hasSearchIntent ? (
-          <>
+          <Animated.View
+            style={[
+              styles.resultsAnimatedWrap,
+              {
+                opacity: resultsRevealAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.62, 1],
+                }),
+                transform: [
+                  {
+                    translateY: resultsRevealAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [10, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
             <FlatList
               key="search-results-list"
               data={filtered}
@@ -807,18 +867,37 @@ export function SearchScreen() {
                 />
               }
             />
-          </>
+          </Animated.View>
         ) : (
-          <FlatList
-            key="search-discovery-list"
-            data={feedDiscoveryCategories}
-            keyExtractor={(item) => item.label}
-            showsVerticalScrollIndicator={false}
-            onScroll={trackFloatingCartScrollDirection}
-            scrollEventThrottle={16}
-            contentContainerStyle={styles.discoveryList}
-            ListHeaderComponent={
-              <View style={styles.discoveryHeader}>
+          <Animated.View
+            style={[
+              styles.resultsAnimatedWrap,
+              {
+                opacity: discoveryRevealAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 1],
+                }),
+                transform: [
+                  {
+                    translateY: discoveryRevealAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [8, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <FlatList
+              key="search-discovery-list"
+              data={feedDiscoveryCategories}
+              keyExtractor={(item) => item.label}
+              showsVerticalScrollIndicator={false}
+              onScroll={trackFloatingCartScrollDirection}
+              scrollEventThrottle={16}
+              contentContainerStyle={styles.discoveryList}
+              ListHeaderComponent={
+                <View style={styles.discoveryHeader}>
                 {recentSearches.length > 0 ? (
                   <>
                     <Text style={styles.sectionTitle}>{tr("Căutări recente", "Recent searches")}</Text>
@@ -869,16 +948,36 @@ export function SearchScreen() {
                   </>
                 ) : null}
 
+                {favoriteRestaurantIds.length > 0 ? (
+                  <>
+                    <Text style={styles.sectionTitle}>{tr("Favoritele tale", "Your favorites")}</Text>
+                    <Pressable
+                      style={styles.recentItem}
+                      onPress={() => {
+                        setFavoritesOnly(true);
+                        setQuery("");
+                        setActiveCategories([]);
+                      }}
+                    >
+                      <Heart size={20} stroke={dark.accent} strokeWidth={1.8} fill={dark.accent} />
+                      <Text style={styles.recentText}>
+                        {tr("Restaurante favorite", "Favorite restaurants")} ({favoriteRestaurantIds.length})
+                      </Text>
+                    </Pressable>
+                  </>
+                ) : null}
+
                 <Text style={[styles.sectionTitle, styles.productTypesSectionTitle]}>{tr("Tipuri de produse", "Product types")}</Text>
-              </View>
-            }
-            renderItem={({ item }) => (
-              <Pressable style={styles.inspirationItem} onPress={() => setActiveCategories([item.label])}>
-                <Text style={styles.inspirationEmoji}>{item.emoji}</Text>
-                <Text style={styles.inspirationText}>{item.label}</Text>
-              </Pressable>
-            )}
-          />
+                </View>
+              }
+              renderItem={({ item }) => (
+                <Pressable style={styles.inspirationItem} onPress={() => setActiveCategories([item.label])}>
+                  <Text style={styles.inspirationEmoji}>{item.emoji}</Text>
+                  <Text style={styles.inspirationText}>{item.label}</Text>
+                </Pressable>
+              )}
+            />
+          </Animated.View>
         )}
       </Animated.View>
 
@@ -1497,6 +1596,9 @@ const styles = StyleSheet.create({
   },
   resultsList: {
     marginTop: 0,
+  },
+  resultsAnimatedWrap: {
+    flex: 1,
   },
   resultsHeader: {
     marginTop: 12,

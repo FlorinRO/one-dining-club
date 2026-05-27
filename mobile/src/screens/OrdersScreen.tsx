@@ -42,7 +42,8 @@ export function OrdersScreen({ navigation }: Props) {
 
       try {
         const data = await ordersApi.list();
-        setOrders(data.length ? data : MOCK_ORDERS);
+        const safeOrders = normalizeOrders(data);
+        setOrders(safeOrders.length ? safeOrders : MOCK_ORDERS);
       } catch {
         setOrders(MOCK_ORDERS);
         setError(tr("Backend indisponibil acum. Afișăm comenzi demo pentru UI.", "Backend unavailable right now. Showing demo orders for UI."));
@@ -81,9 +82,18 @@ export function OrdersScreen({ navigation }: Props) {
           {error && <Text style={styles.errorBanner}>{error}</Text>}
 
           {loading ? (
-            <View style={styles.loadingBox}>
-              <ActivityIndicator color={colors.red} />
-              <Text style={styles.mutedText}>{tr("Se încarcă comenzile...", "Loading orders...")}</Text>
+            <View style={[styles.list, { borderTopColor: separatorColor }]} pointerEvents="none">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <View key={`orders-skeleton-${index}`} style={[styles.order, { borderBottomColor: separatorColor }]}>
+                  <View style={styles.orderThumbSkeleton} />
+                  <View style={styles.main}>
+                    <View style={styles.restaurantSkeleton} />
+                    <View style={styles.totalSkeleton} />
+                    <View style={styles.metaSkeleton} />
+                  </View>
+                  <View style={styles.trailingButtonSkeleton} />
+                </View>
+              ))}
             </View>
           ) : orders.length ? (
             <View style={[styles.list, { borderTopColor: separatorColor }]} pointerEvents="box-none">
@@ -102,7 +112,7 @@ export function OrdersScreen({ navigation }: Props) {
                   )}
                   <View style={styles.main}>
                     <Text style={styles.restaurant} numberOfLines={1}>
-                      {order.restaurant_name}
+                      {safeRestaurantName(order.restaurant_name)}
                     </Text>
                     <Text style={styles.total}>{money(order.total)}</Text>
                     <Text style={styles.meta}>{formatOrderMeta(order.created_at, order.order_status, language === "en" ? "en-US" : "ro-RO", tr)}</Text>
@@ -125,9 +135,14 @@ export function OrdersScreen({ navigation }: Props) {
   );
 }
 
-function restaurantInitials(name: string) {
+function safeRestaurantName(name: string | null | undefined) {
+  const value = typeof name === "string" ? name.trim() : "";
+  return value || "ONE Dining Club";
+}
+
+function restaurantInitials(name: string | null | undefined) {
   return (
-    name
+    safeRestaurantName(name)
       .split(" ")
       .filter(Boolean)
       .slice(0, 2)
@@ -142,13 +157,17 @@ function formatOrderMeta(
   locale: string,
   tr: (ro: string, en: string) => string,
 ) {
-  return `${new Intl.DateTimeFormat(locale, {
+  const parsedDate = new Date(createdAt);
+  const formattedDate = Number.isNaN(parsedDate.getTime())
+    ? tr("Dată necunoscută", "Unknown date")
+    : new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(createdAt))} · ${statusLabel(status, tr)}`;
+  }).format(parsedDate);
+  return `${formattedDate} · ${statusLabel(status, tr)}`;
 }
 
 function statusLabel(status: Order["order_status"], tr: (ro: string, en: string) => string) {
@@ -157,6 +176,18 @@ function statusLabel(status: Order["order_status"], tr: (ro: string, en: string)
   if (status === "preparing") return tr("În preparare", "Preparing");
   if (status === "cancelled") return tr("Anulată", "Cancelled");
   return tr("Plasată", "Placed");
+}
+
+function normalizeOrders(orders: Order[]): Order[] {
+  return orders
+    .filter((order) => order && typeof order === "object")
+    .map((order) => ({
+      ...order,
+      restaurant_name: safeRestaurantName(order.restaurant_name),
+      created_at: typeof order.created_at === "string" ? order.created_at : "",
+      total: Number.isFinite(Number(order.total)) ? Number(order.total) : 0,
+      items: Array.isArray(order.items) ? order.items : [],
+    }));
 }
 
 const MOCK_ORDERS: OrderWithImage[] = [
@@ -265,17 +296,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
-  loadingBox: {
-    minHeight: 140,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  mutedText: {
-    color: colors.muted,
-    fontWeight: "600",
-  },
   list: {
     marginTop: 34,
     borderTopWidth: 1,
@@ -304,6 +324,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: colors.cardSoft,
   },
+  orderThumbSkeleton: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: colors.cardSoft,
+    opacity: 0.9,
+  },
   orderThumbText: {
     color: colors.white,
     fontWeight: "800",
@@ -318,6 +345,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
   },
+  restaurantSkeleton: {
+    width: "72%",
+    height: 14,
+    borderRadius: 8,
+    backgroundColor: colors.cardSoft,
+    opacity: 0.9,
+  },
   meta: {
     color: colors.muted,
     fontSize: 13,
@@ -328,6 +362,20 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "500",
   },
+  totalSkeleton: {
+    width: "40%",
+    height: 12,
+    borderRadius: 8,
+    backgroundColor: colors.cardSoft,
+    opacity: 0.8,
+  },
+  metaSkeleton: {
+    width: "58%",
+    height: 10,
+    borderRadius: 8,
+    backgroundColor: colors.cardSoft,
+    opacity: 0.7,
+  },
   trailingButton: {
     width: 56,
     height: 56,
@@ -335,6 +383,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardSoft,
     alignItems: "center",
     justifyContent: "center",
+  },
+  trailingButtonSkeleton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.cardSoft,
+    opacity: 0.85,
   },
   emptyBox: {
     minHeight: 190,

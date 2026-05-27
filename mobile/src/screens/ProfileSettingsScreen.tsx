@@ -14,7 +14,7 @@ import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileSettings">;
 const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
-const PROFILE_GREEN_DARK = "#16A34A";
+const DESTRUCTIVE_RED = "#DC2626";
 export function ProfileSettingsScreen({ navigation }: Props) {
   const { language, t } = useI18n();
   const insets = useSafeAreaInsets();
@@ -100,8 +100,8 @@ export function ProfileSettingsScreen({ navigation }: Props) {
               <Text style={styles.rowTitle}>{logoutLoading ? t("settings.loggingOut") : t("settings.logout")}</Text>
             </Pressable>
 
-            <Pressable style={styles.row} onPress={requestDeleteAccount}>
-              <Trash2 size={22} color={PROFILE_GREEN_DARK} strokeWidth={2.4} />
+            <Pressable style={[styles.row, styles.deleteRow]} onPress={requestDeleteAccount}>
+              <Trash2 size={22} color={DESTRUCTIVE_RED} strokeWidth={2.4} />
               <Text style={[styles.rowTitle, styles.destructive]}>{t("settings.delete")}</Text>
             </Pressable>
           </View>
@@ -155,6 +155,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
+  deleteRow: {
+    backgroundColor: "#000000",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    alignSelf: "flex-start",
+  },
   rowTitle: {
     color: colors.text,
     fontSize: 17,
@@ -162,6 +169,6 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
   destructive: {
-    color: PROFILE_GREEN_DARK,
+    color: DESTRUCTIVE_RED,
   },
 });
