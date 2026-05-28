@@ -101,7 +101,10 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-MEDIA_URL = "/media/"
+if DEBUG:
+    MEDIA_URL = "/media/"
+else:
+    MEDIA_URL = os.getenv("DJANGO_MEDIA_URL", "https://one-dining-club-production.up.railway.app/media/")
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "One Dining Club <no-reply@onedining.club>")
 EMAIL_BACKEND = os.getenv(
