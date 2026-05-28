@@ -1,8 +1,9 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { LinearGradient } from "expo-linear-gradient";
 import { ListOrdered, RotateCcw } from "lucide-react-native";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -17,7 +18,7 @@ import { colors } from "../theme/colors";
 import { Order } from "../types/models";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrdersHome">;
-type OrderWithImage = Order & { mockImage?: string };
+type OrderWithMedia = Order & { mockImage?: string; mockVideoUrl?: string };
 const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
 
 export function OrdersScreen({ navigation }: Props) {
@@ -42,13 +43,20 @@ export function OrdersScreen({ navigation }: Props) {
       }
       setError(null);
 
+      if (!accessToken) {
+        setOrders(MOCK_ORDERS);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
       try {
         const data = await ordersApi.list();
         const safeOrders = normalizeOrders(data);
         setOrders(safeOrders.length ? safeOrders : MOCK_ORDERS);
-      } catch {
+      } catch (orderError) {
         setOrders(MOCK_ORDERS);
-        if (accessToken) {
+        if (!isAuthError(orderError)) {
           setError(tr("Backend indisponibil acum. Afișăm comenzi demo pentru UI.", "Backend unavailable right now. Showing demo orders for UI."));
         }
       } finally {
@@ -101,13 +109,15 @@ export function OrdersScreen({ navigation }: Props) {
             </View>
           ) : orders.length ? (
             <View style={[styles.list, { borderTopColor: separatorColor }]} pointerEvents="box-none">
-              {(orders as OrderWithImage[]).map((order) => (
+              {(orders as OrderWithMedia[]).map((order) => (
                 <Pressable
                   key={order.id}
                   style={({ pressed }) => [styles.order, { borderBottomColor: separatorColor }, pressed && styles.pressed]}
                   onPress={() => navigation.navigate("OrderDetails", { order })}
                 >
-                  {order.mockImage ? (
+                  {order.mockVideoUrl ? (
+                    <OrderVideoThumb uri={order.mockVideoUrl} />
+                  ) : order.mockImage ? (
                     <Image source={{ uri: order.mockImage }} style={styles.orderThumbImage} />
                   ) : (
                     <View style={styles.orderThumb}>
@@ -135,6 +145,44 @@ export function OrdersScreen({ navigation }: Props) {
             </View>
           )}
       </ScrollView>
+    </View>
+  );
+}
+
+function OrderVideoThumb({ uri }: { uri: string }) {
+  const videoSource = useMemo(
+    () => ({
+      uri,
+      contentType: "progressive" as const,
+      useCaching: false,
+    }),
+    [uri],
+  );
+  const player = useVideoPlayer(videoSource, (videoPlayer) => {
+    videoPlayer.loop = true;
+    videoPlayer.muted = true;
+    videoPlayer.volume = 0;
+  });
+
+  useEffect(() => {
+    try {
+      player.play();
+    } catch {
+      // Thumbnail remains visually stable if native playback cannot start.
+    }
+
+    return () => {
+      try {
+        player.pause();
+      } catch {
+        // Ignore native cleanup failures for tiny autoplay thumbnails.
+      }
+    };
+  }, [player]);
+
+  return (
+    <View style={styles.orderThumbVideoWrap} pointerEvents="none">
+      <VideoView player={player} style={styles.orderThumbVideo} contentFit="cover" nativeControls={false} />
     </View>
   );
 }
@@ -174,6 +222,11 @@ function formatOrderMeta(
   return `${formattedDate} · ${statusLabel(status, tr)}`;
 }
 
+function isAuthError(error: unknown) {
+  const status = (error as { response?: { status?: number } })?.response?.status;
+  return status === 401 || status === 403;
+}
+
 function statusLabel(status: Order["order_status"], tr: (ro: string, en: string) => string) {
   if (status === "delivered") return tr("Livrată", "Delivered");
   if (status === "on_the_way") return tr("În livrare", "On the way");
@@ -194,81 +247,89 @@ function normalizeOrders(orders: Order[]): Order[] {
     }));
 }
 
-const MOCK_ORDERS: OrderWithImage[] = [
+const MOCK_ORDERS: OrderWithMedia[] = [
   {
     id: 9012,
-    restaurant: 1,
-    restaurant_name: "Restaurant Bavaria",
-    subtotal: 33.69,
+    restaurant: 23,
+    restaurant_name: "Gelato Stories",
+    subtotal: 30,
     delivery_fee: 5,
     discount: 0,
-    total: 38.69,
+    total: 35,
     payment_method: "card",
     order_status: "delivered",
-    created_at: "2026-05-10T12:04:00Z",
-    mockImage:
-      "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?auto=format&fit=crop&w=200&q=80",
+    created_at: "2026-05-25T12:04:00Z",
+    mockVideoUrl: "https://assets.mixkit.co/videos/10434/10434-1080.mp4",
     items: [
-      { id: 1, product: 1, product_name: "Pulled Pork Platter", quantity: 1, unit_price: 27.5, total_price: 27.5 },
-      { id: 2, product: 2, product_name: "Cartofi wedges", quantity: 1, unit_price: 6.19, total_price: 6.19 },
+      { id: 1, product: 223, product_name: "Berry Cheesecake Cup", quantity: 1, unit_price: 30, total_price: 30 },
     ],
     address: 1,
   },
   {
     id: 9011,
-    restaurant: 2,
-    restaurant_name: "Shaormeria Cin Cin",
-    subtotal: 56.2,
+    restaurant: 22,
+    restaurant_name: "Bao Pop Studio",
+    subtotal: 31,
     delivery_fee: 5,
     discount: 0,
-    total: 61.2,
+    total: 36,
     payment_method: "cash",
     order_status: "delivered",
-    created_at: "2026-05-02T19:14:00Z",
-    mockImage:
-      "https://images.unsplash.com/photo-1599974579688-8dbdd335c77f?auto=format&fit=crop&w=200&q=80",
+    created_at: "2026-05-18T19:14:00Z",
+    mockVideoUrl: "https://assets.mixkit.co/videos/41350/41350-1080.mp4",
     items: [
-      { id: 3, product: 3, product_name: "Shaorma vita mare", quantity: 1, unit_price: 34.9, total_price: 34.9 },
-      { id: 4, product: 4, product_name: "Meniu crispy", quantity: 1, unit_price: 21.3, total_price: 21.3 },
+      { id: 3, product: 212, product_name: "Crispy Tofu Bao", quantity: 1, unit_price: 31, total_price: 31 },
     ],
     address: 1,
   },
   {
     id: 9008,
-    restaurant: 3,
-    restaurant_name: "McDonald's Makariou",
-    subtotal: 45.12,
+    restaurant: 21,
+    restaurant_name: "Smokehouse Loop",
+    subtotal: 29,
     delivery_fee: 6,
-    discount: 4,
-    total: 47.12,
+    discount: 0,
+    total: 35,
     payment_method: "card",
     order_status: "delivered",
-    created_at: "2026-04-18T20:45:00Z",
-    mockImage:
-      "https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?auto=format&fit=crop&w=200&q=80",
+    created_at: "2026-05-08T20:45:00Z",
+    mockVideoUrl: "https://assets.mixkit.co/videos/2774/2774-1080.mp4",
     items: [
-      { id: 5, product: 5, product_name: "Big Mac Menu", quantity: 1, unit_price: 31.12, total_price: 31.12 },
-      { id: 6, product: 6, product_name: "Cheeseburger", quantity: 2, unit_price: 7, total_price: 14 },
+      { id: 5, product: 201, product_name: "Brisket Burnt Ends Box", quantity: 1, unit_price: 29, total_price: 29 },
     ],
     address: 1,
   },
   {
     id: 9003,
-    restaurant: 4,
-    restaurant_name: "Ciorbarie Iasi",
-    subtotal: 42.34,
+    restaurant: 20,
+    restaurant_name: "Bowl Motion",
+    subtotal: 33,
     delivery_fee: 4,
     discount: 0,
-    total: 46.34,
+    total: 37,
     payment_method: "card",
-    order_status: "delivered",
-    created_at: "2026-03-27T13:03:00Z",
-    mockImage:
-      "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=200&q=80",
+    order_status: "preparing",
+    created_at: "2026-05-02T13:03:00Z",
+    mockVideoUrl: "https://assets.mixkit.co/videos/40531/40531-1080.mp4",
     items: [
-      { id: 7, product: 7, product_name: "Ciorba radauteana", quantity: 2, unit_price: 14.5, total_price: 29 },
-      { id: 8, product: 8, product_name: "Ardei iute + paine", quantity: 2, unit_price: 2.5, total_price: 5 },
-      { id: 9, product: 9, product_name: "Papanași", quantity: 1, unit_price: 8.34, total_price: 8.34 },
+      { id: 7, product: 196, product_name: "Beetroot Feta Energy Bowl", quantity: 1, unit_price: 33, total_price: 33 },
+    ],
+    address: 1,
+  },
+  {
+    id: 8999,
+    restaurant: 5,
+    restaurant_name: "Dolce Notte",
+    subtotal: 33,
+    delivery_fee: 5,
+    discount: 3,
+    total: 35,
+    payment_method: "card",
+    order_status: "on_the_way",
+    created_at: "2026-04-24T18:28:00Z",
+    mockVideoUrl: "https://assets.mixkit.co/videos/43925/43925-1080.mp4",
+    items: [
+      { id: 10, product: 44, product_name: "Crispy Schnitzel dolce-notte", quantity: 1, unit_price: 33, total_price: 33 },
     ],
     address: 1,
   },
@@ -327,6 +388,17 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 16,
     backgroundColor: colors.cardSoft,
+  },
+  orderThumbVideoWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: colors.cardSoft,
+  },
+  orderThumbVideo: {
+    width: "100%",
+    height: "100%",
   },
   orderThumbSkeleton: {
     width: 64,
