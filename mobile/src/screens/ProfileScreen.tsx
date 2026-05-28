@@ -39,10 +39,17 @@ import { useI18n } from "../i18n/useI18n";
 import { ProfileStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { colors } from "../theme/colors";
+import {
+  BURGER_BACKGROUND_IMAGE,
+  FOOD_BACKGROUND_BLUR_RADIUS,
+  FOOD_BACKGROUND_GRADIENT_COLORS,
+  FOOD_BACKGROUND_GRADIENT_LOCATIONS,
+  FOOD_BACKGROUND_IMAGE_OPACITY,
+  FOOD_BACKGROUND_IMAGE_SCALE,
+} from "../theme/foodBackground";
 import { Address, Order, PaymentMethod } from "../types/models";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileHome">;
-const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
 const PROFILE_GREEN = "#22C55E";
 const PROFILE_GREEN_DARK = "#16A34A";
 
@@ -148,15 +155,15 @@ export function ProfileScreen({ navigation }: Props) {
       <Screen padded={false}>
         <View style={styles.screen}>
           <Image
-            source={SEARCH_BACKGROUND_IMAGE}
+            source={BURGER_BACKGROUND_IMAGE}
             style={[styles.backgroundImage, { top: -insets.top }]}
             resizeMode="cover"
-            blurRadius={24}
+            blurRadius={FOOD_BACKGROUND_BLUR_RADIUS}
           />
           <LinearGradient
             pointerEvents="none"
-            colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
-            locations={[0, 0.48, 1]}
+            colors={FOOD_BACKGROUND_GRADIENT_COLORS}
+            locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
             style={[StyleSheet.absoluteFillObject, { top: -insets.top }]}
           />
           <ScrollView
@@ -184,15 +191,15 @@ export function ProfileScreen({ navigation }: Props) {
     <Screen padded={false}>
       <View style={styles.screen}>
         <Image
-          source={SEARCH_BACKGROUND_IMAGE}
+          source={BURGER_BACKGROUND_IMAGE}
           style={[styles.backgroundImage, { top: -insets.top }]}
           resizeMode="cover"
-          blurRadius={24}
+          blurRadius={FOOD_BACKGROUND_BLUR_RADIUS}
         />
         <LinearGradient
           pointerEvents="none"
-          colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
-          locations={[0, 0.48, 1]}
+          colors={FOOD_BACKGROUND_GRADIENT_COLORS}
+          locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
           style={[StyleSheet.absoluteFillObject, { top: -insets.top }]}
         />
         <ScrollView
@@ -386,7 +393,8 @@ const styles = StyleSheet.create({
   },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.9,
+    opacity: FOOD_BACKGROUND_IMAGE_OPACITY,
+    transform: [{ scale: FOOD_BACKGROUND_IMAGE_SCALE }],
   },
   content: {
     paddingHorizontal: 20,

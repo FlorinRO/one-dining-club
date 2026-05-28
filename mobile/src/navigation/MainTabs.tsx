@@ -45,9 +45,11 @@ export function MainTabs() {
     <View style={styles.container}>
       <Tab.Navigator
         id="MainTabs"
+        detachInactiveScreens={false}
         screenOptions={{
           headerShown: false,
           animation: "fade",
+          freezeOnBlur: false,
           tabBarStyle: {
             display: hideBottomBar ? "none" : "flex",
             height: 46 + insets.bottom,
@@ -98,6 +100,7 @@ export function MainTabs() {
           name="OrdersTab"
           component={OrdersStack}
           options={{
+            popToTopOnBlur: true,
             title: t("tabs.orders", "Orders"),
             tabBarIcon: ({ color, size }) => <ListOrdered stroke={color} size={size - 2} />,
           }}

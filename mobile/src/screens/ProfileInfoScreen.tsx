@@ -9,9 +9,16 @@ import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDi
 import { useI18n } from "../i18n/useI18n";
 import { ProfileStackParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
+import {
+  BURGER_BACKGROUND_IMAGE,
+  FOOD_BACKGROUND_BLUR_RADIUS,
+  FOOD_BACKGROUND_GRADIENT_COLORS,
+  FOOD_BACKGROUND_GRADIENT_LOCATIONS,
+  FOOD_BACKGROUND_IMAGE_OPACITY,
+  FOOD_BACKGROUND_IMAGE_SCALE,
+} from "../theme/foodBackground";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileInfo">;
-const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
 
 type InfoContent = {
   title: string;
@@ -97,11 +104,11 @@ export function ProfileInfoScreen({ navigation, route }: Props) {
   return (
     <Screen padded={false}>
       <View style={styles.screen}>
-        <Image source={SEARCH_BACKGROUND_IMAGE} style={[styles.backgroundImage, { top: -insets.top }]} resizeMode="cover" blurRadius={24} />
+        <Image source={BURGER_BACKGROUND_IMAGE} style={[styles.backgroundImage, { top: -insets.top }]} resizeMode="cover" blurRadius={FOOD_BACKGROUND_BLUR_RADIUS} />
         <LinearGradient
           pointerEvents="none"
-          colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
-          locations={[0, 0.48, 1]}
+          colors={FOOD_BACKGROUND_GRADIENT_COLORS}
+          locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
           style={[StyleSheet.absoluteFillObject, { top: -insets.top }]}
         />
         <View style={styles.container}>
@@ -136,7 +143,8 @@ const styles = StyleSheet.create({
   },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.9,
+    opacity: FOOD_BACKGROUND_IMAGE_OPACITY,
+    transform: [{ scale: FOOD_BACKGROUND_IMAGE_SCALE }],
   },
   container: {
     flex: 1,

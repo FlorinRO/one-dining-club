@@ -30,6 +30,14 @@ import { deliveryWindow, money } from "../lib/format";
 import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
 import { SearchStackParamList } from "../navigation/types";
 import { useFavoritesStore } from "../store/favoritesStore";
+import {
+  BURGER_BACKGROUND_IMAGE,
+  FOOD_BACKGROUND_BLUR_RADIUS,
+  FOOD_BACKGROUND_GRADIENT_COLORS,
+  FOOD_BACKGROUND_GRADIENT_LOCATIONS,
+  FOOD_BACKGROUND_IMAGE_OPACITY,
+  FOOD_BACKGROUND_IMAGE_SCALE,
+} from "../theme/foodBackground";
 import { Product, Restaurant } from "../types/models";
 
 type FilterKey = "sort" | "offers" | "rating" | "deliveryFee" | "deliveryTime" | "pickup" | "distance" | "categories";
@@ -47,7 +55,6 @@ type DiscoveryCategory = {
 const FEED_RESTAURANT_LIMIT = 12;
 const FEED_PRODUCT_LIMIT = 3;
 const SCREEN_EDGE_GUTTER = 14;
-const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
 
 const dark = {
   background: "#050505",
@@ -233,6 +240,7 @@ function buildDiscoveryCategories(restaurants: Restaurant[], products: Product[]
     const current = byKey.get(key);
     byKey.set(key, { label: current?.label ?? cleanLabel, score: (current?.score ?? 0) + score });
   };
+
 
   products.forEach((product) => addCategory(product.category_name, 3));
   if (byKey.size === 0) {
@@ -675,15 +683,15 @@ export function SearchScreen() {
   return (
     <View style={styles.screen}>
       <Image
-        source={SEARCH_BACKGROUND_IMAGE}
+        source={BURGER_BACKGROUND_IMAGE}
         style={styles.backgroundImage}
         resizeMode="cover"
-        blurRadius={24}
+        blurRadius={FOOD_BACKGROUND_BLUR_RADIUS}
       />
       <LinearGradient
         pointerEvents="none"
-        colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
-        locations={[0, 0.48, 1]}
+        colors={FOOD_BACKGROUND_GRADIENT_COLORS}
+        locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
         style={StyleSheet.absoluteFillObject}
       />
       <Animated.View
@@ -1471,8 +1479,8 @@ const styles = StyleSheet.create({
   },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.92,
-    transform: [{ scale: 1.16 }],
+    opacity: FOOD_BACKGROUND_IMAGE_OPACITY,
+    transform: [{ scale: FOOD_BACKGROUND_IMAGE_SCALE }],
   },
   container: {
     flex: 1,

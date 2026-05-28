@@ -1,13 +1,15 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useVideoPlayer, VideoView } from "expo-video";
 import { LinearGradient } from "expo-linear-gradient";
+import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
 import { ListOrdered, RotateCcw } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ordersApi } from "../api/ordersApi";
+import { getDemoProductVideoSource } from "../data/demoVideos";
+import { mockProducts, mockRestaurants } from "../data/mockData";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
@@ -15,11 +17,18 @@ import { OrdersStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useOrdersStore } from "../store/ordersStore";
 import { colors } from "../theme/colors";
-import { Order } from "../types/models";
+import {
+  BURGER_BACKGROUND_IMAGE,
+  FOOD_BACKGROUND_BLUR_RADIUS,
+  FOOD_BACKGROUND_GRADIENT_COLORS,
+  FOOD_BACKGROUND_GRADIENT_LOCATIONS,
+  FOOD_BACKGROUND_IMAGE_OPACITY,
+  FOOD_BACKGROUND_IMAGE_SCALE,
+} from "../theme/foodBackground";
+import { Order, Product, Restaurant } from "../types/models";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrdersHome">;
-type OrderWithMedia = Order & { mockImage?: string; mockVideoUrl?: string };
-const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
+type OrderWithMedia = Order & { mockProduct?: Product; mockRestaurant?: Restaurant };
 
 export function OrdersScreen({ navigation }: Props) {
   const { tr, language } = useI18n();
@@ -35,16 +44,37 @@ export function OrdersScreen({ navigation }: Props) {
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   const loadOrders = useCallback(
-    async (mode: "initial" | "refresh" = "initial") => {
+    async (mode: "initial" | "refresh" = "initial", shouldCommit: () => boolean = () => true) => {
       if (mode === "refresh") {
         setRefreshing(true);
-      } else {
+      } else if (useOrdersStore.getState().orders.length === 0) {
         setLoading(true);
       }
+
+      const cachedOrders = useOrdersStore.getState().orders;
+      if (mode === "initial" && cachedOrders.length > 0) {
+        const cachedMediaOrders = cachedOrders as OrderWithMedia[];
+        const hasMissingMedia = cachedMediaOrders.some((order) => !order.mockProduct || !order.mockRestaurant);
+        const hasLegacyDemoOrders = cachedOrders.some((order) => demoOrderConfigs.some((config) => config.id === order.id));
+
+        if (hasLegacyDemoOrders && hasMissingMedia) {
+          setOrders(MOCK_ORDERS);
+        } else if (hasMissingMedia) {
+          setOrders(enrichOrdersWithFeedMedia(cachedOrders));
+        }
+
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
       setError(null);
 
       if (!accessToken) {
-        setOrders(MOCK_ORDERS);
+        if (!shouldCommit()) return;
+        if (useOrdersStore.getState().orders.length === 0) {
+          setOrders(MOCK_ORDERS);
+        }
         setLoading(false);
         setRefreshing(false);
         return;
@@ -52,16 +82,20 @@ export function OrdersScreen({ navigation }: Props) {
 
       try {
         const data = await ordersApi.list();
-        const safeOrders = normalizeOrders(data);
+        if (!shouldCommit()) return;
+        const safeOrders = enrichOrdersWithFeedMedia(normalizeOrders(data));
         setOrders(safeOrders.length ? safeOrders : MOCK_ORDERS);
       } catch (orderError) {
+        if (!shouldCommit()) return;
         setOrders(MOCK_ORDERS);
         if (!isAuthError(orderError)) {
           setError(tr("Backend indisponibil acum. Afișăm comenzi demo pentru UI.", "Backend unavailable right now. Showing demo orders for UI."));
         }
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (shouldCommit()) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [accessToken, setOrders, tr],
@@ -69,21 +103,29 @@ export function OrdersScreen({ navigation }: Props) {
 
   useFocusEffect(
     useCallback(() => {
-      loadOrders();
+      let isActive = true;
+      loadOrders("initial", () => isActive);
+
+      return () => {
+        isActive = false;
+        setLoading(false);
+        setRefreshing(false);
+      };
     }, [loadOrders]),
   );
 
   return (
     <View style={styles.root}>
-      <Image source={SEARCH_BACKGROUND_IMAGE} style={styles.backgroundImage} resizeMode="cover" blurRadius={24} />
+      <Image source={BURGER_BACKGROUND_IMAGE} style={styles.backgroundImage} resizeMode="cover" blurRadius={FOOD_BACKGROUND_BLUR_RADIUS} />
       <LinearGradient
         pointerEvents="none"
-        colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
-        locations={[0, 0.48, 1]}
+        colors={FOOD_BACKGROUND_GRADIENT_COLORS}
+        locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
         style={StyleSheet.absoluteFillObject}
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
+        style={styles.scroll}
         onScroll={trackFloatingCartScrollDirection}
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.red} onRefresh={() => loadOrders("refresh")} />}
@@ -109,16 +151,14 @@ export function OrdersScreen({ navigation }: Props) {
             </View>
           ) : orders.length ? (
             <View style={[styles.list, { borderTopColor: separatorColor }]} pointerEvents="box-none">
-              {(orders as OrderWithMedia[]).map((order) => (
+              {(orders as OrderWithMedia[]).map((order, index) => (
                 <Pressable
                   key={order.id}
                   style={({ pressed }) => [styles.order, { borderBottomColor: separatorColor }, pressed && styles.pressed]}
                   onPress={() => navigation.navigate("OrderDetails", { order })}
                 >
-                  {order.mockVideoUrl ? (
-                    <OrderVideoThumb uri={order.mockVideoUrl} />
-                  ) : order.mockImage ? (
-                    <Image source={{ uri: order.mockImage }} style={styles.orderThumbImage} />
+                  {order.mockProduct && order.mockRestaurant ? (
+                    <OrderVideoThumb product={order.mockProduct} restaurant={order.mockRestaurant} fallbackIndex={index} />
                   ) : (
                     <View style={styles.orderThumb}>
                       <Text style={styles.orderThumbText}>{restaurantInitials(order.restaurant_name)}</Text>
@@ -149,26 +189,38 @@ export function OrdersScreen({ navigation }: Props) {
   );
 }
 
-function OrderVideoThumb({ uri }: { uri: string }) {
-  const videoSource = useMemo(
-    () => ({
-      uri,
-      contentType: "progressive" as const,
-      useCaching: false,
-    }),
-    [uri],
+function OrderVideoThumb({
+  product,
+  restaurant,
+  fallbackIndex,
+}: {
+  product: Product;
+  restaurant: Restaurant;
+  fallbackIndex: number;
+}) {
+  const videoSource = useMemo<VideoSource>(
+    () =>
+      product.video_url
+        ? {
+            uri: product.video_url,
+            contentType: "progressive",
+            useCaching: false,
+          }
+        : getDemoProductVideoSource({ product, restaurant, fallbackIndex }),
+    [fallbackIndex, product, restaurant],
   );
   const player = useVideoPlayer(videoSource, (videoPlayer) => {
     videoPlayer.loop = true;
     videoPlayer.muted = true;
     videoPlayer.volume = 0;
+    videoPlayer.audioMixingMode = "duckOthers";
   });
 
   useEffect(() => {
     try {
       player.play();
     } catch {
-      // Thumbnail remains visually stable if native playback cannot start.
+      // Keep the row usable even if native playback cannot start immediately.
     }
 
     return () => {
@@ -182,7 +234,17 @@ function OrderVideoThumb({ uri }: { uri: string }) {
 
   return (
     <View style={styles.orderThumbVideoWrap} pointerEvents="none">
-      <VideoView player={player} style={styles.orderThumbVideo} contentFit="cover" nativeControls={false} />
+      <VideoView
+        player={player}
+        style={styles.orderThumbVideo}
+        contentFit="cover"
+        nativeControls={false}
+        fullscreenOptions={{ enable: false }}
+        allowsPictureInPicture={false}
+        playsInline
+        surfaceType="textureView"
+        useExoShutter={false}
+      />
     </View>
   );
 }
@@ -247,101 +309,123 @@ function normalizeOrders(orders: Order[]): Order[] {
     }));
 }
 
-const MOCK_ORDERS: OrderWithMedia[] = [
+function enrichOrdersWithFeedMedia(orders: Order[]): OrderWithMedia[] {
+  return orders.map((order) => {
+    const firstProductId = order.items[0]?.product;
+    const product = mockProducts.find((item) => item.id === firstProductId);
+    const restaurant = product
+      ? mockRestaurants.find((item) => item.id === product.restaurant)
+      : mockRestaurants.find((item) => item.id === order.restaurant);
+
+    return {
+      ...order,
+      mockProduct: product,
+      mockRestaurant: restaurant,
+    };
+  });
+}
+
+const demoOrderConfigs: Array<{
+  id: number;
+  productIds: number[];
+  deliveryFee: number;
+  discount: number;
+  paymentMethod: Order["payment_method"];
+  status: Order["order_status"];
+  createdAt: string;
+}> = [
   {
     id: 9012,
-    restaurant: 23,
-    restaurant_name: "Gelato Stories",
-    subtotal: 30,
-    delivery_fee: 5,
-    discount: 0,
-    total: 35,
-    payment_method: "card",
-    order_status: "delivered",
-    created_at: "2026-05-25T12:04:00Z",
-    mockVideoUrl: "https://assets.mixkit.co/videos/10434/10434-1080.mp4",
-    items: [
-      { id: 1, product: 223, product_name: "Berry Cheesecake Cup", quantity: 1, unit_price: 30, total_price: 30 },
-    ],
-    address: 1,
+    productIds: [101, 102],
+    deliveryFee: 9.99,
+    discount: 10,
+    paymentMethod: "card",
+    status: "delivered",
+    createdAt: "2026-05-10T12:04:00Z",
   },
   {
     id: 9011,
-    restaurant: 22,
-    restaurant_name: "Bao Pop Studio",
-    subtotal: 31,
-    delivery_fee: 5,
+    productIds: [302, 301],
+    deliveryFee: 11,
     discount: 0,
-    total: 36,
-    payment_method: "cash",
-    order_status: "delivered",
-    created_at: "2026-05-18T19:14:00Z",
-    mockVideoUrl: "https://assets.mixkit.co/videos/41350/41350-1080.mp4",
-    items: [
-      { id: 3, product: 212, product_name: "Crispy Tofu Bao", quantity: 1, unit_price: 31, total_price: 31 },
-    ],
-    address: 1,
+    paymentMethod: "cash",
+    status: "delivered",
+    createdAt: "2026-05-02T19:14:00Z",
   },
   {
     id: 9008,
-    restaurant: 21,
-    restaurant_name: "Smokehouse Loop",
-    subtotal: 29,
-    delivery_fee: 6,
-    discount: 0,
-    total: 35,
-    payment_method: "card",
-    order_status: "delivered",
-    created_at: "2026-05-08T20:45:00Z",
-    mockVideoUrl: "https://assets.mixkit.co/videos/2774/2774-1080.mp4",
-    items: [
-      { id: 5, product: 201, product_name: "Brisket Burnt Ends Box", quantity: 1, unit_price: 29, total_price: 29 },
-    ],
-    address: 1,
+    productIds: [201, 202],
+    deliveryFee: 7.5,
+    discount: 4,
+    paymentMethod: "card",
+    status: "on_the_way",
+    createdAt: "2026-04-18T20:45:00Z",
   },
   {
     id: 9003,
-    restaurant: 20,
-    restaurant_name: "Bowl Motion",
-    subtotal: 33,
-    delivery_fee: 4,
-    discount: 0,
-    total: 37,
-    payment_method: "card",
-    order_status: "preparing",
-    created_at: "2026-05-02T13:03:00Z",
-    mockVideoUrl: "https://assets.mixkit.co/videos/40531/40531-1080.mp4",
-    items: [
-      { id: 7, product: 196, product_name: "Beetroot Feta Energy Bowl", quantity: 1, unit_price: 33, total_price: 33 },
-    ],
-    address: 1,
-  },
-  {
-    id: 8999,
-    restaurant: 5,
-    restaurant_name: "Dolce Notte",
-    subtotal: 33,
-    delivery_fee: 5,
-    discount: 3,
-    total: 35,
-    payment_method: "card",
-    order_status: "on_the_way",
-    created_at: "2026-04-24T18:28:00Z",
-    mockVideoUrl: "https://assets.mixkit.co/videos/43925/43925-1080.mp4",
-    items: [
-      { id: 10, product: 44, product_name: "Crispy Schnitzel dolce-notte", quantity: 1, unit_price: 33, total_price: 33 },
-    ],
-    address: 1,
+    productIds: [301, 302],
+    deliveryFee: 11,
+    discount: 6,
+    paymentMethod: "card",
+    status: "preparing",
+    createdAt: "2026-03-27T13:03:00Z",
   },
 ];
+
+const MOCK_ORDERS: OrderWithMedia[] = demoOrderConfigs.map((config) => {
+  const products = config.productIds
+    .map((productId) => mockProducts.find((product) => product.id === productId))
+    .filter((product): product is Product => Boolean(product));
+  const primaryProduct = products[0] ?? mockProducts[0];
+  const restaurant =
+    mockRestaurants.find((item) => item.id === primaryProduct.restaurant) ??
+    mockRestaurants.find((item) => item.id === Number(primaryProduct.restaurant)) ??
+    mockRestaurants[0];
+  const items = products.map((product, index) => {
+    const unitPrice = Number(product.effective_price ?? product.discount_price ?? product.price) || 0;
+    return {
+      id: config.id * 10 + index,
+      product: product.id,
+      product_name: product.name,
+      quantity: 1,
+      unit_price: unitPrice,
+      total_price: unitPrice,
+    };
+  });
+  const subtotal = items.reduce((total, item) => total + Number(item.total_price), 0);
+  const total = Number((subtotal + config.deliveryFee - config.discount).toFixed(2));
+
+  return {
+    id: config.id,
+    restaurant: restaurant.id,
+    restaurant_name: restaurant.name,
+    subtotal,
+    delivery_fee: config.deliveryFee,
+    discount: config.discount,
+    total,
+    payment_method: config.paymentMethod,
+    order_status: config.status,
+    created_at: config.createdAt,
+    items,
+    address: 1,
+    mockProduct: primaryProduct,
+    mockRestaurant: restaurant,
+  };
+});
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: "#050505",
   },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.9,
+    opacity: FOOD_BACKGROUND_IMAGE_OPACITY,
+    transform: [{ scale: FOOD_BACKGROUND_IMAGE_SCALE }],
+  },
+  scroll: {
+    flex: 1,
+    zIndex: 1,
   },
   content: {
     paddingHorizontal: 22,
@@ -382,12 +466,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.red,
-  },
-  orderThumbImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: colors.cardSoft,
   },
   orderThumbVideoWrap: {
     width: 64,

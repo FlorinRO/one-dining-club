@@ -20,7 +20,6 @@ class ProductAdmin(admin.ModelAdmin):
         "name",
         "restaurant",
         "category",
-        "has_audio",
         "price",
         "discount_price",
         "is_available",
@@ -48,3 +47,4 @@ class ProductOptionAdmin(admin.ModelAdmin):
     list_filter = ("is_available", "option_group__product__restaurant")
     search_fields = ("name", "option_group__name", "option_group__product__name")
     autocomplete_fields = ("option_group",)
+

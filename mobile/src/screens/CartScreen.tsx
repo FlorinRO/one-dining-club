@@ -19,12 +19,19 @@ import { CartStackParamList } from "../navigation/types";
 import { useCartStore } from "../store/cartStore";
 import { useOrdersStore } from "../store/ordersStore";
 import { colors } from "../theme/colors";
+import {
+  BURGER_BACKGROUND_IMAGE,
+  FOOD_BACKGROUND_BLUR_RADIUS,
+  FOOD_BACKGROUND_GRADIENT_COLORS,
+  FOOD_BACKGROUND_GRADIENT_LOCATIONS,
+  FOOD_BACKGROUND_IMAGE_OPACITY,
+  FOOD_BACKGROUND_IMAGE_SCALE,
+} from "../theme/foodBackground";
 import { Address, PaymentMethod, Product, Restaurant } from "../types/models";
 
 type Props = NativeStackScreenProps<CartStackParamList, "CartHome">;
 
 const tipOptions = [0, 3, 5, 10];
-const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
 
 function CartItemMedia({
   videoUrl,
@@ -233,11 +240,11 @@ export function CartScreen({ navigation }: Props) {
   return (
     <Screen padded={false} edges={["left", "right"]}>
       <View style={styles.screen}>
-        <Image source={SEARCH_BACKGROUND_IMAGE} style={styles.backgroundImage} resizeMode="cover" blurRadius={24} />
+        <Image source={BURGER_BACKGROUND_IMAGE} style={styles.backgroundImage} resizeMode="cover" blurRadius={FOOD_BACKGROUND_BLUR_RADIUS} />
         <LinearGradient
           pointerEvents="none"
-          colors={["rgba(5,5,5,0.34)", "rgba(5,5,5,0.58)", "rgba(5,5,5,0.86)"]}
-          locations={[0, 0.48, 1]}
+          colors={FOOD_BACKGROUND_GRADIENT_COLORS}
+          locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
           style={StyleSheet.absoluteFillObject}
         />
         <KeyboardAvoidingView
@@ -575,7 +582,8 @@ const styles = StyleSheet.create({
   },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.9,
+    opacity: FOOD_BACKGROUND_IMAGE_OPACITY,
+    transform: [{ scale: FOOD_BACKGROUND_IMAGE_SCALE }],
   },
   contentLayer: {
     flex: 1,
