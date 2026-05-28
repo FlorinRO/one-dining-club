@@ -47,7 +47,7 @@ type DiscoveryCategory = {
 const FEED_RESTAURANT_LIMIT = 12;
 const FEED_PRODUCT_LIMIT = 3;
 const SCREEN_EDGE_GUTTER = 14;
-const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
+const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
 
 const dark = {
   background: "#050505",

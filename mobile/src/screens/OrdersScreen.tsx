@@ -11,13 +11,14 @@ import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDi
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
 import { OrdersStackParamList } from "../navigation/types";
+import { useAuthStore } from "../store/authStore";
 import { useOrdersStore } from "../store/ordersStore";
 import { colors } from "../theme/colors";
 import { Order } from "../types/models";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrdersHome">;
 type OrderWithImage = Order & { mockImage?: string };
-const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
+const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
 
 export function OrdersScreen({ navigation }: Props) {
   const { tr, language } = useI18n();
@@ -26,6 +27,7 @@ export function OrdersScreen({ navigation }: Props) {
   const separatorColor = colorScheme === "dark" ? "#1A1A1A" : colors.border;
   const orders = useOrdersStore((state) => state.orders);
   const setOrders = useOrdersStore((state) => state.setOrders);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,13 +48,15 @@ export function OrdersScreen({ navigation }: Props) {
         setOrders(safeOrders.length ? safeOrders : MOCK_ORDERS);
       } catch {
         setOrders(MOCK_ORDERS);
-        setError(tr("Backend indisponibil acum. Afișăm comenzi demo pentru UI.", "Backend unavailable right now. Showing demo orders for UI."));
+        if (accessToken) {
+          setError(tr("Backend indisponibil acum. Afișăm comenzi demo pentru UI.", "Backend unavailable right now. Showing demo orders for UI."));
+        }
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [setOrders],
+    [accessToken, setOrders, tr],
   );
 
   useFocusEffect(

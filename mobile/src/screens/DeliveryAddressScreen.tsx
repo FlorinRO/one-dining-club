@@ -23,7 +23,7 @@ type AddressOption = {
   address: Address;
 };
 
-const DELIVERY_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
+const DELIVERY_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
 const ACCENT_GREEN = "#22C55E";
 const ACCENT_GREEN_DARK = "#16A34A";
 

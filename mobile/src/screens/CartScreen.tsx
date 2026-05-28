@@ -24,7 +24,7 @@ import { Address, PaymentMethod, Product, Restaurant } from "../types/models";
 type Props = NativeStackScreenProps<CartStackParamList, "CartHome">;
 
 const tipOptions = [0, 3, 5, 10];
-const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
+const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
 
 function CartItemMedia({
   videoUrl,

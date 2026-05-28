@@ -13,7 +13,7 @@ import { AppLanguage, usePreferencesStore } from "../store/preferencesStore";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileSettings">;
-const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
+const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
 const DESTRUCTIVE_RED = "#DC2626";
 export function ProfileSettingsScreen({ navigation }: Props) {
   const { language, t } = useI18n();

@@ -15,7 +15,7 @@ import { useCartStore } from "../store/cartStore";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileEdit">;
-const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
+const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
 const PROFILE_GREEN_DARK = "#16A34A";
 
 export function ProfileEditScreen({ navigation, route }: Props) {

@@ -11,7 +11,7 @@ import { ProfileStackParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileInfo">;
-const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
+const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
 
 type InfoContent = {
   title: string;

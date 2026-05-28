@@ -42,7 +42,7 @@ import { colors } from "../theme/colors";
 import { Address, Order, PaymentMethod } from "../types/models";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileHome">;
-const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
+const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
 const PROFILE_GREEN = "#22C55E";
 const PROFILE_GREEN_DARK = "#16A34A";
 
