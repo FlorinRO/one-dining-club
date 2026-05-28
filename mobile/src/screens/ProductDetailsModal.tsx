@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ProductCommentsSheet } from "../components/ProductCommentsSheet";
 import { QuantityStepper } from "../components/QuantityStepper";
 import { getDemoProductVideoSource } from "../data/demoVideos";
 import { useI18n } from "../i18n/useI18n";
@@ -25,6 +26,7 @@ import { money } from "../lib/format";
 import { resolveRestaurantImageUri } from "../lib/images";
 import { HomeStackParamList } from "../navigation/types";
 import { useCartStore } from "../store/cartStore";
+import { useFavoritesStore } from "../store/favoritesStore";
 import { colors } from "../theme/colors";
 import { Product, ProductOption, ProductOptionGroup, Restaurant } from "../types/models";
 
@@ -81,6 +83,13 @@ const videoSourceForProduct = (restaurant: Restaurant, product: Product, mediaFa
   return getDemoProductVideoSource({ restaurant, product, fallbackIndex: product.id });
 };
 
+const videoUriFromSource = (source: VideoSource): string | null => {
+  if (source && typeof source === "object" && "uri" in source && typeof source.uri === "string") {
+    return source.uri;
+  }
+  return null;
+};
+
 const parseCaloriesValue = (value?: number | string) => {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -109,9 +118,13 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   const { height } = useWindowDimensions();
   const { product, restaurant, mediaFallbackIndex } = route.params;
   const addItem = useCartStore((state) => state.addItem);
+  const cartRestaurant = useCartStore((state) => state.restaurant);
+  const isFavorite = useFavoritesStore((state) => state.isProductFavorite(product.id));
+  const toggleProductFavorite = useFavoritesStore((state) => state.toggleProduct);
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<ProductOption[]>([]);
   const [ingredientGramOverrides, setIngredientGramOverrides] = useState<Record<string, number>>({});
+  const [isCommentsSheetVisible, setIsCommentsSheetVisible] = useState(false);
   const optionGroups = product.option_groups ?? [];
   const basePrice = product.effective_price ?? product.discount_price ?? product.price;
   const heroHeight = Math.max(470, Math.round(height * 0.67));
@@ -120,6 +133,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
     () => videoSourceForProduct(restaurant, product, mediaFallbackIndex),
     [mediaFallbackIndex, product, restaurant],
   );
+  const videoUri = useMemo(() => videoUriFromSource(videoSource), [videoSource]);
   const productNutrition = product as unknown as {
     ingredients?: string | string[];
     calories?: number | string;
@@ -256,11 +270,11 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   };
 
   const onFavoritePress = () => {
-    Alert.alert(tr("Favorite", "Favorite"), tr("Funcția de favorite vine în curând.", "Favorite feature is coming soon."));
+    toggleProductFavorite(product.id);
   };
 
   const onCommentPress = () => {
-    Alert.alert(tr("Comentarii", "Comments"), tr("Secțiunea de comentarii vine în curând.", "Comments section is coming soon."));
+    setIsCommentsSheetVisible(true);
   };
 
   const adjustIngredientGrams = (ingredientId: string, direction: -1 | 1) => {
@@ -289,8 +303,27 @@ export function ProductDetailsModal({ navigation, route }: Props) {
           `Adjusted ingredients: ${adjustedIngredients.map((ingredient) => `${ingredient.name} ${ingredient.grams}g`).join(", ")}`,
         )
       : undefined;
-    addItem({ product, restaurant, quantity, selectedOptions, notes: adjustedIngredientsNote });
-    navigation.goBack();
+    const proceedToAdd = () => {
+      addItem({ product, restaurant, quantity, selectedOptions, notes: adjustedIngredientsNote, mediaVideoUrl: videoUri });
+      navigation.goBack();
+    };
+
+    if (cartRestaurant && cartRestaurant.id !== restaurant.id) {
+      Alert.alert(
+        tr("Înlocuiești coșul?", "Replace cart?"),
+        tr(
+          `Coșul tău are produse de la ${cartRestaurant.name}. Dacă adaugi de la ${restaurant.name}, coșul va fi golit și înlocuit cu noul produs.`,
+          `Your cart contains items from ${cartRestaurant.name}. If you add from ${restaurant.name}, the cart will be cleared and replaced with the new item.`,
+        ),
+        [
+          { text: tr("Renunță", "Cancel"), style: "cancel" },
+          { text: tr("Continuă", "Continue"), style: "destructive", onPress: proceedToAdd },
+        ],
+      );
+      return;
+    }
+
+    proceedToAdd();
   };
 
   return (
@@ -334,7 +367,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
                 <Share2 size={20} stroke={dark.text} />
               </Pressable>
               <Pressable onPress={onFavoritePress} style={styles.roundIconButton}>
-                <Heart size={20} stroke={dark.text} />
+                <Heart size={20} stroke={isFavorite ? "#EF4444" : dark.text} fill={isFavorite ? "#EF4444" : "transparent"} />
               </Pressable>
               <Pressable onPress={onCommentPress} style={styles.roundIconButton}>
                 <MessageSquareText size={20} stroke={dark.text} />
@@ -543,6 +576,13 @@ export function ProductDetailsModal({ navigation, route }: Props) {
           </Pressable>
         </View>
       </View>
+
+      <ProductCommentsSheet
+        visible={isCommentsSheetVisible}
+        restaurant={restaurant}
+        product={product}
+        onClose={() => setIsCommentsSheetVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 }

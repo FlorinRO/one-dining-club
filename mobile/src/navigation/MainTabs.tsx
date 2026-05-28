@@ -28,6 +28,7 @@ export function MainTabs() {
     activeRouteName === "Home" ||
     activeRouteName === "HomeTab";
   const hideFloatingCart =
+    isFeedRoute ||
     activeRouteName === "CartHome" ||
     activeRouteName === "CartFlow" ||
     activeRouteName === "ProductDetails" ||
@@ -114,7 +115,7 @@ export function MainTabs() {
         <FloatingCartBar
           mode={isFeedRoute ? "compact" : "animated"}
           compactStyle={isFeedRoute ? "feed" : "default"}
-          style={isFeedRoute ? { top: insets.top + 84, left: 14, right: undefined, bottom: undefined } : undefined}
+          style={isFeedRoute ? { top: insets.top + 20, right: 14, left: undefined, bottom: undefined } : undefined}
           onPress={() =>
             navigation.navigate("MainTabs", {
               screen: "HomeTab",

@@ -24,6 +24,7 @@ import {
   Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
   Pressable,
   RefreshControl,
   Share,
@@ -37,13 +38,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { addressesApi } from "../api/addressesApi";
 import { restaurantsApi } from "../api/restaurantsApi";
+import { ProductCommentsSheet } from "../components/ProductCommentsSheet";
 import { getDemoProductAudioSource } from "../data/demoAudio";
 import { getDemoProductVideoLabel, getDemoProductVideoSource } from "../data/demoVideos";
 import { useI18n } from "../i18n/useI18n";
+import { compactCount, productKey, statsFor } from "../lib/feedSocial";
 import { money } from "../lib/format";
 import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
 import { HomeStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
+import { useCartStore } from "../store/cartStore";
+import { useCommentsStore } from "../store/commentsStore";
 import { colors } from "../theme/colors";
 import { Address, Product, Restaurant } from "../types/models";
 
@@ -54,6 +59,7 @@ type FeedRestaurant = {
   products: Product[];
   initialProductIndex: number;
 };
+
 
 const VIDEO_POSTERS = [
   "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1300&auto=format&fit=crop",
@@ -68,7 +74,6 @@ const VIDEO_POSTERS = [
   "https://images.unsplash.com/photo-1529042410759-befb1204b468?q=80&w=1300&auto=format&fit=crop",
 ];
 
-const productKey = (restaurantId: number, productId: number) => `${restaurantId}:${productId}`;
 const FEED_STANDALONE_AUDIO_VOLUME = 0.82;
 const FEED_VIDEO_LOAD_TIMEOUT_MS = 12000;
 const FEED_VIDEO_DEBUG = false;
@@ -76,20 +81,6 @@ const logFeedVideo = (...args: Parameters<typeof console.log>) => {
   if (FEED_VIDEO_DEBUG) console.log(...args);
 };
 
-const compactCount = (value: number) => {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1000) return `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)}K`;
-  return String(value);
-};
-
-const statsFor = (restaurant: Restaurant, product: Product) => {
-  const seed = restaurant.id * 41 + product.id * 17;
-  return {
-    likes: 1400 + (seed % 82) * 137,
-    comments: 28 + (seed % 64),
-    shares: 12 + (seed % 33),
-  };
-};
 
 const buildFallbackProduct = (restaurant: Restaurant): Product => ({
   id: restaurant.id * 10000,
@@ -116,11 +107,12 @@ export function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const accessToken = useAuthStore((state) => state.accessToken);
+  const cartItemsCount = useCartStore((state) => state.items.reduce((sum, item) => sum + item.quantity, 0));
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [productsByRestaurant, setProductsByRestaurant] = useState<Record<number, Product[]>>({});
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
-  const [commentBumps, setCommentBumps] = useState<Record<string, number>>({});
+  const commentBumps = useCommentsStore((state) => state.commentBumps);
   const [activeRestaurantIndex, setActiveRestaurantIndex] = useState(0);
   const [activeProductByRestaurant, setActiveProductByRestaurant] = useState<Record<number, number>>({});
   const [audiblePostKey, setAudiblePostKey] = useState<string | null>(null);
@@ -131,6 +123,7 @@ export function HomeScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [locationLabel, setLocationLabel] = useState<string>("");
+  const [commentsSheetPost, setCommentsSheetPost] = useState<{ restaurant: Restaurant; product: Product } | null>(null);
 
   const pageHeight = feedHeight || screenHeight;
 
@@ -261,9 +254,8 @@ export function HomeScreen({ navigation }: Props) {
     void Haptics.selectionAsync();
   }, []);
 
-  const addCommentBump = useCallback((restaurant: Restaurant, product: Product) => {
-    const key = productKey(restaurant.id, product.id);
-    setCommentBumps((current) => ({ ...current, [key]: (current[key] ?? 0) + 1 }));
+  const openCommentsSheet = useCallback((restaurant: Restaurant, product: Product) => {
+    setCommentsSheetPost({ restaurant, product });
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
@@ -292,12 +284,15 @@ export function HomeScreen({ navigation }: Props) {
   if (isLoading && !feedData.length) {
     return (
       <View style={styles.loadingScreen}>
-        <View style={styles.loadingBrandMark}>
-          <UtensilsCrossed size={28} stroke={colors.white} />
+        <View style={styles.loadingLogoWrap}>
+          <Text style={styles.loadingLogoText}>
+            Yumz<Text style={styles.loadingLogoTextAccent}>Y</Text>
+          </Text>
+          <View style={styles.loadingLogoUnderlineRow}>
+            <View style={styles.loadingLogoUnderlineGreen} />
+            <View style={styles.loadingLogoUnderlineWhite} />
+          </View>
         </View>
-        <ActivityIndicator color={colors.white} />
-        <Text style={styles.loadingTitle}>ONE DINING CLUB</Text>
-        <Text style={styles.loadingText}>{tr("Pregătim feedul video", "Preparing the video feed")}</Text>
       </View>
     );
   }
@@ -342,8 +337,10 @@ export function HomeScreen({ navigation }: Props) {
               })}
             onQuickAdd={(product, productIndex) => quickAdd(item.restaurant, product, (item.restaurant.id - 1) * 10 + productIndex)}
             onLike={(product) => toggleLike(item.restaurant, product)}
-            onComment={(product) => addCommentBump(item.restaurant, product)}
+            onComment={(product) => openCommentsSheet(item.restaurant, product)}
             onShare={(product) => shareProduct(item.restaurant, product)}
+            cartItemsCount={cartItemsCount}
+            onOpenCart={() => navigation.navigate("CartFlow", { screen: "CartHome" })}
             onAudioChange={(key, shouldEnableAudio) => {
               setIsFeedAudioMutedByUser(!shouldEnableAudio);
               setAudiblePostKey(shouldEnableAudio ? key : null);
@@ -393,7 +390,12 @@ export function HomeScreen({ navigation }: Props) {
           />
         ))}
       </View>
-
+      <ProductCommentsSheet
+        visible={Boolean(commentsSheetPost)}
+        restaurant={commentsSheetPost?.restaurant ?? null}
+        product={commentsSheetPost?.product ?? null}
+        onClose={() => setCommentsSheetPost(null)}
+      />
     </View>
   );
 }
@@ -417,6 +419,8 @@ type RestaurantFeedPageProps = {
   onLike: (product: Product) => void;
   onComment: (product: Product) => void;
   onShare: (product: Product) => void;
+  cartItemsCount: number;
+  onOpenCart: () => void;
   onAudioChange: (key: string, shouldEnableAudio: boolean) => void;
 };
 
@@ -439,6 +443,8 @@ function RestaurantFeedPage({
   onLike,
   onComment,
   onShare,
+  cartItemsCount,
+  onOpenCart,
   onAudioChange,
 }: RestaurantFeedPageProps) {
   const productListRef = useRef<FlatList<Product>>(null);
@@ -595,6 +601,8 @@ function RestaurantFeedPage({
               onLike={() => onLike(product)}
               onComment={() => onComment(product)}
               onShare={() => onShare(product)}
+              cartItemsCount={cartItemsCount}
+              onOpenCart={onOpenCart}
               onAudioChange={(shouldEnableAudio) => onAudioChange(key, shouldEnableAudio)}
             />
           );
@@ -645,6 +653,8 @@ type ProductVideoSlideProps = {
   onLike: () => void;
   onComment: () => void;
   onShare: () => void;
+  cartItemsCount: number;
+  onOpenCart: () => void;
   onAudioChange: (shouldEnableAudio: boolean) => void;
 };
 
@@ -666,9 +676,9 @@ type PersistentLikeHeart = {
 };
 
 const PERSISTENT_LIKE_HEARTS: PersistentLikeHeart[] = [
-  { id: 1, xOffset: -12, yOffset: -2, size: 8, delay: 0 },
-  { id: 2, xOffset: 0, yOffset: -8, size: 9, delay: 180 },
-  { id: 3, xOffset: 12, yOffset: -2, size: 8, delay: 360 },
+  { id: 1, xOffset: -14, yOffset: -3, size: 10, delay: 0 },
+  { id: 2, xOffset: 0, yOffset: -10, size: 11, delay: 180 },
+  { id: 3, xOffset: 14, yOffset: -3, size: 10, delay: 360 },
 ];
 
 function ProductVideoSlide({
@@ -690,6 +700,8 @@ function ProductVideoSlide({
   onLike,
   onComment,
   onShare,
+  cartItemsCount,
+  onOpenCart,
   onAudioChange,
 }: ProductVideoSlideProps) {
   const { tr } = useI18n();
@@ -967,8 +979,8 @@ function ProductVideoSlide({
     likeBurstIdRef.current += 7;
     const hearts: LikeBurstHeart[] = Array.from({ length: 7 }).map((_, heartIndex) => ({
       id: burstIdBase + heartIndex,
-      xOffset: Math.round((Math.random() - 0.5) * 30),
-      size: 9 + Math.round(Math.random() * 5),
+      xOffset: Math.round((Math.random() - 0.5) * 38),
+      size: 12 + Math.round(Math.random() * 6),
       duration: 520 + Math.round(Math.random() * 220),
       delay: Math.round(Math.random() * 80),
       rotate: `${Math.round((Math.random() - 0.5) * 30)}deg`,
@@ -1041,6 +1053,16 @@ function ProductVideoSlide({
       />
 
       <View style={styles.actionStack}>
+        {cartItemsCount > 0 ? (
+          <Pressable style={({ pressed }) => [styles.socialButton, pressed && styles.socialButtonPressed]} onPress={onOpenCart}>
+            <View style={styles.cartIconWrap}>
+              <ShoppingBag size={22} stroke="#0A0A0A" />
+              <View style={styles.cartCountBadge}>
+                <Text style={styles.cartCountBadgeText}>{cartItemsCount}</Text>
+              </View>
+            </View>
+          </Pressable>
+        ) : null}
         <View style={styles.likeButtonWrap}>
           <View pointerEvents="none" style={styles.likeBurstLayer}>
             {isLiked ? PERSISTENT_LIKE_HEARTS.map((heart) => (
@@ -1058,7 +1080,7 @@ function ProductVideoSlide({
             label={compactCount(stats.likes + (isLiked ? 1 : 0))}
             active={isLiked}
             onPress={handleLikePress}
-            icon={<Heart size={24} stroke={colors.white} fill={colors.white} />}
+            icon={<Heart size={24} stroke="#000000" strokeWidth={1} fill={isLiked ? "#FF4D6D" : colors.white} />}
           />
         </View>
         <SocialButton
@@ -1168,7 +1190,7 @@ function FloatingLikeHeart({ heart, onDone }: FloatingLikeHeartProps) {
             {
               translateY: progress.interpolate({
                 inputRange: [0, 1],
-                outputRange: [2, -46],
+                outputRange: [2, -54],
               }),
             },
             {
@@ -1271,30 +1293,40 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 14,
     backgroundColor: "#050505",
     paddingHorizontal: 28,
   },
-  loadingBrandMark: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+  loadingLogoWrap: {
+    alignItems: "flex-start",
+  },
+  loadingLogoText: {
+    color: "#FFFFFF",
+    fontSize: 44,
+    lineHeight: 48,
+    fontWeight: "600",
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+  },
+  loadingLogoTextAccent: {
+    color: "#67D48A",
+  },
+  loadingLogoUnderlineRow: {
+    marginTop: -2,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
   },
-  loadingTitle: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: "900",
-    letterSpacing: 2.4,
+  loadingLogoUnderlineGreen: {
+    width: 124,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "#67D48A",
   },
-  loadingText: {
-    color: "rgba(255,255,255,0.62)",
-    fontSize: 14,
-    fontWeight: "700",
+  loadingLogoUnderlineWhite: {
+    width: 40,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "#FFFFFF",
+    marginLeft: 0,
   },
   page: {
     backgroundColor: "#050505",
@@ -1390,6 +1422,358 @@ const styles = StyleSheet.create({
   feedTopProductDotActive: {
     backgroundColor: colors.white,
   },
+  commentsModalRoot: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  commentsBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.42)",
+  },
+  commentsKeyboardAvoider: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  commentsSheet: {
+    position: "relative",
+    backgroundColor: "#0F0F10",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    height: "76%",
+    paddingTop: 10,
+    paddingBottom: 8,
+  },
+  commentsKeyboardFill: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: -260,
+    height: 260,
+    backgroundColor: "#0F0F10",
+  },
+  commentsHandle: {
+    alignSelf: "center",
+    width: 44,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.28)",
+    marginBottom: 14,
+  },
+  commentsTitle: {
+    color: colors.white,
+    fontWeight: "700",
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 14,
+  },
+  commentsBody: {
+    flex: 1,
+  },
+  commentsList: {
+    flex: 1,
+  },
+  commentsListContent: {
+    paddingHorizontal: 14,
+    gap: 20,
+    paddingBottom: 18,
+  },
+  commentsFooterSpacer: {
+    height: 72,
+  },
+  commentThread: {
+    gap: 10,
+  },
+  commentRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  commentAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#1F2937",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  commentAvatarText: {
+    color: colors.white,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  commentBody: {
+    flex: 1,
+    gap: 3,
+  },
+  commentTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  commentAuthor: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  commentMeta: {
+    color: "#9CA3AF",
+    fontSize: 12,
+  },
+  commentText: {
+    color: "#E5E7EB",
+    fontSize: 14,
+    lineHeight: 19,
+  },
+  commentPhotoPreviewWrap: {
+    marginTop: 6,
+    width: 112,
+    height: 112,
+    borderRadius: 10,
+    overflow: "hidden",
+    position: "relative",
+  },
+  commentPhoto: {
+    width: 112,
+    height: 112,
+    backgroundColor: "#1A1A1A",
+  },
+  commentPhotoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.48)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  commentPhotoOverlayText: {
+    color: "#FFFFFF",
+    fontSize: 22,
+    fontWeight: "800",
+  },
+  commentActionsRow: {
+    marginTop: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  replyButton: {
+    alignSelf: "flex-start",
+  },
+  replyButtonText: {
+    color: "#9CA3AF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  viewRepliesButton: {
+    alignSelf: "flex-start",
+  },
+  viewRepliesButtonText: {
+    color: "#60A5FA",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  replyRow: {
+    marginLeft: 44,
+    paddingLeft: 10,
+    borderLeftWidth: 1,
+    borderLeftColor: "rgba(255,255,255,0.10)",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 9,
+  },
+  replyAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#202124",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  replyAvatarText: {
+    color: colors.white,
+    fontWeight: "800",
+    fontSize: 10,
+  },
+  replyBody: {
+    flex: 1,
+    gap: 3,
+  },
+  replyAuthor: {
+    color: "#F3F4F6",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  replyText: {
+    color: "#D1D5DB",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  replyPhotoPreviewWrap: {
+    marginTop: 6,
+    width: 92,
+    height: 92,
+    borderRadius: 8,
+    overflow: "hidden",
+    position: "relative",
+  },
+  replyPhoto: {
+    width: 92,
+    height: 92,
+    backgroundColor: "#1A1A1A",
+  },
+  replyPhotoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.48)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  replyPhotoOverlayText: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  galleryModalRoot: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.96)",
+    justifyContent: "center",
+    zIndex: 100,
+  },
+  galleryBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  galleryCloseButton: {
+    position: "absolute",
+    top: 52,
+    right: 16,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+  gallerySlide: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  galleryImage: {
+    width: "100%",
+    height: "100%",
+  },
+  commentLikeCol: {
+    minWidth: 38,
+    alignItems: "center",
+    gap: 3,
+    paddingTop: 2,
+  },
+  commentLikeCount: {
+    color: "#9CA3AF",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  commentLikeCountActive: {
+    color: "#FF4D6D",
+  },
+  commentComposerWrap: {
+    backgroundColor: "#0F0F10",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
+    paddingTop: 8,
+    paddingBottom: 8,
+    marginBottom: 10,
+  },
+  replyComposerBanner: {
+    marginHorizontal: 14,
+    marginBottom: 8,
+    borderRadius: 12,
+    backgroundColor: "#1B1B1C",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  replyComposerText: {
+    flex: 1,
+    color: "#D1D5DB",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  replyComposerCancel: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#252629",
+  },
+  pendingPhotosRow: {
+    paddingHorizontal: 14,
+    gap: 8,
+    paddingBottom: 8,
+  },
+  pendingPhotoChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#202124",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  pendingPhotoThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+  },
+  commentInputRow: {
+    marginHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: "#1B1B1C",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 10,
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  commentComposerAction: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#252629",
+  },
+  commentInput: {
+    flex: 1,
+    color: colors.white,
+    fontSize: 14,
+    paddingVertical: 8,
+  },
+  commentSendButton: {
+    backgroundColor: "#22C55E",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  commentSendButtonDisabled: {
+    opacity: 0.45,
+  },
+  commentSendButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 12,
+  },
   actionStack: {
     position: "absolute",
     right: 12,
@@ -1442,6 +1826,32 @@ const styles = StyleSheet.create({
   },
   socialIconWrapActive: {
     backgroundColor: "transparent",
+  },
+  cartIconWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#22C55E",
+  },
+  cartCountBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0A0A0A",
+  },
+  cartCountBadgeText: {
+    color: colors.white,
+    fontSize: 11,
+    lineHeight: 12,
+    fontWeight: "700",
   },
   socialLabel: {
     position: "absolute",

@@ -1,12 +1,14 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import { AlertTriangle, ArrowLeft, Bike, ChevronRight, Clock3, CreditCard, MapPin, PlusCircle, Trash2, Wallet } from "lucide-react-native";
+import { useVideoPlayer, VideoView } from "expo-video";
+import { AlertTriangle, ArrowLeft, Bike, ChevronRight, Clock3, CreditCard, MapPin, PlusCircle, ShoppingCart, Trash2, Wallet } from "lucide-react-native";
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Animated, Image, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { addressesApi } from "../api/addressesApi";
+import { getDemoProductVideoSource } from "../data/demoVideos";
 import { ordersApi } from "../api/ordersApi";
 import { QuantityStepper } from "../components/QuantityStepper";
 import { Screen } from "../components/Screen";
@@ -17,12 +19,81 @@ import { CartStackParamList } from "../navigation/types";
 import { useCartStore } from "../store/cartStore";
 import { useOrdersStore } from "../store/ordersStore";
 import { colors } from "../theme/colors";
-import { Address, PaymentMethod } from "../types/models";
+import { Address, PaymentMethod, Product, Restaurant } from "../types/models";
 
 type Props = NativeStackScreenProps<CartStackParamList, "CartHome">;
 
 const tipOptions = [0, 3, 5, 10];
 const SEARCH_BACKGROUND_IMAGE = require("../../assets/food-src/food8.jpg");
+
+function CartItemMedia({
+  videoUrl,
+  imageUrl,
+  restaurant,
+  product,
+}: {
+  videoUrl?: string | null;
+  imageUrl: string;
+  restaurant: Restaurant;
+  product: Product;
+}) {
+  const videoSource = useMemo(
+    () =>
+      videoUrl
+        ? {
+            uri: videoUrl,
+            contentType: "progressive" as const,
+            useCaching: false,
+          }
+        : getDemoProductVideoSource({ restaurant, product, fallbackIndex: product.id }),
+    [product, restaurant, videoUrl],
+  );
+  const [showImageFallback, setShowImageFallback] = useState(false);
+  const player = useVideoPlayer(
+    videoSource,
+    (videoPlayer) => {
+      videoPlayer.loop = true;
+      videoPlayer.muted = true;
+      videoPlayer.volume = 0;
+      videoPlayer.audioMixingMode = "mixWithOthers";
+    },
+  );
+
+  useEffect(() => {
+    setShowImageFallback(false);
+    try {
+      player.play();
+    } catch {
+      setShowImageFallback(true);
+    }
+
+    return () => {
+      try {
+        player.pause();
+      } catch {
+        // Ignore cleanup failures from native video state.
+      }
+    };
+  }, [player, videoSource]);
+
+  if (showImageFallback) {
+    return <Image source={{ uri: imageUrl }} resizeMode="cover" style={styles.itemImage} />;
+  }
+
+  return (
+    <VideoView
+      player={player}
+      style={styles.itemImage}
+      contentFit="cover"
+      nativeControls={false}
+      fullscreenOptions={{ enable: false }}
+      allowsPictureInPicture={false}
+      playsInline
+      surfaceType="textureView"
+      useExoShutter={false}
+    />
+  );
+}
 
 export function CartScreen({ navigation }: Props) {
   const { tr } = useI18n();
@@ -193,6 +264,9 @@ export function CartScreen({ navigation }: Props) {
           >
             {!items.length ? (
               <View style={styles.empty}>
+                <View style={styles.emptyIconWrap}>
+                  <ShoppingCart size={34} stroke={colors.text} />
+                </View>
                 <Text style={styles.emptyTitle}>{tr("Coșul este gol", "Cart is empty")}</Text>
                 <Text style={styles.emptyText}>{tr("Alege un restaurant și adaugă preparatele preferate.", "Pick a restaurant and add your favorite dishes.")}</Text>
               </View>
@@ -201,7 +275,12 @@ export function CartScreen({ navigation }: Props) {
                 <View style={[styles.card, styles.firstCard]}>
                   {items.map((item, index) => (
                     <View key={item.id} style={[styles.item, index !== items.length - 1 && styles.itemDivider]}>
-                      <Image source={{ uri: resolveProductImageUri(item.product.image, item.product.id) }} resizeMode="cover" style={styles.itemImage} />
+                      <CartItemMedia
+                        videoUrl={item.mediaVideoUrl ?? item.product.video_url}
+                        imageUrl={resolveProductImageUri(item.product.image, item.product.id)}
+                        restaurant={item.restaurant}
+                        product={item.product}
+                      />
                       <View style={styles.itemInfo}>
                         <Text style={styles.itemName}>{item.product.name}</Text>
                         {item.selectedOptions.map((option) => (
@@ -533,19 +612,32 @@ const styles = StyleSheet.create({
   empty: {
     minHeight: 260,
     borderRadius: 26,
-    backgroundColor: colors.card,
     padding: 22,
     justifyContent: "center",
+    alignItems: "center",
     gap: 8,
+  },
+  emptyIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    marginBottom: 8,
   },
   emptyTitle: {
     color: colors.text,
     fontSize: 18,
     fontWeight: "900",
+    textAlign: "center",
   },
   emptyText: {
     color: colors.muted,
     lineHeight: 21,
+    textAlign: "center",
   },
   card: {
     borderTopWidth: 1,

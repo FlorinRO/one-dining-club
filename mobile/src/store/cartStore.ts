@@ -9,6 +9,7 @@ export type CartItem = {
   quantity: number;
   selectedOptions: ProductOption[];
   notes?: string;
+  mediaVideoUrl?: string | null;
 };
 
 type CartState = {
@@ -22,6 +23,7 @@ type CartState = {
     quantity?: number;
     selectedOptions?: ProductOption[];
     notes?: string;
+    mediaVideoUrl?: string | null;
   }) => void;
   removeItem: (id: string) => void;
   increaseQuantity: (id: string) => void;
@@ -55,7 +57,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   promoCode: "",
   setPromoCode: (promoCode) => set({ promoCode }),
-  addItem: ({ product, restaurant, quantity = 1, selectedOptions = [], notes }) => {
+  addItem: ({ product, restaurant, quantity = 1, selectedOptions = [], notes, mediaVideoUrl }) => {
     const id = itemKey(product, selectedOptions, notes);
     const currentRestaurant = get().restaurant;
     const currentItems = currentRestaurant?.id === restaurant.id ? get().items : [];
@@ -65,7 +67,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       set({
         restaurant,
         items: currentItems.map((item) =>
-          item.id === id ? { ...item, quantity: item.quantity + quantity, notes } : item,
+          item.id === id ? { ...item, quantity: item.quantity + quantity, notes, mediaVideoUrl } : item,
         ),
       });
       return;
@@ -73,7 +75,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     set({
       restaurant,
-      items: [...currentItems, { id, product, restaurant, quantity, selectedOptions, notes }],
+      items: [...currentItems, { id, product, restaurant, quantity, selectedOptions, notes, mediaVideoUrl }],
     });
   },
   removeItem: (id) => {

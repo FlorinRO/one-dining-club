@@ -1330,7 +1330,6 @@ function SearchProductCard({
   return (
     <Pressable style={styles.searchProductCard} onPress={onPress}>
       <View style={styles.searchProductVideoWrap}>
-        <Image source={{ uri: resolveProductImageUri(product.image, product.id) }} style={styles.searchProductVideoFallback} />
         <VideoView
           player={player}
           style={styles.searchProductVideo}
@@ -1695,9 +1694,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     overflow: "hidden",
     backgroundColor: dark.panel,
-  },
-  searchProductVideoFallback: {
-    ...StyleSheet.absoluteFillObject,
   },
   searchProductVideo: {
     ...StyleSheet.absoluteFillObject,

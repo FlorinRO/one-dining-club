@@ -229,6 +229,15 @@ export function RegisterScreen({ navigation }: Props) {
         >
           <View style={styles.headerWrap}>
             <View style={styles.brandRow}>
+              <View style={styles.logoWrap}>
+                <Text style={styles.logoText}>
+                  Yumz<Text style={styles.logoTextAccent}>Y</Text>
+                </Text>
+                <View style={styles.logoUnderlineRow}>
+                  <View style={styles.logoUnderlineGreen} />
+                  <View style={styles.logoUnderlineWhite} />
+                </View>
+              </View>
               <Text style={styles.headline}>
                 {verificationEmail ? tr("Confirmare", "Confirm") : tr("Înregistrare", "Register")}
               </Text>
@@ -568,26 +577,48 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   brandRow: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 6,
+    transform: [{ translateY: -8 }],
+  },
+  logoText: {
+    color: "#FFFFFF",
+    fontSize: 44,
+    lineHeight: 48,
+    fontWeight: "600",
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+  },
+  logoWrap: {
+    alignSelf: "flex-start",
+    alignItems: "flex-start",
+  },
+  logoTextAccent: {
+    color: "#67D48A",
+  },
+  logoUnderlineRow: {
+    marginTop: -2,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    transform: [{ translateY: -30 }],
   },
-  brand: {
-    color: "#000000",
-    fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: 0,
-    alignSelf: "flex-start",
+  logoUnderlineGreen: {
+    width: 124,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "#67D48A",
+  },
+  logoUnderlineWhite: {
+    width: 40,
+    height: 3,
+    borderRadius: 2,
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    overflow: "hidden",
+    marginLeft: 0,
   },
   headline: {
     color: colors.white,
-    fontSize: 28,
-    lineHeight: 32,
+    fontSize: 24,
+    lineHeight: 28,
     fontWeight: "600",
   },
   formCard: {
