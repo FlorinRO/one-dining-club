@@ -40,6 +40,7 @@
       ]
     ],
     "extra": {
+      "productionApiUrl": "https://one-dining-club-production.up.railway.app/api",
       "googleWebClientId": "",
       "googleIosClientId": "",
       "googleAndroidClientId": "",

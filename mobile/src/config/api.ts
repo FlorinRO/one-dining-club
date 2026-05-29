@@ -1,28 +1,71 @@
 import Constants from "expo-constants";
 
-const DEV_DEVICE_API_URL = "http://192.168.0.141:8000/api";
 const DEV_SIMULATOR_API_URL = "http://127.0.0.1:8000/api";
-const PROD_API_URL = "https://api.onedining.club/api";
+const PROD_API_URL = "https://one-dining-club-production.up.railway.app/api";
 
 type ExpoExtra = {
   apiUrl?: string;
   productionApiUrl?: string;
 };
 
+type ExpoConfigLike = {
+  hostUri?: string;
+  debuggerHost?: string;
+};
+
 function readExpoExtra(): ExpoExtra {
   return (Constants.expoConfig?.extra ?? {}) as ExpoExtra;
 }
 
+function readExpoConfigLike(): ExpoConfigLike {
+  return (Constants.expoConfig ?? {}) as ExpoConfigLike;
+}
+
+function devUrlFromExpoHost(): string | null {
+  const config = readExpoConfigLike();
+  const rawHost = config.hostUri ?? config.debuggerHost;
+  if (!rawHost) return null;
+
+  const host = rawHost.split(":")[0]?.trim();
+  if (!host) return null;
+
+  if (host === "localhost" || host === "127.0.0.1") {
+    return null;
+  }
+
+  return `http://${host}:8000/api`;
+}
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function resolveApiBaseUrl(): string {
   const extra = readExpoExtra();
+
   if (__DEV__) {
-    const explicitDevUrl = process.env.EXPO_PUBLIC_API_URL ?? extra.apiUrl;
-    if (explicitDevUrl) {
-      return explicitDevUrl;
+    const explicitDevUrl = process.env.EXPO_PUBLIC_API_URL ?? extra.apiUrl ?? "";
+    const normalizedExplicitDevUrl = explicitDevUrl.trim();
+    if (
+      normalizedExplicitDevUrl &&
+      !normalizedExplicitDevUrl.includes("<YOUR_LOCAL_IP>") &&
+      isValidHttpUrl(normalizedExplicitDevUrl)
+    ) {
+      return normalizedExplicitDevUrl;
     }
 
-    // `localhost` / `127.0.0.1` points to the phone itself; a physical device must use the Mac LAN IP.
-    return Constants.isDevice ? DEV_DEVICE_API_URL : DEV_SIMULATOR_API_URL;
+    // In Expo dev on a physical device, reuse the Metro host IP automatically.
+    const inferredDevUrl = devUrlFromExpoHost();
+    if (inferredDevUrl) {
+      return inferredDevUrl;
+    }
+
+    return DEV_SIMULATOR_API_URL;
   }
 
   return process.env.EXPO_PUBLIC_PRODUCTION_API_URL ?? extra.productionApiUrl ?? PROD_API_URL;
