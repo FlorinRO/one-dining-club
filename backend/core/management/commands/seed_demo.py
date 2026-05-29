@@ -53,6 +53,8 @@ class Command(BaseCommand):
         owner.set_password("password123")
         owner.save()
 
+        Restaurant.objects.filter(slug="bao-pop-studio").delete()
+
         category_map = {}
         for name, icon in [
             ("Italian", "pizza"),
@@ -271,15 +273,6 @@ class Command(BaseCommand):
                 "BBQ",
                 ["Brisket Burnt Ends Box", "Sticky Rib Reel Rack", "Pulled Pork Smoke Bun", "Maple Bacon Smash", "Charred Corn Slaw Cup", "Smoked Chicken Mac", "Texas Chili Loaded Fries", "BBQ Halloumi Stack", "Pitmaster Sausage Plate", "Peach Cobbler Jar"],
                 "Gluten, lactoza",
-            ),
-            (
-                "bao-pop-studio",
-                "Bao Pop Studio",
-                "Bao buns, dumplings si noodles asiatici cu topping-uri crocante.",
-                "Asian",
-                "Bao",
-                ["Pork Belly Bao Pop", "Crispy Tofu Bao", "Duck Hoisin Bao", "Shrimp Chili Dumplings", "Sichuan Noodle Pull", "Katsu Curry Bao", "Miso Mushroom Dumplings", "Sesame Chicken Rice Box", "Thai Basil Beef Bowl", "Coconut Mango Sticky Rice"],
-                "Gluten, susan, soia",
             ),
             (
                 "gelato-stories",

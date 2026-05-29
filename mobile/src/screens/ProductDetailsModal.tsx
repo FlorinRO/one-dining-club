@@ -72,7 +72,7 @@ const videoSourceForProduct = (restaurant: Restaurant, product: Product, mediaFa
     return {
       uri: product.video_url,
       contentType: "progressive",
-      useCaching: false,
+      useCaching: true,
     };
   }
 

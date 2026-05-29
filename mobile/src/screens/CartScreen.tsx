@@ -50,7 +50,7 @@ function CartItemMedia({
         ? {
             uri: videoUrl,
             contentType: "progressive" as const,
-            useCaching: false,
+            useCaching: true,
           }
         : getDemoProductVideoSource({ restaurant, product, fallbackIndex: product.id }),
     [product, restaurant, videoUrl],

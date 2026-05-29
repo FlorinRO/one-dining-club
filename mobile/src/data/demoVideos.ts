@@ -1,4 +1,5 @@
 import type { VideoSource } from "expo-video";
+import type { ImageSourcePropType } from "react-native";
 
 import type { Product, Restaurant } from "../types/models";
 
@@ -21,10 +22,44 @@ type DemoProductVideoRequest =
       fallbackIndex?: number;
     };
 
-const mixkitCdnVideo = (id: number, quality: 720 | 1080 = 1080): VideoSource => ({
+const demoVideoPosterSources: Record<number, ImageSourcePropType> = {
+  236: require("../../assets/video-thumbnails/mixkit-236.jpg"),
+  372: require("../../assets/video-thumbnails/mixkit-372.jpg"),
+  2433: require("../../assets/video-thumbnails/mixkit-2433.jpg"),
+  2774: require("../../assets/video-thumbnails/mixkit-2774.jpg"),
+  3552: require("../../assets/video-thumbnails/mixkit-3552.jpg"),
+  3800: require("../../assets/video-thumbnails/mixkit-3800.jpg"),
+  3802: require("../../assets/video-thumbnails/mixkit-3802.jpg"),
+  4985: require("../../assets/video-thumbnails/mixkit-4985.jpg"),
+  10434: require("../../assets/video-thumbnails/mixkit-10434.jpg"),
+  12171: require("../../assets/video-thumbnails/mixkit-12171.jpg"),
+  20765: require("../../assets/video-thumbnails/mixkit-20765.jpg"),
+  32518: require("../../assets/video-thumbnails/mixkit-32518.jpg"),
+  40521: require("../../assets/video-thumbnails/mixkit-40521.jpg"),
+  40524: require("../../assets/video-thumbnails/mixkit-40524.jpg"),
+  40531: require("../../assets/video-thumbnails/mixkit-40531.jpg"),
+  40830: require("../../assets/video-thumbnails/mixkit-40830.jpg"),
+  41350: require("../../assets/video-thumbnails/mixkit-41350.jpg"),
+  41859: require("../../assets/video-thumbnails/mixkit-41859.jpg"),
+  42474: require("../../assets/video-thumbnails/mixkit-42474.jpg"),
+  42477: require("../../assets/video-thumbnails/mixkit-42477.jpg"),
+  42910: require("../../assets/video-thumbnails/mixkit-42910.jpg"),
+  43903: require("../../assets/video-thumbnails/mixkit-43903.jpg"),
+  43905: require("../../assets/video-thumbnails/mixkit-43905.jpg"),
+  43925: require("../../assets/video-thumbnails/mixkit-43925.jpg"),
+  44001: require("../../assets/video-thumbnails/mixkit-44001.jpg"),
+  48658: require("../../assets/video-thumbnails/mixkit-48658.jpg"),
+  50018: require("../../assets/video-thumbnails/mixkit-50018.jpg"),
+  50051: require("../../assets/video-thumbnails/mixkit-50051.jpg"),
+  51236: require("../../assets/video-thumbnails/mixkit-51236.jpg"),
+  51238: require("../../assets/video-thumbnails/mixkit-51238.jpg"),
+  52457: require("../../assets/video-thumbnails/mixkit-52457.jpg"),
+};
+
+const mixkitCdnVideo = (id: number, quality: 720 | 1080 = 720): VideoSource => ({
   uri: `https://assets.mixkit.co/videos/${id}/${id}-${quality}.mp4`,
   contentType: "progressive",
-  useCaching: false,
+  useCaching: true,
 });
 
 const normalizeText = (value: string | null | undefined) =>
@@ -334,6 +369,11 @@ const selectDemoProductVideo = (request: DemoProductVideoRequest) => {
 export const demoProductVideoIds = cdnFoodVideos.map((item) => item.id);
 
 export const getDemoProductVideoSource = (request: DemoProductVideoRequest) => selectDemoProductVideo(request).source;
+
+export const getDemoProductVideoPosterSource = (request: DemoProductVideoRequest) => {
+  const video = selectDemoProductVideo(request);
+  return demoVideoPosterSources[video.id];
+};
 
 export const getDemoProductVideoLabel = (request: DemoProductVideoRequest) => selectDemoProductVideo(request).label;
 

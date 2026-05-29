@@ -224,7 +224,7 @@ const videoSourceForSearchProduct = (_restaurant: Restaurant, product: Product, 
     return {
       uri: product.video_url,
       contentType: "progressive",
-      useCaching: false,
+      useCaching: true,
     };
   }
 

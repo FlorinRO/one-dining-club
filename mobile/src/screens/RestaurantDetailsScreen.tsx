@@ -71,7 +71,7 @@ const videoSourceForProduct = (_restaurant: Restaurant, product: Product, fallba
     return {
       uri: product.video_url,
       contentType: "progressive",
-      useCaching: false,
+      useCaching: true,
     };
   }
 

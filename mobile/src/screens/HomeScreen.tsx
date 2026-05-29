@@ -4,7 +4,7 @@ import { useEvent, useEventListener } from "expo";
 import { type AudioSource, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
 import {
   Heart,
   MapPin,
@@ -33,6 +33,7 @@ import {
   useWindowDimensions,
   View,
   ViewToken,
+  type ImageSourcePropType,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -40,7 +41,7 @@ import { addressesApi } from "../api/addressesApi";
 import { restaurantsApi } from "../api/restaurantsApi";
 import { ProductCommentsSheet } from "../components/ProductCommentsSheet";
 import { getDemoProductAudioSource } from "../data/demoAudio";
-import { getDemoProductVideoLabel, getDemoProductVideoSource } from "../data/demoVideos";
+import { getDemoProductVideoLabel, getDemoProductVideoPosterSource, getDemoProductVideoSource } from "../data/demoVideos";
 import { useI18n } from "../i18n/useI18n";
 import { compactCount, productKey, statsFor } from "../lib/feedSocial";
 import { money } from "../lib/format";
@@ -81,6 +82,20 @@ const logFeedVideo = (...args: Parameters<typeof console.log>) => {
   if (FEED_VIDEO_DEBUG) console.log(...args);
 };
 
+const feedVideoSourceForProduct = (product: Product, fallbackIndex: number): VideoSource => {
+  if (product.video_url) {
+    return {
+      uri: product.video_url,
+      contentType: "progressive",
+      useCaching: true,
+    };
+  }
+
+  return getDemoProductVideoSource(fallbackIndex);
+};
+
+const videoSourceCacheKey = (source: VideoSource) =>
+  typeof source === "object" && source?.uri ? source.uri : JSON.stringify(source);
 
 const buildFallbackProduct = (restaurant: Restaurant): Product => ({
   id: restaurant.id * 10000,
@@ -121,6 +136,7 @@ export function HomeScreen({ navigation }: Props) {
   const [isRestaurantScrollEnabled, setIsRestaurantScrollEnabled] = useState(true);
   const [feedHeight, setFeedHeight] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasPreparedInitialVideo, setHasPreparedInitialVideo] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [locationLabel, setLocationLabel] = useState<string>("");
   const [commentsSheetPost, setCommentsSheetPost] = useState<{ restaurant: Restaurant; product: Product } | null>(null);
@@ -223,6 +239,47 @@ export function HomeScreen({ navigation }: Props) {
   const activePostKey = activeFeedItem && activeFeedProduct
     ? productKey(activeFeedItem.restaurant.id, activeFeedProduct.id)
     : null;
+  const activeFeedVideoSource = useMemo(
+    () =>
+      activeFeedItem && activeFeedProduct
+        ? feedVideoSourceForProduct(activeFeedProduct, (activeFeedItem.restaurant.id - 1) * 10 + activeFeedProductIndex)
+        : null,
+    [activeFeedItem, activeFeedProduct, activeFeedProductIndex],
+  );
+  const preloadVideoSources = useMemo(() => {
+    if (!isHomeFocused || !activeFeedItem) return [];
+
+    const sources: VideoSource[] = [];
+    const currentRestaurantBaseIndex = (activeFeedItem.restaurant.id - 1) * 10;
+    const currentProductIndexes = [
+      activeFeedProductIndex + 1,
+      activeFeedProductIndex - 1,
+    ];
+
+    currentProductIndexes.forEach((productIndex) => {
+      const product = activeFeedItem.products[productIndex];
+      if (product) {
+        sources.push(feedVideoSourceForProduct(product, currentRestaurantBaseIndex + productIndex));
+      }
+    });
+
+    const nextFeedItem = feedData[activeRestaurantIndex + 1];
+    if (nextFeedItem) {
+      const nextProductIndex = activeProductByRestaurant[nextFeedItem.restaurant.id] ?? nextFeedItem.initialProductIndex;
+      const nextProduct = nextFeedItem.products[Math.min(Math.max(nextProductIndex, 0), Math.max(nextFeedItem.products.length - 1, 0))];
+      if (nextProduct) {
+        sources.push(feedVideoSourceForProduct(nextProduct, (nextFeedItem.restaurant.id - 1) * 10 + nextProductIndex));
+      }
+    }
+
+    const seen = new Set<string>();
+    return sources.filter((source) => {
+      const key = videoSourceCacheKey(source);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [activeFeedItem, activeFeedProductIndex, activeProductByRestaurant, activeRestaurantIndex, feedData, isHomeFocused]);
 
   const restaurantViewabilityConfig = useRef({ itemVisiblePercentThreshold: 65 }).current;
   const onRestaurantViewableItemsChanged = useRef(
@@ -258,6 +315,9 @@ export function HomeScreen({ navigation }: Props) {
     setCommentsSheetPost({ restaurant, product });
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
+  const markInitialVideoPrepared = useCallback(() => {
+    setHasPreparedInitialVideo((current) => (current ? current : true));
+  }, []);
 
   useEffect(() => {
     if (!isHomeFocused) {
@@ -281,9 +341,22 @@ export function HomeScreen({ navigation }: Props) {
     setAudiblePostKey((current) => (current === activePostKey ? current : activePostKey));
   }, [activePostKey, hasAutoSelectedAudiblePost, isFeedAudioMutedByUser, isHomeFocused]);
 
-  if (isLoading && !feedData.length) {
+  useEffect(() => {
+    if (!activeFeedVideoSource || hasPreparedInitialVideo) return undefined;
+
+    const timeoutId = setTimeout(() => {
+      markInitialVideoPrepared();
+    }, 1800);
+
+    return () => clearTimeout(timeoutId);
+  }, [activeFeedVideoSource, hasPreparedInitialVideo, markInitialVideoPrepared]);
+
+  if ((isLoading && !feedData.length) || (activeFeedVideoSource && !hasPreparedInitialVideo)) {
     return (
       <View style={styles.loadingScreen}>
+        {activeFeedVideoSource ? (
+          <FeedVideoPreloader source={activeFeedVideoSource} onReady={markInitialVideoPrepared} />
+        ) : null}
         <View style={styles.loadingLogoWrap}>
           <Text style={styles.loadingLogoText}>
             Yumz<Text style={styles.loadingLogoTextAccent}>Y</Text>
@@ -370,6 +443,9 @@ export function HomeScreen({ navigation }: Props) {
         scrollEventThrottle={16}
         removeClippedSubviews={false}
       />
+      {preloadVideoSources.map((source, index) => (
+        <FeedVideoPreloader key={`feed-preloader-${index}-${videoSourceCacheKey(source)}`} source={source} />
+      ))}
       <Pressable
         style={[styles.locationChip, { top: insets.top + 20 }]}
         onPress={() => navigation.navigate("DeliveryAddress")}
@@ -675,6 +751,65 @@ type PersistentLikeHeart = {
   delay: number;
 };
 
+function FeedVideoPreloader({ source, onReady }: { source: VideoSource; onReady?: () => void }) {
+  const player = useVideoPlayer(source, (videoPlayer) => {
+    videoPlayer.loop = false;
+    videoPlayer.muted = true;
+    videoPlayer.volume = 0;
+    videoPlayer.audioMixingMode = "mixWithOthers";
+    videoPlayer.bufferOptions = {
+      preferredForwardBufferDuration: 2,
+      minBufferForPlayback: 0.2,
+      maxBufferBytes: 4 * 1024 * 1024,
+      prioritizeTimeOverSizeThreshold: true,
+    };
+  });
+
+  useEventListener(player, "sourceLoad", () => {
+    onReady?.();
+  });
+
+  useEventListener(player, "statusChange", ({ status }) => {
+    if (status === "readyToPlay") {
+      onReady?.();
+    }
+  });
+
+  useEffect(() => {
+    let pauseTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    try {
+      const playResult = player.play() as unknown;
+      pauseTimeout = setTimeout(() => {
+        try {
+          player.pause();
+        } catch {
+          // Ignore preloader pause failures.
+        }
+      }, 900);
+
+      if (playResult && typeof (playResult as Promise<void>).catch === "function") {
+        void (playResult as Promise<void>).catch(() => {
+          // Preloading is best-effort; the visible player will still handle playback.
+        });
+      }
+    } catch {
+      // Preloading is best-effort.
+    }
+
+    return () => {
+      if (pauseTimeout) clearTimeout(pauseTimeout);
+      try {
+        player.pause();
+      } catch {
+        // Ignore preloader cleanup failures.
+      }
+    };
+  }, [player]);
+
+  return null;
+}
+
 const PERSISTENT_LIKE_HEARTS: PersistentLikeHeart[] = [
   { id: 1, xOffset: -14, yOffset: -3, size: 10, delay: 0 },
   { id: 2, xOffset: 0, yOffset: -10, size: 11, delay: 180 },
@@ -709,32 +844,36 @@ function ProductVideoSlide({
   const stats = statsFor(restaurant, product);
   const posterIndex = Math.abs(restaurant.id * 7 + product.id * 3 + index) % VIDEO_POSTERS.length;
   const productPrice = product.effective_price ?? product.discount_price ?? product.price;
-  const posterUri = product.image ? resolveProductImageUri(product.image, product.id) : VIDEO_POSTERS[posterIndex];
   const mediaIndex = (restaurant.id - 1) * 10 + index;
-  const fallbackVideoSource = getDemoProductVideoSource(mediaIndex);
   const videoUri = product.video_url ?? getDemoProductVideoLabel(mediaIndex);
+  const posterSource = useMemo<ImageSourcePropType>(
+    () =>
+      product.video_url
+        ? { uri: resolveProductImageUri(product.image, product.id) }
+        : getDemoProductVideoPosterSource(mediaIndex) ?? { uri: VIDEO_POSTERS[posterIndex] },
+    [mediaIndex, posterIndex, product.id, product.image, product.video_url],
+  );
   const feedVideoKey = productKey(restaurant.id, product.id);
   const [hasAudioTrack, setHasAudioTrack] = useState(product.has_audio ?? true);
   const canPlayAudio = hasRestaurantAudio || hasAudioTrack || product.has_audio === true;
   const shouldMuteOutput = !isActive || !isAudible || !canPlayAudio;
   const shouldMuteVideo = shouldMuteOutput || isRestaurantAudioActive;
-  const videoSource = useMemo(
+  const videoSource = useMemo<VideoSource>(
     () =>
-      product.video_url
-        ? ({
-            uri: product.video_url,
-            contentType: "progressive" as const,
-            useCaching: false,
-          } as const)
-        : fallbackVideoSource,
-    [fallbackVideoSource, product.video_url],
+      !isActive
+        ? null
+        : feedVideoSourceForProduct(product, mediaIndex),
+    [isActive, mediaIndex, product],
   );
   const restaurantPosterUri = resolveRestaurantImageUri(restaurant.cover_image, restaurant.id, restaurant);
   const comments = stats.comments + commentBump;
   const [hasRenderedFrame, setHasRenderedFrame] = useState(false);
   const [hasPlaybackError, setHasPlaybackError] = useState(false);
+  const [showVideoLoadingIndicator, setShowVideoLoadingIndicator] = useState(false);
   const [likeHearts, setLikeHearts] = useState<LikeBurstHeart[]>([]);
   const likeBurstIdRef = useRef(0);
+  const playerRef = useRef<ReturnType<typeof useVideoPlayer> | null>(null);
+  const lastRestartKeyRef = useRef<string | null>(null);
   const player = useVideoPlayer(videoSource, (videoPlayer) => {
     videoPlayer.loop = true;
     videoPlayer.muted = true;
@@ -746,14 +885,21 @@ function ProductVideoSlide({
       prioritizeTimeOverSizeThreshold: true,
     };
   });
+  playerRef.current = player;
   const statusEvent = useEvent(player, "statusChange", { status: player.status });
-  const playingEvent = useEvent(player, "playingChange", { isPlaying: player.playing });
   const playerStatus = statusEvent?.status ?? player.status;
-  const isPlaying = playingEvent?.isPlaying ?? player.playing;
 
   useEventListener(player, "sourceLoad", (payload) => {
     const audioTrackCount = payload.availableAudioTracks?.length ?? 0;
-    setHasAudioTrack(audioTrackCount > 0);
+    const nextHasAudioTrack = audioTrackCount > 0;
+    setHasAudioTrack((current) => (current === nextHasAudioTrack ? current : nextHasAudioTrack));
+    if (isActive) {
+      try {
+        player.play();
+      } catch {
+        // The active-state effect also retries playback.
+      }
+    }
     logFeedVideo("[FeedVideo] video loaded", {
       key: feedVideoKey,
       uri: videoUri,
@@ -766,7 +912,8 @@ function ProductVideoSlide({
   });
 
   useEventListener(player, "availableAudioTracksChange", ({ availableAudioTracks }) => {
-    setHasAudioTrack(availableAudioTracks.length > 0);
+    const nextHasAudioTrack = availableAudioTracks.length > 0;
+    setHasAudioTrack((current) => (current === nextHasAudioTrack ? current : nextHasAudioTrack));
     logFeedVideo("[FeedVideo] audio tracks changed", {
       key: feedVideoKey,
       uri: videoUri,
@@ -802,19 +949,45 @@ function ProductVideoSlide({
   });
 
   useEffect(() => {
-    setHasRenderedFrame(false);
-    setHasPlaybackError(false);
-    setHasAudioTrack(product.has_audio ?? true);
+    const nextHasAudioTrack = product.has_audio ?? true;
+    setHasRenderedFrame((current) => (current ? false : current));
+    setHasPlaybackError((current) => (current ? false : current));
+    setHasAudioTrack((current) => (current === nextHasAudioTrack ? current : nextHasAudioTrack));
   }, [product.has_audio, videoUri]);
 
   useEffect(() => {
+    if (!isActive) {
+      lastRestartKeyRef.current = null;
+      return undefined;
+    }
+    if (lastRestartKeyRef.current === feedVideoKey) return undefined;
+
+    lastRestartKeyRef.current = feedVideoKey;
+    setHasRenderedFrame((current) => (current ? false : current));
+    setHasPlaybackError((current) => (current ? false : current));
+
+    const restartTimeout = setTimeout(() => {
+      const currentPlayer = playerRef.current;
+      if (!currentPlayer) return;
+
+      try {
+        currentPlayer.play();
+      } catch {
+        // The status-driven effect will keep retrying while active.
+      }
+    }, 0);
+
+    return () => clearTimeout(restartTimeout);
+  }, [feedVideoKey, isActive]);
+
+  useEffect(() => {
     if (playerStatus === "error") {
-      setHasPlaybackError(true);
+      setHasPlaybackError((current) => (current ? current : true));
       return;
     }
 
     if (playerStatus === "loading" || playerStatus === "readyToPlay") {
-      setHasPlaybackError(false);
+      setHasPlaybackError((current) => (current ? false : current));
     }
   }, [playerStatus]);
 
@@ -823,7 +996,7 @@ function ProductVideoSlide({
     if (playerStatus !== "loading" && playerStatus !== "readyToPlay") return undefined;
 
     const timeoutId = setTimeout(() => {
-      setHasPlaybackError(true);
+      setHasPlaybackError((current) => (current ? current : true));
       try {
         player.pause();
       } catch {
@@ -839,6 +1012,22 @@ function ProductVideoSlide({
 
     return () => clearTimeout(timeoutId);
   }, [feedVideoKey, hasPlaybackError, hasRenderedFrame, isActive, player, playerStatus, videoUri]);
+
+  useEffect(() => {
+    if (!isActive || hasRenderedFrame || hasPlaybackError || playerStatus !== "loading") {
+      setShowVideoLoadingIndicator((current) => (current ? false : current));
+      return undefined;
+    }
+
+    const loadingIndicatorTimeout = setTimeout(() => {
+      setShowVideoLoadingIndicator(true);
+    }, 700);
+
+    return () => {
+      clearTimeout(loadingIndicatorTimeout);
+      setShowVideoLoadingIndicator((current) => (current ? false : current));
+    };
+  }, [hasPlaybackError, hasRenderedFrame, isActive, playerStatus]);
 
   const applyVideoAudioState = useCallback(
     (muted: boolean, volume: number, reason: string) => {
@@ -915,16 +1104,20 @@ function ProductVideoSlide({
 
   useEffect(() => {
     if (!isActive) {
-      player.pause();
+      try {
+        player.pause();
+      } catch {
+        // Ignore pause failures from an idle player without a loaded source.
+      }
       return undefined;
     }
 
-    if (playerStatus !== "error" && !isPlaying) {
+    if (playerStatus !== "error") {
       requestPlay(shouldMuteOutput ? "active-muted-autoplay" : "active-audible-user-play");
     }
 
     return undefined;
-  }, [isActive, isPlaying, player, playerStatus, requestPlay, shouldMuteOutput]);
+  }, [isActive, player, playerStatus, requestPlay, shouldMuteOutput]);
 
   const handleAudioPress = useCallback(() => {
     void Haptics.selectionAsync();
@@ -1024,9 +1217,9 @@ function ProductVideoSlide({
         }}
       />
       {hasPlaybackError ? (
-        <Image source={{ uri: posterUri }} style={styles.videoFallbackImage} resizeMode="cover" />
+        <Image source={posterSource} style={styles.videoFallbackImage} resizeMode="cover" />
       ) : null}
-      {isActive && playerStatus === "loading" && !hasPlaybackError ? (
+      {showVideoLoadingIndicator ? (
         <View pointerEvents="none" style={styles.videoLoadingLayer}>
           <ActivityIndicator color={colors.white} />
         </View>
