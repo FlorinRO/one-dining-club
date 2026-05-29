@@ -1,18 +1,18 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
-import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
 import { ListOrdered, RotateCcw } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Image, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
+import { useCallback, useState } from "react";
+import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ordersApi } from "../api/ordersApi";
-import { getDemoProductVideoSource } from "../data/demoVideos";
+import { getDemoProductVideoPosterSource } from "../data/demoVideos";
 import { mockProducts, mockRestaurants } from "../data/mockData";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
+import { resolveProductImageUri } from "../lib/images";
 import { OrdersStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useOrdersStore } from "../store/ordersStore";
@@ -155,10 +155,10 @@ export function OrdersScreen({ navigation }: Props) {
                 <Pressable
                   key={order.id}
                   style={({ pressed }) => [styles.order, { borderBottomColor: separatorColor }, pressed && styles.pressed]}
-                  onPress={() => navigation.navigate("OrderDetails", { order })}
+                  onPress={() => navigation.navigate("OrderDetails", { order: stripFeedMedia(order) })}
                 >
                   {order.mockProduct && order.mockRestaurant ? (
-                    <OrderVideoThumb product={order.mockProduct} restaurant={order.mockRestaurant} fallbackIndex={index} />
+                    <OrderImageThumb product={order.mockProduct} restaurant={order.mockRestaurant} fallbackIndex={index} />
                   ) : (
                     <View style={styles.orderThumb}>
                       <Text style={styles.orderThumbText}>{restaurantInitials(order.restaurant_name)}</Text>
@@ -189,7 +189,7 @@ export function OrdersScreen({ navigation }: Props) {
   );
 }
 
-function OrderVideoThumb({
+function OrderImageThumb({
   product,
   restaurant,
   fallbackIndex,
@@ -198,55 +198,24 @@ function OrderVideoThumb({
   restaurant: Restaurant;
   fallbackIndex: number;
 }) {
-  const videoSource = useMemo<VideoSource>(
-    () =>
-      product.video_url
-        ? {
-            uri: product.video_url,
-            contentType: "progressive",
-            useCaching: false,
-          }
-        : getDemoProductVideoSource({ product, restaurant, fallbackIndex }),
-    [fallbackIndex, product, restaurant],
-  );
-  const player = useVideoPlayer(videoSource, (videoPlayer) => {
-    videoPlayer.loop = true;
-    videoPlayer.muted = true;
-    videoPlayer.volume = 0;
-    videoPlayer.audioMixingMode = "duckOthers";
-  });
-
-  useEffect(() => {
-    try {
-      player.play();
-    } catch {
-      // Keep the row usable even if native playback cannot start immediately.
-    }
-
-    return () => {
-      try {
-        player.pause();
-      } catch {
-        // Ignore native cleanup failures for tiny autoplay thumbnails.
-      }
-    };
-  }, [player]);
+  const posterSource = getDemoProductVideoPosterSource({ product, restaurant, fallbackIndex }) ?? {
+    uri: resolveProductImageUri(product.image, product.id),
+  };
 
   return (
-    <View style={styles.orderThumbVideoWrap} pointerEvents="none">
-      <VideoView
-        player={player}
-        style={styles.orderThumbVideo}
-        contentFit="cover"
-        nativeControls={false}
-        fullscreenOptions={{ enable: false }}
-        allowsPictureInPicture={false}
-        playsInline
-        surfaceType={Platform.OS === "android" ? "textureView" : undefined}
-        useExoShutter={Platform.OS === "android" ? false : undefined}
+    <View style={styles.orderThumbImageWrap} pointerEvents="none">
+      <Image
+        source={posterSource}
+        style={styles.orderThumbImage}
+        resizeMode="cover"
       />
     </View>
   );
+}
+
+function stripFeedMedia(order: OrderWithMedia): Order {
+  const { mockProduct: _mockProduct, mockRestaurant: _mockRestaurant, ...safeOrder } = order;
+  return safeOrder;
 }
 
 function safeRestaurantName(name: string | null | undefined) {
@@ -478,14 +447,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.red,
   },
-  orderThumbVideoWrap: {
+  orderThumbImageWrap: {
     width: 64,
     height: 64,
     borderRadius: 16,
     overflow: "hidden",
     backgroundColor: colors.cardSoft,
   },
-  orderThumbVideo: {
+  orderThumbImage: {
     width: "100%",
     height: "100%",
   },
