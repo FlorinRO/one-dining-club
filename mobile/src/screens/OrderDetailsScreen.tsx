@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { OrdersStackParamList } from "../navigation/types";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
+import { formatDateTime } from "../lib/dateFormat";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrderDetails">;
@@ -25,13 +26,7 @@ export function OrderDetailsScreen({ route }: Props) {
   const total = Number(order.total || 0);
   const orderCode = `#${`I${order.id.toString(36).toUpperCase()}`}`;
   const statusLabel = order.order_status === "delivered" ? tr("Livrată", "Delivered") : tr("În curs", "In progress");
-  const formattedDate = new Intl.DateTimeFormat(language === "en" ? "en-US" : "ro-RO", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(order.created_at));
+  const formattedDate = formatDateTime(order.created_at, language === "en" ? "en-US" : "ro-RO", tr("Dată necunoscută", "Unknown date"));
   const primaryAddress = typeof order.address === "object" ? `${order.address.address_line_1}, ${order.address.city}` : tr("Adresă salvată", "Saved address");
   const extraAddressLines = typeof order.address === "object" ? [order.address.address_line_2, order.address.instructions].filter(Boolean) : [];
   const paymentLabel = order.payment_method === "cash" ? tr("Plată cash", "Cash payment") : tr("Plată online", "Online payment");

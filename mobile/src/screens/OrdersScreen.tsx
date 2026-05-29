@@ -7,7 +7,6 @@ import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, u
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ordersApi } from "../api/ordersApi";
-import { getDemoProductVideoPosterSource } from "../data/demoVideos";
 import { mockProducts, mockRestaurants } from "../data/mockData";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
@@ -26,10 +25,10 @@ import {
   FOOD_BACKGROUND_IMAGE_OPACITY,
   FOOD_BACKGROUND_IMAGE_SCALE,
 } from "../theme/foodBackground";
-import { Order, Product, Restaurant } from "../types/models";
+import { Order, Product } from "../types/models";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrdersHome">;
-type OrderWithMedia = Order & { mockProduct?: Product; mockRestaurant?: Restaurant };
+type OrderWithMedia = Order & { mockProduct?: Product };
 
 export function OrdersScreen({ navigation }: Props) {
   const { tr, language } = useI18n();
@@ -43,6 +42,7 @@ export function OrdersScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
+  const displayOrders = Array.isArray(orders) ? (orders as OrderWithMedia[]) : [];
 
   const loadOrders = useCallback(
     async (mode: "initial" | "refresh" = "initial", shouldCommit: () => boolean = () => true) => {
@@ -54,14 +54,15 @@ export function OrdersScreen({ navigation }: Props) {
 
       const cachedOrders = useOrdersStore.getState().orders;
       if (mode === "initial" && cachedOrders.length > 0) {
-        const cachedMediaOrders = cachedOrders as OrderWithMedia[];
-        const hasMissingMedia = cachedMediaOrders.some((order) => !order.mockProduct || !order.mockRestaurant);
-        const hasLegacyDemoOrders = cachedOrders.some((order) => demoOrderConfigs.some((config) => config.id === order.id));
+        const normalizedCachedOrders = normalizeOrders(cachedOrders);
+        const cachedMediaOrders = normalizedCachedOrders as OrderWithMedia[];
+        const hasMissingMedia = cachedMediaOrders.some((order) => !order.mockProduct);
+        const hasLegacyDemoOrders = normalizedCachedOrders.some((order) => demoOrderConfigs.some((config) => config.id === order.id));
 
         if (hasLegacyDemoOrders && hasMissingMedia) {
           setOrders(MOCK_ORDERS);
         } else if (hasMissingMedia) {
-          setOrders(enrichOrdersWithFeedMedia(cachedOrders));
+          setOrders(enrichOrdersWithFeedMedia(normalizedCachedOrders));
         }
 
         setLoading(false);
@@ -150,16 +151,16 @@ export function OrdersScreen({ navigation }: Props) {
                 </View>
               ))}
             </View>
-          ) : orders.length ? (
+          ) : displayOrders.length ? (
             <View style={[styles.list, { borderTopColor: separatorColor }]} pointerEvents="box-none">
-              {(orders as OrderWithMedia[]).map((order, index) => (
+              {displayOrders.map((order, index) => (
                 <Pressable
-                  key={order.id}
+                  key={order.id ?? `order-${index}`}
                   style={({ pressed }) => [styles.order, { borderBottomColor: separatorColor }, pressed && styles.pressed]}
                   onPress={() => navigation.navigate("OrderDetails", { order: stripFeedMedia(order) })}
                 >
-                  {order.mockProduct && order.mockRestaurant ? (
-                    <OrderImageThumb product={order.mockProduct} restaurant={order.mockRestaurant} fallbackIndex={index} />
+                  {order.mockProduct ? (
+                    <OrderImageThumb product={order.mockProduct} />
                   ) : (
                     <View style={styles.orderThumb}>
                       <Text style={styles.orderThumbText}>{restaurantInitials(order.restaurant_name)}</Text>
@@ -192,21 +193,15 @@ export function OrdersScreen({ navigation }: Props) {
 
 function OrderImageThumb({
   product,
-  restaurant,
-  fallbackIndex,
 }: {
   product: Product;
-  restaurant: Restaurant;
-  fallbackIndex: number;
 }) {
-  const posterSource = getDemoProductVideoPosterSource({ product, restaurant, fallbackIndex }) ?? {
-    uri: resolveProductImageUri(product.image, product.id),
-  };
+  const imageSource = { uri: resolveProductImageUri(product.image, product.id) };
 
   return (
     <View style={styles.orderThumbImageWrap} pointerEvents="none">
       <Image
-        source={posterSource}
+        source={imageSource}
         style={styles.orderThumbImage}
         resizeMode="cover"
       />
@@ -215,7 +210,7 @@ function OrderImageThumb({
 }
 
 function stripFeedMedia(order: OrderWithMedia): Order {
-  const { mockProduct: _mockProduct, mockRestaurant: _mockRestaurant, ...safeOrder } = order;
+  const { mockProduct: _mockProduct, ...safeOrder } = order;
   return safeOrder;
 }
 
@@ -258,30 +253,39 @@ function statusLabel(status: Order["order_status"], tr: (ro: string, en: string)
   return tr("Plasată", "Placed");
 }
 
-function normalizeOrders(orders: Order[]): Order[] {
+function normalizeOrders(orders: unknown): Order[] {
+  if (!Array.isArray(orders)) return [];
+
   return orders
     .filter((order) => order && typeof order === "object")
-    .map((order) => ({
-      ...order,
-      restaurant_name: safeRestaurantName(order.restaurant_name),
-      created_at: typeof order.created_at === "string" ? order.created_at : "",
-      total: Number.isFinite(Number(order.total)) ? Number(order.total) : 0,
-      items: Array.isArray(order.items) ? order.items : [],
-    }));
+    .map((order) => {
+      const safeOrder = order as Partial<Order>;
+
+      return {
+        ...safeOrder,
+        id: Number.isFinite(Number(safeOrder.id)) ? Number(safeOrder.id) : 0,
+        restaurant: Number.isFinite(Number(safeOrder.restaurant)) ? Number(safeOrder.restaurant) : 0,
+        restaurant_name: safeRestaurantName(safeOrder.restaurant_name),
+        created_at: typeof safeOrder.created_at === "string" ? safeOrder.created_at : "",
+        subtotal: Number.isFinite(Number(safeOrder.subtotal)) ? Number(safeOrder.subtotal) : 0,
+        delivery_fee: Number.isFinite(Number(safeOrder.delivery_fee)) ? Number(safeOrder.delivery_fee) : 0,
+        discount: Number.isFinite(Number(safeOrder.discount)) ? Number(safeOrder.discount) : 0,
+        total: Number.isFinite(Number(safeOrder.total)) ? Number(safeOrder.total) : 0,
+        payment_method: safeOrder.payment_method ?? "cash",
+        order_status: safeOrder.order_status ?? "pending",
+        items: Array.isArray(safeOrder.items) ? safeOrder.items : [],
+      } as Order;
+    });
 }
 
 function enrichOrdersWithFeedMedia(orders: Order[]): OrderWithMedia[] {
   return orders.map((order) => {
-    const firstProductId = order.items[0]?.product;
+    const firstProductId = Array.isArray(order.items) ? order.items[0]?.product : undefined;
     const product = mockProducts.find((item) => item.id === firstProductId);
-    const restaurant = product
-      ? mockRestaurants.find((item) => item.id === product.restaurant)
-      : mockRestaurants.find((item) => item.id === order.restaurant);
 
     return {
       ...order,
       mockProduct: product,
-      mockRestaurant: restaurant,
     };
   });
 }
@@ -370,7 +374,6 @@ const MOCK_ORDERS: OrderWithMedia[] = demoOrderConfigs.map((config) => {
     items,
     address: 1,
     mockProduct: primaryProduct,
-    mockRestaurant: restaurant,
   };
 });
 

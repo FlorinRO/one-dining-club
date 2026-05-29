@@ -19,7 +19,11 @@ export function FloatingCartBar({ onPress, mode = "animated", style, compactStyl
   const { width: screenWidth } = useWindowDimensions();
   const items = useCartStore((state) => state.items);
   const floatingCartExpanded = useUiStore((state) => state.floatingCartExpanded);
-  const itemsCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const safeItems = Array.isArray(items) ? items : [];
+  const itemsCount = safeItems.reduce((sum, item) => {
+    const quantity = Number(item?.quantity ?? 0);
+    return sum + (Number.isFinite(quantity) ? quantity : 0);
+  }, 0);
   const progress = useRef(new Animated.Value(floatingCartExpanded ? 1 : 0)).current;
 
   useEffect(() => {
@@ -50,7 +54,8 @@ export function FloatingCartBar({ onPress, mode = "animated", style, compactStyl
   }
 
   const expandedWidth = 170;
-  const expandedRight = (screenWidth - expandedWidth) / 2;
+  const safeScreenWidth = Number.isFinite(screenWidth) && screenWidth > 0 ? screenWidth : 390;
+  const expandedRight = Math.max(18, (safeScreenWidth - expandedWidth) / 2);
   const animatedButtonStyle = {
     width: progress.interpolate({ inputRange: [0, 1], outputRange: [56, expandedWidth] }),
     height: progress.interpolate({ inputRange: [0, 1], outputRange: [56, 48] }),
