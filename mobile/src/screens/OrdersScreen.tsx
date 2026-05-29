@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
 import { ListOrdered, RotateCcw } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
+import { ActivityIndicator, Image, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ordersApi } from "../api/ordersApi";
@@ -242,8 +242,8 @@ function OrderVideoThumb({
         fullscreenOptions={{ enable: false }}
         allowsPictureInPicture={false}
         playsInline
-        surfaceType="textureView"
-        useExoShutter={false}
+        surfaceType={Platform.OS === "android" ? "textureView" : undefined}
+        useExoShutter={Platform.OS === "android" ? false : undefined}
       />
     </View>
   );
@@ -272,15 +272,26 @@ function formatOrderMeta(
   tr: (ro: string, en: string) => string,
 ) {
   const parsedDate = new Date(createdAt);
-  const formattedDate = Number.isNaN(parsedDate.getTime())
-    ? tr("Dată necunoscută", "Unknown date")
-    : new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(parsedDate);
+  let formattedDate = tr("Dată necunoscută", "Unknown date");
+  if (!Number.isNaN(parsedDate.getTime())) {
+    try {
+      formattedDate = new Intl.DateTimeFormat(locale, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(parsedDate);
+    } catch {
+      formattedDate = new Intl.DateTimeFormat("en-US", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(parsedDate);
+    }
+  }
   return `${formattedDate} · ${statusLabel(status, tr)}`;
 }
 
