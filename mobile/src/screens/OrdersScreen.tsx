@@ -11,6 +11,7 @@ import { getDemoProductVideoPosterSource } from "../data/demoVideos";
 import { mockProducts, mockRestaurants } from "../data/mockData";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
+import { formatDateTime } from "../lib/dateFormat";
 import { money } from "../lib/format";
 import { resolveProductImageUri } from "../lib/images";
 import { OrdersStackParamList } from "../navigation/types";
@@ -237,30 +238,10 @@ function restaurantInitials(name: string | null | undefined) {
 function formatOrderMeta(
   createdAt: string,
   status: Order["order_status"],
-  locale: string,
+  locale: "ro-RO" | "en-US",
   tr: (ro: string, en: string) => string,
 ) {
-  const parsedDate = new Date(createdAt);
-  let formattedDate = tr("Dată necunoscută", "Unknown date");
-  if (!Number.isNaN(parsedDate.getTime())) {
-    try {
-      formattedDate = new Intl.DateTimeFormat(locale, {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(parsedDate);
-    } catch {
-      formattedDate = new Intl.DateTimeFormat("en-US", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(parsedDate);
-    }
-  }
+  const formattedDate = formatDateTime(createdAt, locale, tr("Dată necunoscută", "Unknown date"));
   return `${formattedDate} · ${statusLabel(status, tr)}`;
 }
 
