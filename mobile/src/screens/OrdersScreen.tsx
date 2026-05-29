@@ -171,7 +171,9 @@ export function OrdersScreen({ navigation }: Props) {
                       {safeRestaurantName(order.restaurant_name)}
                     </Text>
                     <Text style={styles.total}>{money(order.total)}</Text>
-                    <Text style={styles.meta}>{formatOrderMeta(order.created_at, order.order_status, language === "en" ? "en-US" : "ro-RO", tr)}</Text>
+                    <Text style={styles.meta}>
+                      {formatOrderMeta(String(order.created_at ?? ""), order.order_status, language === "en" ? "en-US" : "ro-RO", tr)}
+                    </Text>
                   </View>
                   <View style={styles.trailingButton}>
                     <RotateCcw size={20} color={colors.text} strokeWidth={2} />

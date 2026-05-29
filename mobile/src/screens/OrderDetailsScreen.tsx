@@ -18,13 +18,15 @@ export function OrderDetailsScreen({ route }: Props) {
   const bottomSafeSpacing = Math.max(insets.bottom, 18) + 86;
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
   const { order } = route.params;
+  const safeOrderId = typeof order?.id === "number" ? order.id : 0;
+  const safeOrderItems = Array.isArray(order?.items) ? order.items : [];
   const subtotal = Number(order.subtotal || 0);
   const discount = Number(order.discount || 0);
   const deliveryFee = Number(order.delivery_fee || 0);
   const serviceFee = Math.max(0, Math.round(subtotal * 0.02 * 100) / 100);
   const subtotalAfterDiscount = Math.max(0, subtotal - discount);
   const total = Number(order.total || 0);
-  const orderCode = `#${`I${order.id.toString(36).toUpperCase()}`}`;
+  const orderCode = `#${`I${safeOrderId.toString(36).toUpperCase()}`}`;
   const statusLabel = order.order_status === "delivered" ? tr("Livrată", "Delivered") : tr("În curs", "In progress");
   const formattedDate = formatDateTime(order.created_at, language === "en" ? "en-US" : "ro-RO", tr("Dată necunoscută", "Unknown date"));
   const primaryAddress = typeof order.address === "object" ? `${order.address.address_line_1}, ${order.address.city}` : tr("Adresă salvată", "Saved address");
@@ -46,10 +48,10 @@ export function OrderDetailsScreen({ route }: Props) {
           </Text>
           <Text style={styles.orderCode}>{tr("Comanda", "Order")} {orderCode}</Text>
 
-          {order.items.map((item) => (
+          {safeOrderItems.map((item) => (
             <View key={item.id} style={styles.itemRow}>
               <Text style={styles.itemName}>
-                {item.quantity} x {item.product_name.toUpperCase()}
+                {Number(item.quantity || 0)} x {String(item.product_name ?? "").toUpperCase() || tr("PRODUS", "PRODUCT")}
               </Text>
               <Text style={styles.itemPrice}>{money(item.total_price)}</Text>
             </View>
