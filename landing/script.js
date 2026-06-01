@@ -1,4 +1,35 @@
 const revealItems = document.querySelectorAll(".reveal");
+const landingVideos = document.querySelectorAll("video");
+
+const syncAppHeight = () => {
+  document.documentElement.style.setProperty("--app-height", `${window.innerHeight}px`);
+};
+
+const ensureVideoPlayback = (video) => {
+  video.muted = true;
+  video.defaultMuted = true;
+  video.playsInline = true;
+  video.setAttribute("muted", "");
+  video.setAttribute("playsinline", "");
+  video.setAttribute("webkit-playsinline", "");
+
+  const playAttempt = video.play();
+  if (playAttempt && typeof playAttempt.catch === "function") {
+    playAttempt.catch(() => {
+      // Browser policy may still delay playback until first user gesture.
+    });
+  }
+};
+
+syncAppHeight();
+window.addEventListener("resize", syncAppHeight);
+window.addEventListener("orientationchange", syncAppHeight);
+window.addEventListener("pageshow", syncAppHeight);
+
+landingVideos.forEach((video) => {
+  ensureVideoPlayback(video);
+  video.addEventListener("loadedmetadata", () => ensureVideoPlayback(video), { once: true });
+});
 
 const revealObserver = new IntersectionObserver(
   (entries) => {

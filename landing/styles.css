@@ -1,4 +1,5 @@
 :root {
+  --app-height: 100vh;
   --bg: #070807;
   --bg-soft: #10130f;
   --ink: #ffffff;
@@ -31,9 +32,11 @@ html {
   scroll-behavior: smooth;
   width: 100%;
   max-width: 100%;
+  min-height: 100%;
   overscroll-behavior-x: none;
   overflow-x: hidden;
   overflow-x: clip;
+  background: #070807;
 }
 
 body {
@@ -41,13 +44,10 @@ body {
   margin: 0;
   width: 100%;
   max-width: 100%;
-  min-height: 100vh;
+  min-height: var(--app-height);
   color: var(--ink);
   font-family: Sora, Avenir Next, Montserrat, Trebuchet MS, sans-serif;
-  background:
-    radial-gradient(circle at 14% 4%, rgba(103, 212, 138, 0.32), transparent 28rem),
-    radial-gradient(circle at 92% 16%, rgba(241, 98, 58, 0.28), transparent 24rem),
-    linear-gradient(135deg, #050605 0%, #0c110d 48%, #15100d 100%);
+  background: transparent;
   overflow-x: hidden;
   overflow-x: clip;
   overscroll-behavior-x: none;
@@ -255,7 +255,7 @@ input {
   grid-template-columns: minmax(0, 1.02fr) minmax(360px, 0.78fr);
   align-items: center;
   gap: 54px;
-  min-height: calc(100vh - 136px);
+  min-height: calc(var(--app-height) - 136px);
   padding: 8px 0 6px;
   transform: none;
   overflow: visible;
@@ -1078,15 +1078,17 @@ h1 {
   position: fixed;
   inset: 0;
   width: 100%;
-  height: 100%;
+  height: var(--app-height);
   object-fit: cover;
   z-index: -3;
+  background: #070807;
 }
 
 .bg-video-overlay {
   position: fixed;
   inset: 0;
   z-index: -2;
+  display: block;
   background: linear-gradient(135deg, rgba(5, 6, 5, 0.58) 0%, rgba(12, 17, 13, 0.54) 48%, rgba(21, 16, 13, 0.6) 100%);
 }
 
@@ -1241,5 +1243,19 @@ h1 {
 
   .info-modal {
     max-height: 82vh;
+  }
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-height: 100dvh;
+  }
+}
+
+@supports not (height: 100dvh) {
+  @supports (height: 100svh) {
+    :root {
+      --app-height: 100svh;
+    }
   }
 }
