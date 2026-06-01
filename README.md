@@ -6,6 +6,7 @@ Foundation for a food delivery MVP with a Django REST backend and an Expo React 
 
 - `backend/` - Django, Django REST Framework, JWT auth, admin, PostgreSQL-ready settings.
 - `mobile/` - Expo SDK 54, React Native, TypeScript, React Navigation, Axios, Zustand.
+- `landing/` - static YUMZY landing page, standalone from mobile and backend.
 
 ## Backend
 
@@ -44,6 +45,15 @@ EXPO_PUBLIC_API_URL=http://192.168.0.141:8000/api npx expo start -c --lan
 ```
 
 On a physical phone, use the computer LAN IP instead of `localhost`/`127.0.0.1`.
+
+## Landing
+
+```bash
+cd landing
+python3 -m http.server 5173
+```
+
+Open `http://127.0.0.1:5173`.
 
 ### Social login
 
