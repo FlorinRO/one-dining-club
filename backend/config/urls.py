@@ -13,10 +13,13 @@ from restaurants.views import RestaurantCategoryViewSet, RestaurantViewSet
 from users.views import (
     EmailVerificationConfirmView,
     EmailVerificationConfirmPageView,
+    EmailVerificationPreviewPageView,
     EmailVerificationRequestView,
     LoginView,
     LogoutView,
     MeView,
+    PasswordResetConfirmPageView,
+    PasswordResetPreviewPageView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
     RegisterView,
@@ -45,6 +48,7 @@ router.register("courier/orders", CourierOrderViewSet, basename="courier-order")
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("verify-email/confirm/", EmailVerificationConfirmPageView.as_view(), name="email-verify-confirm-page"),
+    path("reset-password/confirm/", PasswordResetConfirmPageView.as_view(), name="password-reset-confirm-page"),
     path("api/auth/register/", RegisterView.as_view(), name="auth-register"),
     path("api/auth/login/", LoginView.as_view(), name="auth-login"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="auth-refresh"),
@@ -64,4 +68,8 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
+    urlpatterns += [
+        path("verify-email/preview/", EmailVerificationPreviewPageView.as_view(), name="email-verify-preview-page"),
+        path("reset-password/preview/", PasswordResetPreviewPageView.as_view(), name="password-reset-preview-page"),
+    ]
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

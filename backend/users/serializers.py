@@ -8,6 +8,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.db import transaction
+from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import serializers
@@ -91,9 +92,43 @@ def send_email_verification(user):
             f"{verification['url']}\n\n"
             "Daca nu ai creat acest cont, poti ignora mesajul."
         ),
+        html_message=render_transactional_email(
+            "users/emails/email_verification.html",
+            {
+                "headline": "Confirmă emailul",
+                "body": "Apasă pe butonul de mai jos pentru a activa contul tău Yumzy.",
+                "button_label": "Confirmă emailul",
+                "button_url": verification["url"],
+                "footnote": "Dacă nu ai creat acest cont, poți ignora acest mesaj.",
+            },
+        ),
         recipient_list=[user.email],
     )
     return verification if settings.DEBUG else None
+
+
+def build_password_reset(user):
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    url = settings.PASSWORD_RESET_CONFIRM_URL.format(uid=uid, token=token)
+    return {"uid": uid, "token": token, "url": url}
+
+
+def render_transactional_email(template_name, context):
+    return render_to_string(template_name, context)
+
+
+def validate_password_reset_user(uid, token):
+    try:
+        user_id = force_str(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=user_id, is_active=True)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist) as exc:
+        raise serializers.ValidationError({"uid": "Linkul pentru resetarea parolei nu este valid."}) from exc
+
+    if not default_token_generator.check_token(user, token):
+        raise serializers.ValidationError({"token": "Linkul pentru resetarea parolei este invalid sau expirat."})
+
+    return user
 
 
 def build_auth_response(user, context=None):
@@ -212,23 +247,31 @@ class PasswordResetRequestSerializer(serializers.Serializer):
         if not user:
             return None
 
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = default_token_generator.make_token(user)
-        reset_url = settings.PASSWORD_RESET_CONFIRM_URL.format(uid=uid, token=token)
+        reset = build_password_reset(user)
 
         try:
             send_transactional_email(
                 subject="Resetare parola Yumzy",
                 message=(
                     "Ai cerut resetarea parolei pentru contul Yumzy.\n\n"
-                    f"Deschide linkul pentru a seta o parola noua:\n{reset_url}\n\n"
+                    f"Deschide linkul pentru a seta o parola noua:\n{reset['url']}\n\n"
                     "Daca nu ai cerut asta, poti ignora mesajul."
+                ),
+                html_message=render_transactional_email(
+                    "users/emails/password_reset.html",
+                    {
+                        "headline": "Resetează parola",
+                        "body": "Apasă pe butonul de mai jos pentru a seta o parolă nouă pentru contul tău Yumzy.",
+                        "button_label": "Setează parola nouă",
+                        "button_url": reset["url"],
+                        "footnote": "Dacă nu ai cerut resetarea parolei, poți ignora acest mesaj.",
+                    },
                 ),
                 recipient_list=[user.email],
             )
         except EmailDeliveryError:
             return None
-        return {"uid": uid, "token": token} if settings.DEBUG else None
+        return reset if settings.DEBUG else None
 
 
 class EmailVerificationConfirmSerializer(serializers.Serializer):
@@ -276,15 +319,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True, min_length=8)
 
     def validate(self, attrs):
-        try:
-            user_id = force_str(urlsafe_base64_decode(attrs["uid"]))
-            user = User.objects.get(pk=user_id, is_active=True)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist) as exc:
-            raise serializers.ValidationError({"uid": "Invalid password reset link."}) from exc
-
-        if not default_token_generator.check_token(user, attrs["token"]):
-            raise serializers.ValidationError({"token": "Invalid or expired password reset token."})
-
+        user = validate_password_reset_user(attrs["uid"], attrs["token"])
         validate_password(attrs["new_password"], user)
         attrs["user"] = user
         return attrs

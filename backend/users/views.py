@@ -18,6 +18,7 @@ from users.serializers import (
     RegisterSerializer,
     SocialLoginSerializer,
     UserSerializer,
+    validate_password_reset_user,
 )
 
 
@@ -59,6 +60,26 @@ def build_email_verification_page_context(success, detail):
         "message": detail,
         "app_url": settings.EMAIL_VERIFICATION_APP_URL,
         "support_email": settings.SUPPORT_EMAIL,
+    }
+
+
+def build_password_reset_result_context(success, detail):
+    return {
+        "success": success,
+        "title": "Parolă resetată" if success else "Link invalid sau expirat",
+        "message": detail,
+        "app_url": settings.EMAIL_VERIFICATION_APP_URL,
+        "support_email": settings.SUPPORT_EMAIL,
+    }
+
+
+def build_password_reset_form_context(*, uid, token, password_error=""):
+    return {
+        "title": "Setează parola nouă",
+        "message": "Alege o parolă nouă pentru contul tău Yumzy.",
+        "uid": uid,
+        "token": token,
+        "password_error": password_error,
     }
 
 
@@ -113,6 +134,100 @@ class EmailVerificationConfirmPageView(APIView):
                 detail=extract_error_message(exc.detail),
             )
             return render(request, "users/email_verification_result.html", context, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EmailVerificationPreviewPageView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        success = request.query_params.get("success", "1").strip().lower() not in {"0", "false", "no"}
+        context = build_email_verification_page_context(
+            success=success,
+            detail=(
+                "Contul tău a fost confirmat. Poți reveni în aplicație și te poți autentifica."
+                if success
+                else "Linkul de confirmare este invalid sau a expirat. Cere un email nou din aplicație."
+            ),
+        )
+        return render(
+            request,
+            "users/email_verification_result.html",
+            context,
+            status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST,
+        )
+
+
+class PasswordResetConfirmPageView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        uid = request.query_params.get("uid", "")
+        token = request.query_params.get("token", "")
+        try:
+            validate_password_reset_user(uid, token)
+        except ValidationError as exc:
+            context = build_password_reset_result_context(
+                success=False,
+                detail=extract_error_message(exc.detail),
+            )
+            return render(request, "users/password_reset_result.html", context, status=status.HTTP_400_BAD_REQUEST)
+
+        context = build_password_reset_form_context(uid=uid, token=token)
+        return render(request, "users/password_reset_form.html", context, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+        except ValidationError as exc:
+            detail = exc.detail if isinstance(exc.detail, dict) else {"new_password": exc.detail}
+            if "uid" in detail or "token" in detail:
+                context = build_password_reset_result_context(
+                    success=False,
+                    detail=extract_error_message(detail),
+                )
+                return render(
+                    request,
+                    "users/password_reset_result.html",
+                    context,
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            context = build_password_reset_form_context(
+                uid=request.data.get("uid", ""),
+                token=request.data.get("token", ""),
+                password_error=extract_error_message(detail),
+            )
+            return render(request, "users/password_reset_form.html", context, status=status.HTTP_400_BAD_REQUEST)
+
+        context = build_password_reset_result_context(
+            success=True,
+            detail="Parola ta a fost actualizată. Poți reveni în aplicație și te poți autentifica.",
+        )
+        return render(request, "users/password_reset_result.html", context, status=status.HTTP_200_OK)
+
+
+class PasswordResetPreviewPageView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        mode = request.query_params.get("mode", "form").strip().lower()
+        if mode == "success":
+            context = build_password_reset_result_context(
+                success=True,
+                detail="Parola ta a fost actualizată. Poți reveni în aplicație și te poți autentifica.",
+            )
+            return render(request, "users/password_reset_result.html", context, status=status.HTTP_200_OK)
+        if mode == "invalid":
+            context = build_password_reset_result_context(
+                success=False,
+                detail="Linkul pentru resetarea parolei este invalid sau a expirat. Cere un link nou din aplicație.",
+            )
+            return render(request, "users/password_reset_result.html", context, status=status.HTTP_400_BAD_REQUEST)
+
+        context = build_password_reset_form_context(uid="preview-uid", token="preview-token")
+        return render(request, "users/password_reset_form.html", context, status=status.HTTP_200_OK)
 
 
 class LoginView(APIView):
@@ -218,8 +333,15 @@ class PasswordResetRequestView(APIView):
 class PasswordResetConfirmView(APIView):
     permission_classes = (permissions.AllowAny,)
 
+    def get(self, request):
+        confirm_url = reverse("password-reset-confirm-page")
+        query = request.META.get("QUERY_STRING", "")
+        if query:
+            confirm_url = f"{confirm_url}?{query}"
+        return redirect(confirm_url)
+
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response({"detail": "Password has been reset."})
+        return Response({"detail": "Parola a fost resetată."})

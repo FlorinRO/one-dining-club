@@ -60,6 +60,62 @@ class EmailVerificationConfirmFlowTests(TestCase):
         self.assertTrue(self.user.is_active)
 
 
+class PasswordResetFlowTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="reset@example.com",
+            password="StrongPass123!",
+            role=UserRole.CUSTOMER,
+            is_active=True,
+        )
+        self.uid = urlsafe_base64_encode(force_bytes(self.user.pk))
+        self.token = default_token_generator.make_token(self.user)
+
+    def test_public_reset_page_renders_form_for_valid_link(self):
+        response = self.client.get("/reset-password/confirm/", {"uid": self.uid, "token": self.token})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Setează parola nouă")
+        self.assertContains(response, "Actualizează parola")
+
+    def test_public_reset_page_handles_invalid_link(self):
+        response = self.client.get("/reset-password/confirm/", {"uid": self.uid, "token": "invalid-token"})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, "Link invalid sau expirat", status_code=400)
+
+    def test_public_reset_post_changes_password_and_renders_success(self):
+        response = self.client.post(
+            "/reset-password/confirm/",
+            {"uid": self.uid, "token": self.token, "new_password": "NewStrongPass123!"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Parolă resetată")
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("NewStrongPass123!"))
+
+    def test_api_reset_get_redirects_to_public_page(self):
+        response = self.client.get("/api/auth/password-reset/confirm/", {"uid": self.uid, "token": self.token})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"/reset-password/confirm/?uid={self.uid}&token={self.token}")
+
+    def test_api_reset_post_returns_json_and_changes_password(self):
+        response = self.client.post(
+            "/api/auth/password-reset/confirm/",
+            {"uid": self.uid, "token": self.token, "new_password": "NewStrongPass123!"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["detail"], "Parola a fost resetată.")
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("NewStrongPass123!"))
+
+
 class DeleteAccountFlowTests(TestCase):
     def setUp(self):
         self.client = APIClient()

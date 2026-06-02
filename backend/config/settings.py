@@ -138,7 +138,7 @@ EMAIL_DELIVERY_PROVIDER = os.getenv(
 ).strip().lower()
 PASSWORD_RESET_CONFIRM_URL = os.getenv(
     "PASSWORD_RESET_CONFIRM_URL",
-    join_url(FRONTEND_URL, "/reset-password") + "?uid={uid}&token={token}",
+    join_url(BACKEND_URL, "/reset-password/confirm/") + "?uid={uid}&token={token}",
 )
 EMAIL_VERIFICATION_CONFIRM_URL = os.getenv(
     "EMAIL_VERIFICATION_CONFIRM_URL",
