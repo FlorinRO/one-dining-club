@@ -142,8 +142,9 @@ PASSWORD_RESET_CONFIRM_URL = os.getenv(
 )
 EMAIL_VERIFICATION_CONFIRM_URL = os.getenv(
     "EMAIL_VERIFICATION_CONFIRM_URL",
-    join_url(BACKEND_URL, "/api/auth/verify-email/confirm/") + "?uid={uid}&token={token}",
+    join_url(BACKEND_URL, "/verify-email/confirm/") + "?uid={uid}&token={token}",
 )
+EMAIL_VERIFICATION_APP_URL = os.getenv("EMAIL_VERIFICATION_APP_URL", "onediningclub://")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")

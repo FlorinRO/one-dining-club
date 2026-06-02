@@ -1,5 +1,10 @@
 from django.conf import settings
+from django.db import transaction
+from django.db.models.deletion import ProtectedError
+from django.shortcuts import render, redirect
+from django.urls import reverse
 from rest_framework import generics, permissions, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
@@ -34,6 +39,80 @@ class RegisterView(generics.CreateAPIView):
         if settings.DEBUG and verification:
             payload["debug"] = verification
         return Response(payload, status=status.HTTP_201_CREATED, headers=headers)
+
+
+def extract_error_message(detail):
+    if isinstance(detail, list):
+        return extract_error_message(detail[0]) if detail else "Linkul de confirmare nu este valid."
+    if isinstance(detail, dict):
+        for value in detail.values():
+            return extract_error_message(value)
+    if isinstance(detail, str):
+        return detail
+    return "Linkul de confirmare nu este valid."
+
+
+def build_email_verification_page_context(success, detail):
+    return {
+        "success": success,
+        "title": "Email confirmat" if success else "Link invalid sau expirat",
+        "message": detail,
+        "app_url": settings.EMAIL_VERIFICATION_APP_URL,
+        "support_email": settings.SUPPORT_EMAIL,
+    }
+
+
+def anonymize_user(user):
+    user.addresses.update(
+        label="Deleted",
+        full_name="",
+        phone="",
+        address_line_1="",
+        address_line_2="",
+        city="",
+        postcode="",
+        instructions="",
+        is_default=False,
+        latitude=None,
+        longitude=None,
+    )
+    anonymized_email = f"deleted-user-{user.pk}@deleted.yumzy.local"
+    user.email = anonymized_email
+    user.first_name = ""
+    user.last_name = ""
+    user.phone = ""
+    user.is_active = False
+    user.set_unusable_password()
+    user.save(update_fields=("email", "first_name", "last_name", "phone", "is_active", "password"))
+
+
+def delete_or_anonymize_user(user):
+    with transaction.atomic():
+        try:
+            user.delete()
+        except ProtectedError:
+            anonymize_user(user)
+
+
+class EmailVerificationConfirmPageView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        serializer = EmailVerificationConfirmSerializer(data=request.query_params)
+        try:
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            context = build_email_verification_page_context(
+                success=True,
+                detail="Contul tău a fost confirmat. Poți reveni în aplicație și te poți autentifica.",
+            )
+            return render(request, "users/email_verification_result.html", context, status=status.HTTP_200_OK)
+        except ValidationError as exc:
+            context = build_email_verification_page_context(
+                success=False,
+                detail=extract_error_message(exc.detail),
+            )
+            return render(request, "users/email_verification_result.html", context, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LoginView(APIView):
@@ -72,7 +151,11 @@ class EmailVerificationConfirmView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def get(self, request):
-        return self._confirm(request.query_params)
+        confirm_url = reverse("email-verify-confirm-page")
+        query = request.META.get("QUERY_STRING", "")
+        if query:
+            confirm_url = f"{confirm_url}?{query}"
+        return redirect(confirm_url)
 
     def post(self, request):
         return self._confirm(request.data)
@@ -111,6 +194,10 @@ class MeView(generics.RetrieveAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+    def delete(self, request):
+        delete_or_anonymize_user(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PasswordResetRequestView(APIView):

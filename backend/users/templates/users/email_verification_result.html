@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ro">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }} | Yumzy</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0a0a0a;
+        --panel: rgba(10, 10, 10, 0.72);
+        --panel-border: rgba(255, 255, 255, 0.16);
+        --text: #ffffff;
+        --muted: rgba(255, 255, 255, 0.74);
+        --success: #67d48a;
+        --danger: #ff8f8f;
+        --button-dark: rgba(0, 0, 0, 0.52);
+        --button-light: rgba(255, 255, 255, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:
+          linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.68)),
+          radial-gradient(circle at top, rgba(229, 57, 53, 0.22), rgba(229, 57, 53, 0) 34%),
+          var(--bg);
+        color: var(--text);
+      }
+
+      .shell {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 20px;
+      }
+
+      .panel {
+        width: min(100%, 440px);
+        border: 1px solid var(--panel-border);
+        border-radius: 28px;
+        padding: 28px 24px 22px;
+        background: var(--panel);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+      }
+
+      .brand {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 28px;
+      }
+
+      .brand-title {
+        margin: 0;
+        font-size: 40px;
+        line-height: 1;
+        font-weight: 600;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+      }
+
+      .brand-title span {
+        color: var(--success);
+      }
+
+      .brand-rule {
+        display: flex;
+        align-items: center;
+      }
+
+      .brand-rule strong,
+      .brand-rule span {
+        display: block;
+        height: 3px;
+        border-radius: 999px;
+      }
+
+      .brand-rule strong {
+        width: 124px;
+        background: var(--success);
+      }
+
+      .brand-rule span {
+        width: 40px;
+        background: #ffffff;
+      }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 15px;
+        font-weight: 500;
+      }
+
+      .icon {
+        width: 62px;
+        height: 62px;
+        border-radius: 31px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .icon svg {
+        width: 28px;
+        height: 28px;
+      }
+
+      .icon.success {
+        color: var(--success);
+      }
+
+      .icon.error {
+        color: var(--danger);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1.1;
+        font-weight: 600;
+      }
+
+      .message {
+        margin: 14px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.6;
+      }
+
+      .actions {
+        display: grid;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      .button {
+        min-height: 52px;
+        border-radius: 26px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 18px;
+        color: var(--text);
+        text-decoration: none;
+        font-size: 15px;
+        font-weight: 600;
+      }
+
+      .button-primary {
+        background: var(--button-dark);
+        border: 1px solid rgba(255, 255, 255, 0.52);
+      }
+
+      .button-secondary {
+        background: var(--button-light);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+      }
+
+      .footnote {
+        margin: 16px 0 0;
+        color: rgba(255, 255, 255, 0.56);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      @media (max-width: 480px) {
+        .panel {
+          padding: 24px 18px 18px;
+          border-radius: 24px;
+        }
+
+        .brand-title {
+          font-size: 34px;
+        }
+
+        h1 {
+          font-size: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel">
+        <header class="brand" aria-label="Yumzy">
+          <p class="brand-title">Yumz<span>Y</span></p>
+          <div class="brand-rule" aria-hidden="true">
+            <strong></strong>
+            <span></span>
+          </div>
+        </header>
+
+        <p class="eyebrow">{% if success %}Confirmare{% else %}Verificare email{% endif %}</p>
+
+        <div class="icon {% if success %}success{% else %}error{% endif %}" aria-hidden="true">
+          {% if success %}
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          {% else %}
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 8v5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+              <circle cx="12" cy="16.5" r="1" fill="currentColor" />
+              <path d="M10.3 3.84L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.84a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+            </svg>
+          {% endif %}
+        </div>
+
+        <h1>{{ title }}</h1>
+        <p class="message">{{ message }}</p>
+
+        <div class="actions">
+          {% if success %}
+            <a class="button button-primary" href="{{ app_url }}">Deschide aplicația</a>
+            <a class="button button-secondary" href="{{ app_url }}">Am confirmat, intră în cont</a>
+          {% else %}
+            <a class="button button-primary" href="{{ app_url }}">Deschide aplicația</a>
+            <a class="button button-secondary" href="mailto:{{ support_email }}">Contactează suportul</a>
+          {% endif %}
+        </div>
+
+        <p class="footnote">
+          {% if success %}
+            Dacă aplicația nu se deschide automat, apasă pe butonul de mai sus și apoi revino la autentificare.
+          {% else %}
+            Dacă linkul a expirat, cere retrimiterea emailului de confirmare din ecranul de înregistrare.
+          {% endif %}
+        </p>
+      </section>
+    </main>
+    {% if success %}
+      <script>
+        (function () {
+          var appUrl = "{{ app_url|escapejs }}";
+          if (!appUrl) return;
+          window.setTimeout(function () {
+            window.location.href = appUrl;
+          }, 700);
+        })();
+      </script>
+    {% endif %}
+  </body>
+</html>
