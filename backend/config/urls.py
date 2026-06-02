@@ -11,6 +11,7 @@ from orders.views import OrderViewSet, RestaurantOwnerOrderViewSet
 from products.views import ProductViewSet, RestaurantOwnerProductViewSet
 from restaurants.views import RestaurantCategoryViewSet, RestaurantViewSet
 from users.views import (
+    EmailTemplatePreviewView,
     EmailVerificationConfirmView,
     EmailVerificationConfirmPageView,
     EmailVerificationPreviewPageView,
@@ -18,12 +19,14 @@ from users.views import (
     LoginView,
     LogoutView,
     MeView,
+    PasswordResetEmailTemplatePreviewView,
     PasswordResetConfirmPageView,
     PasswordResetPreviewPageView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
     RegisterView,
     SocialLoginView,
+    WelcomeEmailTemplatePreviewView,
 )
 
 
@@ -69,6 +72,9 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += [
+        path("email-preview/verify/", EmailTemplatePreviewView.as_view(), name="email-template-verify-preview"),
+        path("email-preview/reset/", PasswordResetEmailTemplatePreviewView.as_view(), name="email-template-reset-preview"),
+        path("email-preview/welcome/", WelcomeEmailTemplatePreviewView.as_view(), name="email-template-welcome-preview"),
         path("verify-email/preview/", EmailVerificationPreviewPageView.as_view(), name="email-verify-preview-page"),
         path("reset-password/preview/", PasswordResetPreviewPageView.as_view(), name="password-reset-preview-page"),
     ]

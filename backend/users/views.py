@@ -230,6 +230,54 @@ class PasswordResetPreviewPageView(APIView):
         return render(request, "users/password_reset_form.html", context, status=status.HTTP_200_OK)
 
 
+class EmailTemplatePreviewView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        context = {
+            "headline": "Confirmă emailul",
+            "body": "Apasă pe butonul de mai jos pentru a activa contul tău Yumzy.",
+            "button_label": "Confirmă emailul",
+            "button_url": "https://api.yumzy.ro/verify-email/confirm/?uid=preview&token=preview",
+            "footnote": "Dacă nu ai creat acest cont, poți ignora acest mesaj.",
+            "support_email": settings.SUPPORT_EMAIL,
+            "site_url": settings.SITE_URL,
+        }
+        return render(request, "users/emails/email_verification.html", context, status=status.HTTP_200_OK)
+
+
+class PasswordResetEmailTemplatePreviewView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        context = {
+            "headline": "Resetează parola",
+            "body": "Apasă pe butonul de mai jos pentru a seta o parolă nouă pentru contul tău Yumzy.",
+            "button_label": "Setează parola nouă",
+            "button_url": "https://api.yumzy.ro/reset-password/confirm/?uid=preview&token=preview",
+            "footnote": "Dacă nu ai cerut resetarea parolei, poți ignora acest mesaj.",
+            "support_email": settings.SUPPORT_EMAIL,
+            "site_url": settings.SITE_URL,
+        }
+        return render(request, "users/emails/password_reset.html", context, status=status.HTTP_200_OK)
+
+
+class WelcomeEmailTemplatePreviewView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        context = {
+            "headline": "Bine ai venit la Yumzy",
+            "body": "Contul tău este activ. Poți începe chiar acum să explorezi restaurantele și să comanzi.",
+            "button_label": "Deschide Yumzy",
+            "button_url": settings.SITE_URL,
+            "footnote": "Dacă ai nevoie de ajutor, echipa noastră îți răspunde rapid.",
+            "support_email": settings.SUPPORT_EMAIL,
+            "site_url": settings.SITE_URL,
+        }
+        return render(request, "users/emails/welcome.html", context, status=status.HTTP_200_OK)
+
+
 class LoginView(APIView):
     permission_classes = (permissions.AllowAny,)
 

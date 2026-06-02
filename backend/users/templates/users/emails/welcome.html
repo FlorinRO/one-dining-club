@@ -10,7 +10,7 @@
     <style>
       @media (max-width: 600px) {
         .mobile-px { padding-left: 16px !important; padding-right: 16px !important; }
-        .mobile-py { padding-top: 40px !important; padding-bottom: 40px !important; }
+        .mobile-py { padding-top: 32px !important; padding-bottom: 32px !important; }
         .mobile-title { font-size: 40px !important; letter-spacing: -1.2px !important; }
       }
     </style>
@@ -28,18 +28,30 @@
                   </td>
                 </tr>
                 <tr>
-                  <td class="mobile-px mobile-py" style="padding:72px 24px 56px;">
-                    <p class="mobile-title" style="margin:0;font-size:56px;line-height:1;letter-spacing:-1.68px;font-weight:700;font-family:Arial Narrow,Arial,sans-serif;color:#ffffff;text-transform:uppercase;">
-                      resetare<br />parolă
+                  <td class="mobile-px mobile-py" style="padding:64px 24px 48px;">
+                    <p class="mobile-title" style="margin:0;max-width:520px;font-size:56px;line-height:1;letter-spacing:-1.68px;font-weight:700;font-family:Arial Narrow,Arial,sans-serif;color:#ffffff;text-transform:uppercase;">
+                      bine ai venit la yumzy
                     </p>
-                    <p style="margin:32px 0 0;font-size:14px;line-height:1.6;font-weight:400;color:#c4c4c4;font-family:Arial,sans-serif;">
-                      Am primit o cerere de resetare a parolei pentru contul tău Yumzy.
-                    </p>
-                    <p style="margin:0;font-size:14px;line-height:1.6;font-weight:400;color:#c4c4c4;font-family:Arial,sans-serif;">
+                    <p style="margin:36px 0 0;max-width:490px;font-size:14px;line-height:1.6;font-weight:400;color:#c4c4c4;font-family:Arial,sans-serif;">
                       {{ body }}
                     </p>
-                    <p style="margin:18px 0 0;font-size:13px;line-height:1.6;font-weight:400;color:#818181;font-family:Arial,sans-serif;">
-                      {{ footnote }}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="mobile-px" style="padding:0 24px;">
+                    <img
+                      src="{{ site_url }}/assets/feed-friends.jpg"
+                      alt="Prieteni la masă"
+                      width="592"
+                      style="display:block;width:100%;max-width:592px;height:220px;object-fit:cover;border:0;outline:none;text-decoration:none;"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td class="mobile-px mobile-py" style="padding:40px 24px 48px;">
+                    <p style="margin:0;max-width:320px;font-size:11px;line-height:1.6;font-weight:400;color:#7d7d7d;font-family:Arial,sans-serif;">
+                      Dacă ai nevoie de ajutor pentru primele comenzi, ne poți scrie oricând la
+                      <a href="mailto:{{ support_email }}" style="color:#c4c4c4;text-decoration:none;">{{ support_email }}</a>.
                     </p>
                     <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin-top:32px;">
                       <tr>
@@ -50,32 +62,19 @@
                         </td>
                       </tr>
                     </table>
+                    <p style="margin:20px 0 0;font-size:13px;line-height:1.6;font-weight:400;color:#818181;font-family:Arial,sans-serif;">
+                      {{ footnote }}
+                    </p>
                   </td>
                 </tr>
                 <tr>
-                  <td class="mobile-px" style="padding:0 24px 24px;">
-                    <img
-                      src="{{ site_url }}/assets/feed-friends.jpg"
-                      alt="Prieteni la masă"
-                      width="592"
-                      style="display:block;width:100%;max-width:592px;height:220px;object-fit:cover;border:0;outline:none;text-decoration:none;"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td class="mobile-px" style="border-top:1px solid #2b2b2b;padding:48px 24px;">
+                  <td class="mobile-px" style="border-top:1px solid #2b2b2b;padding:40px 24px 48px;">
                     <p style="margin:0;max-width:360px;font-size:13px;line-height:1.6;font-weight:400;color:#c4c4c4;font-family:Arial,sans-serif;">
-                      Dacă nu ai cerut schimbarea parolei, nu este nevoie să faci nimic. Contul tău rămâne în siguranță.
+                      Contul tău este gata. Poți descoperi restaurante, salva adrese și plasa comenzi direct din Yumzy.
                     </p>
                     <p style="margin:24px 0 0;font-size:11px;line-height:1.6;font-weight:400;color:#c4c4c4;font-family:Arial,sans-serif;">
-                      Suport:
-                      <a href="mailto:{{ support_email }}" style="color:#ffffff;text-decoration:none;">{{ support_email }}</a><br />
                       Site:
                       <a href="{{ site_url }}" target="_blank" style="color:#ffffff;text-decoration:none;">{{ site_url }}</a>
-                    </p>
-                    <p style="margin:20px 0 0;font-size:11px;line-height:1.6;font-weight:400;color:#8a8a8a;font-family:Arial,sans-serif;word-break:break-all;">
-                      Dacă butonul nu funcționează, folosește direct acest link:<br />
-                      <a href="{{ button_url }}" target="_blank" style="color:#ffffff;text-decoration:none;">{{ button_url }}</a>
                     </p>
                   </td>
                 </tr>

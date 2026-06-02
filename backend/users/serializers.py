@@ -107,6 +107,29 @@ def send_email_verification(user):
     return verification if settings.DEBUG else None
 
 
+def send_welcome_email(user):
+    send_transactional_email(
+        subject="Bun venit la Yumzy",
+        message=(
+            "Bun venit la Yumzy.\n\n"
+            "Contul tau este activ si poti incepe sa explorezi restaurantele si sa plasezi comenzi.\n\n"
+            f"Deschide Yumzy: {settings.FRONTEND_URL}\n\n"
+            f"Pentru ajutor ne poti scrie la: {settings.SUPPORT_EMAIL}"
+        ),
+        html_message=render_transactional_email(
+            "users/emails/welcome.html",
+            {
+                "headline": "Bine ai venit la Yumzy",
+                "body": "Contul tău este activ. Poți începe chiar acum să explorezi restaurantele și să comanzi.",
+                "button_label": "Deschide Yumzy",
+                "button_url": settings.FRONTEND_URL,
+                "footnote": "Dacă ai nevoie de ajutor, echipa noastră îți răspunde rapid.",
+            },
+        ),
+        recipient_list=[user.email],
+    )
+
+
 def build_password_reset(user):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
@@ -115,7 +138,14 @@ def build_password_reset(user):
 
 
 def render_transactional_email(template_name, context):
-    return render_to_string(template_name, context)
+    return render_to_string(
+        template_name,
+        {
+            "site_url": settings.SITE_URL,
+            "support_email": settings.SUPPORT_EMAIL,
+            **context,
+        },
+    )
 
 
 def validate_password_reset_user(uid, token):
@@ -191,9 +221,17 @@ class SocialLoginSerializer(serializers.Serializer):
             user.is_active = True
             user.set_unusable_password()
             user.save(update_fields=["is_active", "password"])
+            try:
+                send_welcome_email(user)
+            except EmailDeliveryError:
+                pass
         elif not user.is_active:
             user.is_active = True
             user.save(update_fields=["is_active"])
+            try:
+                send_welcome_email(user)
+            except EmailDeliveryError:
+                pass
         CustomerProfile.objects.get_or_create(user=user, defaults={"phone_number": user.phone})
 
         return build_auth_response(user, self.context)
@@ -293,9 +331,14 @@ class EmailVerificationConfirmSerializer(serializers.Serializer):
 
     def save(self):
         user = self.validated_data["user"]
-        if not user.is_active:
+        was_inactive = not user.is_active
+        if was_inactive:
             user.is_active = True
             user.save(update_fields=("is_active",))
+            try:
+                send_welcome_email(user)
+            except EmailDeliveryError:
+                pass
         return user
 
 
