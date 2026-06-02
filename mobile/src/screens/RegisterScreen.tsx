@@ -2,6 +2,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Path } from "react-native-svg";
 import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, Phone, UserPlus, UserRound } from "lucide-react-native";
+import { AxiosError } from "axios";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -29,6 +30,22 @@ type Props = NativeStackScreenProps<AuthStackParamList, "Register">;
 type FieldKey = "firstName" | "lastName" | "email" | "phone" | "password";
 
 const KEYBOARD_FORM_GAP = 5;
+
+function extractApiErrorMessage(error: unknown): string | null {
+  if (!(error instanceof AxiosError)) return null;
+
+  const data = error.response?.data;
+  if (typeof data === "string" && data.trim()) return data.trim();
+  if (!data || typeof data !== "object") return null;
+
+  const values = Object.values(data as Record<string, unknown>);
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (Array.isArray(value) && typeof value[0] === "string" && value[0].trim()) return value[0].trim();
+  }
+
+  return null;
+}
 
 export function RegisterScreen({ navigation }: Props) {
   const { tr } = useI18n();
@@ -171,12 +188,13 @@ export function RegisterScreen({ navigation }: Props) {
           "We sent you a confirmation link. Check Inbox and Spam.",
         ),
       );
-    } catch {
+    } catch (error) {
       setError(
-        tr(
-          "Nu am putut crea contul. Verifică dacă emailul nu este deja folosit.",
-          "Could not create account. Check if email is already in use.",
-        ),
+        extractApiErrorMessage(error) ??
+          tr(
+            "Nu am putut crea contul. Încearcă din nou.",
+            "Could not create account. Please try again.",
+          ),
       );
     } finally {
       setLoading(false);

@@ -71,13 +71,13 @@ const modalContent = {
     paragraphs: [
       "YUMZY folosește datele contului pentru funcții esențiale precum autentificare, livrare, istoricul comenzilor și suport.",
       "Putem folosi preferințele, locația de livrare și activitatea din aplicație pentru a îmbunătăți recomandările și experiența de comandă.",
-      "Pentru ștergerea contului sau întrebări despre datele tale, contactează-ne la support@onedining.club.",
+      "Pentru ștergerea contului sau întrebări despre datele tale, contactează-ne la support@yumzy.ro.",
     ],
   },
   contact: {
     title: "Contact",
     paragraphs: [
-      "Pentru întrebări despre cont, comenzi, plăți, restaurante sau suport tehnic, ne poți scrie la support@onedining.club.",
+      "Pentru întrebări despre cont, comenzi, plăți, restaurante sau suport tehnic, ne poți scrie la support@yumzy.ro.",
       "Revenim cât mai rapid cu un răspuns și detalii despre pașii următori.",
     ],
   },

@@ -205,7 +205,7 @@ function sanitizeOrders(input: unknown): SafeOrder[] {
       const maybeOrder = item as Partial<Order>;
 
       const id = typeof maybeOrder.id === "number" ? maybeOrder.id : index + 1;
-      const restaurantName = typeof maybeOrder.restaurant_name === "string" && maybeOrder.restaurant_name.trim() ? maybeOrder.restaurant_name.trim() : "ONE Dining Club";
+      const restaurantName = typeof maybeOrder.restaurant_name === "string" && maybeOrder.restaurant_name.trim() ? maybeOrder.restaurant_name.trim() : "YUMZY";
       const createdAt = typeof maybeOrder.created_at === "string" && maybeOrder.created_at ? maybeOrder.created_at : new Date().toISOString();
       const total = toNumber(maybeOrder.total);
       const orderStatus = normalizeStatus(maybeOrder.order_status);
@@ -364,7 +364,7 @@ function buildDemoOrders(products: Product[]): SafeOrder[] {
     return {
       id: 90000 + product.id,
       restaurant: product.restaurant,
-      restaurant_name: product.restaurant_name ?? "ONE Dining Club",
+      restaurant_name: product.restaurant_name ?? "YUMZY",
       subtotal,
       delivery_fee: deliveryFee,
       discount,

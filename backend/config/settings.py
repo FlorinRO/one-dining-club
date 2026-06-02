@@ -1,5 +1,6 @@
-from datetime import timedelta
 import os
+from datetime import timedelta
+from email.utils import formataddr
 from pathlib import Path
 
 import dj_database_url
@@ -9,13 +10,39 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
+
+def get_env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def get_env_list(name, default=""):
+    raw_value = os.getenv(name, default)
+    return [item.strip() for item in raw_value.split(",") if item.strip()]
+
+
+def join_url(base_url, path):
+    return f"{base_url.rstrip('/')}/{path.lstrip('/')}"
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "development-only-secret-key-change-before-production")
-DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-    if host.strip()
-]
+DEBUG = get_env_bool("DJANGO_DEBUG", default=True)
+
+PRIMARY_DOMAIN = os.getenv("PRIMARY_DOMAIN", "yumzy.ro")
+WWW_DOMAIN = os.getenv("WWW_DOMAIN", "www.yumzy.ro")
+SITE_URL = os.getenv("SITE_URL", f"https://{PRIMARY_DOMAIN}")
+FRONTEND_URL = os.getenv("FRONTEND_URL", SITE_URL)
+BACKEND_URL = os.getenv("BACKEND_URL", SITE_URL)
+SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "support@yumzy.ro")
+DEFAULT_FROM_EMAIL_ADDRESS = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@yumzy.ro")
+DEFAULT_FROM_EMAIL = formataddr(("Yumzy", DEFAULT_FROM_EMAIL_ADDRESS))
+SERVER_EMAIL = formataddr(("Yumzy", os.getenv("SERVER_EMAIL_ADDRESS", DEFAULT_FROM_EMAIL_ADDRESS)))
+
+ALLOWED_HOSTS = get_env_list(
+    "DJANGO_ALLOWED_HOSTS",
+    f"{PRIMARY_DOMAIN},{WWW_DOMAIN},localhost,127.0.0.1",
+)
 if DEBUG and "testserver" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append("testserver")
 if DEBUG and "*" not in ALLOWED_HOSTS:
@@ -101,25 +128,31 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "One Dining Club <no-reply@onedining.club>")
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
 )
+EMAIL_DELIVERY_PROVIDER = os.getenv(
+    "EMAIL_DELIVERY_PROVIDER",
+    "django" if DEBUG else "sendgrid",
+).strip().lower()
 PASSWORD_RESET_CONFIRM_URL = os.getenv(
     "PASSWORD_RESET_CONFIRM_URL",
-    "onediningclub://reset-password?uid={uid}&token={token}",
+    join_url(FRONTEND_URL, "/reset-password") + "?uid={uid}&token={token}",
 )
 EMAIL_VERIFICATION_CONFIRM_URL = os.getenv(
     "EMAIL_VERIFICATION_CONFIRM_URL",
-    "http://localhost:8000/api/auth/verify-email/confirm/?uid={uid}&token={token}",
+    join_url(BACKEND_URL, "/api/auth/verify-email/confirm/") + "?uid={uid}&token={token}",
 )
-EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25"))
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "false").lower() == "true"
-EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() == "true"
+EMAIL_USE_TLS = get_env_bool("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = get_env_bool("EMAIL_USE_SSL", default=False)
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "20"))
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
+SENDGRID_API_BASE_URL = os.getenv("SENDGRID_API_BASE_URL", "https://api.sendgrid.com").rstrip("/")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -145,11 +178,12 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-CORS_ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv(
-        "CORS_ALLOWED_ORIGINS",
-        "http://localhost:19006,http://localhost:8081",
-    ).split(",")
-    if origin.strip()
-]
+CSRF_TRUSTED_ORIGINS = get_env_list(
+    "CSRF_TRUSTED_ORIGINS",
+    f"https://{PRIMARY_DOMAIN},https://{WWW_DOMAIN},http://localhost:8000,http://127.0.0.1:8000",
+)
+
+CORS_ALLOWED_ORIGINS = get_env_list(
+    "CORS_ALLOWED_ORIGINS",
+    f"{SITE_URL},https://{WWW_DOMAIN},http://localhost:19006,http://localhost:8081",
+)

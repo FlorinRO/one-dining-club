@@ -46,7 +46,7 @@ export const useAuthStore = create<AuthState>()(
           isGuest: true,
           user: {
             id: 1,
-            email: "demo@onedining.club",
+            email: "demo@yumzy.ro",
             first_name: "Client",
             last_name: "Demo",
             full_name: "Client Demo",

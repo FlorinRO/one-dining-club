@@ -30,7 +30,7 @@ const ro: Dictionary = {
   "profile.others.support": "Suport",
 
   "info.privacy.title": "Confidențialitate",
-  "info.about.title": "Despre ONE Dining Club",
+  "info.about.title": "Despre YUMZY",
   "info.support.title": "Suport",
 
   "status.pending": "Plasată",
@@ -72,7 +72,7 @@ const en: Dictionary = {
   "profile.others.support": "Support",
 
   "info.privacy.title": "Privacy",
-  "info.about.title": "About ONE Dining Club",
+  "info.about.title": "About YUMZY",
   "info.support.title": "Support",
 
   "status.pending": "Placed",

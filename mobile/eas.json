@@ -14,7 +14,7 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_PRODUCTION_API_URL": "https://one-dining-club-production.up.railway.app/api"
+        "EXPO_PUBLIC_PRODUCTION_API_URL": "https://yumzy.ro/api"
       }
     }
   },

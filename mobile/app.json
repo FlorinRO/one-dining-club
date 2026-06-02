@@ -1,7 +1,7 @@
 {
   "expo": {
     "owner": "connectionpoint",
-    "name": "One Dining Club",
+    "name": "YUMZY",
     "slug": "one-dining-club",
     "scheme": "onediningclub",
     "version": "0.1.0",
@@ -17,7 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "club.onedining.customer",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "One Dining Club folosește locația pentru restaurante și livrare.",
+        "NSLocationWhenInUseUsageDescription": "YUMZY folosește locația pentru restaurante și livrare.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -35,12 +35,12 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "One Dining Club folosește locația pentru restaurante și livrare."
+          "locationWhenInUsePermission": "YUMZY folosește locația pentru restaurante și livrare."
         }
       ]
     ],
     "extra": {
-      "productionApiUrl": "https://one-dining-club-production.up.railway.app/api",
+      "productionApiUrl": "https://yumzy.ro/api",
       "googleWebClientId": "",
       "googleIosClientId": "",
       "googleAndroidClientId": "",

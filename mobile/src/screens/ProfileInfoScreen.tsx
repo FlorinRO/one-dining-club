@@ -39,10 +39,10 @@ const CONTENT_RO: Record<"privacy" | "about" | "support", InfoContent> = {
     ],
   },
   about: {
-    title: "Despre ONE Dining Club",
+    title: "Despre YUMZY",
     subtitle: "Livrare simplă, rapidă și clară",
     body: [
-      "ONE Dining Club conectează restaurante locale cu clienți care vor comandă rapidă, fără pași complicați.",
+      "YUMZY conectează restaurante locale cu clienți care vor comandă rapidă, fără pași complicați.",
       "În aplicație poți salva adrese, aplica coduri promo și urmări comenzile într-o experiență unitară.",
       "Ne concentrăm pe viteză, transparență la costuri și o experiență stabilă atât la checkout, cât și după comandă.",
       "Produsul evoluează constant: adăugăm funcții noi în funcție de feedback real din utilizare.",
@@ -56,7 +56,7 @@ const CONTENT_RO: Record<"privacy" | "about" | "support", InfoContent> = {
       "Când trimiți o sesizare, include ID-ul comenzii, dispozitivul folosit și o scurtă descriere a problemei.",
       "Dacă întâmpini erori la autentificare, verifică mai întâi conexiunea la internet și încearcă din nou.",
       "Pentru situații urgente legate de o comandă în desfășurare, menționează clar că este urgent pentru prioritizare.",
-      "Email suport: support@onedining.club",
+      "Email suport: support@yumzy.ro",
     ],
   },
 };
@@ -73,10 +73,10 @@ const CONTENT_EN: Record<"privacy" | "about" | "support", InfoContent> = {
     ],
   },
   about: {
-    title: "About ONE Dining Club",
+    title: "About YUMZY",
     subtitle: "Simple, fast, and clear delivery",
     body: [
-      "ONE Dining Club connects local restaurants with customers who want fast ordering without complicated steps.",
+      "YUMZY connects local restaurants with customers who want fast ordering without complicated steps.",
       "In the app you can save addresses, apply promo codes, and track orders in a unified experience.",
       "We focus on speed, cost transparency, and a stable experience both at checkout and after placing an order.",
       "The product is constantly evolving: we add new features based on real usage feedback.",
@@ -90,7 +90,7 @@ const CONTENT_EN: Record<"privacy" | "about" | "support", InfoContent> = {
       "When you send a report, include the order ID, device used, and a short description of the issue.",
       "If you encounter login errors, first check your internet connection and try again.",
       "For urgent situations related to an ongoing order, clearly mention that it is urgent for prioritization.",
-      "Support email: support@onedining.club",
+      "Support email: support@yumzy.ro",
     ],
   },
 };

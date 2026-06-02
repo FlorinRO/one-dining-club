@@ -43,7 +43,7 @@ export function LoginScreen({ navigation }: Props) {
   const setSession = useAuthStore((state) => state.setSession);
   const continueAsGuest = useAuthStore((state) => state.continueAsGuest);
 
-  const [email, setEmail] = useState("demo@onedining.club");
+  const [email, setEmail] = useState("demo@yumzy.ro");
   const [password, setPassword] = useState("password123");
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);

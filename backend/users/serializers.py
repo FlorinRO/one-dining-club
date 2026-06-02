@@ -7,7 +7,6 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
 from django.db import transaction
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -15,6 +14,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from core.email import EmailDeliveryError, send_transactional_email
 from users.models import CustomerProfile, User, UserRole
 
 
@@ -65,7 +65,12 @@ class RegisterSerializer(serializers.ModelSerializer):
             **validated_data,
         )
         CustomerProfile.objects.create(user=user, phone_number=user.phone)
-        self.verification = send_email_verification(user)
+        try:
+            self.verification = send_email_verification(user)
+        except EmailDeliveryError as exc:
+            raise serializers.ValidationError(
+                {"email": "Nu am putut trimite emailul de confirmare. Incearca din nou mai tarziu."}
+            ) from exc
         return user
 
 
@@ -78,17 +83,15 @@ def build_email_verification(user):
 
 def send_email_verification(user):
     verification = build_email_verification(user)
-    send_mail(
-        subject="Confirma emailul pentru One Dining Club",
+    send_transactional_email(
+        subject="Confirma emailul pentru Yumzy",
         message=(
-            "Bun venit la One Dining Club.\n\n"
+            "Bun venit la Yumzy.\n\n"
             "Pentru a activa contul, deschide linkul de mai jos:\n"
             f"{verification['url']}\n\n"
             "Daca nu ai creat acest cont, poti ignora mesajul."
         ),
-        from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[user.email],
-        fail_silently=False,
     )
     return verification if settings.DEBUG else None
 
@@ -213,17 +216,18 @@ class PasswordResetRequestSerializer(serializers.Serializer):
         token = default_token_generator.make_token(user)
         reset_url = settings.PASSWORD_RESET_CONFIRM_URL.format(uid=uid, token=token)
 
-        send_mail(
-            subject="Resetare parola One Dining Club",
-            message=(
-                "Ai cerut resetarea parolei pentru contul One Dining Club.\n\n"
-                f"Deschide linkul pentru a seta o parola noua:\n{reset_url}\n\n"
-                "Daca nu ai cerut asta, poti ignora mesajul."
-            ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=True,
-        )
+        try:
+            send_transactional_email(
+                subject="Resetare parola Yumzy",
+                message=(
+                    "Ai cerut resetarea parolei pentru contul Yumzy.\n\n"
+                    f"Deschide linkul pentru a seta o parola noua:\n{reset_url}\n\n"
+                    "Daca nu ai cerut asta, poti ignora mesajul."
+                ),
+                recipient_list=[user.email],
+            )
+        except EmailDeliveryError:
+            return None
         return {"uid": uid, "token": token} if settings.DEBUG else None
 
 
@@ -260,7 +264,10 @@ class EmailVerificationRequestSerializer(serializers.Serializer):
         user = User.objects.filter(email__iexact=email, is_active=False).first()
         if not user:
             return None
-        return send_email_verification(user)
+        try:
+            return send_email_verification(user)
+        except EmailDeliveryError:
+            return None
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):

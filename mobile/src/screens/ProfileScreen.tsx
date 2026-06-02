@@ -145,7 +145,7 @@ export function ProfileScreen({ navigation }: Props) {
   const openPaymentHelp = () => {
     Alert.alert(
       tr("Plată", "Payment"),
-      tr("ONE Dining Club trimite metoda de plată aleasă către backend atunci când plasezi o comandă. Cardurile salvate nu sunt stocate încă în acest backend.", "ONE Dining Club sends your selected payment method to the backend when you place an order. Saved cards are not stored in this backend yet."),
+      tr("YUMZY trimite metoda de plată aleasă către backend atunci când plasezi o comandă. Cardurile salvate nu sunt stocate încă în acest backend.", "YUMZY sends your selected payment method to the backend when you place an order. Saved cards are not stored in this backend yet."),
       [{ text: tr("Vezi comenzile", "View orders"), onPress: openOrders }, { text: "OK" }],
     );
   };

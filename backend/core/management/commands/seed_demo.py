@@ -29,7 +29,7 @@ class Command(BaseCommand):
         ]
 
         customer, _ = User.objects.get_or_create(
-            email="demo@onedining.club",
+            email="demo@yumzy.ro",
             defaults={
                 "first_name": "Client",
                 "last_name": "Demo",
@@ -42,7 +42,7 @@ class Command(BaseCommand):
         CustomerProfile.objects.get_or_create(user=customer, defaults={"phone_number": customer.phone})
 
         owner, _ = User.objects.get_or_create(
-            email="owner@onedining.club",
+            email="owner@yumzy.ro",
             defaults={
                 "first_name": "Restaurant",
                 "last_name": "Owner",
