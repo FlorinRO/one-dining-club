@@ -1,5 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { AxiosError } from "axios";
 import Svg, { Path } from "react-native-svg";
 import {
   ArrowLeft,
@@ -34,18 +35,53 @@ import { useAuthStore } from "../store/authStore";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
+type FieldKey = "email" | "password" | "forgotEmail";
 
 const KEYBOARD_FORM_GAP = 5;
+function extractApiErrorMessage(error: unknown): string | null {
+  if (!(error instanceof AxiosError)) return null;
+
+  const data = error.response?.data;
+  if (typeof data === "string" && data.trim()) return data.trim();
+  if (!data || typeof data !== "object") return null;
+
+  const values = Object.values(data as Record<string, unknown>);
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (Array.isArray(value) && typeof value[0] === "string" && value[0].trim()) return value[0].trim();
+  }
+
+  return null;
+}
+
+function logForgotPasswordError(error: unknown, email: string) {
+  if (error instanceof AxiosError) {
+    console.error("Forgot password request failed", {
+      email,
+      url: error.config?.baseURL ? `${error.config.baseURL}${error.config.url ?? ""}` : error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      response: error.response?.data,
+      message: error.message,
+    });
+    return;
+  }
+
+  console.error("Forgot password request failed with non-Axios error", { email, error });
+}
 
 export function LoginScreen({ navigation }: Props) {
   const { tr } = useI18n();
   const insets = useSafeAreaInsets();
   const setSession = useAuthStore((state) => state.setSession);
+  const setRememberedLogin = useAuthStore((state) => state.setRememberedLogin);
   const continueAsGuest = useAuthStore((state) => state.continueAsGuest);
+  const rememberedEmail = useAuthStore((state) => state.rememberedEmail);
+  const rememberLoginEmail = useAuthStore((state) => state.rememberLoginEmail);
 
-  const [email, setEmail] = useState("demo@yumzy.ro");
-  const [password, setPassword] = useState("password123");
-  const [rememberMe, setRememberMe] = useState(true);
+  const [email, setEmail] = useState(rememberedEmail ?? "");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(rememberLoginEmail);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,12 +89,12 @@ export function LoginScreen({ navigation }: Props) {
   const [forgotEmail, setForgotEmail] = useState(email);
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [focusedField, setFocusedField] = useState<FieldKey | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
-  const focusedFieldRef = useRef<string | null>(null);
+  const focusedFieldRef = useRef<FieldKey | null>(null);
   const contentOpacity = useRef(new Animated.Value(0)).current;
   const contentTranslateX = useRef(new Animated.Value(24)).current;
 
@@ -111,6 +147,9 @@ export function LoginScreen({ navigation }: Props) {
     useCallback(() => {
       contentOpacity.setValue(0);
       contentTranslateX.setValue(24);
+      setEmail(rememberedEmail ?? "");
+      setPassword("");
+      setRememberMe(rememberLoginEmail);
       Animated.parallel([
         Animated.timing(contentOpacity, {
           toValue: 1,
@@ -125,7 +164,7 @@ export function LoginScreen({ navigation }: Props) {
           useNativeDriver: true,
         }),
       ]).start();
-    }, [contentOpacity, contentTranslateX]),
+    }, [contentOpacity, contentTranslateX, rememberedEmail, rememberLoginEmail]),
   );
 
   const goToHome = () => {
@@ -145,6 +184,8 @@ export function LoginScreen({ navigation }: Props) {
   });
   const keyboardScreenOffset = keyboardHeight > 0 ? -keyboardHeight : 0;
   const scrollBottomPadding = keyboardHeight > 0 ? keyboardHeight + KEYBOARD_FORM_GAP : insets.bottom + 24;
+  const isForgotKeyboardActive = forgotOpen && focusedField === "forgotEmail" && keyboardHeight > 0;
+  const forgotCardShift = isForgotKeyboardActive ? -Math.min(keyboardHeight * 0.32, 96) : 0;
 
   const submit = async () => {
     if (!email || !password) {
@@ -156,7 +197,9 @@ export function LoginScreen({ navigation }: Props) {
     setError(null);
 
     try {
-      const session = await authApi.login(email.trim(), password);
+      const trimmedEmail = email.trim();
+      const session = await authApi.login(trimmedEmail, password);
+      setRememberedLogin(trimmedEmail, rememberMe);
       setSession(session);
     } catch (loginError) {
       setError(getLoginErrorMessage(loginError, tr));
@@ -187,8 +230,12 @@ export function LoginScreen({ navigation }: Props) {
           "If an active account exists, you will receive reset instructions.",
         ),
       );
-    } catch {
-      setForgotMessage(tr("Nu am putut trimite cererea. Încearcă din nou.", "Could not send request. Try again."));
+    } catch (error) {
+      logForgotPasswordError(error, forgotEmail.trim());
+      setForgotMessage(
+        extractApiErrorMessage(error) ??
+          tr("Nu am putut trimite cererea. Încearcă din nou.", "Could not send request. Try again."),
+      );
     } finally {
       setForgotLoading(false);
     }
@@ -355,12 +402,20 @@ export function LoginScreen({ navigation }: Props) {
       </Animated.View>
 
       <Modal visible={forgotOpen} animationType="fade" transparent onRequestClose={() => setForgotOpen(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.forgotCard}>
-            <Text style={styles.forgotTitle}>{tr("Resetare parolă", "Password reset")}</Text>
-            <Text style={styles.forgotSubtitle}>{tr("Primești un link pe email pentru setarea unei parole noi.", "You will receive an email link to set a new password.")}</Text>
+        <Pressable style={styles.modalBackdrop} onPress={Keyboard.dismiss}>
+          <Pressable style={[styles.forgotCard, { transform: [{ translateY: forgotCardShift }] }]} onPress={() => {}}>
+            <View style={styles.forgotHeader}>
+              <Text style={styles.forgotEyebrow}>{tr("Acces cont", "Account access")}</Text>
+              <Text style={styles.forgotTitle}>{tr("Resetare parolă", "Password reset")}</Text>
+              <Text style={styles.forgotSubtitle}>
+                {tr(
+                  "Primești un link pe email pentru setarea unei parole noi.",
+                  "You will receive an email link to set a new password.",
+                )}
+              </Text>
+            </View>
             <View style={[styles.forgotInputWrap, focusedField === "forgotEmail" && styles.forgotInputWrapFocused]}>
-              <Mail color={colors.red} size={20} strokeWidth={2.2} />
+              <Mail color="#FFFFFF" size={20} strokeWidth={2.2} />
               <TextInput
                 value={forgotEmail}
                 onChangeText={setForgotEmail}
@@ -369,11 +424,20 @@ export function LoginScreen({ navigation }: Props) {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 placeholder="Email"
-                placeholderTextColor="#A1A1AA"
+                placeholderTextColor="#CFCFD6"
                 style={styles.input}
               />
             </View>
-            {forgotMessage && <Text style={styles.forgotMessage}>{forgotMessage}</Text>}
+            {forgotMessage && (
+              <Text
+                style={[
+                  styles.forgotMessage,
+                  forgotMessage.includes("Dacă există") ? styles.forgotMessageSuccess : styles.forgotMessageError,
+                ]}
+              >
+                {forgotMessage}
+              </Text>
+            )}
             <View style={styles.forgotActions}>
               <Pressable onPress={() => setForgotOpen(false)} style={styles.secondaryButton}>
                 <Text style={styles.secondaryText}>{tr("Închide", "Close")}</Text>
@@ -386,8 +450,8 @@ export function LoginScreen({ navigation }: Props) {
                 <Text style={styles.forgotSubmitText}>{forgotLoading ? tr("Se trimite...", "Sending...") : tr("Trimite", "Send")}</Text>
               </Pressable>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );
@@ -711,49 +775,73 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
+    width: "100%",
     padding: 24,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.42)",
+    backgroundColor: "rgba(3, 6, 10, 0.58)",
+    paddingTop: 64,
   },
   forgotCard: {
     width: "100%",
     borderRadius: 24,
     padding: 20,
-    backgroundColor: colors.white,
-    gap: 14,
+    gap: 16,
+    backgroundColor: "rgba(8, 12, 18, 0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.28,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  forgotHeader: {
+    gap: 8,
+  },
+  forgotEyebrow: {
+    color: "rgba(191,236,207,0.86)",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1,
+    textTransform: "uppercase",
   },
   forgotTitle: {
-    color: "#121212",
+    color: colors.white,
     fontSize: 22,
     fontWeight: "800",
   },
   forgotSubtitle: {
-    color: "#71717A",
+    color: "rgba(255,255,255,0.72)",
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "500",
   },
   forgotInputWrap: {
     minHeight: 50,
-    borderRadius: 16,
-    paddingHorizontal: 14,
+    borderRadius: 25,
+    paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: "rgba(255,255,255,0.16)",
     borderWidth: 1,
-    borderColor: "#F0F0F2",
+    borderColor: "rgba(255,255,255,0.44)",
   },
   forgotInputWrapFocused: {
-    borderColor: colors.red,
-    backgroundColor: colors.white,
+    borderColor: "#BFECCF",
+    backgroundColor: "rgba(191,236,207,0.18)",
   },
   forgotMessage: {
-    color: "#3F3F46",
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "600",
+  },
+  forgotMessageSuccess: {
+    color: "#CFF6D9",
+  },
+  forgotMessageError: {
+    color: "#FFD3D3",
   },
   forgotActions: {
     flexDirection: "row",
@@ -766,11 +854,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F4F4F5",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.16)",
   },
   secondaryText: {
-    color: "#3F3F46",
-    fontWeight: "800",
+    color: "rgba(255,255,255,0.9)",
+    fontWeight: "600",
   },
   forgotSubmitButton: {
     minHeight: 46,
@@ -778,11 +868,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.red,
+    backgroundColor: "rgba(0,0,0,0.46)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.62)",
   },
   forgotSubmitText: {
     color: colors.white,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   disabled: {
     opacity: 0.55,

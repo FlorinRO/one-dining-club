@@ -47,6 +47,22 @@ function extractApiErrorMessage(error: unknown): string | null {
   return null;
 }
 
+function logRegisterError(error: unknown, email: string) {
+  if (error instanceof AxiosError) {
+    console.error("Register request failed", {
+      email,
+      url: error.config?.baseURL ? `${error.config.baseURL}${error.config.url ?? ""}` : error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      response: error.response?.data,
+      message: error.message,
+    });
+    return;
+  }
+
+  console.error("Register request failed with non-Axios error", { email, error });
+}
+
 export function RegisterScreen({ navigation }: Props) {
   const { tr } = useI18n();
   const setSession = useAuthStore((state) => state.setSession);
@@ -189,6 +205,7 @@ export function RegisterScreen({ navigation }: Props) {
         ),
       );
     } catch (error) {
+      logRegisterError(error, email.trim());
       setError(
         extractApiErrorMessage(error) ??
           tr(
@@ -241,11 +258,12 @@ export function RegisterScreen({ navigation }: Props) {
             {
               paddingTop: insets.top + 72,
               paddingBottom: scrollBottomPadding,
+              justifyContent: verificationEmail ? "flex-start" : "flex-end",
             },
           ]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.headerWrap}>
+          <View style={[styles.headerWrap, verificationEmail && styles.headerWrapVerification]}>
             <View style={styles.brandRow}>
               <View style={styles.logoWrap}>
                 <Text style={styles.logoText}>
@@ -262,7 +280,7 @@ export function RegisterScreen({ navigation }: Props) {
             </View>
           </View>
 
-          <View style={styles.formCard}>
+          <View style={[styles.formCard, verificationEmail && styles.formCardVerification]}>
             {verificationEmail ? (
               <View style={styles.verificationBox}>
                 <View style={styles.verificationIcon}>
@@ -594,6 +612,9 @@ const styles = StyleSheet.create({
   headerWrap: {
     gap: 14,
   },
+  headerWrapVerification: {
+    paddingTop: 40,
+  },
   brandRow: {
     flexDirection: "column",
     alignItems: "flex-start",
@@ -643,6 +664,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
     paddingVertical: 4,
     gap: 8,
+  },
+  formCardVerification: {
+    paddingTop: 64,
   },
   socialRow: {
     flexDirection: "row",
@@ -776,7 +800,7 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 25,
     lineHeight: 30,
-    fontWeight: "800",
+    fontWeight: "600",
     textAlign: "center",
   },
   verificationSubtitle: {
@@ -810,7 +834,7 @@ const styles = StyleSheet.create({
   secondaryWideText: {
     color: colors.white,
     fontSize: 15,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   primaryWideButton: {
     alignSelf: "stretch",
@@ -827,7 +851,7 @@ const styles = StyleSheet.create({
   primaryWideText: {
     color: colors.white,
     fontSize: 15,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   pressed: {
     transform: [{ scale: 0.98 }],

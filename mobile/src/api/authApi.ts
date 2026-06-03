@@ -53,6 +53,10 @@ export const authApi = {
     return data;
   },
 
+  async deleteMe() {
+    await apiClient.delete("/auth/me/");
+  },
+
   async forgotPassword(email: string) {
     await apiClient.post("/auth/password-reset/", { email });
   },

@@ -1,6 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import { Globe, LogOut, Trash2, X } from "lucide-react-native";
+import { AxiosError } from "axios";
 import { useState } from "react";
 import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,6 +23,20 @@ import {
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileSettings">;
 const DESTRUCTIVE_RED = "#DC2626";
+
+function extractDeleteAccountError(error: unknown, fallback: string) {
+  if (!(error instanceof AxiosError)) return fallback;
+
+  const data = error.response?.data;
+  if (typeof data === "string" && data.trim()) return data.trim();
+  if (data && typeof data === "object") {
+    const detail = (data as Record<string, unknown>).detail;
+    if (typeof detail === "string" && detail.trim()) return detail.trim();
+  }
+
+  return fallback;
+}
+
 export function ProfileSettingsScreen({ navigation }: Props) {
   const { language, t } = useI18n();
   const insets = useSafeAreaInsets();
@@ -31,6 +46,7 @@ export function ProfileSettingsScreen({ navigation }: Props) {
   const setLanguage = usePreferencesStore((state) => state.setLanguage);
 
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(t("settings.logout.title"), t("settings.logout.message"), [
@@ -71,7 +87,30 @@ export function ProfileSettingsScreen({ navigation }: Props) {
       t("settings.delete.message"),
       [
         { text: t("settings.cancel"), style: "cancel" },
-        { text: t("settings.logout"), style: "destructive", onPress: handleLogout },
+        {
+          text: t("settings.delete.confirm"),
+          style: "destructive",
+          onPress: async () => {
+            setDeleteLoading(true);
+            try {
+              await authApi.deleteMe();
+              logout();
+            } catch (error) {
+              console.error("Delete account failed", {
+                message: error instanceof AxiosError ? error.message : String(error),
+                status: error instanceof AxiosError ? error.response?.status : undefined,
+                response: error instanceof AxiosError ? error.response?.data : undefined,
+              });
+              setDeleteLoading(false);
+              Alert.alert(
+                t("settings.delete.error.title"),
+                extractDeleteAccountError(error, t("settings.delete.error.message")),
+              );
+              return;
+            }
+            setDeleteLoading(false);
+          },
+        },
       ],
     );
   };
@@ -107,9 +146,9 @@ export function ProfileSettingsScreen({ navigation }: Props) {
               <Text style={styles.rowTitle}>{logoutLoading ? t("settings.loggingOut") : t("settings.logout")}</Text>
             </Pressable>
 
-            <Pressable style={[styles.row, styles.deleteRow]} onPress={requestDeleteAccount}>
+            <Pressable style={[styles.row, styles.deleteRow]} onPress={requestDeleteAccount} disabled={deleteLoading}>
               <Trash2 size={22} color={DESTRUCTIVE_RED} strokeWidth={2.4} />
-              <Text style={[styles.rowTitle, styles.destructive]}>{t("settings.delete")}</Text>
+              <Text style={[styles.rowTitle, styles.destructive]}>{deleteLoading ? t("settings.deleting") : t("settings.delete")}</Text>
             </Pressable>
           </View>
         </View>

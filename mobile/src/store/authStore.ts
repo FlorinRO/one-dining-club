@@ -9,10 +9,13 @@ type AuthState = {
   refreshToken: string | null;
   user: User | null;
   isGuest: boolean;
+  rememberedEmail: string | null;
+  rememberLoginEmail: boolean;
   hasHydrated: boolean;
   setSession: (payload: { access: string; refresh: string; user: User }) => void;
   setUser: (user: User) => void;
   updateTokens: (payload: { access: string; refresh: string }) => void;
+  setRememberedLogin: (email: string | null, remember: boolean) => void;
   continueAsGuest: () => void;
   logout: () => void;
   setHasHydrated: (value: boolean) => void;
@@ -25,6 +28,8 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       user: null,
       isGuest: false,
+      rememberedEmail: "demo@yumzy.ro",
+      rememberLoginEmail: true,
       hasHydrated: false,
       setSession: ({ access, refresh, user }) =>
         set({
@@ -38,6 +43,11 @@ export const useAuthStore = create<AuthState>()(
         set({
           accessToken: access,
           refreshToken: refresh,
+        }),
+      setRememberedLogin: (email, remember) =>
+        set({
+          rememberedEmail: remember ? email : null,
+          rememberLoginEmail: remember,
         }),
       continueAsGuest: () =>
         set({
@@ -64,6 +74,8 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: state.refreshToken,
         user: state.user,
         isGuest: state.isGuest,
+        rememberedEmail: state.rememberedEmail,
+        rememberLoginEmail: state.rememberLoginEmail,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

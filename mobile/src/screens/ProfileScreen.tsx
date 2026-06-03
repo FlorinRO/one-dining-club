@@ -168,14 +168,23 @@ export function ProfileScreen({ navigation }: Props) {
           />
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[styles.content, styles.guestContent]}
             onScroll={trackFloatingCartScrollDirection}
             scrollEventThrottle={16}
           >
             <Text style={[styles.heroTitle, styles.guestHeroTitle]}>{tr("Bună, Oaspete", "Hi, Guest")}</Text>
             <View style={styles.guestPanel}>
+              <View style={styles.guestBadge}>
+                <UserRound size={16} color={PROFILE_GREEN_DARK} strokeWidth={2.6} />
+                <Text style={styles.guestBadgeLabel}>{tr("Cont YUMZY", "YUMZY account")}</Text>
+              </View>
               <Text style={styles.guestTitle}>{tr("Intră în cont pentru sincronizare", "Sign in to sync")}</Text>
-              <Text style={styles.guestText}>{tr("Profilul, adresele și istoricul comenzilor sunt salvate în backend după autentificare.", "Profile, addresses, and order history are saved in backend after authentication.")}</Text>
+              <Text style={styles.guestText}>
+                {tr(
+                  "Profilul, adresele și istoricul comenzilor rămân sincronizate după autentificare.",
+                  "Profile, addresses, and order history stay synced after authentication.",
+                )}
+              </Text>
               <Pressable style={({ pressed }) => [styles.guestCta, pressed && styles.guestCtaPressed]} onPress={logout}>
                 <Text style={styles.guestCtaLabel}>{tr("Intră sau creează cont", "Sign in or create account")}</Text>
                 <ChevronRight size={18} color={colors.white} strokeWidth={2.8} />
@@ -401,6 +410,9 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 96,
   },
+  guestContent: {
+    paddingTop: 46,
+  },
   heroRow: {
     minHeight: 66,
     flexDirection: "row",
@@ -417,7 +429,7 @@ const styles = StyleSheet.create({
   },
   guestHeroTitle: {
     flex: 0,
-    marginBottom: 18,
+    marginBottom: 10,
   },
   refreshButton: {
     width: 36,
@@ -591,49 +603,71 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
   guestPanel: {
-    marginTop: 4,
-    borderRadius: 18,
-    backgroundColor: colors.cardSoft,
-    padding: 18,
-    gap: 14,
+    marginTop: 24,
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: 420,
+    borderRadius: 24,
+    backgroundColor: "rgba(7,10,14,0.72)",
+    padding: 20,
+    gap: 16,
+    shadowColor: "#000000",
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4,
+  },
+  guestBadge: {
+    alignSelf: "flex-start",
+    minHeight: 30,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(34,197,94,0.16)",
+  },
+  guestBadgeLabel: {
+    color: "#CFF6D9",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   guestTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "600",
+    color: colors.white,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: "700",
   },
   guestText: {
-    color: colors.muted,
+    color: "rgba(255,255,255,0.72)",
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 23,
     fontWeight: "400",
   },
   guestCta: {
-    marginTop: 12,
-    minHeight: 52,
-    borderRadius: 14,
-    backgroundColor: PROFILE_GREEN_DARK,
-    paddingHorizontal: 16,
+    marginTop: 8,
+    minHeight: 54,
+    borderRadius: 18,
+    backgroundColor: "transparent",
+    borderWidth: 2,
+    borderColor: PROFILE_GREEN,
+    paddingHorizontal: 20,
     alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    shadowColor: "#166534",
-    shadowOpacity: 0.24,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    gap: 10,
   },
   guestCtaPressed: {
-    opacity: 0.92,
-    transform: [{ scale: 0.99 }],
+    opacity: 0.88,
+    transform: [{ scale: 0.985 }],
   },
   guestCtaLabel: {
-    color: colors.white,
+    color: "#CFF6D9",
     fontSize: 16,
-    fontWeight: "600",
-    letterSpacing: 0.2,
+    fontWeight: "500",
+    letterSpacing: 0.1,
   },
   pressed: {
     opacity: 0.82,

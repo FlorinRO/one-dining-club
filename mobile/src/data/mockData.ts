@@ -535,9 +535,9 @@ const baseMockRestaurants: Restaurant[] = [
 const expandedDemoRestaurants: Restaurant[] = [
   {
     id: 29,
-    name: "Umami Reels",
-    slug: "umami-reels",
-    description: "Ramen, karaage si bowls japoneze gandite pentru feed-uri video rapide.",
+    name: "Casa Pastelor",
+    slug: "casa-pastelor",
+    description: "Paste de casă, sosuri bogate și preparate italiene potrivite pentru orice poftă.",
     cover_image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?q=80&w=1400&auto=format&fit=crop",
     city: "Bucuresti",
     address: "Strada Ion Campineanu 18",
@@ -555,9 +555,9 @@ const expandedDemoRestaurants: Restaurant[] = [
   },
   {
     id: 30,
-    name: "Neon Taco Bar",
-    slug: "neon-taco-bar",
-    description: "Tacos, quesadilla si street corn cu salsa proaspata si plating colorat.",
+    name: "Gusturi din Lume",
+    slug: "gusturi-din-lume",
+    description: "Preparate internaționale, paste savuroase și ramen cu arome inspirate din lume.",
     cover_image: "https://images.unsplash.com/photo-1565299585323-38174c4a6471?q=80&w=1400&auto=format&fit=crop",
     city: "Bucuresti",
     address: "Calea Dorobanti 84",
@@ -575,9 +575,9 @@ const expandedDemoRestaurants: Restaurant[] = [
   },
   {
     id: 31,
-    name: "Carbonara Cut",
-    slug: "carbonara-cut",
-    description: "Paste fresh, focaccia si sosuri italiene cu portii filmabile.",
+    name: "Barul de Cafea",
+    slug: "barul-de-cafea",
+    description: "Smoothie-uri fresh și cafea clasică pregătită rapid pentru orice moment al zilei.",
     cover_image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?q=80&w=1400&auto=format&fit=crop",
     city: "Bucuresti",
     address: "Strada Tunari 41",
@@ -595,9 +595,9 @@ const expandedDemoRestaurants: Restaurant[] = [
   },
   {
     id: 32,
-    name: "Crispy Seoul Lab",
-    slug: "crispy-seoul-lab",
-    description: "Korean fried chicken, bibimbap si sosuri gochujang cu crunch puternic.",
+    name: "Fresh Garden",
+    slug: "fresh-garden",
+    description: "Salate fresh, gustări simple și preparate de casă cu ingrediente curate.",
     cover_image: "https://images.unsplash.com/photo-1617835429239-6a7f19f2329a?q=80&w=1400&auto=format&fit=crop",
     city: "Bucuresti",
     address: "Strada Viitorului 29",
@@ -615,9 +615,9 @@ const expandedDemoRestaurants: Restaurant[] = [
   },
   {
     id: 33,
-    name: "Bowl Motion",
-    slug: "bowl-motion",
-    description: "Protein bowls, salate calde si dressing-uri fresh pentru pranzuri rapide.",
+    name: "Brunch Cafe",
+    slug: "brunch-cafe",
+    description: "Brunch relaxat cu pâine fresh, smoothie-uri și cafea cu lapte.",
     cover_image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1400&auto=format&fit=crop",
     city: "Bucuresti",
     address: "Bd. Lascar Catargiu 30",
@@ -635,9 +635,9 @@ const expandedDemoRestaurants: Restaurant[] = [
   },
   {
     id: 34,
-    name: "Smokehouse Loop",
-    slug: "smokehouse-loop",
-    description: "BBQ, brisket, ribs si burgeri afumati cu garnituri consistente.",
+    name: "Cafeaua de Specialitate",
+    slug: "cafeaua-de-specialitate",
+    description: "Cafea atent pregătită, băuturi clasice și arome curate pentru iubitorii de cafea.",
     cover_image: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?q=80&w=1400&auto=format&fit=crop",
     city: "Bucuresti",
     address: "Splaiul Unirii 160",
@@ -655,9 +655,9 @@ const expandedDemoRestaurants: Restaurant[] = [
   },
   {
     id: 36,
-    name: "Gelato Stories",
-    slug: "gelato-stories",
-    description: "Gelato, prajituri si bauturi reci cu topping-uri de sezon.",
+    name: "Pizzeria Napoli",
+    slug: "pizzeria-napoli",
+    description: "Pizza cu blat gustos, topping-uri clasice și combinații cunoscute.",
     cover_image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=1400&auto=format&fit=crop",
     city: "Bucuresti",
     address: "Strada Pictor Verona 3",
@@ -675,9 +675,9 @@ const expandedDemoRestaurants: Restaurant[] = [
   },
   {
     id: 37,
-    name: "Market Brunch Club",
-    slug: "market-brunch-club",
-    description: "Brunch all-day, sandwich-uri calde, oua si cafea de specialitate.",
+    name: "Coffee & Dessert",
+    slug: "coffee-and-dessert",
+    description: "Cafea de zi cu zi și deserturi de casă pentru o pauză dulce.",
     cover_image: "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?q=80&w=1400&auto=format&fit=crop",
     city: "Bucuresti",
     address: "Piata Amzei 7",
@@ -695,9 +695,9 @@ const expandedDemoRestaurants: Restaurant[] = [
   },
   {
     id: 38,
-    name: "Levant Reel Kitchen",
-    slug: "levant-reel-kitchen",
-    description: "Falafel, hummus, kebab si platouri levantine cu lipii calde.",
+    name: "Grill House",
+    slug: "grill-house",
+    description: "Burgeri, steak și preparate la grătar cu gust familiar.",
     cover_image: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1400&auto=format&fit=crop",
     city: "Bucuresti",
     address: "Strada Matei Basarab 55",
@@ -716,6 +716,35 @@ const expandedDemoRestaurants: Restaurant[] = [
 ];
 
 export const mockRestaurants: Restaurant[] = [...baseMockRestaurants, ...expandedDemoRestaurants];
+
+const feedRestaurantOverrides: Record<number, { name: string; slug: string; description: string; productNames: [string, string, string] }> = {
+  5: {
+    name: "Grătarul Urban",
+    slug: "gratarul-urban",
+    description: "Preparate la grătar, steak și salate simple cu ingrediente proaspete.",
+    productNames: ["Steak la Flacără", "Tartar de Vită cu Ou și Verdețuri", "Salată Proaspătă a Casei"],
+  },
+  13: {
+    name: "Bistro Fusion",
+    slug: "bistro-fusion",
+    description: "Preparate fusion cu paste și ramen într-un meniu scurt și clar.",
+    productNames: ["Paste cu Parmezan", "Paste Ragù", "Ramen cu Pui"],
+  },
+  21: {
+    name: "Sakura Bistro",
+    slug: "sakura-bistro",
+    description: "Sushi, somon și deserturi fine într-un bistro japonez modern.",
+    productNames: ["Sushi Mix", "Somon pe Orez", "Tort cu Ciocolată Albă"],
+  },
+};
+
+for (const restaurant of mockRestaurants) {
+  const override = feedRestaurantOverrides[restaurant.id];
+  if (!override) continue;
+  restaurant.name = override.name;
+  restaurant.slug = override.slug;
+  restaurant.description = override.description;
+}
 
 const baseMockCategories: ProductCategory[] = [
   { id: 1, restaurant: 1, name: "Popular", sort_order: 1, is_active: true },
@@ -895,6 +924,21 @@ const generatedIngredientPool = [
   "falafel, hummus, rosii, tahini, patrunjel",
   "curcan, orez brun, broccoli, porumb, lime",
 ];
+
+const generatedProductNameOverrides: Record<number, [string, string, string]> = {
+  29: ["Paste cu Chifteluțe și Parmezan", "Paste cu Roșii Cherry", "Paste cu Sos Ragù de Casă"],
+  31: ["Smoothie de Fructe Proaspete", "Cappuccino Cremos", "Cafea Americano Clasică"],
+  5: ["Steak la Flacără", "Tartar de Vită cu Ou și Verdețuri", "Salată Proaspătă a Casei"],
+  13: ["Paste cu Parmezan", "Paste Ragù", "Ramen cu Pui"],
+  21: ["Sushi Mix", "Somon pe Orez", "Tort cu Ciocolată Albă"],
+  34: ["Latte", "Cafea Neagră", "Cafea Proaspăt Măcinată"],
+  32: ["Chiftele de Casă", "Salată Verde", "Salată cu Avocado și Crutoane"],
+  30: ["Paste cu Rodie", "Paste Cremoase cu Creveți", "Ramen Asiatic"],
+  37: ["Cafea Neagră", "Cafea Proaspăt Măcinată", "Tort de Casă"],
+  33: ["Pâine Proaspăt Feliată", "Smoothie de Fructe", "Latte Cremos"],
+  38: ["Burger Clasic", "Steak la Grătar", "Chiftele de Casă"],
+  36: ["Pizza Pepperoni", "Pizza Cheddar Pepperoni", "Pizza cu Sos de Roșii"],
+};
 const expandedDemoRestaurantIds = new Set(expandedDemoRestaurants.map((restaurant) => restaurant.id));
 
 const generatedCategories: ProductCategory[] = mockRestaurants.map((restaurant, restaurantIndex) => ({
@@ -920,7 +964,9 @@ const generatedProducts: Product[] = mockRestaurants.flatMap((restaurant, restau
     const basePrice = 24 + restaurantIndex + productIndex * 3;
     const hasDiscount = sequence % 3 === 0;
     const discountPrice = hasDiscount ? Math.max(basePrice - 5, 10) : null;
-    const productName = generatedProductNames[(globalSequence + restaurant.id) % generatedProductNames.length];
+    const productName =
+      generatedProductNameOverrides[restaurant.id]?.[productIndex] ??
+      generatedProductNames[(globalSequence + restaurant.id) % generatedProductNames.length];
     const imageBase = generatedProductImagePool[globalSequence % generatedProductImagePool.length];
     return {
       id: 10000 + restaurant.id * 100 + sequence,

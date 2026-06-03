@@ -40,7 +40,7 @@
       ]
     ],
     "extra": {
-      "productionApiUrl": "https://yumzy.ro/api",
+      "productionApiUrl": "https://api.yumzy.ro/api",
       "googleWebClientId": "",
       "googleIosClientId": "",
       "googleAndroidClientId": "",

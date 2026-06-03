@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 
 const DEV_SIMULATOR_API_URL = "http://127.0.0.1:8000/api";
-const PROD_API_URL = "https://yumzy.ro/api";
+const PROD_API_URL = "https://api.yumzy.ro/api";
 
 type ExpoExtra = {
   apiUrl?: string;
