@@ -722,7 +722,7 @@ const feedRestaurantOverrides: Record<number, { name: string; slug: string; desc
     name: "Grătarul Urban",
     slug: "gratarul-urban",
     description: "Preparate la grătar, steak și salate simple cu ingrediente proaspete.",
-    productNames: ["Steak la Flacără", "Tartar de Vită cu Ou și Verdețuri", "Salată Proaspătă a Casei"],
+    productNames: ["Steak la Flacără", "Tartar de Vită", "Salată Proaspătă a Casei"],
   },
   13: {
     name: "Bistro Fusion",
@@ -926,13 +926,13 @@ const generatedIngredientPool = [
 ];
 
 const generatedProductNameOverrides: Record<number, [string, string, string]> = {
-  29: ["Paste cu Chifteluțe și Parmezan", "Paste cu Roșii Cherry", "Paste cu Sos Ragù de Casă"],
-  31: ["Smoothie de Fructe Proaspete", "Cappuccino Cremos", "Cafea Americano Clasică"],
-  5: ["Steak la Flacără", "Tartar de Vită cu Ou și Verdețuri", "Salată Proaspătă a Casei"],
+  29: ["Paste cu Chifteluțe", "Paste cu Roșii Cherry", "Paste cu Sos Ragù de Casă"],
+  31: ["Smoothie de Fructe", "Cappuccino Cremos", "Cafea Americano Clasică"],
+  5: ["Steak la Flacără", "Tartar de Vită", "Salată Proaspătă a Casei"],
   13: ["Paste cu Parmezan", "Paste Ragù", "Ramen cu Pui"],
   21: ["Sushi Mix", "Somon pe Orez", "Tort cu Ciocolată Albă"],
   34: ["Latte", "Cafea Neagră", "Cafea Proaspăt Măcinată"],
-  32: ["Chiftele de Casă", "Salată Verde", "Salată cu Avocado și Crutoane"],
+  32: ["Chiftele de Casă", "Salată Verde", "Salată cu Avocado"],
   30: ["Paste cu Rodie", "Paste Cremoase cu Creveți", "Ramen Asiatic"],
   37: ["Cafea Neagră", "Cafea Proaspăt Măcinată", "Tort de Casă"],
   33: ["Pâine Proaspăt Feliată", "Smoothie de Fructe", "Latte Cremos"],
