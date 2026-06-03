@@ -67,6 +67,7 @@ class RestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             restaurant.products.select_related("category", "restaurant")
             .prefetch_related("option_groups__options")
             .filter(is_available=True)
+            .order_by("id")
         )
         page = self.paginate_queryset(products)
         if page is not None:

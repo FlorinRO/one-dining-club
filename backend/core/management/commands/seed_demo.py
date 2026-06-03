@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
+from django.db import connection
 from django.utils import timezone
 
 from addresses.models import Address
@@ -15,6 +16,237 @@ class Command(BaseCommand):
     help = "Seed demo data for local MVP development."
 
     def handle(self, *args, **options):
+        def insert_product_with_current_schema(
+            *,
+            restaurant_id,
+            category_id,
+            name,
+            description,
+            price,
+            discount_price,
+            preparation_time,
+            allergens,
+            ingredients,
+            calories,
+        ):
+            now = timezone.now()
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO products_product (
+                        name, description, image, price, discount_price, is_available, is_popular,
+                        preparation_time, allergens, created_at, updated_at, category_id, restaurant_id,
+                        calories, ingredients, audio_url, has_audio, video_url
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    [
+                        name,
+                        description,
+                        None,
+                        price,
+                        discount_price,
+                        True,
+                        True,
+                        preparation_time,
+                        allergens,
+                        now,
+                        now,
+                        category_id,
+                        restaurant_id,
+                        calories,
+                        ingredients,
+                        None,
+                        False,
+                        None,
+                    ],
+                )
+                return cursor.fetchone()[0]
+
+        feed_name_overrides = {
+            "gelato-stories": {
+                "name": "Casa Pastelor",
+                "description": "Paste de casă, sosuri bogate și preparate italiene potrivite pentru orice poftă.",
+                "rating": Decimal("4.99"),
+                "products": [
+                    "Paste cu Chifteluțe",
+                    "Paste cu Roșii Cherry",
+                    "Paste cu Sos Ragù de Casă",
+                ],
+                "product_descriptions": [
+                    "Paste fragede cu chifteluțe rumenite și sos bogat de roșii.",
+                    "Paste ușoare cu roșii cherry coapte, ulei de măsline și note proaspete de busuioc.",
+                    "Paste consistente cu sos ragù de casă, gătit lent pentru un gust intens.",
+                ],
+            },
+            "bao-pop-studio": {
+                "name": "Barul de Cafea",
+                "description": "Smoothie-uri fresh și cafea clasică pregătită rapid pentru orice moment al zilei.",
+                "rating": Decimal("4.98"),
+                "products": [
+                    "Smoothie de Fructe",
+                    "Cappuccino Cremos",
+                    "Cafea Americano Clasică",
+                ],
+                "product_descriptions": [
+                    "Smoothie răcoritor din fructe proaspete, cu gust natural și textură fină.",
+                    "Cappuccino fin cu espresso echilibrat și spumă de lapte catifelată.",
+                    "Cafea americano clasică, lungă și aromată, potrivită pentru orice oră din zi.",
+                ],
+            },
+            "smokehouse-loop": {
+                "name": "Grătarul Urban",
+                "description": "Preparate la grătar, steak și salate simple cu ingrediente proaspete.",
+                "rating": Decimal("4.97"),
+                "products": [
+                    "Steak la Flacără",
+                    "Tartar de Vită",
+                    "Salată Proaspătă a Casei",
+                ],
+                "product_descriptions": [
+                    "Steak fraged gătit la flacără, cu crustă aromată și gust intens de grătar.",
+                    "Tartar de vită tocat fin, servit cu ou și verdețuri pentru un plus de prospețime.",
+                    "Salată proaspătă a casei cu legume crocante și dressing ușor.",
+                ],
+            },
+            "bowl-motion": {
+                "name": "Bistro Fusion",
+                "description": "Preparate fusion cu paste și ramen într-un meniu scurt și clar.",
+                "rating": Decimal("4.96"),
+                "products": [
+                    "Paste cu Parmezan",
+                    "Paste Ragù",
+                    "Ramen cu Pui",
+                ],
+                "product_descriptions": [
+                    "Paste cremoase cu parmezan maturat și textură fină, ușor de savurat.",
+                    "Paste cu sos ragù bogat, gătit lent pentru o aromă profundă.",
+                    "Ramen cu pui fraged, supă aromată și toppinguri echilibrate.",
+                ],
+            },
+            "dolce-notte": {
+                "name": "Sakura Bistro",
+                "description": "Sushi, somon și deserturi fine într-un bistro japonez modern.",
+                "rating": Decimal("4.95"),
+                "products": [
+                    "Sushi Mix",
+                    "Somon pe Orez",
+                    "Tort cu Ciocolată Albă",
+                ],
+                "product_descriptions": [
+                    "Selecție de sushi variat, cu gusturi echilibrate și prezentare elegantă.",
+                    "Somon fraged servit peste orez bine condimentat, cu textură fină.",
+                    "Tort delicat cu ciocolată albă, cremos și ușor dulce.",
+                ],
+            },
+            "crispy-seoul-lab": {
+                "name": "Cafeaua de Specialitate",
+                "description": "Cafea atent pregătită, băuturi clasice și arome curate pentru iubitorii de cafea.",
+                "rating": Decimal("4.94"),
+                "products": [
+                    "Latte",
+                    "Cafea Neagră",
+                    "Cafea Proaspăt Măcinată",
+                ],
+                "product_descriptions": [
+                    "Latte cremos cu espresso catifelat și lapte spumat fin.",
+                    "Cafea neagră intensă, cu gust curat și aromă persistentă.",
+                    "Cafea proaspăt măcinată, preparată pentru un plus de aromă și prospețime.",
+                ],
+            },
+            "carbonara-cut": {
+                "name": "Fresh Garden",
+                "description": "Salate fresh, gustări simple și preparate de casă cu ingrediente curate.",
+                "rating": Decimal("4.93"),
+                "products": [
+                    "Chiftele de Casă",
+                    "Salată Verde",
+                    "Salată cu Avocado",
+                ],
+                "product_descriptions": [
+                    "Chiftele de casă fragede, bine condimentate și gătite până devin aurii.",
+                    "Salată verde proaspătă, lejeră și potrivită pentru orice masă.",
+                    "Salată cu avocado cremos, crutoane crocante și ingrediente fresh.",
+                ],
+            },
+            "neon-taco-bar": {
+                "name": "Gusturi din Lume",
+                "description": "Preparate internaționale, paste savuroase și ramen cu arome inspirate din lume.",
+                "rating": Decimal("4.92"),
+                "products": [
+                    "Paste cu Rodie",
+                    "Paste Cremoase cu Creveți",
+                    "Ramen Asiatic",
+                ],
+                "product_descriptions": [
+                    "Paste cu note fructate de rodie, pentru un gust diferit și echilibrat.",
+                    "Paste cremoase cu creveți fragezi și sos bogat, cu textură fină.",
+                    "Ramen asiatic aromat, cu supă savuroasă și influențe orientale.",
+                ],
+            },
+            "umami-reels": {
+                "name": "Coffee & Dessert",
+                "description": "Cafea de zi cu zi și deserturi de casă pentru o pauză dulce.",
+                "rating": Decimal("4.91"),
+                "products": [
+                    "Cafea Neagră",
+                    "Cafea Proaspăt Măcinată",
+                    "Tort de Casă",
+                ],
+                "product_descriptions": [
+                    "Cafea neagră intensă, servită simplu pentru un gust autentic.",
+                    "Cafea proaspăt măcinată, aromată și plină de caracter.",
+                    "Tort de casă pufos și gustos, pregătit pentru o pauză dulce.",
+                ],
+            },
+            "levant-reel-kitchen": {
+                "name": "Brunch Cafe",
+                "description": "Brunch relaxat cu pâine fresh, smoothie-uri și cafea cu lapte.",
+                "rating": Decimal("4.90"),
+                "products": [
+                    "Pâine Proaspăt Feliată",
+                    "Smoothie de Fructe",
+                    "Latte Cremos",
+                ],
+                "product_descriptions": [
+                    "Pâine proaspăt feliată, moale la interior și potrivită pentru un brunch lejer.",
+                    "Smoothie de fructe răcoritor, cu gust natural și textură catifelată.",
+                    "Latte cremos cu spumă fină și aromă blândă de espresso.",
+                ],
+            },
+            "market-brunch-club": {
+                "name": "Grill House",
+                "description": "Burgeri, steak și preparate la grătar cu gust familiar.",
+                "rating": Decimal("4.89"),
+                "products": [
+                    "Burger Clasic",
+                    "Steak la Grătar",
+                    "Chiftele de Casă",
+                ],
+                "product_descriptions": [
+                    "Burger clasic suculent, cu ingrediente simple și gust echilibrat.",
+                    "Steak la grătar bine rumenit, cu aromă intensă și textură fragedă.",
+                    "Chiftele de casă gustoase, pregătite în stil tradițional.",
+                ],
+            },
+            "luna-rossa-kitchen": {
+                "name": "Pizzeria Napoli",
+                "description": "Pizza cu blat gustos, topping-uri clasice și combinații cunoscute.",
+                "rating": Decimal("4.88"),
+                "products": [
+                    "Pizza Pepperoni",
+                    "Pizza Cheddar Pepperoni",
+                    "Pizza cu Sos de Roșii",
+                ],
+                "product_descriptions": [
+                    "Pizza Pepperoni cu blat rumenit, mozzarella și felii ușor picante de pepperoni.",
+                    "Pizza bogată cu cheddar, pepperoni și blat copt până devine crocant.",
+                    "Pizza simplă și gustoasă cu sos de roșii aromat și blat bine copt.",
+                ],
+            },
+        }
+
         ingredient_profiles = [
             "pui, salata, rosii, ceapa rosie, sos house",
             "vita, cheddar, castraveti murati, mustar, ketchup",
@@ -221,6 +453,15 @@ class Command(BaseCommand):
 
         expanded_demo_payload = [
             (
+                "bao-pop-studio",
+                "Bao Pop Studio",
+                "Bao buns, orez si deserturi asiatice cu plating gandit pentru feed.",
+                "Japanese",
+                "Bao",
+                ["Coconut Mango Sticky Rice", "Crispy Tofu Bao", "Duck Hoisin Bao", "Sesame Chicken Bao", "Spicy Mushroom Bao", "Miso Rice Bowl", "Teriyaki Noodles", "Shrimp Bao Bites", "Matcha Rice Pudding", "Soy Glazed Dumplings"],
+                "Gluten, soia, susan",
+            ),
+            (
                 "umami-reels",
                 "Umami Reels",
                 "Ramen, karaage si bowls japoneze gandite pentru feed-uri video rapide.",
@@ -309,8 +550,8 @@ class Command(BaseCommand):
             restaurants_payload.append(
                 {
                     "slug": slug,
-                    "name": name,
-                    "description": description,
+                    "name": feed_name_overrides.get(slug, {}).get("name", name),
+                    "description": feed_name_overrides.get(slug, {}).get("description", description),
                     "phone": f"+40728{offset:05d}",
                     "email": f"hello@{slug}.test",
                     "address": f"Strada Demo Reels {offset}",
@@ -326,8 +567,10 @@ class Command(BaseCommand):
                     "products": [
                         (
                             menu_category,
-                            product_name,
-                            f"{product_name} - preparat demo distinct pentru feed video.",
+                            feed_name_overrides.get(slug, {}).get("products", product_names)[product_idx - 1]
+                            if product_idx <= len(feed_name_overrides.get(slug, {}).get("products", []))
+                            else product_name,
+                            f"{(feed_name_overrides.get(slug, {}).get('products', product_names)[product_idx - 1] if product_idx <= len(feed_name_overrides.get(slug, {}).get('products', [])) else product_name)} - preparat demo distinct pentru feed video.",
                             Decimal(f"{27 + product_idx + (offset % 5)}.00"),
                             Decimal(f"{24 + product_idx + (offset % 5)}.00") if product_idx in (3, 7) else None,
                             10 + ((offset + product_idx) % 12),
@@ -402,6 +645,30 @@ class Command(BaseCommand):
                     )
                 )
 
+        for payload in restaurants_payload:
+            override = feed_name_overrides.get(payload["slug"])
+            if not override:
+                continue
+            payload["name"] = override["name"]
+            payload["description"] = override["description"]
+            payload["rating"] = override["rating"]
+            for product_index, override_name in enumerate(override["products"]):
+                if product_index >= len(payload["products"]):
+                    break
+                category_name, _, _, price, discount_price, prep_time, allergens = payload["products"][product_index]
+                if product_index < 3:
+                    category_name = f"Selecția {product_index + 1}"
+                product_description = override.get("product_descriptions", [])[product_index] if product_index < len(override.get("product_descriptions", [])) else f"{override_name} - preparat demo distinct pentru feed video."
+                payload["products"][product_index] = (
+                    category_name,
+                    override_name,
+                    product_description,
+                    price,
+                    discount_price,
+                    prep_time,
+                    allergens,
+                )
+
         pizza = None
         for payload in restaurants_payload:
             product_rows = payload.pop("products")
@@ -416,10 +683,33 @@ class Command(BaseCommand):
                     **payload,
                 },
             )
+            restaurant.owner = owner
+            restaurant.supports_pickup = True
+            restaurant.is_open = True
+            restaurant.is_active = True
+            restaurant.name = payload["name"]
+            restaurant.description = payload["description"]
+            restaurant.phone = payload["phone"]
+            restaurant.email = payload["email"]
+            restaurant.address = payload["address"]
+            restaurant.city = payload["city"]
+            restaurant.latitude = payload["latitude"]
+            restaurant.longitude = payload["longitude"]
+            restaurant.delivery_fee = payload["delivery_fee"]
+            restaurant.minimum_order = payload["minimum_order"]
+            restaurant.estimated_delivery_time_min = payload["estimated_delivery_time_min"]
+            restaurant.estimated_delivery_time_max = payload["estimated_delivery_time_max"]
+            restaurant.rating = payload["rating"]
+            restaurant.save()
             restaurant.categories.set([category_map[name] for name in category_names])
+
+            existing_products = list(
+                Product.objects.filter(restaurant=restaurant).select_related("category").order_by("id")
+            )
 
             for idx, row in enumerate(product_rows, start=1):
                 category_name, name, description, price, discount_price, prep_time, allergens = row
+                should_keep_available = payload["slug"] not in feed_name_overrides or idx <= 3
                 ingredients = ingredient_profiles[(restaurant.id + idx) % len(ingredient_profiles)]
                 calories = 360 + ((restaurant.id * 41 + idx * 57) % 640)
                 menu_category, _ = ProductCategory.objects.get_or_create(
@@ -427,22 +717,34 @@ class Command(BaseCommand):
                     name=category_name,
                     defaults={"sort_order": idx},
                 )
-                product, _ = Product.objects.get_or_create(
-                    restaurant=restaurant,
-                    name=name,
-                    defaults={
-                        "category": menu_category,
-                        "description": description,
-                        "price": price,
-                        "discount_price": discount_price,
-                        "is_available": True,
-                        "is_popular": True,
-                        "preparation_time": prep_time,
-                        "allergens": allergens,
-                        "ingredients": ingredients,
-                        "calories": calories,
-                    },
-                )
+                if menu_category.sort_order != idx:
+                    menu_category.sort_order = idx
+                    menu_category.save(update_fields=["sort_order"])
+
+                if idx > len(existing_products):
+                    product_id = insert_product_with_current_schema(
+                        restaurant_id=restaurant.id,
+                        category_id=menu_category.id,
+                        name=name,
+                        description=description,
+                        price=price,
+                        discount_price=discount_price,
+                        preparation_time=prep_time,
+                        allergens=allergens,
+                        ingredients=ingredients,
+                        calories=calories,
+                    )
+                    product = Product.objects.get(pk=product_id)
+                    if not should_keep_available:
+                        product.is_available = False
+                        product.is_popular = False
+                        product.save(update_fields=["is_available", "is_popular"])
+                    if restaurant.slug == "luna-rossa-kitchen" and name == "Pizza Diavola":
+                        pizza = product
+                    continue
+
+                product = existing_products[idx - 1]
+                product.name = name
                 product.category = menu_category
                 product.description = description
                 product.price = price
@@ -451,8 +753,8 @@ class Command(BaseCommand):
                 product.allergens = allergens
                 product.ingredients = ingredients
                 product.calories = calories
-                product.is_available = True
-                product.is_popular = True
+                product.is_available = should_keep_available
+                product.is_popular = should_keep_available
                 product.save()
                 if restaurant.slug == "luna-rossa-kitchen" and name == "Pizza Diavola":
                     pizza = product
