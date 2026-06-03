@@ -190,7 +190,7 @@ export function HomeScreen({ navigation }: Props) {
       return {
         restaurant,
         products: resolvedProducts,
-        initialProductIndex: restaurantIndex % resolvedProducts.length,
+        initialProductIndex: 0,
       };
     });
   }, [productsByRestaurant, restaurants]);
