@@ -20,10 +20,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ProductCommentsSheet } from "../components/ProductCommentsSheet";
 import { QuantityStepper } from "../components/QuantityStepper";
+import { RestaurantAvatarImage } from "../components/RestaurantAvatarImage";
 import { getDemoProductVideoSource } from "../data/demoVideos";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
-import { resolveRestaurantImageUri } from "../lib/images";
 import { HomeStackParamList } from "../navigation/types";
 import { useCartStore } from "../store/cartStore";
 import { useFavoritesStore } from "../store/favoritesStore";
@@ -128,7 +128,6 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   const optionGroups = product.option_groups ?? [];
   const basePrice = product.effective_price ?? product.discount_price ?? product.price;
   const heroHeight = Math.max(470, Math.round(height * 0.67));
-  const restaurantLogoUri = resolveRestaurantImageUri(restaurant.logo || restaurant.cover_image, restaurant.id, restaurant);
   const videoSource = useMemo(
     () => videoSourceForProduct(restaurant, product, mediaFallbackIndex),
     [mediaFallbackIndex, product, restaurant],
@@ -376,7 +375,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
           </View>
           <View style={styles.heroCopy}>
             <View style={styles.creatorRow}>
-              <Image source={{ uri: restaurantLogoUri }} style={styles.creatorAvatar} />
+              <RestaurantAvatarImage restaurant={restaurant} style={styles.creatorAvatar} />
               <View style={styles.creatorText}>
                 <Text numberOfLines={1} style={styles.creatorName}>{restaurant.name}</Text>
                 <Text numberOfLines={1} style={styles.creatorMeta}>

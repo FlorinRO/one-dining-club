@@ -35,11 +35,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
 import { FoodBackground } from "../components/FoodBackground";
+import { RestaurantAvatarImage } from "../components/RestaurantAvatarImage";
 import { getDemoProductVideoSource } from "../data/demoVideos";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { deliveryWindow, money } from "../lib/format";
-import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
+import { resolveProductImageUri } from "../lib/images";
 import { SearchStackParamList } from "../navigation/types";
 import { useFavoritesStore } from "../store/favoritesStore";
 import { Product, Restaurant } from "../types/models";
@@ -918,11 +919,7 @@ export function SearchScreen() {
                           }
                         >
                           <View style={styles.feedRestaurantImageWrap}>
-                            <Image
-                              source={{ uri: resolveRestaurantImageUri(restaurant.logo || restaurant.cover_image, restaurant.id, restaurant) }}
-                              style={styles.feedRestaurantImage}
-                              resizeMode="cover"
-                            />
+                            <RestaurantAvatarImage restaurant={restaurant} style={styles.feedRestaurantImage} resizeMode="cover" />
                           </View>
                           <Text numberOfLines={1} style={styles.feedRestaurantName}>{restaurant.name}</Text>
                           <Text numberOfLines={1} style={styles.feedRestaurantMeta}>
@@ -1224,7 +1221,7 @@ function SearchRestaurantResult({
         style={styles.resultOverlay}
       />
       <Pressable style={styles.resultHeader} onPress={onPress}>
-        <Image source={{ uri: resolveRestaurantImageUri(restaurant.logo || restaurant.cover_image, restaurant.id, restaurant) }} style={styles.resultAvatar} />
+        <RestaurantAvatarImage restaurant={restaurant} style={styles.resultAvatar} />
         <View style={styles.resultHeaderBody}>
           <View style={styles.resultTitleRow}>
             <Text style={styles.resultRestaurantName} numberOfLines={1}>

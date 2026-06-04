@@ -21,6 +21,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
+import { RestaurantAvatarImage } from "../components/RestaurantAvatarImage";
 import { getDemoProductVideoSource } from "../data/demoVideos";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
@@ -215,7 +216,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
 
       <View style={styles.identityStack}>
         <View style={styles.avatarRing}>
-          <Image source={{ uri: restaurantBackdropUri }} style={styles.avatar} />
+          <RestaurantAvatarImage restaurant={restaurant} style={styles.avatar} />
         </View>
         <View style={styles.identityCopy}>
           <Text style={styles.restaurantName}>{restaurant.name}</Text>
