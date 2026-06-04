@@ -1,25 +1,17 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { LinearGradient } from "expo-linear-gradient";
 import { Globe, LogOut, Trash2, X } from "lucide-react-native";
 import { AxiosError } from "axios";
 import { useState } from "react";
-import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { authApi } from "../api/authApi";
+import { FoodBackground } from "../components/FoodBackground";
 import { useI18n } from "../i18n/useI18n";
 import { ProfileStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { AppLanguage, usePreferencesStore } from "../store/preferencesStore";
 import { colors } from "../theme/colors";
-import {
-  BURGER_BACKGROUND_IMAGE,
-  FOOD_BACKGROUND_BLUR_RADIUS,
-  FOOD_BACKGROUND_GRADIENT_COLORS,
-  FOOD_BACKGROUND_GRADIENT_LOCATIONS,
-  FOOD_BACKGROUND_IMAGE_OPACITY,
-  FOOD_BACKGROUND_IMAGE_SCALE,
-} from "../theme/foodBackground";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileSettings">;
 const DESTRUCTIVE_RED = "#DC2626";
@@ -118,13 +110,7 @@ export function ProfileSettingsScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.screen}>
-        <Image source={BURGER_BACKGROUND_IMAGE} style={[styles.backgroundImage, { top: -insets.top }]} resizeMode="cover" blurRadius={FOOD_BACKGROUND_BLUR_RADIUS} />
-        <LinearGradient
-          pointerEvents="none"
-          colors={FOOD_BACKGROUND_GRADIENT_COLORS}
-          locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
-          style={[StyleSheet.absoluteFillObject, { top: -insets.top }]}
-        />
+        <FoodBackground topOffset={-insets.top} />
         <View style={styles.container}>
           <View style={styles.header}>
             <Pressable style={styles.closeButton} onPress={() => navigation.goBack()}>
@@ -164,11 +150,6 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-  },
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: FOOD_BACKGROUND_IMAGE_OPACITY,
-    transform: [{ scale: FOOD_BACKGROUND_IMAGE_SCALE }],
   },
   container: {
     flex: 1,

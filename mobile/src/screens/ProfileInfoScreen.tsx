@@ -1,22 +1,14 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { LinearGradient } from "expo-linear-gradient";
 import { ArrowLeft } from "lucide-react-native";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { FoodBackground } from "../components/FoodBackground";
 import { Screen } from "../components/Screen";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { ProfileStackParamList } from "../navigation/types";
 import { colors } from "../theme/colors";
-import {
-  BURGER_BACKGROUND_IMAGE,
-  FOOD_BACKGROUND_BLUR_RADIUS,
-  FOOD_BACKGROUND_GRADIENT_COLORS,
-  FOOD_BACKGROUND_GRADIENT_LOCATIONS,
-  FOOD_BACKGROUND_IMAGE_OPACITY,
-  FOOD_BACKGROUND_IMAGE_SCALE,
-} from "../theme/foodBackground";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileInfo">;
 
@@ -104,13 +96,7 @@ export function ProfileInfoScreen({ navigation, route }: Props) {
   return (
     <Screen padded={false}>
       <View style={styles.screen}>
-        <Image source={BURGER_BACKGROUND_IMAGE} style={[styles.backgroundImage, { top: -insets.top }]} resizeMode="cover" blurRadius={FOOD_BACKGROUND_BLUR_RADIUS} />
-        <LinearGradient
-          pointerEvents="none"
-          colors={FOOD_BACKGROUND_GRADIENT_COLORS}
-          locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
-          style={[StyleSheet.absoluteFillObject, { top: -insets.top }]}
-        />
+        <FoodBackground topOffset={-insets.top} />
         <View style={styles.container}>
           <View style={styles.headerRow}>
             <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -140,11 +126,6 @@ export function ProfileInfoScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-  },
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: FOOD_BACKGROUND_IMAGE_OPACITY,
-    transform: [{ scale: FOOD_BACKGROUND_IMAGE_SCALE }],
   },
   container: {
     flex: 1,

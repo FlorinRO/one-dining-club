@@ -4,16 +4,27 @@ import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
 import {
   ArrowUpDown,
   Bike,
+  Coffee,
   Check,
   ChevronDown,
   Clock3,
+  Cookie,
+  Croissant,
+  CupSoda,
+  Drumstick,
   Footprints,
+  Fish,
   Heart,
+  IceCreamCone,
+  Pizza,
   Play,
   Route,
+  Salad,
   Search,
   SearchX,
+  Sandwich,
   SlidersHorizontal,
+  Soup,
   Star,
   Tag,
   X,
@@ -23,6 +34,7 @@ import { Animated, Easing, FlatList, Image, Keyboard, Modal, Pressable, ScrollVi
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
+import { FoodBackground } from "../components/FoodBackground";
 import { getDemoProductVideoSource } from "../data/demoVideos";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
@@ -30,14 +42,6 @@ import { deliveryWindow, money } from "../lib/format";
 import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
 import { SearchStackParamList } from "../navigation/types";
 import { useFavoritesStore } from "../store/favoritesStore";
-import {
-  BURGER_BACKGROUND_IMAGE,
-  FOOD_BACKGROUND_BLUR_RADIUS,
-  FOOD_BACKGROUND_GRADIENT_COLORS,
-  FOOD_BACKGROUND_GRADIENT_LOCATIONS,
-  FOOD_BACKGROUND_IMAGE_OPACITY,
-  FOOD_BACKGROUND_IMAGE_SCALE,
-} from "../theme/foodBackground";
 import { Product, Restaurant } from "../types/models";
 
 type FilterKey = "sort" | "offers" | "rating" | "deliveryFee" | "deliveryTime" | "pickup" | "distance" | "categories";
@@ -49,7 +53,10 @@ type ChipIcon = ComponentType<{ size?: number; stroke?: string; strokeWidth?: nu
 
 type DiscoveryCategory = {
   label: string;
-  emoji: string;
+  filterValue: string;
+  icon: ChipIcon;
+  iconColor: string;
+  iconBackground: string;
 };
 
 const FEED_RESTAURANT_LIMIT = 12;
@@ -81,113 +88,73 @@ const filters: Array<{ key: FilterKey; label: string; icon: ChipIcon; dropdown?:
   { key: "categories", label: "Categories", icon: SlidersHorizontal, dropdown: true },
 ];
 
-const categoryEmojiCatalog: DiscoveryCategory[] = [
-  { label: "Italian", emoji: "🇮🇹" },
-  { label: "Pizza", emoji: "🍕" },
-  { label: "Burger", emoji: "🍔" },
-  { label: "Burgers", emoji: "🍔" },
-  { label: "Asian", emoji: "🥡" },
-  { label: "Sushi", emoji: "🍣" },
-  { label: "Kebab", emoji: "🥙" },
-  { label: "Wraps", emoji: "🌯" },
-  { label: "Chicken", emoji: "🍗" },
-  { label: "Sandwich", emoji: "🥪" },
-  { label: "Japanese", emoji: "🍤" },
-  { label: "Bakery", emoji: "🥐" },
-  { label: "Groceries", emoji: "🛒" },
-  { label: "Healthy", emoji: "🥑" },
-  { label: "Thai", emoji: "🍜" },
-  { label: "Salads", emoji: "🥙" },
-  { label: "Salate", emoji: "🥙" },
-  { label: "Ramen", emoji: "🍜" },
-  { label: "Wok", emoji: "🥡" },
-  { label: "Bowls", emoji: "🥗" },
-  { label: "Bowl", emoji: "🥗" },
-  { label: "Bao", emoji: "🥟" },
-  { label: "Seafood", emoji: "🦐" },
-  { label: "Desserts", emoji: "🧁" },
-  { label: "Indian", emoji: "🇮🇳" },
-  { label: "Breakfast", emoji: "🍳" },
-  { label: "Brunch", emoji: "🥞" },
-  { label: "Pasta", emoji: "🍝" },
-  { label: "Coffee", emoji: "☕" },
-  { label: "BBQ", emoji: "🍖" },
-  { label: "Soup", emoji: "🍲" },
-  { label: "Soups", emoji: "🍲" },
-  { label: "Tacos", emoji: "🌮" },
-  { label: "Mexican", emoji: "🌮" },
-  { label: "Quesadilla", emoji: "🫓" },
-  { label: "Grill", emoji: "🍢" },
-  { label: "Curry", emoji: "🍛" },
-  { label: "Korean", emoji: "🍗" },
-  { label: "Mediterranean", emoji: "🥙" },
-  { label: "Middle Eastern", emoji: "🧆" },
-  { label: "Levant", emoji: "🧆" },
-  { label: "Vietnamese", emoji: "🍜" },
-  { label: "Balkan", emoji: "🍢" },
-  { label: "Turkish", emoji: "🥙" },
-  { label: "Chef pick", emoji: "⭐" },
-  { label: "Chef Picks", emoji: "⭐" },
-];
-
-function getCategoryEmoji(label: string) {
-  const normalizedLabel = normalizeText(label);
-  const match = categoryEmojiCatalog.find((item) => normalizeText(item.label) === normalizedLabel);
-  if (match) return match.emoji;
-
-  const keywordMatches: Array<[string, string]> = [
-    ["pizza", "🍕"],
-    ["pasta", "🍝"],
-    ["burger", "🍔"],
-    ["taco", "🌮"],
-    ["quesadilla", "🫓"],
-    ["burrito", "🌯"],
-    ["wrap", "🌯"],
-    ["salad", "🥙"],
-    ["salat", "🥙"],
-    ["bowl", "🥗"],
-    ["poke", "🥗"],
-    ["ramen", "🍜"],
-    ["noodle", "🍜"],
-    ["udon", "🍜"],
-    ["pho", "🍜"],
-    ["soup", "🍲"],
-    ["supa", "🍲"],
-    ["sushi", "🍣"],
-    ["roll", "🍣"],
-    ["maki", "🍣"],
-    ["nigiri", "🍣"],
-    ["bao", "🥟"],
-    ["dumpling", "🥟"],
-    ["curry", "🍛"],
-    ["chicken", "🍗"],
-    ["wings", "🍗"],
-    ["bbq", "🍖"],
-    ["grill", "🍢"],
-    ["kebab", "🥙"],
-    ["shawarma", "🥙"],
-    ["falafel", "🧆"],
-    ["halloumi", "🧀"],
-    ["breakfast", "🍳"],
-    ["brunch", "🥞"],
-    ["dessert", "🧁"],
-    ["cake", "🍰"],
-    ["gelato", "🍨"],
-    ["coffee", "☕"],
-  ];
-  const keywordMatch = keywordMatches.find(([keyword]) => normalizedLabel.includes(keyword));
-  if (keywordMatch) return keywordMatch[1];
-
-  const fallbackEmojis = ["🥘", "🍱", "🥗", "🍲", "🥙", "🍛", "🥟", "🍢"];
-  const hash = [...normalizedLabel].reduce((total, char) => total + char.charCodeAt(0), 0);
-  return fallbackEmojis[hash % fallbackEmojis.length];
-}
-
 const normalizeText = (value: string) =>
   value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+
+const genericProductTypeCatalog: Omit<DiscoveryCategory, "filterValue">[] = [
+  { label: "Pizza", icon: Pizza, iconColor: "#F97316", iconBackground: "rgba(249,115,22,0.16)" },
+  { label: "Burgeri", icon: Sandwich, iconColor: "#F59E0B", iconBackground: "rgba(245,158,11,0.16)" },
+  { label: "Supe", icon: Soup, iconColor: "#FB7185", iconBackground: "rgba(251,113,133,0.16)" },
+  { label: "Salate", icon: Salad, iconColor: "#22C55E", iconBackground: "rgba(34,197,94,0.16)" },
+  { label: "Desert", icon: IceCreamCone, iconColor: "#A855F7", iconBackground: "rgba(168,85,247,0.16)" },
+  { label: "Cafea", icon: Coffee, iconColor: "#C08457", iconBackground: "rgba(192,132,87,0.16)" },
+  { label: "Pui", icon: Drumstick, iconColor: "#EF4444", iconBackground: "rgba(239,68,68,0.16)" },
+  { label: "Pește", icon: Fish, iconColor: "#0EA5E9", iconBackground: "rgba(14,165,233,0.16)" },
+  { label: "Mic dejun", icon: Croissant, iconColor: "#F59E0B", iconBackground: "rgba(245,158,11,0.16)" },
+  { label: "Panificație", icon: Cookie, iconColor: "#D97706", iconBackground: "rgba(217,119,6,0.16)" },
+  { label: "Băuturi", icon: CupSoda, iconColor: "#06B6D4", iconBackground: "rgba(6,182,212,0.16)" },
+];
+
+const categoryVisualCatalog: Array<{ keywords: string[] } & Omit<DiscoveryCategory, "filterValue">> = [
+  { label: "Pizza", icon: Pizza, iconColor: "#F97316", iconBackground: "rgba(249,115,22,0.16)", keywords: ["pizza", "pinsa", "focaccia"] },
+  { label: "Burgeri", icon: Sandwich, iconColor: "#F59E0B", iconBackground: "rgba(245,158,11,0.16)", keywords: ["burger", "sandwich", "wrap", "shawarma", "kebab"] },
+  { label: "Supe", icon: Soup, iconColor: "#FB7185", iconBackground: "rgba(251,113,133,0.16)", keywords: ["soup", "supa", "ciorba", "ramen", "pho", "noodle"] },
+  { label: "Salate", icon: Salad, iconColor: "#22C55E", iconBackground: "rgba(34,197,94,0.16)", keywords: ["salad", "salata", "salate", "bowl", "poke", "healthy"] },
+  { label: "Desert", icon: IceCreamCone, iconColor: "#A855F7", iconBackground: "rgba(168,85,247,0.16)", keywords: ["dessert", "desert", "cake", "gelato", "ice cream", "donut", "sweet"] },
+  { label: "Cafea", icon: Coffee, iconColor: "#C08457", iconBackground: "rgba(192,132,87,0.16)", keywords: ["coffee", "cafea", "espresso", "latte", "cappuccino", "bakery"] },
+  { label: "Pui", icon: Drumstick, iconColor: "#EF4444", iconBackground: "rgba(239,68,68,0.16)", keywords: ["chicken", "pui", "wings", "crispy", "strips"] },
+  { label: "Pește", icon: Fish, iconColor: "#0EA5E9", iconBackground: "rgba(14,165,233,0.16)", keywords: ["fish", "peste", "pește", "seafood", "salmon", "tuna", "shrimp"] },
+  { label: "Mic dejun", icon: Croissant, iconColor: "#F59E0B", iconBackground: "rgba(245,158,11,0.16)", keywords: ["breakfast", "mic dejun", "brunch", "omelette", "pancake", "croissant"] },
+  { label: "Panificație", icon: Cookie, iconColor: "#D97706", iconBackground: "rgba(217,119,6,0.16)", keywords: ["bakery", "pastry", "cookie", "cofetarie", "patiserie", "muffin"] },
+  { label: "Băuturi", icon: CupSoda, iconColor: "#06B6D4", iconBackground: "rgba(6,182,212,0.16)", keywords: ["drink", "drinks", "bauturi", "băuturi", "juice", "smoothie", "soda", "cocktail"] },
+];
+
+function isGenericSelectionLabel(label: string) {
+  return /^(selectia|selectie|selection)\s+\d+$/i.test(normalizeText(label.trim()));
+}
+
+function resolveDiscoveryCategory(label: string, index = 0): DiscoveryCategory {
+  const cleanLabel = label.trim();
+  const normalizedLabel = normalizeText(cleanLabel);
+  const genericMatch = normalizedLabel.match(/^(selectia|selectie|selection)\s+(\d+)$/);
+  if (genericMatch) {
+    const fallbackIndex = Math.max(Number(genericMatch[2]) - 1, 0) % genericProductTypeCatalog.length;
+    return { ...genericProductTypeCatalog[fallbackIndex], filterValue: cleanLabel };
+  }
+
+  const catalogMatch = categoryVisualCatalog.find(({ keywords }) => keywords.some((keyword) => normalizedLabel.includes(keyword)));
+  if (catalogMatch) {
+    return {
+      label: catalogMatch.label,
+      filterValue: cleanLabel,
+      icon: catalogMatch.icon,
+      iconColor: catalogMatch.iconColor,
+      iconBackground: catalogMatch.iconBackground,
+    };
+  }
+
+  const fallbackVisual = genericProductTypeCatalog[index % genericProductTypeCatalog.length];
+  return {
+    label: cleanLabel,
+    filterValue: cleanLabel,
+    icon: fallbackVisual.icon,
+    iconColor: fallbackVisual.iconColor,
+    iconBackground: fallbackVisual.iconBackground,
+  };
+}
 
 const buildFallbackProduct = (restaurant: Restaurant): Product => ({
   id: restaurant.id * 10000,
@@ -249,10 +216,19 @@ function buildDiscoveryCategories(restaurants: Restaurant[], products: Product[]
     });
   }
 
-  return [...byKey.values()]
+  const rankedCategories = [...byKey.values()]
     .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
-    .slice(0, 24)
-    .map((item) => ({ label: item.label, emoji: getCategoryEmoji(item.label) }));
+    .slice(0, 24);
+
+  const hasOnlyGenericSelections = rankedCategories.length > 0 && rankedCategories.every((item) => isGenericSelectionLabel(item.label));
+  if (hasOnlyGenericSelections) {
+    return genericProductTypeCatalog.map((item) => ({
+      ...item,
+      filterValue: item.label,
+    }));
+  }
+
+  return rankedCategories.map((item, index) => resolveDiscoveryCategory(item.label, index));
 }
 
 export function SearchScreen() {
@@ -302,6 +278,10 @@ export function SearchScreen() {
   const feedDiscoveryCategories = useMemo(
     () => buildDiscoveryCategories(restaurants, feedProducts),
     [feedProducts, restaurants],
+  );
+  const discoveryCategoryByFilterValue = useMemo(
+    () => new Map(feedDiscoveryCategories.map((item) => [item.filterValue, item])),
+    [feedDiscoveryCategories],
   );
   const discoveryRestaurants = useMemo(() => restaurants.slice(0, 5), [restaurants]);
 
@@ -381,7 +361,7 @@ export function SearchScreen() {
       categories: {
         title: tr("Categorii", "Categories"),
         type: "multi",
-        options: feedDiscoveryCategories.map((item) => ({ label: `${item.emoji} ${item.label}`, value: item.label })),
+        options: feedDiscoveryCategories.map((item) => ({ label: item.label, value: item.filterValue })),
       },
     }),
     [feedDiscoveryCategories, tr],
@@ -641,7 +621,10 @@ export function SearchScreen() {
     }
   };
 
-  const emptyQueryLabel = query.trim() || activeCategories.join(", ") || "selecția curentă";
+  const emptyQueryLabel =
+    query.trim() ||
+    activeCategories.map((category) => discoveryCategoryByFilterValue.get(category)?.label ?? category).join(", ") ||
+    "selecția curentă";
   const sheetConfig = activeSheet && activeSheet !== "allFilters" ? localizedSheetConfigs[activeSheet] : null;
   const activeFiltersCount =
     (sort !== "relevant" ? 1 : 0) +
@@ -682,18 +665,7 @@ export function SearchScreen() {
 
   return (
     <View style={styles.screen}>
-      <Image
-        source={BURGER_BACKGROUND_IMAGE}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-        blurRadius={FOOD_BACKGROUND_BLUR_RADIUS}
-      />
-      <LinearGradient
-        pointerEvents="none"
-        colors={FOOD_BACKGROUND_GRADIENT_COLORS}
-        locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
-        style={StyleSheet.absoluteFillObject}
-      />
+      <FoodBackground />
       <Animated.View
         style={[
           styles.container,
@@ -791,8 +763,14 @@ export function SearchScreen() {
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeCategoriesRow}>
                 {activeCategories.map((category) => (
                   <View key={category} style={styles.activeCategoryPill}>
-                    <Text style={styles.activeCategoryEmoji}>{getCategoryEmoji(category)}</Text>
-                    <Text style={styles.activeCategoryText}>{category}</Text>
+                    <View style={[styles.categoryIconWrap, { backgroundColor: discoveryCategoryByFilterValue.get(category)?.iconBackground ?? "rgba(255,255,255,0.10)" }]}>
+                      {(() => {
+                        const categoryPresentation = discoveryCategoryByFilterValue.get(category) ?? resolveDiscoveryCategory(category);
+                        const CategoryIcon = categoryPresentation.icon;
+                        return <CategoryIcon size={15} stroke={categoryPresentation.iconColor} strokeWidth={2.1} />;
+                      })()}
+                    </View>
+                    <Text style={styles.activeCategoryText}>{discoveryCategoryByFilterValue.get(category)?.label ?? category}</Text>
                     <Pressable hitSlop={8} onPress={() => setActiveCategories((current) => current.filter((item) => item !== category))}>
                       <X size={14} stroke={dark.text} strokeWidth={2.4} />
                     </Pressable>
@@ -899,7 +877,7 @@ export function SearchScreen() {
             <FlatList
               key="search-discovery-list"
               data={feedDiscoveryCategories}
-              keyExtractor={(item) => item.label}
+              keyExtractor={(item) => item.filterValue}
               showsVerticalScrollIndicator={false}
               onScroll={trackFloatingCartScrollDirection}
               scrollEventThrottle={16}
@@ -979,8 +957,10 @@ export function SearchScreen() {
                 </View>
               }
               renderItem={({ item }) => (
-                <Pressable style={styles.inspirationItem} onPress={() => setActiveCategories([item.label])}>
-                  <Text style={styles.inspirationEmoji}>{item.emoji}</Text>
+                <Pressable style={styles.inspirationItem} onPress={() => setActiveCategories([item.filterValue])}>
+                  <View style={[styles.categoryIconWrap, { backgroundColor: item.iconBackground }]}>
+                    <item.icon size={18} stroke={item.iconColor} strokeWidth={2.1} />
+                  </View>
                   <Text style={styles.inspirationText}>{item.label}</Text>
                 </Pressable>
               )}
@@ -1104,10 +1084,15 @@ export function SearchScreen() {
               <FilterSection title={tr("Categorii", "Categories")} icon={SlidersHorizontal}>
                 <View style={styles.categoryList}>
                   {feedDiscoveryCategories.map((item, index) => {
-                    const selected = activeCategories.includes(item.label);
+                    const selected = activeCategories.includes(item.filterValue);
                     return (
-                      <Pressable key={item.label} style={[styles.categoryRow, index < feedDiscoveryCategories.length - 1 && styles.optionBorder]} onPress={() => selectOption("categories", item.label)}>
-                        <Text style={styles.categoryRowText}>{item.emoji} {item.label}</Text>
+                      <Pressable key={item.filterValue} style={[styles.categoryRow, index < feedDiscoveryCategories.length - 1 && styles.optionBorder]} onPress={() => selectOption("categories", item.filterValue)}>
+                        <View style={styles.categoryRowLabel}>
+                          <View style={[styles.categoryIconWrap, { backgroundColor: item.iconBackground }]}>
+                            <item.icon size={17} stroke={item.iconColor} strokeWidth={2.1} />
+                          </View>
+                          <Text style={styles.categoryRowText}>{item.label}</Text>
+                        </View>
                         <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
                           {selected ? <Check size={14} stroke={dark.text} strokeWidth={3} /> : null}
                         </View>
@@ -1477,11 +1462,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: dark.background,
   },
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: FOOD_BACKGROUND_IMAGE_OPACITY,
-    transform: [{ scale: FOOD_BACKGROUND_IMAGE_SCALE }],
-  },
   container: {
     flex: 1,
     gap: 10,
@@ -1584,9 +1564,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-  },
-  activeCategoryEmoji: {
-    fontSize: 14,
   },
   activeCategoryText: {
     color: dark.text,
@@ -1871,14 +1848,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 8,
   },
-  inspirationEmoji: {
-    fontSize: 18,
-    width: 24,
-  },
   inspirationText: {
     color: dark.text,
     fontSize: 16,
     fontWeight: "500",
+  },
+  categoryIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryRowLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flexShrink: 1,
   },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,

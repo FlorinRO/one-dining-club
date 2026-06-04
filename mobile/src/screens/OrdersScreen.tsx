@@ -1,11 +1,11 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { LinearGradient } from "expo-linear-gradient";
 import { ListOrdered, RefreshCcw } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { FoodBackground } from "../components/FoodBackground";
 import { ordersApi } from "../api/ordersApi";
 import { productsApi } from "../api/productsApi";
 import { Screen } from "../components/Screen";
@@ -17,14 +17,6 @@ import { OrdersStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useOrdersStore } from "../store/ordersStore";
 import { colors } from "../theme/colors";
-import {
-  BURGER_BACKGROUND_IMAGE,
-  FOOD_BACKGROUND_BLUR_RADIUS,
-  FOOD_BACKGROUND_GRADIENT_COLORS,
-  FOOD_BACKGROUND_GRADIENT_LOCATIONS,
-  FOOD_BACKGROUND_IMAGE_OPACITY,
-  FOOD_BACKGROUND_IMAGE_SCALE,
-} from "../theme/foodBackground";
 import { Order, OrderStatus, Product } from "../types/models";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrdersHome">;
@@ -66,6 +58,7 @@ const ORDER_ROW_IMAGE_POOL = [
 export function OrdersScreen({ navigation }: Props) {
   const { tr, language } = useI18n();
   const insets = useSafeAreaInsets();
+  const topOverlayHeight = insets.top + 1;
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   const storeOrders = useOrdersStore((state) => state.orders);
@@ -128,20 +121,10 @@ export function OrdersScreen({ navigation }: Props) {
   );
 
   return (
-    <Screen padded={false}>
+    <Screen padded={false} edges={["left", "right"]}>
       <View style={styles.page}>
-        <Image
-          source={BURGER_BACKGROUND_IMAGE}
-          style={styles.backgroundImage}
-          resizeMode="cover"
-          blurRadius={FOOD_BACKGROUND_BLUR_RADIUS}
-        />
-        <LinearGradient
-          pointerEvents="none"
-          colors={FOOD_BACKGROUND_GRADIENT_COLORS}
-          locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
-          style={StyleSheet.absoluteFillObject}
-        />
+        <FoodBackground />
+        <View pointerEvents="none" style={[styles.statusBarMask, { height: topOverlayHeight }]} />
         {errorMessage ? <Text style={styles.errorBanner}>{errorMessage}</Text> : null}
 
         <FlatList
@@ -153,7 +136,7 @@ export function OrdersScreen({ navigation }: Props) {
           refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.red} onRefresh={() => loadOrders("refresh", () => true)} />}
           contentContainerStyle={[
             styles.listContent,
-            { paddingTop: insets.top + 12, paddingBottom: Math.max(insets.bottom, 16) + 90 },
+            { paddingTop: topOverlayHeight + 12, paddingBottom: Math.max(insets.bottom, 16) + 90 },
             orderRows.length === 0 ? styles.emptyListContent : null,
           ]}
           ListHeaderComponent={
@@ -461,10 +444,14 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
   },
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: FOOD_BACKGROUND_IMAGE_OPACITY,
-    transform: [{ scale: FOOD_BACKGROUND_IMAGE_SCALE }],
+  statusBarMask: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    elevation: 20,
+    backgroundColor: "#000000",
   },
   titleBlock: {
     paddingHorizontal: 18,

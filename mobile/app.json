@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "club.onedining.customer",
+      "icon": "./assets/ios-icon-yumzy.png",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "YUMZY folosește locația pentru restaurante și livrare.",
         "ITSAppUsesNonExemptEncryption": false

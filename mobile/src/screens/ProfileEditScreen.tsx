@@ -1,11 +1,11 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { LinearGradient } from "expo-linear-gradient";
 import { ArrowLeft } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Image, InteractionManager, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, InteractionManager, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { authApi } from "../api/authApi";
+import { FoodBackground } from "../components/FoodBackground";
 import { Screen } from "../components/Screen";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
@@ -13,14 +13,6 @@ import { ProfileStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useCartStore } from "../store/cartStore";
 import { colors } from "../theme/colors";
-import {
-  BURGER_BACKGROUND_IMAGE,
-  FOOD_BACKGROUND_BLUR_RADIUS,
-  FOOD_BACKGROUND_GRADIENT_COLORS,
-  FOOD_BACKGROUND_GRADIENT_LOCATIONS,
-  FOOD_BACKGROUND_IMAGE_OPACITY,
-  FOOD_BACKGROUND_IMAGE_SCALE,
-} from "../theme/foodBackground";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileEdit">;
 const PROFILE_GREEN_DARK = "#16A34A";
@@ -136,13 +128,7 @@ export function ProfileEditScreen({ navigation, route }: Props) {
   return (
     <Screen padded={false}>
       <View style={styles.screen}>
-        <Image source={BURGER_BACKGROUND_IMAGE} style={[styles.backgroundImage, { top: -insets.top }]} resizeMode="cover" blurRadius={FOOD_BACKGROUND_BLUR_RADIUS} />
-        <LinearGradient
-          pointerEvents="none"
-          colors={FOOD_BACKGROUND_GRADIENT_COLORS}
-          locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
-          style={[StyleSheet.absoluteFillObject, { top: -insets.top }]}
-        />
+        <FoodBackground topOffset={-insets.top} />
         <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <ScrollView
             keyboardShouldPersistTaps="handled"
@@ -260,11 +246,6 @@ export function ProfileEditScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-  },
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: FOOD_BACKGROUND_IMAGE_OPACITY,
-    transform: [{ scale: FOOD_BACKGROUND_IMAGE_SCALE }],
   },
   container: {
     flex: 1,

@@ -1,6 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { AlertTriangle, ArrowLeft, Bike, ChevronRight, Clock3, CreditCard, MapPin, PlusCircle, ShoppingCart, Trash2, Wallet } from "lucide-react-native";
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -8,6 +7,7 @@ import { Alert, Animated, Image, KeyboardAvoidingView, PanResponder, Platform, P
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { addressesApi } from "../api/addressesApi";
+import { FoodBackground } from "../components/FoodBackground";
 import { getDemoProductVideoSource } from "../data/demoVideos";
 import { ordersApi } from "../api/ordersApi";
 import { QuantityStepper } from "../components/QuantityStepper";
@@ -19,14 +19,6 @@ import { CartStackParamList } from "../navigation/types";
 import { useCartStore } from "../store/cartStore";
 import { useOrdersStore } from "../store/ordersStore";
 import { colors } from "../theme/colors";
-import {
-  BURGER_BACKGROUND_IMAGE,
-  FOOD_BACKGROUND_BLUR_RADIUS,
-  FOOD_BACKGROUND_GRADIENT_COLORS,
-  FOOD_BACKGROUND_GRADIENT_LOCATIONS,
-  FOOD_BACKGROUND_IMAGE_OPACITY,
-  FOOD_BACKGROUND_IMAGE_SCALE,
-} from "../theme/foodBackground";
 import { Address, PaymentMethod, Product, Restaurant } from "../types/models";
 
 type Props = NativeStackScreenProps<CartStackParamList, "CartHome">;
@@ -240,13 +232,7 @@ export function CartScreen({ navigation }: Props) {
   return (
     <Screen padded={false} edges={["left", "right"]}>
       <View style={styles.screen}>
-        <Image source={BURGER_BACKGROUND_IMAGE} style={styles.backgroundImage} resizeMode="cover" blurRadius={FOOD_BACKGROUND_BLUR_RADIUS} />
-        <LinearGradient
-          pointerEvents="none"
-          colors={FOOD_BACKGROUND_GRADIENT_COLORS}
-          locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
-          style={StyleSheet.absoluteFillObject}
-        />
+        <FoodBackground />
         <KeyboardAvoidingView
           style={[styles.contentLayer, { paddingTop: insets.top }]}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -579,11 +565,6 @@ function SwipeToConfirm({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-  },
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: FOOD_BACKGROUND_IMAGE_OPACITY,
-    transform: [{ scale: FOOD_BACKGROUND_IMAGE_SCALE }],
   },
   contentLayer: {
     flex: 1,

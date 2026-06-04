@@ -1,4 +1,4 @@
-export const BURGER_BACKGROUND_IMAGE = require("../../assets/food-src/food3.jpg");
+export const BURGER_BACKGROUND_IMAGE = require("../../assets/food-src/burger-BG.jpg");
 
 export const FOOD_BACKGROUND_BLUR_RADIUS = 6;
 export const FOOD_BACKGROUND_IMAGE_OPACITY = 1;

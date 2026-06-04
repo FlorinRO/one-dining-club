@@ -1,26 +1,18 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Check, Crosshair, MapPin, X } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 
 import { addressesApi } from "../api/addressesApi";
+import { FoodBackground } from "../components/FoodBackground";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { HomeStackParamList } from "../navigation/types";
 import { useI18n } from "../i18n/useI18n";
 import { useAuthStore } from "../store/authStore";
 import { colors } from "../theme/colors";
-import {
-  BURGER_BACKGROUND_IMAGE,
-  FOOD_BACKGROUND_BLUR_RADIUS,
-  FOOD_BACKGROUND_GRADIENT_COLORS,
-  FOOD_BACKGROUND_GRADIENT_LOCATIONS,
-  FOOD_BACKGROUND_IMAGE_OPACITY,
-  FOOD_BACKGROUND_IMAGE_SCALE,
-} from "../theme/foodBackground";
 import { Address } from "../types/models";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "DeliveryAddress">;
@@ -200,13 +192,7 @@ export function DeliveryAddressScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
-      <Image source={BURGER_BACKGROUND_IMAGE} style={styles.backgroundImage} resizeMode="cover" blurRadius={FOOD_BACKGROUND_BLUR_RADIUS} />
-      <LinearGradient
-        pointerEvents="none"
-        colors={FOOD_BACKGROUND_GRADIENT_COLORS}
-        locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
-        style={StyleSheet.absoluteFillObject}
-      />
+      <FoodBackground />
       <View style={styles.container}>
         <View style={styles.header}>
           <Pressable style={styles.closeButton} onPress={() => navigation.goBack()}>
@@ -291,11 +277,6 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: "#050505",
-  },
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: FOOD_BACKGROUND_IMAGE_OPACITY,
-    transform: [{ scale: FOOD_BACKGROUND_IMAGE_SCALE }],
   },
   container: {
     flex: 1,

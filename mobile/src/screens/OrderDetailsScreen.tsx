@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ChevronRight, CreditCard, LifeBuoy, RotateCcw } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, CreditCard, LifeBuoy, RotateCcw } from "lucide-react-native";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -12,9 +12,10 @@ import { colors } from "../theme/colors";
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrderDetails">;
 const ORDER_ACTION_GREEN = "#22C55E";
 
-export function OrderDetailsScreen({ route }: Props) {
+export function OrderDetailsScreen({ navigation, route }: Props) {
   const { tr, language } = useI18n();
   const insets = useSafeAreaInsets();
+  const topOverlayHeight = insets.top + 1;
   const bottomSafeSpacing = Math.max(insets.bottom, 18) + 86;
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
   const { order } = route.params;
@@ -35,13 +36,19 @@ export function OrderDetailsScreen({ route }: Props) {
 
   return (
     <View style={styles.page}>
+      <View pointerEvents="none" style={[styles.statusBarMask, { height: topOverlayHeight }]} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         bounces={false}
         onScroll={trackFloatingCartScrollDirection}
         scrollEventThrottle={16}
-        contentContainerStyle={[styles.content, { paddingBottom: bottomSafeSpacing }]}
+        contentContainerStyle={[styles.content, { paddingTop: topOverlayHeight + 6, paddingBottom: bottomSafeSpacing }]}
       >
+        <View style={styles.headerRow}>
+          <Pressable onPress={() => navigation.goBack()} hitSlop={10} style={styles.backButton}>
+            <ChevronLeft size={26} color={colors.text} strokeWidth={2.4} />
+          </Pressable>
+        </View>
         <View style={[styles.card, styles.topInfoCard]}>
           <Text style={styles.metaText}>
             {statusLabel} {formattedDate}
@@ -134,11 +141,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  statusBarMask: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    elevation: 20,
+    backgroundColor: colors.background,
+  },
   content: {
-    paddingTop: 0,
     paddingBottom: 28,
     gap: 8,
     backgroundColor: colors.background,
+  },
+  headerRow: {
+    paddingHorizontal: 12,
+    marginBottom: 4,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
   },
   card: {
     borderRadius: 18,
@@ -150,9 +175,7 @@ const styles = StyleSheet.create({
   },
   topInfoCard: {
     paddingTop: 30,
-    marginTop: -2,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
+    marginTop: 0,
   },
   metaText: {
     color: colors.text,

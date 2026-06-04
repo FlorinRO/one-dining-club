@@ -1,6 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { LinearGradient } from "expo-linear-gradient";
 import {
   Check,
   ChevronRight,
@@ -33,20 +32,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { addressesApi } from "../api/addressesApi";
 import { authApi } from "../api/authApi";
 import { ordersApi } from "../api/ordersApi";
+import { FoodBackground } from "../components/FoodBackground";
 import { Screen } from "../components/Screen";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { ProfileStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { colors } from "../theme/colors";
-import {
-  BURGER_BACKGROUND_IMAGE,
-  FOOD_BACKGROUND_BLUR_RADIUS,
-  FOOD_BACKGROUND_GRADIENT_COLORS,
-  FOOD_BACKGROUND_GRADIENT_LOCATIONS,
-  FOOD_BACKGROUND_IMAGE_OPACITY,
-  FOOD_BACKGROUND_IMAGE_SCALE,
-} from "../theme/foodBackground";
 import { Address, Order, PaymentMethod } from "../types/models";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileHome">;
@@ -71,6 +63,7 @@ type OtherRowProps = {
 export function ProfileScreen({ navigation }: Props) {
   const { t, tr } = useI18n();
   const insets = useSafeAreaInsets();
+  const profileBackgroundImage = require("../../assets/food-src/burger-BG.jpg");
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
   const isGuest = useAuthStore((state) => state.isGuest);
@@ -154,18 +147,7 @@ export function ProfileScreen({ navigation }: Props) {
     return (
       <Screen padded={false}>
         <View style={styles.screen}>
-          <Image
-            source={BURGER_BACKGROUND_IMAGE}
-            style={[styles.backgroundImage, { top: -insets.top }]}
-            resizeMode="cover"
-            blurRadius={FOOD_BACKGROUND_BLUR_RADIUS}
-          />
-          <LinearGradient
-            pointerEvents="none"
-            colors={FOOD_BACKGROUND_GRADIENT_COLORS}
-            locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
-            style={[StyleSheet.absoluteFillObject, { top: -insets.top }]}
-          />
+          <FoodBackground topOffset={-insets.top} />
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[styles.content, styles.guestContent]}
@@ -199,18 +181,7 @@ export function ProfileScreen({ navigation }: Props) {
   return (
     <Screen padded={false}>
       <View style={styles.screen}>
-        <Image
-          source={BURGER_BACKGROUND_IMAGE}
-          style={[styles.backgroundImage, { top: -insets.top }]}
-          resizeMode="cover"
-          blurRadius={FOOD_BACKGROUND_BLUR_RADIUS}
-        />
-        <LinearGradient
-          pointerEvents="none"
-          colors={FOOD_BACKGROUND_GRADIENT_COLORS}
-          locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
-          style={[StyleSheet.absoluteFillObject, { top: -insets.top }]}
-        />
+        <FoodBackground topOffset={-insets.top} />
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -399,11 +370,6 @@ function formatLei(value: number) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-  },
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: FOOD_BACKGROUND_IMAGE_OPACITY,
-    transform: [{ scale: FOOD_BACKGROUND_IMAGE_SCALE }],
   },
   content: {
     paddingHorizontal: 20,
