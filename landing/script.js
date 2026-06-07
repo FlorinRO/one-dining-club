@@ -73,6 +73,10 @@ const modalContent = {
       "Putem folosi preferințele, locația de livrare și activitatea din aplicație pentru a îmbunătăți recomandările și experiența de comandă.",
       "Pentru ștergerea contului sau întrebări despre datele tale, contactează-ne la support@yumzy.ro.",
     ],
+    link: {
+      label: "Vezi versiunea completă: https://yumzy.ro/privacy-policy",
+      href: "https://yumzy.ro/privacy-policy/",
+    },
   },
   contact: {
     title: "Contact",
@@ -101,6 +105,16 @@ const openInfoModal = (topic) => {
     paragraph.textContent = text;
     modalBody.append(paragraph);
   });
+
+  if (content.link?.href && content.link?.label) {
+    const link = document.createElement("a");
+    link.className = "modal-link";
+    link.href = content.link.href;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = content.link.label;
+    modalBody.append(link);
+  }
 
   infoModal.showModal();
 };
