@@ -6,12 +6,19 @@ const syncAppHeight = () => {
 };
 
 const ensureVideoPlayback = (video) => {
+  if (!video) return;
+
   video.muted = true;
   video.defaultMuted = true;
   video.playsInline = true;
   video.setAttribute("muted", "");
   video.setAttribute("playsinline", "");
   video.setAttribute("webkit-playsinline", "");
+  video.setAttribute("autoplay", "");
+
+  if (!video.currentSrc || video.readyState === 0) {
+    video.load();
+  }
 
   const playAttempt = video.play();
   if (playAttempt && typeof playAttempt.catch === "function") {
@@ -29,6 +36,18 @@ window.addEventListener("pageshow", syncAppHeight);
 landingVideos.forEach((video) => {
   ensureVideoPlayback(video);
   video.addEventListener("loadedmetadata", () => ensureVideoPlayback(video), { once: true });
+  video.addEventListener("canplay", () => ensureVideoPlayback(video));
+  video.addEventListener("pause", () => ensureVideoPlayback(video));
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    landingVideos.forEach((video) => ensureVideoPlayback(video));
+  }
+});
+
+window.addEventListener("focus", () => {
+  landingVideos.forEach((video) => ensureVideoPlayback(video));
 });
 
 const revealObserver = new IntersectionObserver(

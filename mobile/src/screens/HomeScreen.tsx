@@ -208,9 +208,9 @@ export function HomeScreen({ navigation }: Props) {
         const text = normalize(label);
         return text.includes("loca") || text.includes("automat") || text.includes("auto");
       };
-      const autoAddress = addresses.find((item) => isAutoLabel(item.label));
       const defaultAddress = addresses.find((item) => item.is_default);
-      const resolvedAddress: Address | undefined = autoAddress ?? defaultAddress ?? addresses[0];
+      const autoAddress = addresses.find((item) => isAutoLabel(item.label));
+      const resolvedAddress: Address | undefined = defaultAddress ?? autoAddress ?? addresses[0];
 
       if (!resolvedAddress) {
         setLocationLabel("");
