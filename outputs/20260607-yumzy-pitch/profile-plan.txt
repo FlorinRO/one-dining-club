@@ -1,0 +1,23 @@
+task mode: create
+primary deck-profile: consumer-retail
+secondary profile gates: gtm-growth
+required proof objects:
+- image-led hero slide
+- product / platform explanation
+- audience / brand-fit slide
+- commercial offer slides
+- closing advantages slide
+source / asset requirements:
+- preserve source copy from the provided PPTX
+- use user-provided YUMZY screenshots and icon
+- keep brand palette anchored in black / white / YUMZY green
+brand authenticity constraints:
+- use only provided YUMZY icon and screenshots
+- do not redraw the logo
+profile-specific QA gates:
+- deck must feel like a premium app pitch, not a generic business template
+- slide text must remain readable at thumbnail and full-screen size
+- screenshots should be framed consistently and cropped cleanly
+known missing inputs:
+- no official typography guide
+- no editable vector logo lockup beyond provided icon

@@ -1,0 +1,633 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/b4df27",
+    "id": "b4df27",
+    "slide": 1,
+    "layoutId": "7521a92d-0fde-4630-98c0-183cb4630647",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "b3e515e2-273e-40e4-a3e3-f7e1582588fd",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#0B0B0D",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Aptos",
+      "Aptos Display"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "7521a92d-0fde-4630-98c0-183cb4630647",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "b3e515e2-273e-40e4-a3e3-f7e1582588fd",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "b3e515e2-273e-40e4-a3e3-f7e1582588fd",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nih4byhg",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        1280,
+        720
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "fillColor": "#0B0B0D"
+    },
+    {
+      "order": 2,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/1kre1w7m",
+      "id": "2",
+      "bbox": [
+        720,
+        60,
+        470,
+        600
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0"
+      },
+      "geometry": "roundRect",
+      "alt": "YUMZY screen",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 5957"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "2936e370-8d08-4f05-9a08-fdf06dd98e15",
+        "contentType": "image/png",
+        "byteLength": 3526161
+      }
+    },
+    {
+      "order": 3,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/c3ylc7u5",
+      "id": "3",
+      "bbox": [
+        74,
+        72,
+        70,
+        78
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0"
+      },
+      "alt": "YUMZY logo",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "asset": {
+        "assetId": "33c9ecf7-f6c3-45a2-8ae6-532b0d8e1fe2",
+        "contentType": "image/png",
+        "byteLength": 157702
+      }
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ylc7u54z",
+      "id": "4",
+      "bbox": [
+        156,
+        82,
+        159.72,
+        105.6
+      ],
+      "composeSource": {
+        "run": 4,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "YUMZY",
+      "textPreview": "YUMZY",
+      "resolvedFontSize": 44,
+      "resolvedTextStyle": {
+        "fontSize": 44,
+        "typeface": "Aptos Display",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "YUMZ"
+          },
+          {
+            "index": 2,
+            "text": "Y"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "YUMZY",
+          "resolvedTextStyle": {
+            "fontSize": 44,
+            "typeface": "Aptos Display",
+            "color": "#FFFFFF",
+            "bold": true,
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "YUMZY",
+              "fontSize": 44,
+              "typeface": "Aptos Display",
+              "color": "#FFFFFF",
+              "bold": true,
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/r65wjudg",
+      "id": "5",
+      "bbox": [
+        74,
+        198,
+        230.67,
+        26.4
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Watch. Discover. Order.",
+      "textPreview": "Watch. Discover. Order.",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "Aptos",
+        "color": "#62D784",
+        "alignment": "left",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Watch. Discover. Order."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Watch. Discover. Order.",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "Aptos",
+            "color": "#62D784",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Watch. Discover. Order.",
+              "fontSize": 22,
+              "typeface": "Aptos",
+              "color": "#62D784",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gr2p8nqx",
+      "id": "6",
+      "bbox": [
+        74,
+        252,
+        1618.29,
+        89.76
+      ],
+      "composeSource": {
+        "run": 6,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Primul ecosistem în care conținutul video, comerțul și livrarea se întâlnesc într-o singură experiență.",
+      "textPreview": "Primul ecosistem în care conținutul video, comerțul și livrarea se întâlnesc într-o singură experiență.",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "fontSize": 34,
+        "typeface": "Aptos Display",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "square",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Primul ecosistem în care conținutul video, comerțul și livrarea se întâlnesc într-o singură"
+          },
+          {
+            "index": 2,
+            "text": "experiență."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Primul ecosistem în care conținutul video, comerțul și livrarea se întâlnesc într-o singură experiență.",
+          "resolvedTextStyle": {
+            "fontSize": 34,
+            "typeface": "Aptos Display",
+            "color": "#FFFFFF",
+            "bold": true,
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Primul ecosistem în care conținutul video, comerțul și livrarea se întâlnesc într-o singură experiență.",
+              "fontSize": 34,
+              "typeface": "Aptos Display",
+              "color": "#FFFFFF",
+              "bold": true,
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": [
+    {
+      "index": 1,
+      "frame": {
+        "left": 0,
+        "top": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 0,
+          "top": 0,
+          "width": 1280,
+          "height": 720
+        },
+        "children": [],
+        "geometry": "rect",
+        "element": {
+          "aid": "sh/nih4byhg",
+          "id": "1",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 2,
+      "frame": {
+        "left": 720,
+        "top": 60,
+        "width": 470,
+        "height": 600
+      },
+      "root": {
+        "path": "0",
+        "kind": "image",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 720,
+          "top": 60,
+          "width": 470,
+          "height": 600
+        },
+        "children": [],
+        "source": {
+          "kind": "dataUrl"
+        },
+        "fit": "contain",
+        "alt": "YUMZY screen",
+        "element": {
+          "aid": "im/1kre1w7m",
+          "id": "2",
+          "kind": "image"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "frame": {
+        "left": 74,
+        "top": 72,
+        "width": 70,
+        "height": 78
+      },
+      "root": {
+        "path": "0",
+        "kind": "image",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 74,
+          "top": 72,
+          "width": 70,
+          "height": 78
+        },
+        "children": [],
+        "source": {
+          "kind": "dataUrl"
+        },
+        "fit": "contain",
+        "alt": "YUMZY logo",
+        "element": {
+          "aid": "im/c3ylc7u5",
+          "id": "3",
+          "kind": "image"
+        }
+      }
+    },
+    {
+      "index": 4,
+      "frame": {
+        "left": 156,
+        "top": 82,
+        "width": 240,
+        "height": 56
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 159.72,
+          "height": 52.8
+        },
+        "frame": {
+          "left": 156,
+          "top": 82,
+          "width": 159.72,
+          "height": 105.6
+        },
+        "children": [],
+        "text": "YUMZY",
+        "transform": "none",
+        "element": {
+          "aid": "sh/ylc7u54z",
+          "id": "4",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 5,
+      "frame": {
+        "left": 74,
+        "top": 198,
+        "width": 420,
+        "height": 36
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 230.67,
+          "height": 26.4
+        },
+        "frame": {
+          "left": 74,
+          "top": 198,
+          "width": 230.67,
+          "height": 26.4
+        },
+        "children": [],
+        "text": "Watch. Discover. Order.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/r65wjudg",
+          "id": "5",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 6,
+      "frame": {
+        "left": 74,
+        "top": 252,
+        "width": 520,
+        "height": 180
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 1618.29,
+          "height": 44.88
+        },
+        "frame": {
+          "left": 74,
+          "top": 252,
+          "width": 1618.29,
+          "height": 89.76
+        },
+        "children": [],
+        "text": "Primul ecosistem în care conținutul video, comerțul și livrarea se întâlnesc într-o singură experiență.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/gr2p8nqx",
+          "id": "6",
+          "kind": "shape"
+        }
+      }
+    }
+  ]
+}

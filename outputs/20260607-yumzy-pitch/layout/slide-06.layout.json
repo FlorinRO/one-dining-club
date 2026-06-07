@@ -1,0 +1,2231 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/x1bium",
+    "id": "x1bium",
+    "slide": 6,
+    "layoutId": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#0B0B0D",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Aptos",
+      "Aptos Display"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ed8v6psf",
+      "id": "1",
+      "bbox": [
+        70,
+        56,
+        139.76,
+        16.8
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "De ce Funcționează?",
+      "textPreview": "De ce Funcționează?",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "Aptos",
+        "color": "#59D97C",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "De ce Funcționează?"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "De ce Funcționează?",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "typeface": "Aptos",
+            "color": "#59D97C",
+            "bold": true,
+            "wrap": "none",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "De ce Funcționează?",
+              "fontSize": 14,
+              "typeface": "Aptos",
+              "color": "#59D97C",
+              "bold": true,
+              "wrap": "none",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/p4r65wju",
+      "id": "2",
+      "bbox": [
+        70,
+        78,
+        13.34,
+        14.4
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "06",
+      "textPreview": "06",
+      "resolvedFontSize": 12,
+      "resolvedTextStyle": {
+        "fontSize": 12,
+        "typeface": "Aptos",
+        "color": "#A7AAB3",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "06"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "06",
+          "resolvedTextStyle": {
+            "fontSize": 12,
+            "typeface": "Aptos",
+            "color": "#A7AAB3",
+            "bold": true,
+            "wrap": "none",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "06",
+              "fontSize": 12,
+              "typeface": "Aptos",
+              "color": "#A7AAB3",
+              "bold": true,
+              "wrap": "none",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wjudg7ad",
+      "id": "3",
+      "bbox": [
+        70,
+        116,
+        344.04,
+        43.2
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Conținut Care Vinde",
+      "textPreview": "Conținut Care Vinde",
+      "resolvedFontSize": 36,
+      "resolvedTextStyle": {
+        "fontSize": 36,
+        "typeface": "Aptos Display",
+        "color": "#59D97C",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Conținut Care Vinde"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Conținut Care Vinde",
+          "resolvedTextStyle": {
+            "fontSize": 36,
+            "typeface": "Aptos Display",
+            "color": "#59D97C",
+            "bold": true,
+            "wrap": "none",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Conținut Care Vinde",
+              "fontSize": 36,
+              "typeface": "Aptos Display",
+              "color": "#59D97C",
+              "bold": true,
+              "wrap": "none",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7qpg3ex0",
+      "id": "4",
+      "bbox": [
+        70,
+        178,
+        1093.54,
+        59.47
+      ],
+      "composeSource": {
+        "run": 4,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Video-ul este cel mai consumat format digital din lume. YUMZY transformă conținutul video într-un canal de vânzare.",
+      "textPreview": "Video-ul este cel mai consumat format digital din lume. YUMZY transformă conținutul video într-un canal de vânzare.",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "fontSize": 21,
+        "typeface": "Aptos",
+        "color": "#F5F6F7",
+        "alignment": "left",
+        "wrap": "square",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Video-ul este cel mai consumat format digital din lume. YUMZY transformă conținutul video într-un canal de"
+          },
+          {
+            "index": 2,
+            "text": "vânzare."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Video-ul este cel mai consumat format digital din lume. YUMZY transformă conținutul video într-un canal de vânzare.",
+          "resolvedTextStyle": {
+            "fontSize": 21,
+            "typeface": "Aptos",
+            "color": "#F5F6F7",
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Video-ul este cel mai consumat format digital din lume. YUMZY transformă conținutul video într-un canal de vânzare.",
+              "fontSize": 21,
+              "typeface": "Aptos",
+              "color": "#F5F6F7",
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/i5sneloj",
+      "id": "5",
+      "bbox": [
+        70,
+        270,
+        340,
+        250
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0"
+      },
+      "geometry": "roundRect",
+      "fillColor": "#17181E",
+      "lineColor": "#31343D",
+      "lineWidth": 1
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pwb2hwfy",
+      "id": "6",
+      "bbox": [
+        94,
+        294,
+        14.46,
+        15.6
+      ],
+      "composeSource": {
+        "run": 6,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "01",
+      "textPreview": "01",
+      "resolvedFontSize": 13,
+      "resolvedTextStyle": {
+        "fontSize": 13,
+        "typeface": "Aptos",
+        "color": "#59D97C",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "01"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "01",
+          "resolvedTextStyle": {
+            "fontSize": 13,
+            "typeface": "Aptos",
+            "color": "#59D97C",
+            "bold": true,
+            "wrap": "none",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "01",
+              "fontSize": 13,
+              "typeface": "Aptos",
+              "color": "#59D97C",
+              "bold": true,
+              "wrap": "none",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0bi9s36h",
+      "id": "7",
+      "bbox": [
+        94,
+        332,
+        347.48,
+        63.36
+      ],
+      "composeSource": {
+        "run": 7,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Fiecare videoclip poate deveni\nun punct de conversie.",
+      "textPreview": "Fiecare videoclip poate deveni | un punct de conversie.",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Aptos Display",
+        "color": "#F5F6F7",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "square",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Fiecare videoclip poate deveni"
+          },
+          {
+            "index": 2,
+            "text": "un punct de conversie."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Fiecare videoclip poate deveni",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "typeface": "Aptos Display",
+            "color": "#F5F6F7",
+            "bold": true,
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Fiecare videoclip poate deveni",
+              "fontSize": 24,
+              "typeface": "Aptos Display",
+              "color": "#F5F6F7",
+              "bold": true,
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "un punct de conversie.",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "typeface": "Aptos Display",
+            "color": "#F5F6F7",
+            "bold": true,
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "un punct de conversie.",
+              "fontSize": 24,
+              "typeface": "Aptos Display",
+              "color": "#F5F6F7",
+              "bold": true,
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7ed8bat4",
+      "id": "8",
+      "bbox": [
+        94,
+        420,
+        684.55,
+        24.89
+      ],
+      "composeSource": {
+        "run": 8,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Feed-ul nu mai este doar awareness. Devine raft, meniu și checkout în aceeași experiență.",
+      "textPreview": "Feed-ul nu mai este doar awareness. Devine raft, meniu și checkout în aceeași experiență.",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "Aptos",
+        "color": "#A7AAB3",
+        "alignment": "left",
+        "wrap": "square",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Feed-ul nu mai este doar awareness. Devine raft, meniu și checkout în aceeași experiență."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Feed-ul nu mai este doar awareness. Devine raft, meniu și checkout în aceeași experiență.",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "typeface": "Aptos",
+            "color": "#A7AAB3",
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Feed-ul nu mai este doar awareness. Devine raft, meniu și checkout în aceeași experiență.",
+              "fontSize": 17,
+              "typeface": "Aptos",
+              "color": "#A7AAB3",
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/itgfmlkj",
+      "id": "9",
+      "bbox": [
+        430,
+        270,
+        340,
+        250
+      ],
+      "composeSource": {
+        "run": 9,
+        "path": "0"
+      },
+      "geometry": "roundRect",
+      "fillColor": "#17181E",
+      "lineColor": "#31343D",
+      "lineWidth": 1
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cvixczed",
+      "id": "10",
+      "bbox": [
+        454,
+        294,
+        14.46,
+        15.6
+      ],
+      "composeSource": {
+        "run": 10,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "02",
+      "textPreview": "02",
+      "resolvedFontSize": 13,
+      "resolvedTextStyle": {
+        "fontSize": 13,
+        "typeface": "Aptos",
+        "color": "#59D97C",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "02"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "02",
+          "resolvedTextStyle": {
+            "fontSize": 13,
+            "typeface": "Aptos",
+            "color": "#59D97C",
+            "bold": true,
+            "wrap": "none",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "02",
+              "fontSize": 13,
+              "typeface": "Aptos",
+              "color": "#59D97C",
+              "bold": true,
+              "wrap": "none",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5gbq1ory",
+      "id": "11",
+      "bbox": [
+        454,
+        332,
+        365.3,
+        95.04
+      ],
+      "composeSource": {
+        "run": 11,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Fiecare vizualizare poate deveni\no comandă.",
+      "textPreview": "Fiecare vizualizare poate deveni | o comandă.",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Aptos Display",
+        "color": "#F5F6F7",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "square",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Fiecare vizualizare poate"
+          },
+          {
+            "index": 2,
+            "text": "deveni"
+          },
+          {
+            "index": 3,
+            "text": "o comandă."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Fiecare vizualizare poate deveni",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "typeface": "Aptos Display",
+            "color": "#F5F6F7",
+            "bold": true,
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Fiecare vizualizare poate deveni",
+              "fontSize": 24,
+              "typeface": "Aptos Display",
+              "color": "#F5F6F7",
+              "bold": true,
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "o comandă.",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "typeface": "Aptos Display",
+            "color": "#F5F6F7",
+            "bold": true,
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "o comandă.",
+              "fontSize": 24,
+              "typeface": "Aptos Display",
+              "color": "#F5F6F7",
+              "bold": true,
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/upwb2hwf",
+      "id": "12",
+      "bbox": [
+        454,
+        420,
+        678.22,
+        24.89
+      ],
+      "composeSource": {
+        "run": 12,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Utilizatorul descoperă prin video și cumpără fără să părăsească fluxul natural de consum.",
+      "textPreview": "Utilizatorul descoperă prin video și cumpără fără să părăsească fluxul natural de consum.",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "Aptos",
+        "color": "#A7AAB3",
+        "alignment": "left",
+        "wrap": "square",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Utilizatorul descoperă prin video și cumpără fără să părăsească fluxul natural de consum."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Utilizatorul descoperă prin video și cumpără fără să părăsească fluxul natural de consum.",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "typeface": "Aptos",
+            "color": "#A7AAB3",
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Utilizatorul descoperă prin video și cumpără fără să părăsească fluxul natural de consum.",
+              "fontSize": 17,
+              "typeface": "Aptos",
+              "color": "#A7AAB3",
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nap4r65w",
+      "id": "13",
+      "bbox": [
+        790,
+        270,
+        340,
+        250
+      ],
+      "composeSource": {
+        "run": 13,
+        "path": "0"
+      },
+      "geometry": "roundRect",
+      "fillColor": "#17181E",
+      "lineColor": "#31343D",
+      "lineWidth": 1
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cj6tovah",
+      "id": "14",
+      "bbox": [
+        814,
+        294,
+        14.46,
+        15.6
+      ],
+      "composeSource": {
+        "run": 14,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "03",
+      "textPreview": "03",
+      "resolvedFontSize": 13,
+      "resolvedTextStyle": {
+        "fontSize": 13,
+        "typeface": "Aptos",
+        "color": "#59D97C",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "03"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "03",
+          "resolvedTextStyle": {
+            "fontSize": 13,
+            "typeface": "Aptos",
+            "color": "#59D97C",
+            "bold": true,
+            "wrap": "none",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "03",
+              "fontSize": 13,
+              "typeface": "Aptos",
+              "color": "#59D97C",
+              "bold": true,
+              "wrap": "none",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/54zidony",
+      "id": "15",
+      "bbox": [
+        814,
+        332,
+        410.98,
+        95.04
+      ],
+      "composeSource": {
+        "run": 15,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Fiecare campanie poate fi măsurată\npână la livrare.",
+      "textPreview": "Fiecare campanie poate fi măsurată | până la livrare.",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "Aptos Display",
+        "color": "#F5F6F7",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "square",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Fiecare campanie poate fi"
+          },
+          {
+            "index": 2,
+            "text": "măsurată"
+          },
+          {
+            "index": 3,
+            "text": "până la livrare."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Fiecare campanie poate fi măsurată",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "typeface": "Aptos Display",
+            "color": "#F5F6F7",
+            "bold": true,
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Fiecare campanie poate fi măsurată",
+              "fontSize": 24,
+              "typeface": "Aptos Display",
+              "color": "#F5F6F7",
+              "bold": true,
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "până la livrare.",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "typeface": "Aptos Display",
+            "color": "#F5F6F7",
+            "bold": true,
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "până la livrare.",
+              "fontSize": 24,
+              "typeface": "Aptos Display",
+              "color": "#F5F6F7",
+              "bold": true,
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/udg7adsj",
+      "id": "16",
+      "bbox": [
+        814,
+        420,
+        630.12,
+        49.78
+      ],
+      "composeSource": {
+        "run": 16,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Brandurile pot vedea impactul în comenzi reale, nu doar în metrici media abstracte.",
+      "textPreview": "Brandurile pot vedea impactul în comenzi reale, nu doar în metrici media abstracte.",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "Aptos",
+        "color": "#A7AAB3",
+        "alignment": "left",
+        "wrap": "square",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Brandurile pot vedea impactul în comenzi reale, nu doar în metrici media"
+          },
+          {
+            "index": 2,
+            "text": "abstracte."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Brandurile pot vedea impactul în comenzi reale, nu doar în metrici media abstracte.",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "typeface": "Aptos",
+            "color": "#A7AAB3",
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Brandurile pot vedea impactul în comenzi reale, nu doar în metrici media abstracte.",
+              "fontSize": 17,
+              "typeface": "Aptos",
+              "color": "#A7AAB3",
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nyd0z610",
+      "id": "17",
+      "bbox": [
+        70,
+        680,
+        1140,
+        1
+      ],
+      "composeSource": {
+        "run": 17,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "fillColor": "#31343D",
+      "lineColor": "#31343D",
+      "lineWidth": 0
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cfa9w3m9",
+      "id": "18",
+      "bbox": [
+        70,
+        688,
+        49.81,
+        13.2
+      ],
+      "composeSource": {
+        "run": 18,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "YUMZY.ro",
+      "textPreview": "YUMZY.ro",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "fontSize": 11,
+        "typeface": "Aptos",
+        "color": "#A7AAB3",
+        "alignment": "left",
+        "wrap": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "YUMZY.ro"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "YUMZY.ro",
+          "resolvedTextStyle": {
+            "fontSize": 11,
+            "typeface": "Aptos",
+            "color": "#A7AAB3",
+            "wrap": "none",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "YUMZY.ro",
+              "fontSize": 11,
+              "typeface": "Aptos",
+              "color": "#A7AAB3",
+              "wrap": "none",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1032lszq",
+      "id": "19",
+      "bbox": [
+        1140,
+        688,
+        12.23,
+        13.2
+      ],
+      "composeSource": {
+        "run": 19,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "06",
+      "textPreview": "06",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "fontSize": 11,
+        "typeface": "Aptos",
+        "color": "#A7AAB3",
+        "bold": true,
+        "alignment": "right",
+        "wrap": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "06"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "06",
+          "resolvedTextStyle": {
+            "fontSize": 11,
+            "typeface": "Aptos",
+            "color": "#A7AAB3",
+            "bold": true,
+            "alignment": "right",
+            "wrap": "none",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "06",
+              "fontSize": 11,
+              "typeface": "Aptos",
+              "color": "#A7AAB3",
+              "bold": true,
+              "alignment": "right",
+              "wrap": "none",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": [
+    {
+      "index": 1,
+      "frame": {
+        "left": 70,
+        "top": 56,
+        "width": 220,
+        "height": 24
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 139.76,
+          "height": 16.8
+        },
+        "frame": {
+          "left": 70,
+          "top": 56,
+          "width": 139.76,
+          "height": 16.8
+        },
+        "children": [],
+        "text": "De ce Funcționează?",
+        "transform": "none",
+        "element": {
+          "aid": "sh/ed8v6psf",
+          "id": "1",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 2,
+      "frame": {
+        "left": 70,
+        "top": 78,
+        "width": 70,
+        "height": 22
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 13.34,
+          "height": 14.4
+        },
+        "frame": {
+          "left": 70,
+          "top": 78,
+          "width": 13.34,
+          "height": 14.4
+        },
+        "children": [],
+        "text": "06",
+        "transform": "none",
+        "element": {
+          "aid": "sh/p4r65wju",
+          "id": "2",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "frame": {
+        "left": 70,
+        "top": 116,
+        "width": 300,
+        "height": 44
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 344.04,
+          "height": 43.2
+        },
+        "frame": {
+          "left": 70,
+          "top": 116,
+          "width": 344.04,
+          "height": 43.2
+        },
+        "children": [],
+        "text": "Conținut Care Vinde",
+        "transform": "none",
+        "element": {
+          "aid": "sh/wjudg7ad",
+          "id": "3",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 4,
+      "frame": {
+        "left": 70,
+        "top": 178,
+        "width": 700,
+        "height": 70
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 1093.54,
+          "height": 29.74
+        },
+        "frame": {
+          "left": 70,
+          "top": 178,
+          "width": 1093.54,
+          "height": 59.47
+        },
+        "children": [],
+        "text": "Video-ul este cel mai consumat format digital din lume. YUMZY transformă conținutul video într-un canal de vânzare.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/7qpg3ex0",
+          "id": "4",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 5,
+      "frame": {
+        "left": 70,
+        "top": 270,
+        "width": 340,
+        "height": 250
+      },
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 70,
+          "top": 270,
+          "width": 340,
+          "height": 250
+        },
+        "children": [],
+        "geometry": "roundRect",
+        "element": {
+          "aid": "sh/i5sneloj",
+          "id": "5",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 6,
+      "frame": {
+        "left": 94,
+        "top": 294,
+        "width": 40,
+        "height": 24
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 14.46,
+          "height": 15.6
+        },
+        "frame": {
+          "left": 94,
+          "top": 294,
+          "width": 14.46,
+          "height": 15.6
+        },
+        "children": [],
+        "text": "01",
+        "transform": "none",
+        "element": {
+          "aid": "sh/pwb2hwfy",
+          "id": "6",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 7,
+      "frame": {
+        "left": 94,
+        "top": 332,
+        "width": 292,
+        "height": 86
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 347.48,
+          "height": 63.36
+        },
+        "frame": {
+          "left": 94,
+          "top": 332,
+          "width": 347.48,
+          "height": 63.36
+        },
+        "children": [],
+        "text": "Fiecare videoclip poate deveni\nun punct de conversie.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/0bi9s36h",
+          "id": "7",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 8,
+      "frame": {
+        "left": 94,
+        "top": 420,
+        "width": 292,
+        "height": 82
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 684.55,
+          "height": 24.89
+        },
+        "frame": {
+          "left": 94,
+          "top": 420,
+          "width": 684.55,
+          "height": 24.89
+        },
+        "children": [],
+        "text": "Feed-ul nu mai este doar awareness. Devine raft, meniu și checkout în aceeași experiență.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/7ed8bat4",
+          "id": "8",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 9,
+      "frame": {
+        "left": 430,
+        "top": 270,
+        "width": 340,
+        "height": 250
+      },
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 430,
+          "top": 270,
+          "width": 340,
+          "height": 250
+        },
+        "children": [],
+        "geometry": "roundRect",
+        "element": {
+          "aid": "sh/itgfmlkj",
+          "id": "9",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 10,
+      "frame": {
+        "left": 454,
+        "top": 294,
+        "width": 40,
+        "height": 24
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 14.46,
+          "height": 15.6
+        },
+        "frame": {
+          "left": 454,
+          "top": 294,
+          "width": 14.46,
+          "height": 15.6
+        },
+        "children": [],
+        "text": "02",
+        "transform": "none",
+        "element": {
+          "aid": "sh/cvixczed",
+          "id": "10",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 11,
+      "frame": {
+        "left": 454,
+        "top": 332,
+        "width": 292,
+        "height": 86
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 365.3,
+          "height": 63.36
+        },
+        "frame": {
+          "left": 454,
+          "top": 332,
+          "width": 365.3,
+          "height": 95.04
+        },
+        "children": [],
+        "text": "Fiecare vizualizare poate deveni\no comandă.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/5gbq1ory",
+          "id": "11",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 12,
+      "frame": {
+        "left": 454,
+        "top": 420,
+        "width": 292,
+        "height": 82
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 678.22,
+          "height": 24.89
+        },
+        "frame": {
+          "left": 454,
+          "top": 420,
+          "width": 678.22,
+          "height": 24.89
+        },
+        "children": [],
+        "text": "Utilizatorul descoperă prin video și cumpără fără să părăsească fluxul natural de consum.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/upwb2hwf",
+          "id": "12",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 13,
+      "frame": {
+        "left": 790,
+        "top": 270,
+        "width": 340,
+        "height": 250
+      },
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 790,
+          "top": 270,
+          "width": 340,
+          "height": 250
+        },
+        "children": [],
+        "geometry": "roundRect",
+        "element": {
+          "aid": "sh/nap4r65w",
+          "id": "13",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 14,
+      "frame": {
+        "left": 814,
+        "top": 294,
+        "width": 40,
+        "height": 24
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 14.46,
+          "height": 15.6
+        },
+        "frame": {
+          "left": 814,
+          "top": 294,
+          "width": 14.46,
+          "height": 15.6
+        },
+        "children": [],
+        "text": "03",
+        "transform": "none",
+        "element": {
+          "aid": "sh/cj6tovah",
+          "id": "14",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 15,
+      "frame": {
+        "left": 814,
+        "top": 332,
+        "width": 292,
+        "height": 86
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 410.98,
+          "height": 63.36
+        },
+        "frame": {
+          "left": 814,
+          "top": 332,
+          "width": 410.98,
+          "height": 95.04
+        },
+        "children": [],
+        "text": "Fiecare campanie poate fi măsurată\npână la livrare.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/54zidony",
+          "id": "15",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 16,
+      "frame": {
+        "left": 814,
+        "top": 420,
+        "width": 292,
+        "height": 82
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 630.12,
+          "height": 24.89
+        },
+        "frame": {
+          "left": 814,
+          "top": 420,
+          "width": 630.12,
+          "height": 49.78
+        },
+        "children": [],
+        "text": "Brandurile pot vedea impactul în comenzi reale, nu doar în metrici media abstracte.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/udg7adsj",
+          "id": "16",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 17,
+      "frame": {
+        "left": 70,
+        "top": 680,
+        "width": 1140,
+        "height": 1
+      },
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 70,
+          "top": 680,
+          "width": 1140,
+          "height": 1
+        },
+        "children": [],
+        "geometry": "rect",
+        "element": {
+          "aid": "sh/nyd0z610",
+          "id": "17",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 18,
+      "frame": {
+        "left": 70,
+        "top": 688,
+        "width": 160,
+        "height": 18
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 49.81,
+          "height": 13.2
+        },
+        "frame": {
+          "left": 70,
+          "top": 688,
+          "width": 49.81,
+          "height": 13.2
+        },
+        "children": [],
+        "text": "YUMZY.ro",
+        "transform": "none",
+        "element": {
+          "aid": "sh/cfa9w3m9",
+          "id": "18",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 19,
+      "frame": {
+        "left": 1140,
+        "top": 688,
+        "width": 70,
+        "height": 18
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 12.23,
+          "height": 13.2
+        },
+        "frame": {
+          "left": 1140,
+          "top": 688,
+          "width": 12.23,
+          "height": 13.2
+        },
+        "children": [],
+        "text": "06",
+        "transform": "none",
+        "element": {
+          "aid": "sh/1032lszq",
+          "id": "19",
+          "kind": "shape"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "output": "/Users/florin/Desktop/one-dining-club/outputs/test-presentation/output/test.pptx",
+  "outputBytes": 3680202,
+  "slideCount": 1,
+  "slideSize": {
+    "width": 1280,
+    "height": 720
+  },
+  "previewDir": "/Users/florin/Desktop/one-dining-club/outputs/test-presentation/preview",
+  "previewPaths": [
+    "/Users/florin/Desktop/one-dining-club/outputs/test-presentation/preview/slide-01.png"
+  ],
+  "layoutDir": "/Users/florin/Desktop/one-dining-club/outputs/test-presentation/layout",
+  "layoutResults": [
+    {
+      "layoutPath": "/Users/florin/Desktop/one-dining-club/outputs/test-presentation/layout/slide-01.layout.json"
+    }
+  ],
+  "slides": [
+    {
+      "index": 1,
+      "requestedSlideNumber": 1,
+      "modulePath": "/Users/florin/Desktop/one-dining-club/outputs/test-presentation/slides/slide-01.mjs",
+      "exportName": "slide01"
+    }
+  ]
+}

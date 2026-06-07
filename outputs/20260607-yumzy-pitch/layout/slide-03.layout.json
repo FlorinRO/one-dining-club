@@ -1,0 +1,1311 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/1vn1dz",
+    "id": "1vn1dz",
+    "slide": 3,
+    "layoutId": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#0B0B0D",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Aptos",
+      "Aptos Display"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2p8nqxs7",
+      "id": "1",
+      "bbox": [
+        70,
+        56,
+        164.9,
+        16.8
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Agency Partner Program",
+      "textPreview": "Agency Partner Program",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "Aptos",
+        "color": "#59D97C",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Agency Partner Program"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Agency Partner Program",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "typeface": "Aptos",
+            "color": "#59D97C",
+            "bold": true,
+            "wrap": "none",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Agency Partner Program",
+              "fontSize": 14,
+              "typeface": "Aptos",
+              "color": "#59D97C",
+              "bold": true,
+              "wrap": "none",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9gr2p8nq",
+      "id": "2",
+      "bbox": [
+        70,
+        78,
+        13.34,
+        14.4
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "03",
+      "textPreview": "03",
+      "resolvedFontSize": 12,
+      "resolvedTextStyle": {
+        "fontSize": 12,
+        "typeface": "Aptos",
+        "color": "#A7AAB3",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "03"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "03",
+          "resolvedTextStyle": {
+            "fontSize": 12,
+            "typeface": "Aptos",
+            "color": "#A7AAB3",
+            "bold": true,
+            "wrap": "none",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "03",
+              "fontSize": 12,
+              "typeface": "Aptos",
+              "color": "#A7AAB3",
+              "bold": true,
+              "wrap": "none",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gvy90je9",
+      "id": "3",
+      "bbox": [
+        70,
+        116,
+        509.94,
+        112.75
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Oferim agențiilor un nou canal media\ncare transformă conținutul video\nîn vânzări și experiențe reale.",
+      "textPreview": "Oferim agențiilor un nou canal media | care transformă conținutul video | în vânzări și experiențe reale.",
+      "resolvedFontSize": 29,
+      "resolvedTextStyle": {
+        "fontSize": 29,
+        "typeface": "Aptos Display",
+        "color": "#F5F6F7",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "square",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Oferim agențiilor un nou canal media"
+          },
+          {
+            "index": 2,
+            "text": "care transformă conținutul video"
+          },
+          {
+            "index": 3,
+            "text": "în vânzări și experiențe reale."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Oferim agențiilor un nou canal media",
+          "resolvedTextStyle": {
+            "fontSize": 29,
+            "typeface": "Aptos Display",
+            "color": "#F5F6F7",
+            "bold": true,
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Oferim agențiilor un nou canal media",
+              "fontSize": 29,
+              "typeface": "Aptos Display",
+              "color": "#F5F6F7",
+              "bold": true,
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "care transformă conținutul video",
+          "resolvedTextStyle": {
+            "fontSize": 29,
+            "typeface": "Aptos Display",
+            "color": "#F5F6F7",
+            "bold": true,
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "care transformă conținutul video",
+              "fontSize": 29,
+              "typeface": "Aptos Display",
+              "color": "#F5F6F7",
+              "bold": true,
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "în vânzări și experiențe reale.",
+          "resolvedTextStyle": {
+            "fontSize": 29,
+            "typeface": "Aptos Display",
+            "color": "#F5F6F7",
+            "bold": true,
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "în vânzări și experiențe reale.",
+              "fontSize": 29,
+              "typeface": "Aptos Display",
+              "color": "#F5F6F7",
+              "bold": true,
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/r2p8nqxs",
+      "id": "4",
+      "bbox": [
+        70,
+        292,
+        270,
+        180
+      ],
+      "composeSource": {
+        "run": 4,
+        "path": "0"
+      },
+      "geometry": "roundRect",
+      "fillColor": "#17181E",
+      "lineColor": "#31343D",
+      "lineWidth": 1
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2hwfyxob",
+      "id": "5",
+      "bbox": [
+        94,
+        328,
+        478.46,
+        71.14
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Agenția gestionează relația cu clientul.",
+      "textPreview": "Agenția gestionează relația cu clientul.",
+      "resolvedFontSize": 26,
+      "resolvedTextStyle": {
+        "fontSize": 26,
+        "typeface": "Aptos Display",
+        "color": "#F5F6F7",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "square",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Agenția gestionează relația cu"
+          },
+          {
+            "index": 2,
+            "text": "clientul."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Agenția gestionează relația cu clientul.",
+          "resolvedTextStyle": {
+            "fontSize": 26,
+            "typeface": "Aptos Display",
+            "color": "#F5F6F7",
+            "bold": true,
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Agenția gestionează relația cu clientul.",
+              "fontSize": 26,
+              "typeface": "Aptos Display",
+              "color": "#F5F6F7",
+              "bold": true,
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/94fu18jq",
+      "id": "6",
+      "bbox": [
+        362,
+        292,
+        330,
+        180
+      ],
+      "composeSource": {
+        "run": 6,
+        "path": "0"
+      },
+      "geometry": "roundRect",
+      "fillColor": "#59D97C",
+      "lineColor": "#59D97C",
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kjm1cfa9",
+      "id": "7",
+      "bbox": [
+        390,
+        326,
+        721,
+        37.63
+      ],
+      "composeSource": {
+        "run": 7,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "YUMZY furnizează platforma, distribuția și tehnologia.",
+      "textPreview": "YUMZY furnizează platforma, distribuția și tehnologia.",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "fontSize": 28,
+        "typeface": "Aptos Display",
+        "color": "#0B0B0D",
+        "bold": true,
+        "alignment": "left",
+        "wrap": "square",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "YUMZY furnizează platforma, distribuția și tehnologia."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "YUMZY furnizează platforma, distribuția și tehnologia.",
+          "resolvedTextStyle": {
+            "fontSize": 28,
+            "typeface": "Aptos Display",
+            "color": "#0B0B0D",
+            "bold": true,
+            "wrap": "square",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "YUMZY furnizează platforma, distribuția și tehnologia.",
+              "fontSize": 28,
+              "typeface": "Aptos Display",
+              "color": "#0B0B0D",
+              "bold": true,
+              "wrap": "square",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rqd4vmtw",
+      "id": "8",
+      "bbox": [
+        824,
+        82,
+        310,
+        582
+      ],
+      "composeSource": {
+        "run": 8,
+        "path": "0"
+      },
+      "geometry": "roundRect",
+      "fillColor": "#0E0F12",
+      "lineColor": "#1E2127",
+      "lineWidth": 2
+    },
+    {
+      "order": 9,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/3q5o7qpg",
+      "id": "9",
+      "bbox": [
+        836,
+        94,
+        286,
+        558
+      ],
+      "composeSource": {
+        "run": 9,
+        "path": "0"
+      },
+      "geometry": "roundRect",
+      "alt": "YUMZY mobile screen",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 9091"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "a347d2b2-eb12-42de-abe4-444c5f844f72",
+        "contentType": "image/png",
+        "byteLength": 3275691
+      }
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4fu18jqh",
+      "id": "10",
+      "bbox": [
+        70,
+        680,
+        1140,
+        1
+      ],
+      "composeSource": {
+        "run": 10,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "fillColor": "#31343D",
+      "lineColor": "#31343D",
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/x0nuxc3y",
+      "id": "11",
+      "bbox": [
+        70,
+        688,
+        49.81,
+        13.2
+      ],
+      "composeSource": {
+        "run": 11,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "YUMZY.ro",
+      "textPreview": "YUMZY.ro",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "fontSize": 11,
+        "typeface": "Aptos",
+        "color": "#A7AAB3",
+        "alignment": "left",
+        "wrap": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "YUMZY.ro"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "YUMZY.ro",
+          "resolvedTextStyle": {
+            "fontSize": 11,
+            "typeface": "Aptos",
+            "color": "#A7AAB3",
+            "wrap": "none",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "YUMZY.ro",
+              "fontSize": 11,
+              "typeface": "Aptos",
+              "color": "#A7AAB3",
+              "wrap": "none",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/m94fu18j",
+      "id": "12",
+      "bbox": [
+        1140,
+        688,
+        12.23,
+        13.2
+      ],
+      "composeSource": {
+        "run": 12,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "03",
+      "textPreview": "03",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "fontSize": 11,
+        "typeface": "Aptos",
+        "color": "#A7AAB3",
+        "bold": true,
+        "alignment": "right",
+        "wrap": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "03"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "03",
+          "resolvedTextStyle": {
+            "fontSize": 11,
+            "typeface": "Aptos",
+            "color": "#A7AAB3",
+            "bold": true,
+            "alignment": "right",
+            "wrap": "none",
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            }
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "03",
+              "fontSize": 11,
+              "typeface": "Aptos",
+              "color": "#A7AAB3",
+              "bold": true,
+              "alignment": "right",
+              "wrap": "none",
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              }
+            }
+          ],
+          "marginLeft": 0
+        }
+      ]
+    }
+  ],
+  "composeRuns": [
+    {
+      "index": 1,
+      "frame": {
+        "left": 70,
+        "top": 56,
+        "width": 260,
+        "height": 24
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 164.9,
+          "height": 16.8
+        },
+        "frame": {
+          "left": 70,
+          "top": 56,
+          "width": 164.9,
+          "height": 16.8
+        },
+        "children": [],
+        "text": "Agency Partner Program",
+        "transform": "none",
+        "element": {
+          "aid": "sh/2p8nqxs7",
+          "id": "1",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 2,
+      "frame": {
+        "left": 70,
+        "top": 78,
+        "width": 70,
+        "height": 22
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 13.34,
+          "height": 14.4
+        },
+        "frame": {
+          "left": 70,
+          "top": 78,
+          "width": 13.34,
+          "height": 14.4
+        },
+        "children": [],
+        "text": "03",
+        "transform": "none",
+        "element": {
+          "aid": "sh/9gr2p8nq",
+          "id": "2",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "frame": {
+        "left": 70,
+        "top": 116,
+        "width": 560,
+        "height": 130
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 509.94,
+          "height": 112.75
+        },
+        "frame": {
+          "left": 70,
+          "top": 116,
+          "width": 509.94,
+          "height": 112.75
+        },
+        "children": [],
+        "text": "Oferim agențiilor un nou canal media\ncare transformă conținutul video\nîn vânzări și experiențe reale.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/gvy90je9",
+          "id": "3",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 4,
+      "frame": {
+        "left": 70,
+        "top": 292,
+        "width": 270,
+        "height": 180
+      },
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 70,
+          "top": 292,
+          "width": 270,
+          "height": 180
+        },
+        "children": [],
+        "geometry": "roundRect",
+        "element": {
+          "aid": "sh/r2p8nqxs",
+          "id": "4",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 5,
+      "frame": {
+        "left": 94,
+        "top": 328,
+        "width": 222,
+        "height": 84
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 478.46,
+          "height": 35.57
+        },
+        "frame": {
+          "left": 94,
+          "top": 328,
+          "width": 478.46,
+          "height": 71.14
+        },
+        "children": [],
+        "text": "Agenția gestionează relația cu clientul.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/2hwfyxob",
+          "id": "5",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 6,
+      "frame": {
+        "left": 362,
+        "top": 292,
+        "width": 330,
+        "height": 180
+      },
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 362,
+          "top": 292,
+          "width": 330,
+          "height": 180
+        },
+        "children": [],
+        "geometry": "roundRect",
+        "element": {
+          "aid": "sh/94fu18jq",
+          "id": "6",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 7,
+      "frame": {
+        "left": 390,
+        "top": 326,
+        "width": 274,
+        "height": 96
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 721,
+          "height": 37.63
+        },
+        "frame": {
+          "left": 390,
+          "top": 326,
+          "width": 721,
+          "height": 37.63
+        },
+        "children": [],
+        "text": "YUMZY furnizează platforma, distribuția și tehnologia.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/kjm1cfa9",
+          "id": "7",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 8,
+      "frame": {
+        "left": 824,
+        "top": 82,
+        "width": 310,
+        "height": 582
+      },
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 824,
+          "top": 82,
+          "width": 310,
+          "height": 582
+        },
+        "children": [],
+        "geometry": "roundRect",
+        "element": {
+          "aid": "sh/rqd4vmtw",
+          "id": "8",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 9,
+      "frame": {
+        "left": 836,
+        "top": 94,
+        "width": 286,
+        "height": 558
+      },
+      "root": {
+        "path": "0",
+        "kind": "image",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 836,
+          "top": 94,
+          "width": 286,
+          "height": 558
+        },
+        "children": [],
+        "source": {
+          "kind": "dataUrl"
+        },
+        "fit": "cover",
+        "alt": "YUMZY mobile screen",
+        "element": {
+          "aid": "im/3q5o7qpg",
+          "id": "9",
+          "kind": "image"
+        }
+      }
+    },
+    {
+      "index": 10,
+      "frame": {
+        "left": 70,
+        "top": 680,
+        "width": 1140,
+        "height": 1
+      },
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 70,
+          "top": 680,
+          "width": 1140,
+          "height": 1
+        },
+        "children": [],
+        "geometry": "rect",
+        "element": {
+          "aid": "sh/4fu18jqh",
+          "id": "10",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 11,
+      "frame": {
+        "left": 70,
+        "top": 688,
+        "width": 160,
+        "height": 18
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 49.81,
+          "height": 13.2
+        },
+        "frame": {
+          "left": 70,
+          "top": 688,
+          "width": 49.81,
+          "height": 13.2
+        },
+        "children": [],
+        "text": "YUMZY.ro",
+        "transform": "none",
+        "element": {
+          "aid": "sh/x0nuxc3y",
+          "id": "11",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 12,
+      "frame": {
+        "left": 1140,
+        "top": 688,
+        "width": 70,
+        "height": 18
+      },
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "requestedSize": {
+          "width": {
+            "mode": "hug"
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 12.23,
+          "height": 13.2
+        },
+        "frame": {
+          "left": 1140,
+          "top": 688,
+          "width": 12.23,
+          "height": 13.2
+        },
+        "children": [],
+        "text": "03",
+        "transform": "none",
+        "element": {
+          "aid": "sh/m94fu18j",
+          "id": "12",
+          "kind": "shape"
+        }
+      }
+    }
+  ]
+}
