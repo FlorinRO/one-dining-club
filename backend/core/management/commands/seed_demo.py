@@ -16,6 +16,9 @@ class Command(BaseCommand):
     help = "Seed demo data for local MVP development."
 
     def handle(self, *args, **options):
+        def build_description(name, restaurant_name):
+            return f"{name} - preparat signature de la {restaurant_name}."
+
         def insert_product_with_current_schema(
             *,
             restaurant_id,
@@ -65,185 +68,227 @@ class Command(BaseCommand):
                 return cursor.fetchone()[0]
 
         feed_name_overrides = {
-            "gelato-stories": {
-                "name": "Casa Pastelor",
-                "description": "Paste de casă, sosuri bogate și preparate italiene potrivite pentru orice poftă.",
+            "wok-yard": {
+                "name": "Bolul Dragonului",
+                "description": "Bowl-uri asiatice, ramen și gustări cu influențe orientale.",
                 "rating": Decimal("4.99"),
                 "products": [
-                    "Paste cu Chifteluțe",
-                    "Paste cu Roșii Cherry",
-                    "Paste cu Sos Ragù de Casă",
+                    "Stridii Royale",
+                    "Bol Asiatic",
+                    "Rulouri Crocante",
+                    "Ramen Clasic",
                 ],
                 "product_descriptions": [
-                    "Paste fragede cu chifteluțe rumenite și sos bogat de roșii.",
-                    "Paste ușoare cu roșii cherry coapte, ulei de măsline și note proaspete de busuioc.",
-                    "Paste consistente cu sos ragù de casă, gătit lent pentru un gust intens.",
+                    build_description("Stridii Royale", "Bolul Dragonului"),
+                    build_description("Bol Asiatic", "Bolul Dragonului"),
+                    build_description("Rulouri Crocante", "Bolul Dragonului"),
+                    build_description("Ramen Clasic", "Bolul Dragonului"),
                 ],
-            },
-            "bao-pop-studio": {
-                "name": "Barul de Cafea",
-                "description": "Smoothie-uri fresh și cafea clasică pregătită rapid pentru orice moment al zilei.",
-                "rating": Decimal("4.98"),
-                "products": [
-                    "Smoothie de Fructe",
-                    "Cappuccino Cremos",
-                    "Cafea Americano Clasică",
-                ],
-                "product_descriptions": [
-                    "Smoothie răcoritor din fructe proaspete, cu gust natural și textură fină.",
-                    "Cappuccino fin cu espresso echilibrat și spumă de lapte catifelată.",
-                    "Cafea americano clasică, lungă și aromată, potrivită pentru orice oră din zi.",
-                ],
-            },
-            "smokehouse-loop": {
-                "name": "Grătarul Urban",
-                "description": "Preparate la grătar, steak și salate simple cu ingrediente proaspete.",
-                "rating": Decimal("4.97"),
-                "products": [
-                    "Steak la Flacără",
-                    "Tartar de Vită",
-                    "Salată Proaspătă a Casei",
-                ],
-                "product_descriptions": [
-                    "Steak fraged gătit la flacără, cu crustă aromată și gust intens de grătar.",
-                    "Tartar de vită tocat fin, servit cu ou și verdețuri pentru un plus de prospețime.",
-                    "Salată proaspătă a casei cu legume crocante și dressing ușor.",
-                ],
-            },
-            "bowl-motion": {
-                "name": "Bistro Fusion",
-                "description": "Preparate fusion cu paste și ramen într-un meniu scurt și clar.",
-                "rating": Decimal("4.96"),
-                "products": [
-                    "Paste cu Parmezan",
-                    "Paste Ragù",
-                    "Ramen cu Pui",
-                ],
-                "product_descriptions": [
-                    "Paste cremoase cu parmezan maturat și textură fină, ușor de savurat.",
-                    "Paste cu sos ragù bogat, gătit lent pentru o aromă profundă.",
-                    "Ramen cu pui fraged, supă aromată și toppinguri echilibrate.",
-                ],
-            },
-            "dolce-notte": {
-                "name": "Sakura Bistro",
-                "description": "Sushi, somon și deserturi fine într-un bistro japonez modern.",
-                "rating": Decimal("4.95"),
-                "products": [
-                    "Sushi Mix",
-                    "Somon pe Orez",
-                    "Tort cu Ciocolată Albă",
-                ],
-                "product_descriptions": [
-                    "Selecție de sushi variat, cu gusturi echilibrate și prezentare elegantă.",
-                    "Somon fraged servit peste orez bine condimentat, cu textură fină.",
-                    "Tort delicat cu ciocolată albă, cremos și ușor dulce.",
-                ],
-            },
-            "crispy-seoul-lab": {
-                "name": "Cafeaua de Specialitate",
-                "description": "Cafea atent pregătită, băuturi clasice și arome curate pentru iubitorii de cafea.",
-                "rating": Decimal("4.94"),
-                "products": [
-                    "Latte",
-                    "Cafea Neagră",
-                    "Cafea Proaspăt Măcinată",
-                ],
-                "product_descriptions": [
-                    "Latte cremos cu espresso catifelat și lapte spumat fin.",
-                    "Cafea neagră intensă, cu gust curat și aromă persistentă.",
-                    "Cafea proaspăt măcinată, preparată pentru un plus de aromă și prospețime.",
-                ],
-            },
-            "carbonara-cut": {
-                "name": "Fresh Garden",
-                "description": "Salate fresh, gustări simple și preparate de casă cu ingrediente curate.",
-                "rating": Decimal("4.93"),
-                "products": [
-                    "Chiftele de Casă",
-                    "Salată Verde",
-                    "Salată cu Avocado",
-                ],
-                "product_descriptions": [
-                    "Chiftele de casă fragede, bine condimentate și gătite până devin aurii.",
-                    "Salată verde proaspătă, lejeră și potrivită pentru orice masă.",
-                    "Salată cu avocado cremos, crutoane crocante și ingrediente fresh.",
-                ],
-            },
-            "neon-taco-bar": {
-                "name": "Gusturi din Lume",
-                "description": "Preparate internaționale, paste savuroase și ramen cu arome inspirate din lume.",
-                "rating": Decimal("4.92"),
-                "products": [
-                    "Paste cu Rodie",
-                    "Paste Cremoase cu Creveți",
-                    "Ramen Asiatic",
-                ],
-                "product_descriptions": [
-                    "Paste cu note fructate de rodie, pentru un gust diferit și echilibrat.",
-                    "Paste cremoase cu creveți fragezi și sos bogat, cu textură fină.",
-                    "Ramen asiatic aromat, cu supă savuroasă și influențe orientale.",
-                ],
-            },
-            "umami-reels": {
-                "name": "Coffee & Dessert",
-                "description": "Cafea de zi cu zi și deserturi de casă pentru o pauză dulce.",
-                "rating": Decimal("4.91"),
-                "products": [
-                    "Cafea Neagră",
-                    "Cafea Proaspăt Măcinată",
-                    "Tort de Casă",
-                ],
-                "product_descriptions": [
-                    "Cafea neagră intensă, servită simplu pentru un gust autentic.",
-                    "Cafea proaspăt măcinată, aromată și plină de caracter.",
-                    "Tort de casă pufos și gustos, pregătit pentru o pauză dulce.",
-                ],
-            },
-            "levant-reel-kitchen": {
-                "name": "Brunch Cafe",
-                "description": "Brunch relaxat cu pâine fresh, smoothie-uri și cafea cu lapte.",
-                "rating": Decimal("4.90"),
-                "products": [
-                    "Pâine Proaspăt Feliată",
-                    "Smoothie de Fructe",
-                    "Latte Cremos",
-                ],
-                "product_descriptions": [
-                    "Pâine proaspăt feliată, moale la interior și potrivită pentru un brunch lejer.",
-                    "Smoothie de fructe răcoritor, cu gust natural și textură catifelată.",
-                    "Latte cremos cu spumă fină și aromă blândă de espresso.",
-                ],
+                "product_videos": {
+                    "Stridii Royale": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/ASIATIC-FOOD/ASIATIC-FOOD-oyster-eating.mp4",
+                    "Bol Asiatic": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/ASIATIC-FOOD/ASIATIC-FOOD-ramen-chopsticks.mp4",
+                    "Rulouri Crocante": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/ASIATIC-FOOD/ASIATIC-FOOD-spring-rolls.mp4",
+                    "Ramen Clasic": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/ASIATIC-FOOD/ASIATIC-FOOD-vitnamese-soup.mp4",
+                },
             },
             "market-brunch-club": {
-                "name": "Grill House",
-                "description": "Burgeri, steak și preparate la grătar cu gust familiar.",
-                "rating": Decimal("4.89"),
+                "name": "Brunch Atelier",
+                "description": "Brunch all-day, deserturi și preparate lejere de dimineață.",
+                "rating": Decimal("4.98"),
                 "products": [
-                    "Burger Clasic",
-                    "Steak la Grătar",
-                    "Chiftele de Casă",
+                    "Gogoașă cu Cremă & Nuci",
+                    "Omletă Fresh",
                 ],
                 "product_descriptions": [
-                    "Burger clasic suculent, cu ingrediente simple și gust echilibrat.",
-                    "Steak la grătar bine rumenit, cu aromă intensă și textură fragedă.",
-                    "Chiftele de casă gustoase, pregătite în stil tradițional.",
+                    build_description("Gogoașă cu Cremă & Nuci", "Brunch Atelier"),
+                    build_description("Omletă Fresh", "Brunch Atelier"),
                 ],
+                "product_videos": {
+                    "Gogoașă cu Cremă & Nuci": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/BRAKEFAST-FOOD/BRAKEFAST-FOOD-desert-donut.mp4",
+                    "Omletă Fresh": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/BRAKEFAST-FOOD/BRAKEFAST-FOOD-ommlete-fork.mp4",
+                },
+            },
+            "burger-craft": {
+                "name": "Burger Forge",
+                "description": "Burgeri artizanali, sosuri intense și combinații îndrăznețe.",
+                "rating": Decimal("4.97"),
+                "products": [
+                    "Fire Burger",
+                    "Burger Red Bun",
+                    "Burger Samurai Egg",
+                ],
+                "product_descriptions": [
+                    build_description("Fire Burger", "Burger Forge"),
+                    build_description("Burger Red Bun", "Burger Forge"),
+                    build_description("Burger Samurai Egg", "Burger Forge"),
+                ],
+                "product_videos": {
+                    "Fire Burger": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/BURGER-FOOD/BURGER-FOOD-burger-in-flames.mp4",
+                    "Burger Red Bun": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/BURGER-FOOD/BURGER-FOOD-red-burger.mp4",
+                    "Burger Samurai Egg": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/BURGER-FOOD/BURGER-FOOD-sauce-pouring-over-burger.mp4",
+                },
+            },
+            "smokehouse-loop": {
+                "name": "Grill Orient",
+                "description": "Grill oriental cu preparate rumenite și arome intense.",
+                "rating": Decimal("4.96"),
+                "products": [
+                    "Frigărui Teriyaki",
+                    "Grill Picant",
+                    "Pește în Sos Oriental",
+                ],
+                "product_descriptions": [
+                    build_description("Frigărui Teriyaki", "Grill Orient"),
+                    build_description("Grill Picant", "Grill Orient"),
+                    build_description("Pește în Sos Oriental", "Grill Orient"),
+                ],
+                "product_videos": {
+                    "Frigărui Teriyaki": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/GRILLED-FOOD/GRILLED-FOOD-frigarui-orez.mp4",
+                    "Grill Picant": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/GRILLED-FOOD/GRILLED-FOOD-grilled-buns.mp4",
+                    "Pește în Sos Oriental": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/GRILLED-FOOD/GRILLED-FOOD-sea-food-fish-dish.mp4",
+                },
+            },
+            "mediterraneo": {
+                "name": "Sultan Grill",
+                "description": "Kebab, mix grill și preparate orientale consistente.",
+                "rating": Decimal("4.95"),
+                "products": [
+                    "Kebab Regal",
+                    "Mix Grill Sultan",
+                ],
+                "product_descriptions": [
+                    build_description("Kebab Regal", "Sultan Grill"),
+                    build_description("Mix Grill Sultan", "Sultan Grill"),
+                ],
+                "product_videos": {
+                    "Kebab Regal": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/KEBAB-FOOD/KEBAB-FOOD-eating-girl.mp4",
+                    "Mix Grill Sultan": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/KEBAB-FOOD/KEBAB-FOODfancy-kebab.mp4",
+                },
+            },
+            "levant-reel-kitchen": {
+                "name": "Levant Bistro",
+                "description": "Hummus, lipii și gusturi levantine autentice.",
+                "rating": Decimal("4.94"),
+                "products": [
+                    "Trio Hummus",
+                    "Hummus cu Lipie",
+                ],
+                "product_descriptions": [
+                    build_description("Trio Hummus", "Levant Bistro"),
+                    build_description("Hummus cu Lipie", "Levant Bistro"),
+                ],
+                "product_videos": {
+                    "Trio Hummus": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/ORIENTAL-FOOD/ORIENTAL-FOOD-hummus.mp4",
+                    "Hummus cu Lipie": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/ORIENTAL-FOOD/ORIENTAL-FOOD-lebanese-humus.mp4",
+                },
+            },
+            "carbonara-cut": {
+                "name": "Pasta Vita",
+                "description": "Paste cremoase, rețete italiene și porții generoase.",
+                "rating": Decimal("4.93"),
+                "products": [
+                    "Tagliatelle Carbonara",
+                    "Spaghete cu Scoici",
+                ],
+                "product_descriptions": [
+                    build_description("Tagliatelle Carbonara", "Pasta Vita"),
+                    build_description("Spaghete cu Scoici", "Pasta Vita"),
+                ],
+                "product_videos": {
+                    "Tagliatelle Carbonara": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/PASTA-FOOD/PASTA-FOOD-Creammy-tagliatele.mp4",
+                    "Spaghete cu Scoici": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/PASTA-FOOD/PASTA-FOOD-pasta-clams.mp4",
+                },
             },
             "luna-rossa-kitchen": {
                 "name": "Pizzeria Napoli",
-                "description": "Pizza cu blat gustos, topping-uri clasice și combinații cunoscute.",
-                "rating": Decimal("4.88"),
+                "description": "Pizza și focaccia cu topping-uri italiene clasice.",
+                "rating": Decimal("4.92"),
                 "products": [
-                    "Pizza Pepperoni",
-                    "Pizza Cheddar Pepperoni",
-                    "Pizza cu Sos de Roșii",
+                    "Focaccia Italiană",
+                    "Pizza Marinara",
+                    "Pizza Mediteraneană",
                 ],
                 "product_descriptions": [
-                    "Pizza Pepperoni cu blat rumenit, mozzarella și felii ușor picante de pepperoni.",
-                    "Pizza bogată cu cheddar, pepperoni și blat copt până devine crocant.",
-                    "Pizza simplă și gustoasă cu sos de roșii aromat și blat bine copt.",
+                    build_description("Focaccia Italiană", "Pizzeria Napoli"),
+                    build_description("Pizza Marinara", "Pizzeria Napoli"),
+                    build_description("Pizza Mediteraneană", "Pizzeria Napoli"),
                 ],
+                "product_videos": {
+                    "Focaccia Italiană": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/PIZZA-FOOD/PIZZA-FOOD-cheese-chicken.mp4",
+                    "Pizza Marinara": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/PIZZA-FOOD/PIZZA-FOOD-kettle.mp4",
+                    "Pizza Mediteraneană": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/PIZZA-FOOD/PIZZA-FOOD-pizza-sharing.mp4",
+                },
+            },
+            "green-fork": {
+                "name": "Blue Coast",
+                "description": "Preparate marine, pește și salate fresh cu fructe de mare.",
+                "rating": Decimal("4.91"),
+                "products": [
+                    "Pește la Cuptor",
+                    "Salată cu Creveți",
+                ],
+                "product_descriptions": [
+                    build_description("Pește la Cuptor", "Blue Coast"),
+                    build_description("Salată cu Creveți", "Blue Coast"),
+                ],
+                "product_videos": {
+                    "Pește la Cuptor": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/SEA-FOOD/SEA-FOOD-fish-plate.mp4",
+                    "Salată cu Creveți": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/SEA-FOOD/sea-food-mixing.mp4",
+                },
+            },
+            "bowl-motion": {
+                "name": "Wok Fusion",
+                "description": "Wok, stir fry și combinații asiatice cu texturi contrastante.",
+                "rating": Decimal("4.90"),
+                "products": [
+                    "Stir Fry cu Pui",
+                    "Legume Gratin",
+                    "Trio de Carne",
+                ],
+                "product_descriptions": [
+                    build_description("Stir Fry cu Pui", "Wok Fusion"),
+                    build_description("Legume Gratin", "Wok Fusion"),
+                    build_description("Trio de Carne", "Wok Fusion"),
+                ],
+                "product_videos": {
+                    "Stir Fry cu Pui": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/STIRFRY-FOOD/STIRFRY-FOOD-asian-grill-chiken.mp4",
+                    "Legume Gratin": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/STIRFRY-FOOD/STIRFRY-FOOD-shrimp-pasta.mp4",
+                    "Trio de Carne": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/STIRFRY-FOOD/STIRFRY-FOOD-tacos-tasty.mp4",
+                },
+            },
+            "neon-taco-bar": {
+                "name": "Taco Fiesta",
+                "description": "Tacos fresh și combinații mexicane rapide, pline de culoare.",
+                "rating": Decimal("4.89"),
+                "products": [
+                    "Tacos Fresh",
+                    "Tacos cu Orez",
+                ],
+                "product_descriptions": [
+                    build_description("Tacos Fresh", "Taco Fiesta"),
+                    build_description("Tacos cu Orez", "Taco Fiesta"),
+                ],
+                "product_videos": {
+                    "Tacos Fresh": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/TACOS-FOOD/TACOS-FOOD-on-wooden-table.mp4",
+                    "Tacos cu Orez": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/TACOS-FOOD/TACOS-FOOD-tacos-mania.mp4",
+                },
+            },
+            "sushi-loop": {
+                "name": "Sakura Flame",
+                "description": "Sushi flambat și rulouri japoneze cu plating spectaculos.",
+                "rating": Decimal("4.88"),
+                "products": [
+                    "Sushi în Flăcări",
+                    "Sushi cu Susan",
+                ],
+                "product_descriptions": [
+                    build_description("Sushi în Flăcări", "Sakura Flame"),
+                    build_description("Sushi cu Susan", "Sakura Flame"),
+                ],
+                "product_videos": {
+                    "Sushi în Flăcări": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/SUSHI-FOOD/SUSHI-FOOD-flamed-sushi.mp4",
+                    "Sushi cu Susan": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/videos-yumzy/SUSHI-FOOD/SUSHI-FOOD-sesames.mp4",
+                },
             },
         }
 
@@ -656,7 +701,7 @@ class Command(BaseCommand):
                 if product_index >= len(payload["products"]):
                     break
                 category_name, _, _, price, discount_price, prep_time, allergens = payload["products"][product_index]
-                if product_index < 3:
+                if product_index < len(override["products"]):
                     category_name = f"Selecția {product_index + 1}"
                 product_description = override.get("product_descriptions", [])[product_index] if product_index < len(override.get("product_descriptions", [])) else f"{override_name} - preparat demo distinct pentru feed video."
                 payload["products"][product_index] = (
@@ -709,7 +754,9 @@ class Command(BaseCommand):
 
             for idx, row in enumerate(product_rows, start=1):
                 category_name, name, description, price, discount_price, prep_time, allergens = row
-                should_keep_available = payload["slug"] not in feed_name_overrides or idx <= 3
+                override = feed_name_overrides.get(payload["slug"])
+                override_product_count = len(override["products"]) if override else 0
+                should_keep_available = payload["slug"] not in feed_name_overrides or idx <= override_product_count
                 ingredients = ingredient_profiles[(restaurant.id + idx) % len(ingredient_profiles)]
                 calories = 360 + ((restaurant.id * 41 + idx * 57) % 640)
                 menu_category, _ = ProductCategory.objects.get_or_create(
@@ -735,10 +782,13 @@ class Command(BaseCommand):
                         calories=calories,
                     )
                     product = Product.objects.get(pk=product_id)
+                    product.video_url = override["product_videos"].get(name) if override else None
                     if not should_keep_available:
                         product.is_available = False
                         product.is_popular = False
-                        product.save(update_fields=["is_available", "is_popular"])
+                        product.save(update_fields=["video_url", "is_available", "is_popular"])
+                    else:
+                        product.save(update_fields=["video_url"])
                     if restaurant.slug == "luna-rossa-kitchen" and name == "Pizza Diavola":
                         pizza = product
                     continue
@@ -753,6 +803,7 @@ class Command(BaseCommand):
                 product.allergens = allergens
                 product.ingredients = ingredients
                 product.calories = calories
+                product.video_url = override["product_videos"].get(name) if override else None
                 product.is_available = should_keep_available
                 product.is_popular = should_keep_available
                 product.save()

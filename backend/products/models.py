@@ -27,6 +27,9 @@ class Product(models.Model):
     allergens = models.TextField(blank=True)
     ingredients = models.TextField(blank=True)
     calories = models.PositiveIntegerField(null=True, blank=True)
+    audio_url = models.URLField(max_length=500, blank=True, null=True)
+    has_audio = models.BooleanField(default=True)
+    video_url = models.URLField(max_length=500, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

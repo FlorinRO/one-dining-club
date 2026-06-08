@@ -41,7 +41,6 @@ import { addressesApi } from "../api/addressesApi";
 import { restaurantsApi } from "../api/restaurantsApi";
 import { ProductCommentsSheet } from "../components/ProductCommentsSheet";
 import { getDemoProductAudioSource } from "../data/demoAudio";
-import { getDemoProductVideoLabel, getDemoProductVideoPosterSource, getDemoProductVideoSource } from "../data/demoVideos";
 import { useI18n } from "../i18n/useI18n";
 import { compactCount, productKey, statsFor } from "../lib/feedSocial";
 import { money } from "../lib/format";
@@ -82,17 +81,14 @@ const logFeedVideo = (...args: Parameters<typeof console.log>) => {
   if (FEED_VIDEO_DEBUG) console.log(...args);
 };
 
-const feedVideoSourceForProduct = (product: Product, fallbackIndex: number): VideoSource => {
-  if (product.video_url) {
-    return {
-      uri: product.video_url,
-      contentType: "progressive",
-      useCaching: true,
-    };
-  }
-
-  return getDemoProductVideoSource(fallbackIndex);
-};
+const feedVideoSourceForProduct = (product: Product): VideoSource | null =>
+  product.video_url
+    ? {
+        uri: product.video_url,
+        contentType: "progressive",
+        useCaching: true,
+      }
+    : null;
 
 const videoSourceCacheKey = (source: VideoSource) =>
   typeof source === "object" && source?.uri ? source.uri : JSON.stringify(source);
@@ -242,9 +238,9 @@ export function HomeScreen({ navigation }: Props) {
   const activeFeedVideoSource = useMemo(
     () =>
       activeFeedItem && activeFeedProduct
-        ? feedVideoSourceForProduct(activeFeedProduct, (activeFeedItem.restaurant.id - 1) * 10 + activeFeedProductIndex)
+        ? feedVideoSourceForProduct(activeFeedProduct)
         : null,
-    [activeFeedItem, activeFeedProduct, activeFeedProductIndex],
+    [activeFeedItem, activeFeedProduct],
   );
   const preloadVideoSources = useMemo(() => {
     if (!isHomeFocused || !activeFeedItem) return [];
@@ -259,7 +255,10 @@ export function HomeScreen({ navigation }: Props) {
     currentProductIndexes.forEach((productIndex) => {
       const product = activeFeedItem.products[productIndex];
       if (product) {
-        sources.push(feedVideoSourceForProduct(product, currentRestaurantBaseIndex + productIndex));
+        const source = feedVideoSourceForProduct(product);
+        if (source) {
+          sources.push(source);
+        }
       }
     });
 
@@ -268,7 +267,10 @@ export function HomeScreen({ navigation }: Props) {
       const nextProductIndex = activeProductByRestaurant[nextFeedItem.restaurant.id] ?? nextFeedItem.initialProductIndex;
       const nextProduct = nextFeedItem.products[Math.min(Math.max(nextProductIndex, 0), Math.max(nextFeedItem.products.length - 1, 0))];
       if (nextProduct) {
-        sources.push(feedVideoSourceForProduct(nextProduct, (nextFeedItem.restaurant.id - 1) * 10 + nextProductIndex));
+        const source = feedVideoSourceForProduct(nextProduct);
+        if (source) {
+          sources.push(source);
+        }
       }
     }
 
@@ -299,8 +301,8 @@ export function HomeScreen({ navigation }: Props) {
   }, []);
 
   const quickAdd = useCallback(
-    (restaurant: Restaurant, product: Product, mediaFallbackIndex?: number) => {
-      navigation.navigate("ProductDetails", { restaurant, product, mediaFallbackIndex });
+    (restaurant: Restaurant, product: Product) => {
+      navigation.navigate("ProductDetails", { restaurant, product });
     },
     [navigation],
   );
@@ -402,13 +404,12 @@ export function HomeScreen({ navigation }: Props) {
               setIsRestaurantScrollEnabled(!isSwipingHorizontally);
             }}
             onOpenRestaurant={() => navigation.navigate("RestaurantDetails", { restaurant: item.restaurant, products: item.products })}
-            onOpenProduct={(product, productIndex) =>
-              navigation.navigate("ProductDetails", {
-                restaurant: item.restaurant,
-                product,
-                mediaFallbackIndex: (item.restaurant.id - 1) * 10 + productIndex,
-              })}
-            onQuickAdd={(product, productIndex) => quickAdd(item.restaurant, product, (item.restaurant.id - 1) * 10 + productIndex)}
+              onOpenProduct={(product, productIndex) =>
+                navigation.navigate("ProductDetails", {
+                  restaurant: item.restaurant,
+                  product,
+                })}
+            onQuickAdd={(product) => quickAdd(item.restaurant, product)}
             onLike={(product) => toggleLike(item.restaurant, product)}
             onComment={(product) => openCommentsSheet(item.restaurant, product)}
             onShare={(product) => shareProduct(item.restaurant, product)}
@@ -844,26 +845,22 @@ function ProductVideoSlide({
   const stats = statsFor(restaurant, product);
   const posterIndex = Math.abs(restaurant.id * 7 + product.id * 3 + index) % VIDEO_POSTERS.length;
   const productPrice = product.effective_price ?? product.discount_price ?? product.price;
-  const mediaIndex = (restaurant.id - 1) * 10 + index;
-  const videoUri = product.video_url ?? getDemoProductVideoLabel(mediaIndex);
+  const videoUri = product.video_url ?? null;
   const posterSource = useMemo<ImageSourcePropType>(
-    () =>
-      product.video_url
-        ? { uri: resolveProductImageUri(product.image, product.id) }
-        : getDemoProductVideoPosterSource(mediaIndex) ?? { uri: VIDEO_POSTERS[posterIndex] },
-    [mediaIndex, posterIndex, product.id, product.image, product.video_url],
+    () => ({ uri: resolveProductImageUri(product.image, product.id) || VIDEO_POSTERS[posterIndex] }),
+    [posterIndex, product.id, product.image],
   );
   const feedVideoKey = productKey(restaurant.id, product.id);
   const [hasAudioTrack, setHasAudioTrack] = useState(product.has_audio ?? true);
   const canPlayAudio = hasRestaurantAudio || hasAudioTrack || product.has_audio === true;
   const shouldMuteOutput = !isActive || !isAudible || !canPlayAudio;
   const shouldMuteVideo = shouldMuteOutput || isRestaurantAudioActive;
-  const videoSource = useMemo<VideoSource>(
+  const videoSource = useMemo<VideoSource | null>(
     () =>
-      !isActive
+      !isActive || !product.video_url
         ? null
-        : feedVideoSourceForProduct(product, mediaIndex),
-    [isActive, mediaIndex, product],
+        : feedVideoSourceForProduct(product),
+    [isActive, product],
   );
   const restaurantPosterUri = resolveRestaurantImageUri(restaurant.cover_image, restaurant.id, restaurant);
   const comments = stats.comments + commentBump;
@@ -1195,30 +1192,36 @@ function ProductVideoSlide({
 
   return (
     <View style={[styles.slide, { width, height }]}>
-      <VideoView
-        player={player}
-        style={[styles.videoSurface, hasPlaybackError && styles.videoSurfaceHidden]}
-        contentFit="cover"
-        nativeControls={false}
-        fullscreenOptions={{ enable: false }}
-        allowsPictureInPicture={false}
-        playsInline
-        pointerEvents="none"
-        surfaceType="textureView"
-        useExoShutter={false}
-        onFirstFrameRender={() => {
-          setHasRenderedFrame(true);
-          logFeedVideo("[FeedVideo] first frame rendered", {
-            key: feedVideoKey,
-            uri: videoUri,
-            muted: player.muted,
-            volume: player.volume,
-          });
-        }}
-      />
-      {hasPlaybackError ? (
+      {videoSource ? (
+        <>
+          <VideoView
+            player={player}
+            style={[styles.videoSurface, hasPlaybackError && styles.videoSurfaceHidden]}
+            contentFit="cover"
+            nativeControls={false}
+            fullscreenOptions={{ enable: false }}
+            allowsPictureInPicture={false}
+            playsInline
+            pointerEvents="none"
+            surfaceType="textureView"
+            useExoShutter={false}
+            onFirstFrameRender={() => {
+              setHasRenderedFrame(true);
+              logFeedVideo("[FeedVideo] first frame rendered", {
+                key: feedVideoKey,
+                uri: videoUri,
+                muted: player.muted,
+                volume: player.volume,
+              });
+            }}
+          />
+          {hasPlaybackError ? (
+            <Image source={posterSource} style={styles.videoFallbackImage} resizeMode="cover" />
+          ) : null}
+        </>
+      ) : (
         <Image source={posterSource} style={styles.videoFallbackImage} resizeMode="cover" />
-      ) : null}
+      )}
       {showVideoLoadingIndicator ? (
         <View pointerEvents="none" style={styles.videoLoadingLayer}>
           <ActivityIndicator color={colors.white} />

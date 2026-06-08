@@ -14,14 +14,14 @@ export type HomeStackParamList = {
   Favorites: undefined;
   SectionRestaurants: { mode: "nearby" | "recommended"; title: string };
   RestaurantDetails: { restaurant: Restaurant; products?: Product[] };
-  ProductDetails: { restaurant: Restaurant; product: Product; mediaFallbackIndex?: number };
+  ProductDetails: { restaurant: Restaurant; product: Product };
   CartFlow: NavigatorScreenParams<CartStackParamList>;
 };
 
 export type SearchStackParamList = {
   SearchHome: { category?: string; openFilters?: boolean; focusSearch?: boolean } | undefined;
   RestaurantDetails: { restaurant: Restaurant; products?: Product[] };
-  ProductDetails: { restaurant: Restaurant; product: Product; mediaFallbackIndex?: number };
+  ProductDetails: { restaurant: Restaurant; product: Product };
 };
 
 export type CartStackParamList = {

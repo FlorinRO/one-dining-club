@@ -22,11 +22,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { restaurantsApi } from "../api/restaurantsApi";
 import { RestaurantAvatarImage } from "../components/RestaurantAvatarImage";
-import { getDemoProductVideoSource } from "../data/demoVideos";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
-import { resolveRestaurantImageUri } from "../lib/images";
+import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
 import { HomeStackParamList } from "../navigation/types";
 import { useFavoritesStore } from "../store/favoritesStore";
 import { colors } from "../theme/colors";
@@ -67,17 +66,14 @@ const compactCount = (value: number) => {
   return String(value);
 };
 
-const videoSourceForProduct = (_restaurant: Restaurant, product: Product, fallbackIndex: number): VideoSource => {
-  if (product.video_url) {
-    return {
-      uri: product.video_url,
-      contentType: "progressive",
-      useCaching: true,
-    };
-  }
-
-  return getDemoProductVideoSource(fallbackIndex);
-};
+const videoSourceForProduct = (product: Product): VideoSource | null =>
+  product.video_url
+    ? {
+        uri: product.video_url,
+        contentType: "progressive",
+        useCaching: true,
+      }
+    : null;
 
 const buildFallbackProduct = (restaurant: Restaurant): Product => ({
   id: restaurant.id * 10000,
@@ -205,7 +201,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
         restaurant={restaurant}
         index={index}
         tileSize={tileSize}
-        onPress={() => navigation.navigate("ProductDetails", { restaurant, product: item, mediaFallbackIndex: (restaurant.id - 1) * 10 + index })}
+        onPress={() => navigation.navigate("ProductDetails", { restaurant, product: item })}
       />
     ),
     [navigation, restaurant, tileSize],
@@ -435,13 +431,13 @@ function VideoSkeletonBuffer() {
 }
 
 function ProfileProductTile({ product, restaurant, index, tileSize, onPress }: ProfileProductTileProps) {
-  const fallbackIndex = (restaurant.id - 1) * 10 + index;
-  const videoSource = useMemo(
-    () => videoSourceForProduct(restaurant, product, fallbackIndex),
-    [fallbackIndex, product, restaurant],
-  );
+  const videoSource = useMemo(() => videoSourceForProduct(product), [product]);
   const [hasRenderedFrame, setHasRenderedFrame] = useState(false);
   const price = product.effective_price ?? product.discount_price ?? product.price;
+  const posterUri = useMemo(
+    () => resolveProductImageUri(product.image, product.id) || resolveRestaurantImageUri(restaurant.cover_image, restaurant.id, restaurant),
+    [product.id, product.image, restaurant],
+  );
   const player = useVideoPlayer(videoSource, (videoPlayer) => {
     videoPlayer.loop = true;
     videoPlayer.muted = true;
@@ -450,6 +446,10 @@ function ProfileProductTile({ product, restaurant, index, tileSize, onPress }: P
   });
 
   useEffect(() => {
+    if (!videoSource) {
+      return undefined;
+    }
+
     try {
       player.play();
     } catch {
@@ -463,7 +463,7 @@ function ProfileProductTile({ product, restaurant, index, tileSize, onPress }: P
         // Ignore preview cleanup failures from native video state.
       }
     };
-  }, [player]);
+  }, [player, videoSource]);
 
   useEffect(() => {
     setHasRenderedFrame(false);
@@ -471,20 +471,26 @@ function ProfileProductTile({ product, restaurant, index, tileSize, onPress }: P
 
   return (
     <Pressable onPress={onPress} style={[styles.tile, { width: tileSize, height: Math.round(tileSize * 1.38) }]}>
-      <VideoView
-        player={player}
-        style={styles.tileVideo}
-        contentFit="cover"
-        nativeControls={false}
-        fullscreenOptions={{ enable: false }}
-        allowsPictureInPicture={false}
-        playsInline
-        pointerEvents="none"
-        surfaceType="textureView"
-        useExoShutter={false}
-        onFirstFrameRender={() => setHasRenderedFrame(true)}
-      />
-      {!hasRenderedFrame ? <VideoSkeletonBuffer /> : null}
+      {videoSource ? (
+        <>
+          <VideoView
+            player={player}
+            style={styles.tileVideo}
+            contentFit="cover"
+            nativeControls={false}
+            fullscreenOptions={{ enable: false }}
+            allowsPictureInPicture={false}
+            playsInline
+            pointerEvents="none"
+            surfaceType="textureView"
+            useExoShutter={false}
+            onFirstFrameRender={() => setHasRenderedFrame(true)}
+          />
+          {!hasRenderedFrame ? <VideoSkeletonBuffer /> : null}
+        </>
+      ) : (
+        <Image source={{ uri: posterUri }} style={styles.tileVideo} resizeMode="cover" />
+      )}
       <LinearGradient
         pointerEvents="none"
         colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.24)", "rgba(0,0,0,0.56)"]}

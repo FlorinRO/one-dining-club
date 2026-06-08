@@ -36,11 +36,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { restaurantsApi } from "../api/restaurantsApi";
 import { FoodBackground } from "../components/FoodBackground";
 import { RestaurantAvatarImage } from "../components/RestaurantAvatarImage";
-import { getDemoProductVideoSource } from "../data/demoVideos";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { deliveryWindow, money } from "../lib/format";
-import { resolveProductImageUri } from "../lib/images";
+import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
 import { SearchStackParamList } from "../navigation/types";
 import { useFavoritesStore } from "../store/favoritesStore";
 import { Product, Restaurant } from "../types/models";
@@ -187,17 +186,14 @@ const searchProductViews = (restaurant: Restaurant, product: Product) => {
   return 1800 + (seed % 91) * 173;
 };
 
-const videoSourceForSearchProduct = (_restaurant: Restaurant, product: Product, fallbackIndex: number): VideoSource => {
-  if (product.video_url) {
-    return {
-      uri: product.video_url,
-      contentType: "progressive",
-      useCaching: true,
-    };
-  }
-
-  return getDemoProductVideoSource(fallbackIndex);
-};
+const videoSourceForSearchProduct = (product: Product): VideoSource | null =>
+  product.video_url
+    ? {
+        uri: product.video_url,
+        contentType: "progressive",
+        useCaching: true,
+      }
+    : null;
 
 function buildDiscoveryCategories(restaurants: Restaurant[], products: Product[]) {
   const byKey = new Map<string, { label: string; score: number }>();
@@ -836,8 +832,8 @@ export function SearchScreen() {
                     onPress={() =>
                       navigation.navigate("RestaurantDetails", { restaurant: item, products: feedRestaurantProducts })
                     }
-                    onProductPress={(product, mediaFallbackIndex) => {
-                      navigation.navigate("ProductDetails", { restaurant: item, product, mediaFallbackIndex });
+                    onProductPress={(product) => {
+                      navigation.navigate("ProductDetails", { restaurant: item, product });
                     }}
                   />
                 );
@@ -1210,7 +1206,7 @@ function SearchRestaurantResult({
   products: Product[];
   mediaProducts: Product[];
   onPress: () => void;
-  onProductPress: (product: Product, mediaFallbackIndex: number) => void;
+  onProductPress: (product: Product) => void;
 }) {
   return (
     <View style={styles.resultBlock}>
@@ -1253,18 +1249,7 @@ function SearchRestaurantResult({
         horizontal
         data={products}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item, index }) => {
-          const canonicalIndex = mediaProducts.findIndex((product) => product.id === item.id);
-          const mediaFallbackIndex = (restaurant.id - 1) * 10 + Math.max(canonicalIndex, index, 0);
-          return (
-            <SearchProductCard
-              product={item}
-              restaurant={restaurant}
-              mediaFallbackIndex={mediaFallbackIndex}
-              onPress={() => onProductPress(item, mediaFallbackIndex)}
-            />
-          );
-        }}
+        renderItem={({ item }) => <SearchProductCard product={item} restaurant={restaurant} onPress={() => onProductPress(item)} />}
         ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.resultProductsRow}
@@ -1276,20 +1261,19 @@ function SearchRestaurantResult({
 function SearchProductCard({
   product,
   restaurant,
-  mediaFallbackIndex,
   onPress,
 }: {
   product: Product;
   restaurant: Restaurant;
-  mediaFallbackIndex: number;
   onPress: () => void;
 }) {
-  const videoSource = useMemo(
-    () => videoSourceForSearchProduct(restaurant, product, mediaFallbackIndex),
-    [mediaFallbackIndex, product, restaurant],
-  );
+  const videoSource = useMemo(() => videoSourceForSearchProduct(product), [product]);
   const effectivePrice = product.effective_price ?? product.discount_price ?? product.price;
   const [hasRenderedFrame, setHasRenderedFrame] = useState(false);
+  const posterUri = useMemo(
+    () => resolveProductImageUri(product.image, product.id) || resolveRestaurantImageUri(restaurant.cover_image, restaurant.id, restaurant),
+    [product.id, product.image, restaurant],
+  );
   const player = useVideoPlayer(videoSource, (videoPlayer) => {
     videoPlayer.loop = true;
     videoPlayer.muted = true;
@@ -1298,6 +1282,10 @@ function SearchProductCard({
   });
 
   useEffect(() => {
+    if (!videoSource) {
+      return undefined;
+    }
+
     try {
       player.play();
     } catch {
@@ -1311,7 +1299,7 @@ function SearchProductCard({
         // Ignore cleanup failures from native video state.
       }
     };
-  }, [player]);
+  }, [player, videoSource]);
 
   useEffect(() => {
     setHasRenderedFrame(false);
@@ -1320,20 +1308,26 @@ function SearchProductCard({
   return (
     <Pressable style={styles.searchProductCard} onPress={onPress}>
       <View style={styles.searchProductVideoWrap}>
-        <VideoView
-          player={player}
-          style={styles.searchProductVideo}
-          contentFit="cover"
-          nativeControls={false}
-          fullscreenOptions={{ enable: false }}
-          allowsPictureInPicture={false}
-          playsInline
-          pointerEvents="none"
-          surfaceType="textureView"
-          useExoShutter={false}
-          onFirstFrameRender={() => setHasRenderedFrame(true)}
-        />
-        {!hasRenderedFrame ? <View pointerEvents="none" style={styles.searchProductVideoSkeleton} /> : null}
+        {videoSource ? (
+          <>
+            <VideoView
+              player={player}
+              style={styles.searchProductVideo}
+              contentFit="cover"
+              nativeControls={false}
+              fullscreenOptions={{ enable: false }}
+              allowsPictureInPicture={false}
+              playsInline
+              pointerEvents="none"
+              surfaceType="textureView"
+              useExoShutter={false}
+              onFirstFrameRender={() => setHasRenderedFrame(true)}
+            />
+            {!hasRenderedFrame ? <View pointerEvents="none" style={styles.searchProductVideoSkeleton} /> : null}
+          </>
+        ) : (
+          <Image source={{ uri: posterUri }} style={styles.searchProductVideo} resizeMode="cover" />
+        )}
         <View style={styles.searchProductVideoShade} />
         <LinearGradient
           pointerEvents="none"

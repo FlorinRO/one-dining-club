@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { addressesApi } from "../api/addressesApi";
 import { FoodBackground } from "../components/FoodBackground";
-import { getDemoProductVideoSource } from "../data/demoVideos";
 import { ordersApi } from "../api/ordersApi";
 import { QuantityStepper } from "../components/QuantityStepper";
 import { Screen } from "../components/Screen";
@@ -44,8 +43,8 @@ function CartItemMedia({
             contentType: "progressive" as const,
             useCaching: true,
           }
-        : getDemoProductVideoSource({ restaurant, product, fallbackIndex: product.id }),
-    [product, restaurant, videoUrl],
+        : null,
+    [videoUrl],
   );
   const [showImageFallback, setShowImageFallback] = useState(false);
   const player = useVideoPlayer(
@@ -60,6 +59,11 @@ function CartItemMedia({
 
   useEffect(() => {
     setShowImageFallback(false);
+    if (!videoSource) {
+      setShowImageFallback(true);
+      return undefined;
+    }
+
     try {
       player.play();
     } catch {

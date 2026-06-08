@@ -21,9 +21,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ProductCommentsSheet } from "../components/ProductCommentsSheet";
 import { QuantityStepper } from "../components/QuantityStepper";
 import { RestaurantAvatarImage } from "../components/RestaurantAvatarImage";
-import { getDemoProductVideoSource } from "../data/demoVideos";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
+import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
 import { HomeStackParamList } from "../navigation/types";
 import { useCartStore } from "../store/cartStore";
 import { useFavoritesStore } from "../store/favoritesStore";
@@ -67,21 +67,14 @@ const groupHint = (group: ProductOptionGroup, tr: (ro: string, en: string) => st
   return maxSelect > 1 ? tr(`Opțional · maxim ${maxSelect}`, `Optional · up to ${maxSelect}`) : tr("Opțional", "Optional");
 };
 
-const videoSourceForProduct = (restaurant: Restaurant, product: Product, mediaFallbackIndex?: number): VideoSource => {
-  if (product.video_url) {
-    return {
-      uri: product.video_url,
-      contentType: "progressive",
-      useCaching: true,
-    };
-  }
-
-  if (mediaFallbackIndex != null) {
-    return getDemoProductVideoSource(mediaFallbackIndex);
-  }
-
-  return getDemoProductVideoSource({ restaurant, product, fallbackIndex: product.id });
-};
+const videoSourceForProduct = (product: Product): VideoSource | null =>
+  product.video_url
+    ? {
+        uri: product.video_url,
+        contentType: "progressive",
+        useCaching: true,
+      }
+    : null;
 
 const videoUriFromSource = (source: VideoSource): string | null => {
   if (source && typeof source === "object" && "uri" in source && typeof source.uri === "string") {
@@ -116,7 +109,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   const { tr } = useI18n();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const { product, restaurant, mediaFallbackIndex } = route.params;
+  const { product, restaurant } = route.params;
   const addItem = useCartStore((state) => state.addItem);
   const cartRestaurant = useCartStore((state) => state.restaurant);
   const isFavorite = useFavoritesStore((state) => state.isProductFavorite(product.id));
@@ -128,11 +121,12 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   const optionGroups = product.option_groups ?? [];
   const basePrice = product.effective_price ?? product.discount_price ?? product.price;
   const heroHeight = Math.max(470, Math.round(height * 0.67));
-  const videoSource = useMemo(
-    () => videoSourceForProduct(restaurant, product, mediaFallbackIndex),
-    [mediaFallbackIndex, product, restaurant],
-  );
+  const videoSource = useMemo(() => videoSourceForProduct(product), [product]);
   const videoUri = useMemo(() => videoUriFromSource(videoSource), [videoSource]);
+  const heroImageUri = useMemo(
+    () => resolveProductImageUri(product.image, product.id) || resolveRestaurantImageUri(restaurant.cover_image, restaurant.id, restaurant),
+    [product.id, product.image, restaurant],
+  );
   const productNutrition = product as unknown as {
     ingredients?: string | string[];
     calories?: number | string;
@@ -204,6 +198,10 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   });
 
   useEffect(() => {
+    if (!videoSource) {
+      return undefined;
+    }
+
     try {
       player.play();
     } catch {
@@ -217,7 +215,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
         // Ignore cleanup failures from native video state.
       }
     };
-  }, [player]);
+  }, [player, videoSource]);
 
   const total = useMemo(() => {
     const base = Number(basePrice);
@@ -341,17 +339,21 @@ export function ProductDetailsModal({ navigation, route }: Props) {
         keyboardDismissMode="interactive"
       >
         <View style={[styles.hero, { height: heroHeight }]}>
-          <VideoView
-            player={player}
-            style={styles.video}
-            contentFit="cover"
-            nativeControls={false}
-            fullscreenOptions={{ enable: false }}
-            allowsPictureInPicture={false}
-            playsInline
-            surfaceType="textureView"
-            useExoShutter={false}
-          />
+          {videoSource ? (
+            <VideoView
+              player={player}
+              style={styles.video}
+              contentFit="cover"
+              nativeControls={false}
+              fullscreenOptions={{ enable: false }}
+              allowsPictureInPicture={false}
+              playsInline
+              surfaceType="textureView"
+              useExoShutter={false}
+            />
+          ) : (
+            <Image source={{ uri: heroImageUri }} style={styles.video} resizeMode="cover" />
+          )}
           <LinearGradient
             colors={["rgba(0,0,0,0.18)", "rgba(0,0,0,0.08)", "rgba(0,0,0,0.92)"]}
             locations={[0, 0.44, 1]}
