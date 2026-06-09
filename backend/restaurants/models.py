@@ -17,6 +17,14 @@ class RestaurantCategory(models.Model):
 
 
 class Restaurant(models.Model):
+    class EntityType(models.TextChoices):
+        RESTAURANT = "restaurant", "Restaurant"
+        BRAND = "brand", "Brand"
+
+    class SponsoredMode(models.TextChoices):
+        NATIVE = "native", "Native"
+        EXTERNAL = "external", "External"
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -25,6 +33,18 @@ class Restaurant(models.Model):
     categories = models.ManyToManyField(RestaurantCategory, blank=True, related_name="restaurants")
     name = models.CharField(max_length=180)
     slug = models.SlugField(max_length=220, unique=True, blank=True)
+    entity_type = models.CharField(
+        max_length=20,
+        choices=EntityType.choices,
+        default=EntityType.RESTAURANT,
+    )
+    is_sponsored = models.BooleanField(default=False)
+    sponsored_mode = models.CharField(
+        max_length=20,
+        choices=SponsoredMode.choices,
+        default=SponsoredMode.NATIVE,
+    )
+    website_url = models.URLField(blank=True)
     description = models.TextField(blank=True)
     logo = models.ImageField(upload_to="restaurants/logos/", blank=True, null=True)
     cover_image = models.ImageField(upload_to="restaurants/covers/", blank=True, null=True)

@@ -330,7 +330,23 @@ class Command(BaseCommand):
         owner.set_password("password123")
         owner.save()
 
-        Restaurant.objects.filter(slug="bao-pop-studio").delete()
+        Restaurant.objects.filter(
+            slug__in=[
+                "bao-pop-studio",
+                "bagel-bros",
+                "crispy-seoul-lab",
+                "curry-house",
+                "fit-kitchen",
+                "gelato-lab",
+                "pasta-fresca",
+                "pho-station",
+                "smash-brothers",
+                "taco-loco",
+                "umami-reels",
+                "dolce-notte",
+                "gelato-stories",
+            ]
+        ).delete()
 
         category_map = {}
         for name, icon in [
@@ -393,27 +409,6 @@ class Command(BaseCommand):
                 ],
             },
             {
-                "slug": "smash-brothers",
-                "name": "Smash Brothers",
-                "description": "Smash burgers, cartofi loaded si sosuri craft.",
-                "phone": "+40724444444",
-                "email": "hello@smashbrothers.test",
-                "address": "Calea Victoriei 90",
-                "city": "Bucuresti",
-                "latitude": Decimal("44.443500"),
-                "longitude": Decimal("26.091800"),
-                "delivery_fee": Decimal("8.49"),
-                "minimum_order": Decimal("32.00"),
-                "estimated_delivery_time_min": 22,
-                "estimated_delivery_time_max": 36,
-                "rating": Decimal("4.60"),
-                "categories": ["Burgers"],
-                "products": [
-                    ("Burgers", "Double Smash", "Doua chiftele smashed, cheddar, ceapa caramelizata.", Decimal("44.00"), None, 15, "Gluten, lactoza"),
-                    ("Sides", "Loaded Fries", "Cartofi, cheddar, bacon crispy si jalapeno.", Decimal("23.00"), None, 10, "Lactoza"),
-                ],
-            },
-            {
                 "slug": "green-fork",
                 "name": "Green Fork",
                 "description": "Salate, protein bowls si optiuni veg-friendly.",
@@ -434,39 +429,11 @@ class Command(BaseCommand):
                     ("Salads", "Caesar Crunch", "Salata romana, pui, parmezan, crutoane.", Decimal("37.00"), Decimal("33.00"), 11, "Gluten, lactoza"),
                 ],
             },
-            {
-                "slug": "dolce-notte",
-                "name": "Dolce Notte",
-                "description": "Deserturi artizanale, tiramisu si cafea de specialitate.",
-                "phone": "+40726666666",
-                "email": "hello@dolcenotte.test",
-                "address": "Strada Arthur Verona 11",
-                "city": "Bucuresti",
-                "latitude": Decimal("44.447500"),
-                "longitude": Decimal("26.101100"),
-                "delivery_fee": Decimal("5.99"),
-                "minimum_order": Decimal("20.00"),
-                "estimated_delivery_time_min": 15,
-                "estimated_delivery_time_max": 25,
-                "rating": Decimal("4.90"),
-                "categories": ["Desserts", "Coffee"],
-                "products": [
-                    ("Desserts", "Tiramisu Classic", "Mascarpone, espresso, piscoturi si cacao.", Decimal("26.00"), None, 8, "Gluten, ou, lactoza"),
-                    ("Coffee", "Flat White", "Double shot espresso cu microspuma fina.", Decimal("16.00"), None, 6, "Lactoza"),
-                ],
-            },
         ]
         generated_payload = [
             ("sushi-loop", "Sushi Loop", "Sushi si poke fresh.", "Asian", "Sushi", "Salmon Nigiri", "Poke Bowl"),
-            ("taco-loco", "Taco Loco", "Street food mexican autentic.", "Burgers", "Tacos", "Chicken Taco", "Beef Quesadilla"),
-            ("pasta-fresca", "Pasta Fresca", "Pasta daily made.", "Italian", "Pasta", "Penne Arrabbiata", "Lasagna al Forno"),
-            ("pho-station", "Pho Station", "Supe vietnameze si wok.", "Asian", "Soups", "Pho Bo", "Crispy Spring Rolls"),
-            ("bagel-bros", "Bagel Bros", "Breakfast & brunch toata ziua.", "Coffee", "Breakfast", "Egg & Bacon Bagel", "Blueberry Pancakes"),
             ("mediterraneo", "Mediterraneo", "Greci, grill si salate.", "Healthy", "Grill", "Chicken Souvlaki", "Greek Salad"),
             ("burger-craft", "Burger Craft", "Burgeri premium si loaded fries.", "Burgers", "Burgers", "Classic Cheeseburger", "Truffle Fries"),
-            ("curry-house", "Curry House", "Curries aromate si naan proaspat.", "Asian", "Curry", "Butter Chicken", "Paneer Tikka Masala"),
-            ("fit-kitchen", "Fit Kitchen", "Mese fit cu calorii controlate.", "Healthy", "Bowls", "Turkey Protein Bowl", "Tofu Green Bowl"),
-            ("gelato-lab", "Gelato Lab", "Gelato artizanal si deserturi.", "Desserts", "Desserts", "Pistachio Gelato", "Chocolate Lava Cake"),
         ]
         for idx, row in enumerate(generated_payload, start=6):
             slug, name, description, category_name, menu_category, p1, p2 = row
@@ -498,24 +465,6 @@ class Command(BaseCommand):
 
         expanded_demo_payload = [
             (
-                "bao-pop-studio",
-                "Bao Pop Studio",
-                "Bao buns, orez si deserturi asiatice cu plating gandit pentru feed.",
-                "Japanese",
-                "Bao",
-                ["Coconut Mango Sticky Rice", "Crispy Tofu Bao", "Duck Hoisin Bao", "Sesame Chicken Bao", "Spicy Mushroom Bao", "Miso Rice Bowl", "Teriyaki Noodles", "Shrimp Bao Bites", "Matcha Rice Pudding", "Soy Glazed Dumplings"],
-                "Gluten, soia, susan",
-            ),
-            (
-                "umami-reels",
-                "Umami Reels",
-                "Ramen, karaage si bowls japoneze gandite pentru feed-uri video rapide.",
-                "Japanese",
-                "Ramen",
-                ["Shoyu Glow Ramen", "Karaage Crunch Bowl", "Miso Butter Corn Ramen", "Yuzu Salmon Don", "Tokyo Egg Sando", "Gyoza Drip Plate", "Tonkatsu Reel Curry", "Sesame Udon Toss", "Wasabi Tuna Roll", "Matcha Mochi Stack"],
-                "Gluten, ou, soia",
-            ),
-            (
                 "neon-taco-bar",
                 "Neon Taco Bar",
                 "Tacos, quesadilla si street corn cu salsa proaspata si plating colorat.",
@@ -534,15 +483,6 @@ class Command(BaseCommand):
                 "Gluten, ou, lactoza",
             ),
             (
-                "crispy-seoul-lab",
-                "Crispy Seoul Lab",
-                "Korean fried chicken, bibimbap si sosuri gochujang cu crunch puternic.",
-                "Korean",
-                "Korean",
-                ["Gochujang Wing Tower", "Honey Garlic Dakgangjeong", "Kimchi Fried Rice Pop", "Bulgogi Bibimbap", "Corn Cheese Lava Bowl", "Crispy Tteok Skewers", "Seoul Slaw Chicken Burger", "Japchae Glass Noodles", "Soy Sesame Drumsticks", "Hotteok Caramel Stack"],
-                "Gluten, susan, soia",
-            ),
-            (
                 "bowl-motion",
                 "Bowl Motion",
                 "Protein bowls, salate calde si dressing-uri fresh pentru pranzuri rapide.",
@@ -559,15 +499,6 @@ class Command(BaseCommand):
                 "BBQ",
                 ["Brisket Burnt Ends Box", "Sticky Rib Reel Rack", "Pulled Pork Smoke Bun", "Maple Bacon Smash", "Charred Corn Slaw Cup", "Smoked Chicken Mac", "Texas Chili Loaded Fries", "BBQ Halloumi Stack", "Pitmaster Sausage Plate", "Peach Cobbler Jar"],
                 "Gluten, lactoza",
-            ),
-            (
-                "gelato-stories",
-                "Gelato Stories",
-                "Gelato, prajituri si bauturi reci cu topping-uri de sezon.",
-                "Desserts",
-                "Desserts",
-                ["Pistachio Gelato Swirl", "Salted Caramel Affogato", "Berry Cheesecake Cup", "Chocolate Lava Reel", "Tiramisu Gelato Sandwich", "Lemon Meringue Jar", "Hazelnut Crunch Sundae", "Strawberry Basil Sorbet", "Cannoli Cream Bites", "Espresso Granita Float"],
-                "Lactoza, ou",
             ),
             (
                 "market-brunch-club",
@@ -625,6 +556,48 @@ class Command(BaseCommand):
                     ],
                 }
             )
+
+        restaurants_payload.append(
+            {
+                "slug": "glow-market",
+                "name": "Glow Market",
+                "entity_type": Restaurant.EntityType.BRAND,
+                "is_sponsored": True,
+                "description": "Brand partener cu snack-uri proteice, băuturi funcționale și pachete promo cumpărabile direct din feed.",
+                "phone": "+40728999160",
+                "email": "hello@glow-market.test",
+                "address": "Calea Dorobanti 55",
+                "city": "Bucuresti",
+                "latitude": Decimal("44.451000"),
+                "longitude": Decimal("26.098000"),
+                "delivery_fee": Decimal("0.00"),
+                "minimum_order": Decimal("35.00"),
+                "estimated_delivery_time_min": 18,
+                "estimated_delivery_time_max": 30,
+                "rating": Decimal("4.99"),
+                "categories": ["Brand"],
+                "products": [
+                    (
+                        "Featured drops",
+                        "Protein Crunch Box",
+                        "Mix de batoane proteice, chipsuri high-protein si sosuri dulci-sarate pentru snack rapid.",
+                        Decimal("39.00"),
+                        Decimal("33.00"),
+                        8,
+                        "Arahide, soia",
+                    ),
+                    (
+                        "Featured drops",
+                        "Hydration Energy Pack",
+                        "Pachet promo cu apa vitaminizata, energy gummies si electroliti pentru antrenament sau office.",
+                        Decimal("31.00"),
+                        None,
+                        6,
+                        "Poate contine urme de fructe cu coaja",
+                    ),
+                ],
+            }
+        )
 
         demo_product_styles = ["Classic", "Spicy", "Smoky", "Crispy", "House", "Loaded", "Fresh", "Fire", "Signature", "Street"]
         demo_product_bases = [
@@ -722,6 +695,8 @@ class Command(BaseCommand):
                 slug=payload["slug"],
                 defaults={
                     "owner": owner,
+                    "entity_type": payload.get("entity_type", Restaurant.EntityType.RESTAURANT),
+                    "is_sponsored": payload.get("is_sponsored", False),
                     "supports_pickup": True,
                     "is_open": True,
                     "is_active": True,
@@ -729,6 +704,8 @@ class Command(BaseCommand):
                 },
             )
             restaurant.owner = owner
+            restaurant.entity_type = payload.get("entity_type", Restaurant.EntityType.RESTAURANT)
+            restaurant.is_sponsored = payload.get("is_sponsored", False)
             restaurant.supports_pickup = True
             restaurant.is_open = True
             restaurant.is_active = True

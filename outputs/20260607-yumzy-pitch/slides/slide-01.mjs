@@ -1,9 +1,10 @@
-import { COLORS, ASSETS, addAccentBar, addFooter, addLogo, addPhone, addText } from "./shared.mjs";
+import { COLORS, ASSETS, addAccentBar, addAmbientImage, addFooter, addLogo, addPhone, addText } from "./shared.mjs";
 
 export async function slide01(presentation) {
   const slide = presentation.slides.add();
   slide.background.fill = COLORS.bg;
 
+  await addAmbientImage(slide, { left: 0, top: 0, width: 320, height: 720 }, ASSETS.heroLeft, "#0B0B0DB5");
   await addLogo(slide);
   addAccentBar(slide, 70, 148, 150);
 

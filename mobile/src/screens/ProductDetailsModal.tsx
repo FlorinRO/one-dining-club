@@ -110,6 +110,8 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const { product, restaurant } = route.params;
+  const isBrand = restaurant.entity_type === "brand";
+  const isSponsored = Boolean(restaurant.is_sponsored);
   const addItem = useCartStore((state) => state.addItem);
   const cartRestaurant = useCartStore((state) => state.restaurant);
   const isFavorite = useFavoritesStore((state) => state.isProductFavorite(product.id));
@@ -381,9 +383,16 @@ export function ProductDetailsModal({ navigation, route }: Props) {
               <View style={styles.creatorText}>
                 <Text numberOfLines={1} style={styles.creatorName}>{restaurant.name}</Text>
                 <Text numberOfLines={1} style={styles.creatorMeta}>
-                  {product.category_name || tr("Recomandarea bucătarului", "Chef pick")}
+                  {isBrand
+                    ? product.category_name || tr("Colecție promovată", "Promoted collection")
+                    : product.category_name || tr("Recomandarea bucătarului", "Chef pick")}
                 </Text>
               </View>
+              {isSponsored ? (
+                <View style={styles.sponsoredPill}>
+                  <Text style={styles.sponsoredPillText}>{tr("Sponsorizat", "Sponsored")}</Text>
+                </View>
+              ) : null}
             </View>
             <Text style={styles.productName}>{product.name}</Text>
             <Text numberOfLines={3} style={styles.description}>{product.description}</Text>
@@ -561,7 +570,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
                 <View style={styles.addButtonMainContent}>
                   <ShoppingBag size={18} stroke="#111111" />
                   <Text numberOfLines={1} style={styles.addButtonText}>
-                    + {tr("Adaugă", "Add")}
+                    + {tr(isBrand ? "Cumpără" : "Adaugă", isBrand ? "Buy" : "Add")}
                   </Text>
                 </View>
                 <View style={styles.addButtonPriceBadge}>
@@ -655,6 +664,21 @@ const styles = StyleSheet.create({
   },
   creatorText: {
     flex: 1,
+  },
+  sponsoredPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
+    backgroundColor: "rgba(255,255,255,0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  sponsoredPillText: {
+    color: dark.text,
+    fontSize: 10,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.35,
   },
   creatorName: {
     color: dark.text,

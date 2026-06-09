@@ -2,13 +2,13 @@
   "schema": "openai.presentation.layout/v4",
   "unit": "px",
   "slide": {
-    "aid": "sl/x1bium",
-    "id": "x1bium",
+    "aid": "sl/3isbr5",
+    "id": "3isbr5",
     "slide": 6,
-    "layoutId": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+    "layoutId": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
     "layoutName": "Title Slide",
     "layoutType": "title",
-    "masterLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+    "masterLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
     "masterLayoutName": "Master",
     "backgroundColor": "#0B0B0D",
     "frame": {
@@ -46,15 +46,15 @@
   "inheritedLayers": [
     {
       "scope": "layout",
-      "id": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+      "id": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
       "name": "Title Slide",
       "type": "title",
-      "parentLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "parentLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "elements": []
     },
     {
       "scope": "master",
-      "id": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "id": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "name": "Master",
       "type": "master",
       "elements": []

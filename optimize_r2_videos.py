@@ -12,6 +12,7 @@ the public URLs remain unchanged.
 
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import math
@@ -46,6 +47,15 @@ REQUIRED_ENV_VARS = (
     "R2_BUCKET_NAME",
     "R2_PUBLIC_BASE_URL",
 )
+
+
+@dataclass
+class ProcessingOptions:
+    trim_long_videos: bool = True
+    skip_small_short_videos: bool = True
+    target_max_size_bytes: Optional[int] = MAX_OUTPUT_SIZE_BYTES
+    crf_levels: tuple[int, ...] = CRF_LEVELS
+    max_height: int = 1920
 
 
 @dataclass
@@ -128,6 +138,60 @@ def load_video_links() -> list[str]:
     return links
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Optimize public Cloudflare R2 MP4 videos and upload them back to the same object keys."
+    )
+    parser.add_argument(
+        "urls",
+        nargs="*",
+        help="Optional public R2 URLs to process directly. If omitted, the script reads video_links.txt.",
+    )
+    parser.add_argument(
+        "--no-trim",
+        action="store_true",
+        help="Do not cut videos longer than 10 seconds.",
+    )
+    parser.add_argument(
+        "--no-skip-small-short-check",
+        action="store_true",
+        help="Disable the default skip behavior for files already under 8 MB and 10 seconds or less.",
+    )
+    parser.add_argument(
+        "--no-size-target",
+        action="store_true",
+        help="Do not force the optimized file under 10 MB. Runs only the first CRF pass.",
+    )
+    parser.add_argument(
+        "--crf",
+        type=int,
+        default=23,
+        help="Starting CRF value. Default: 23.",
+    )
+    parser.add_argument(
+        "--max-height",
+        type=int,
+        default=1920,
+        help="Maximum output height while preserving aspect ratio. Default: 1920.",
+    )
+    return parser.parse_args()
+
+
+def load_links_from_args_or_file(raw_urls: list[str]) -> list[str]:
+    if not raw_urls:
+        return load_video_links()
+
+    links: list[str] = []
+    seen: set[str] = set()
+    for raw_url in raw_urls:
+        link = normalize_link(raw_url)
+        if not link or link in seen:
+            continue
+        seen.add(link)
+        links.append(link)
+    return links
+
+
 def object_key_from_url(url: str) -> str:
     parsed = urlparse(url)
     return parsed.path.lstrip("/")
@@ -203,8 +267,16 @@ def download_video(url: str, destination: Path) -> None:
                     file_obj.write(chunk)
 
 
-def build_ffmpeg_command(input_path: Path, output_path: Path, crf: int, trim_seconds: Optional[float]) -> list[str]:
-    scale_filter = "scale='trunc(iw*min(1\\,1920/ih)/2)*2':'trunc(ih*min(1\\,1920/ih)/2)*2'"
+def build_ffmpeg_command(
+    input_path: Path,
+    output_path: Path,
+    crf: int,
+    trim_seconds: Optional[float],
+    max_height: int,
+) -> list[str]:
+    scale_filter = (
+        f"scale='trunc(iw*min(1\\,{max_height}/ih)/2)*2':'trunc(ih*min(1\\,{max_height}/ih)/2)*2'"
+    )
     command = [
         "ffmpeg",
         "-y",
@@ -239,22 +311,27 @@ def build_ffmpeg_command(input_path: Path, output_path: Path, crf: int, trim_sec
     return command
 
 
-def optimize_video(input_path: Path, working_dir: Path, original_duration: float) -> tuple[Path, int, float]:
-    trim_seconds = MAX_DURATION_SECONDS if original_duration > MAX_DURATION_SECONDS else None
+def optimize_video(
+    input_path: Path,
+    working_dir: Path,
+    original_duration: float,
+    options: ProcessingOptions,
+) -> tuple[Path, int, float]:
+    trim_seconds = MAX_DURATION_SECONDS if options.trim_long_videos and original_duration > MAX_DURATION_SECONDS else None
     last_output_path: Optional[Path] = None
-    last_crf = CRF_LEVELS[0]
+    last_crf = options.crf_levels[0]
 
-    for crf in CRF_LEVELS:
+    for crf in options.crf_levels:
         output_path = working_dir / f"optimized-crf-{crf}.mp4"
         if output_path.exists():
             output_path.unlink()
 
-        command = build_ffmpeg_command(input_path, output_path, crf, trim_seconds)
+        command = build_ffmpeg_command(input_path, output_path, crf, trim_seconds, options.max_height)
         subprocess.run(command, check=True, capture_output=True, text=True)
 
         last_output_path = output_path
         last_crf = crf
-        if output_path.stat().st_size <= MAX_OUTPUT_SIZE_BYTES:
+        if options.target_max_size_bytes is None or output_path.stat().st_size <= options.target_max_size_bytes:
             break
 
     if last_output_path is None:
@@ -283,7 +360,7 @@ def upload_optimized_video(s3_client, bucket_name: str, object_key: str, file_pa
         )
 
 
-def process_video(url: str, s3_client, settings: dict[str, str]) -> VideoReportRow:
+def process_video(url: str, s3_client, settings: dict[str, str], options: ProcessingOptions) -> VideoReportRow:
     object_key = object_key_from_url(url)
     backup_key = backup_key_from_object_key(object_key)
     original_size_bytes = head_content_length(url)
@@ -300,7 +377,7 @@ def process_video(url: str, s3_client, settings: dict[str, str]) -> VideoReportR
             if not public_base_matches(url, settings["R2_PUBLIC_BASE_URL"]):
                 raise ValueError("URL does not match R2_PUBLIC_BASE_URL.")
 
-            if original_size_bytes is not None and original_size_bytes < SKIP_SIZE_BYTES:
+            if options.skip_small_short_videos and original_size_bytes is not None and original_size_bytes < SKIP_SIZE_BYTES:
                 try:
                     original_duration = ffprobe_duration(url)
                 except Exception:
@@ -325,7 +402,7 @@ def process_video(url: str, s3_client, settings: dict[str, str]) -> VideoReportR
                 original_size_bytes = source_path.stat().st_size
 
             original_duration = ffprobe_duration(str(source_path))
-            optimized_path, crf_value, final_duration = optimize_video(source_path, temp_path, original_duration)
+            optimized_path, crf_value, final_duration = optimize_video(source_path, temp_path, original_duration, options)
             optimized_size_bytes = optimized_path.stat().st_size
             crf_used = str(crf_value)
 
@@ -402,9 +479,10 @@ def write_report(rows: list[VideoReportRow]) -> None:
 
 def main() -> int:
     try:
+        args = parse_args()
         ensure_ffmpeg_tools()
         settings = load_settings()
-        video_links = load_video_links()
+        video_links = load_links_from_args_or_file(args.urls)
     except Exception as exc:
         print(str(exc), file=sys.stderr)
         return 1
@@ -413,11 +491,23 @@ def main() -> int:
         print(f"No valid video links found in {VIDEO_LINKS_FILE}.", file=sys.stderr)
         return 1
 
+    crf_levels = (args.crf,)
+    if not args.no_size_target:
+        crf_levels = tuple(dict.fromkeys((args.crf, 26, 28)))
+
+    options = ProcessingOptions(
+        trim_long_videos=not args.no_trim,
+        skip_small_short_videos=not args.no_skip_small_short_check,
+        target_max_size_bytes=None if args.no_size_target else MAX_OUTPUT_SIZE_BYTES,
+        crf_levels=crf_levels,
+        max_height=args.max_height,
+    )
+
     s3_client = build_s3_client(settings)
     rows: list[VideoReportRow] = []
 
     for url in video_links:
-        row = process_video(url, s3_client=s3_client, settings=settings)
+        row = process_video(url, s3_client=s3_client, settings=settings, options=options)
         rows.append(row)
         print(f"[{row.status}] {row.original_url}")
         if row.error:

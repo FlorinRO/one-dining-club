@@ -2,13 +2,13 @@
   "schema": "openai.presentation.layout/v4",
   "unit": "px",
   "slide": {
-    "aid": "sl/ysc749",
-    "id": "ysc749",
+    "aid": "sl/sn6rvf",
+    "id": "sn6rvf",
     "slide": 9,
-    "layoutId": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+    "layoutId": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
     "layoutName": "Title Slide",
     "layoutType": "title",
-    "masterLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+    "masterLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
     "masterLayoutName": "Master",
     "backgroundColor": "#0B0B0D",
     "frame": {
@@ -46,15 +46,15 @@
   "inheritedLayers": [
     {
       "scope": "layout",
-      "id": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+      "id": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
       "name": "Title Slide",
       "type": "title",
-      "parentLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "parentLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "elements": []
     },
     {
       "scope": "master",
-      "id": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "id": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "name": "Master",
       "type": "master",
       "elements": []
@@ -65,7 +65,7 @@
       "order": 1,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/xs72x4na",
+      "aid": "sh/p4r65wju",
       "id": "1",
       "bbox": [
         70,
@@ -146,7 +146,7 @@
       "order": 2,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/q1orytsv",
+      "aid": "sh/ed8v6psf",
       "id": "2",
       "bbox": [
         70,
@@ -227,7 +227,7 @@
       "order": 3,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/fmlkjm1c",
+      "aid": "sh/7y1kre1w",
       "id": "3",
       "bbox": [
         70,
@@ -308,7 +308,7 @@
       "order": 4,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/8z25kb6x",
+      "aid": "sh/0bi9s36h",
       "id": "4",
       "bbox": [
         70,
@@ -386,7 +386,7 @@
       "order": 5,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/1gvy90je",
+      "aid": "sh/pwb2hwfy",
       "id": "5",
       "bbox": [
         70,
@@ -407,7 +407,7 @@
       "order": 6,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/qtcj6tov",
+      "aid": "sh/i5sneloj",
       "id": "6",
       "bbox": [
         104,
@@ -896,7 +896,7 @@
       "order": 7,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/je9cvixc",
+      "aid": "sh/7qpg3ex0",
       "id": "7",
       "bbox": [
         840,
@@ -917,7 +917,7 @@
       "order": 8,
       "kind": "image",
       "scope": "slide",
-      "aid": "im/p8nqxs72",
+      "aid": "im/t83itgfm",
       "id": "8",
       "bbox": [
         852,
@@ -943,7 +943,7 @@
         ]
       },
       "asset": {
-        "assetId": "9089adbd-d3cf-4d09-8521-79d2586974b7",
+        "assetId": "6fb6c2f7-7fd5-44e3-b37c-fb6788e90ca9",
         "contentType": "image/png",
         "byteLength": 1986212
       }
@@ -952,7 +952,7 @@
       "order": 9,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/xczed8v6",
+      "aid": "sh/pkzupwb2",
       "id": "9",
       "bbox": [
         70,
@@ -973,7 +973,7 @@
       "order": 10,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/donyd0z6",
+      "aid": "sh/5sneloj2",
       "id": "10",
       "bbox": [
         70,
@@ -1051,7 +1051,7 @@
       "order": 11,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/k3q5o7qp",
+      "aid": "sh/cbulwval",
       "id": "11",
       "bbox": [
         1140,
@@ -1165,7 +1165,7 @@
         "text": "Exclusive Partner",
         "transform": "none",
         "element": {
-          "aid": "sh/xs72x4na",
+          "aid": "sh/p4r65wju",
           "id": "1",
           "kind": "shape"
         }
@@ -1204,7 +1204,7 @@
         "text": "09",
         "transform": "none",
         "element": {
-          "aid": "sh/q1orytsv",
+          "aid": "sh/ed8v6psf",
           "id": "2",
           "kind": "shape"
         }
@@ -1243,7 +1243,7 @@
         "text": "€10.000 / lună",
         "transform": "none",
         "element": {
-          "aid": "sh/fmlkjm1c",
+          "aid": "sh/7y1kre1w",
           "id": "3",
           "kind": "shape"
         }
@@ -1282,7 +1282,7 @@
         "text": "Pentru brandurile care vor exclusivitate și activări complete.",
         "transform": "none",
         "element": {
-          "aid": "sh/8z25kb6x",
+          "aid": "sh/0bi9s36h",
           "id": "4",
           "kind": "shape"
         }
@@ -1322,7 +1322,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/1gvy90je",
+          "aid": "sh/pwb2hwfy",
           "id": "5",
           "kind": "shape"
         }
@@ -1361,7 +1361,7 @@
         "text": "• Campanii nelimitate în perioada contractuală\n• Priority Placement în aplicație\n• Exclusivitate pe categorie\n• Video Ads premium\n• Product Placement\n• Sampling și activări dedicate\n• Ghiozdane personalizate pentru campanii\n• Ambalaje personalizate\n• Campanii în ediție limitată\n• Co-branding cu YUMZY\n• Account Manager dedicat\n• Acces prioritar la toate noile formate",
         "transform": "none",
         "element": {
-          "aid": "sh/qtcj6tov",
+          "aid": "sh/i5sneloj",
           "id": "6",
           "kind": "shape"
         }
@@ -1401,7 +1401,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/je9cvixc",
+          "aid": "sh/7qpg3ex0",
           "id": "7",
           "kind": "shape"
         }
@@ -1445,7 +1445,7 @@
         "fit": "cover",
         "alt": "YUMZY mobile screen",
         "element": {
-          "aid": "im/p8nqxs72",
+          "aid": "im/t83itgfm",
           "id": "8",
           "kind": "image"
         }
@@ -1485,7 +1485,7 @@
         "children": [],
         "geometry": "rect",
         "element": {
-          "aid": "sh/xczed8v6",
+          "aid": "sh/pkzupwb2",
           "id": "9",
           "kind": "shape"
         }
@@ -1524,7 +1524,7 @@
         "text": "YUMZY.ro",
         "transform": "none",
         "element": {
-          "aid": "sh/donyd0z6",
+          "aid": "sh/5sneloj2",
           "id": "10",
           "kind": "shape"
         }
@@ -1563,7 +1563,7 @@
         "text": "09",
         "transform": "none",
         "element": {
-          "aid": "sh/k3q5o7qp",
+          "aid": "sh/cbulwval",
           "id": "11",
           "kind": "shape"
         }

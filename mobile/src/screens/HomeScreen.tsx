@@ -6,6 +6,7 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
 import {
+  Globe,
   Heart,
   MapPin,
   MessageSquare,
@@ -22,6 +23,7 @@ import {
   Easing,
   FlatList,
   Image,
+  Linking,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
@@ -33,18 +35,19 @@ import {
   useWindowDimensions,
   View,
   ViewToken,
-  type ImageSourcePropType,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { addressesApi } from "../api/addressesApi";
 import { restaurantsApi } from "../api/restaurantsApi";
 import { ProductCommentsSheet } from "../components/ProductCommentsSheet";
+import { RestaurantAvatarImage } from "../components/RestaurantAvatarImage";
 import { getDemoProductAudioSource } from "../data/demoAudio";
+import { mockProducts } from "../data/mockData";
 import { useI18n } from "../i18n/useI18n";
 import { compactCount, productKey, statsFor } from "../lib/feedSocial";
 import { money } from "../lib/format";
-import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
+import { buildSponsoredFeed, isExternalSponsoredPlacement, isSponsoredFeedPlacement } from "../lib/sponsoredFeed";
 import { HomeStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useCartStore } from "../store/cartStore";
@@ -60,19 +63,9 @@ type FeedRestaurant = {
   initialProductIndex: number;
 };
 
-
-const VIDEO_POSTERS = [
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1300&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=1300&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1300&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1553621042-f6e147245754?q=80&w=1300&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1300&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1559847844-5315695dadae?q=80&w=1300&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?q=80&w=1300&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?q=80&w=1300&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1300&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1529042410759-befb1204b468?q=80&w=1300&auto=format&fit=crop",
-];
+const isBrandAccount = (restaurant: Restaurant) => restaurant.entity_type === "brand";
+const sponsoredDestinationFor = (restaurant: Restaurant, product?: Product) =>
+  product?.external_url || restaurant.website_url || null;
 
 const FEED_STANDALONE_AUDIO_VOLUME = 0.82;
 const FEED_VIDEO_LOAD_TIMEOUT_MS = 12000;
@@ -97,6 +90,7 @@ const buildFallbackProduct = (restaurant: Restaurant): Product => ({
   id: restaurant.id * 10000,
   restaurant: restaurant.id,
   restaurant_name: restaurant.name,
+  external_url: restaurant.website_url ?? null,
   category: null,
   category_name: "Chef pick",
   name: `${restaurant.name} tasting plate`,
@@ -129,7 +123,6 @@ export function HomeScreen({ navigation }: Props) {
   const [audiblePostKey, setAudiblePostKey] = useState<string | null>(null);
   const [hasAutoSelectedAudiblePost, setHasAutoSelectedAudiblePost] = useState(false);
   const [isFeedAudioMutedByUser, setIsFeedAudioMutedByUser] = useState(false);
-  const [isRestaurantScrollEnabled, setIsRestaurantScrollEnabled] = useState(true);
   const [feedHeight, setFeedHeight] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasPreparedInitialVideo, setHasPreparedInitialVideo] = useState(false);
@@ -142,13 +135,21 @@ export function HomeScreen({ navigation }: Props) {
   const fetchFeed = useCallback(async () => {
     const restaurantItems = await restaurantsApi.list({ ordering: "-rating" });
     const openRestaurants = restaurantItems.filter((item) => item.is_open !== false);
-    const visibleRestaurants = openRestaurants.slice(0, 12);
+    const visibleRestaurants = buildSponsoredFeed(openRestaurants, 12);
     setRestaurants(visibleRestaurants);
 
     const productEntries = await Promise.all(
       visibleRestaurants.map(async (restaurant) => {
-        const products = await restaurantsApi.products(restaurant.id);
-        return [restaurant.id, products.slice(0, 3)] as const;
+        const apiProducts = await restaurantsApi.products(restaurant.id);
+        const sponsoredMockProducts = mockProducts.filter((product) => Number(product.restaurant) === restaurant.id);
+        const products =
+          isSponsoredFeedPlacement(restaurant) && sponsoredMockProducts.length > 0
+            ? sponsoredMockProducts
+            : apiProducts.length > 0
+              ? apiProducts
+              : sponsoredMockProducts;
+        const limitedProducts = isSponsoredFeedPlacement(restaurant) ? products.slice(0, 1) : products.slice(0, 3);
+        return [restaurant.id, limitedProducts] as const;
       }),
     );
 
@@ -300,11 +301,26 @@ export function HomeScreen({ navigation }: Props) {
     });
   }, []);
 
+  const openSponsoredDestination = useCallback(async (restaurant: Restaurant, product?: Product) => {
+    const url = sponsoredDestinationFor(restaurant, product);
+    if (!url) return;
+
+    try {
+      await Linking.openURL(url);
+    } catch {
+      // Ignore external-link failures to keep the feed responsive.
+    }
+  }, []);
+
   const quickAdd = useCallback(
     (restaurant: Restaurant, product: Product) => {
+      if (isExternalSponsoredPlacement(restaurant)) {
+        void openSponsoredDestination(restaurant, product);
+        return;
+      }
       navigation.navigate("ProductDetails", { restaurant, product });
     },
-    [navigation],
+    [navigation, openSponsoredDestination],
   );
 
   const toggleLike = useCallback((restaurant: Restaurant, product: Product) => {
@@ -400,15 +416,23 @@ export function HomeScreen({ navigation }: Props) {
             onProductIndexChange={(productIndex) => {
               setActiveProductByRestaurant((current) => ({ ...current, [item.restaurant.id]: productIndex }));
             }}
-            onHorizontalSwipeStateChange={(isSwipingHorizontally) => {
-              setIsRestaurantScrollEnabled(!isSwipingHorizontally);
+            onOpenRestaurant={() => {
+              if (isExternalSponsoredPlacement(item.restaurant)) {
+                void openSponsoredDestination(item.restaurant, item.products[0]);
+                return;
+              }
+              navigation.navigate("RestaurantDetails", { restaurant: item.restaurant, products: item.products });
             }}
-            onOpenRestaurant={() => navigation.navigate("RestaurantDetails", { restaurant: item.restaurant, products: item.products })}
-              onOpenProduct={(product, productIndex) =>
-                navigation.navigate("ProductDetails", {
-                  restaurant: item.restaurant,
-                  product,
-                })}
+            onOpenProduct={(product, productIndex) => {
+              if (isExternalSponsoredPlacement(item.restaurant)) {
+                void openSponsoredDestination(item.restaurant, product);
+                return;
+              }
+              navigation.navigate("ProductDetails", {
+                restaurant: item.restaurant,
+                product,
+              });
+            }}
             onQuickAdd={(product) => quickAdd(item.restaurant, product)}
             onLike={(product) => toggleLike(item.restaurant, product)}
             onComment={(product) => openCommentsSheet(item.restaurant, product)}
@@ -426,7 +450,6 @@ export function HomeScreen({ navigation }: Props) {
         snapToInterval={pageHeight}
         decelerationRate="fast"
         disableIntervalMomentum
-        scrollEnabled={isRestaurantScrollEnabled}
         showsVerticalScrollIndicator={false}
         viewabilityConfig={restaurantViewabilityConfig}
         onViewableItemsChanged={onRestaurantViewableItemsChanged}
@@ -456,17 +479,19 @@ export function HomeScreen({ navigation }: Props) {
           {locationLabel || tr("Setează locația", "Set location")}
         </Text>
       </Pressable>
-      <View pointerEvents="none" style={styles.feedTopProductPagers}>
-        {Array.from({ length: Math.min(activeFeedItem?.products.length ?? 0, 10) }).map((_, dotIndex) => (
-          <View
-            key={dotIndex}
-            style={[
-              styles.feedTopProductDot,
-              dotIndex === activeFeedProductIndex && styles.feedTopProductDotActive,
-            ]}
-          />
-        ))}
-      </View>
+      {!isSponsoredFeedPlacement(activeFeedItem?.restaurant ?? ({} as Restaurant)) ? (
+        <View pointerEvents="none" style={styles.feedTopProductPagers}>
+          {Array.from({ length: Math.min(activeFeedItem?.products.length ?? 0, 10) }).map((_, dotIndex) => (
+            <View
+              key={dotIndex}
+              style={[
+                styles.feedTopProductDot,
+                dotIndex === activeFeedProductIndex && styles.feedTopProductDotActive,
+              ]}
+            />
+          ))}
+        </View>
+      ) : null}
       <ProductCommentsSheet
         visible={Boolean(commentsSheetPost)}
         restaurant={commentsSheetPost?.restaurant ?? null}
@@ -489,7 +514,6 @@ type RestaurantFeedPageProps = {
   likedPosts: Record<string, boolean>;
   commentBumps: Record<string, number>;
   onProductIndexChange: (index: number) => void;
-  onHorizontalSwipeStateChange: (isSwipingHorizontally: boolean) => void;
   onOpenRestaurant: () => void;
   onOpenProduct: (product: Product, index: number) => void;
   onQuickAdd: (product: Product, index: number) => void;
@@ -513,7 +537,6 @@ function RestaurantFeedPage({
   likedPosts,
   commentBumps,
   onProductIndexChange,
-  onHorizontalSwipeStateChange,
   onOpenRestaurant,
   onOpenProduct,
   onQuickAdd,
@@ -525,9 +548,6 @@ function RestaurantFeedPage({
   onAudioChange,
 }: RestaurantFeedPageProps) {
   const productListRef = useRef<FlatList<Product>>(null);
-  const horizontalLockReleaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const touchGestureLockRef = useRef<"horizontal" | "vertical" | null>(null);
   const productViewabilityConfig = useRef({ itemVisiblePercentThreshold: 65 }).current;
   const clampedActiveProductIndex = Math.min(Math.max(activeProductIndex, 0), item.products.length - 1);
   const hasRestaurantAudio = true;
@@ -549,28 +569,9 @@ function RestaurantFeedPage({
     },
   ).current;
 
-  const releaseHorizontalScrollLock = useCallback(() => {
-    if (horizontalLockReleaseTimeoutRef.current) {
-      clearTimeout(horizontalLockReleaseTimeoutRef.current);
-    }
-
-    horizontalLockReleaseTimeoutRef.current = setTimeout(() => {
-      onHorizontalSwipeStateChange(false);
-      horizontalLockReleaseTimeoutRef.current = null;
-    }, 120);
-  }, [onHorizontalSwipeStateChange]);
-
   useEffect(() => {
     productListRef.current?.scrollToIndex({ index: clampedActiveProductIndex, animated: false });
   }, [clampedActiveProductIndex]);
-
-  useEffect(() => {
-    return () => {
-      if (horizontalLockReleaseTimeoutRef.current) {
-        clearTimeout(horizontalLockReleaseTimeoutRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     const shouldPlay = isScreenFocused && isActive && isRestaurantAudible;
@@ -612,43 +613,6 @@ function RestaurantFeedPage({
   return (
     <View
       style={[styles.page, { width: pageWidth, height: pageHeight }]}
-      onTouchStart={(event) => {
-        touchStartRef.current = { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY };
-        touchGestureLockRef.current = null;
-      }}
-      onTouchMove={(event) => {
-        const start = touchStartRef.current;
-        if (!start || touchGestureLockRef.current) return;
-
-        const dx = event.nativeEvent.pageX - start.x;
-        const dy = event.nativeEvent.pageY - start.y;
-        const absDx = Math.abs(dx);
-        const absDy = Math.abs(dy);
-
-        if (Math.max(absDx, absDy) < 8) return;
-
-        if (absDx > absDy * 1.15) {
-          touchGestureLockRef.current = "horizontal";
-          onHorizontalSwipeStateChange(true);
-        } else if (absDy > absDx * 1.15) {
-          touchGestureLockRef.current = "vertical";
-          onHorizontalSwipeStateChange(false);
-        }
-      }}
-      onTouchEnd={() => {
-        touchStartRef.current = null;
-        if (touchGestureLockRef.current === "horizontal") {
-          releaseHorizontalScrollLock();
-        }
-        touchGestureLockRef.current = null;
-      }}
-      onTouchCancel={() => {
-        touchStartRef.current = null;
-        if (touchGestureLockRef.current === "horizontal") {
-          releaseHorizontalScrollLock();
-        }
-        touchGestureLockRef.current = null;
-      }}
     >
       <FlatList
         ref={productListRef}
@@ -690,15 +654,6 @@ function RestaurantFeedPage({
         decelerationRate="fast"
         disableIntervalMomentum
         showsHorizontalScrollIndicator={false}
-        onScrollBeginDrag={() => {
-          if (horizontalLockReleaseTimeoutRef.current) {
-            clearTimeout(horizontalLockReleaseTimeoutRef.current);
-            horizontalLockReleaseTimeoutRef.current = null;
-          }
-          onHorizontalSwipeStateChange(true);
-        }}
-        onMomentumScrollEnd={releaseHorizontalScrollLock}
-        onScrollEndDrag={releaseHorizontalScrollLock}
         viewabilityConfig={productViewabilityConfig}
         onViewableItemsChanged={onProductViewableItemsChanged}
         getItemLayout={(_, index) => ({ length: pageWidth, offset: pageWidth * index, index })}
@@ -842,14 +797,17 @@ function ProductVideoSlide({
 }: ProductVideoSlideProps) {
   const { tr } = useI18n();
   const insets = useSafeAreaInsets();
+  const isBrand = isBrandAccount(restaurant);
+  const isSponsored = isSponsoredFeedPlacement(restaurant);
+  const isExternalSponsored = isExternalSponsoredPlacement(restaurant);
+  const usesWideShopCta =
+    isSponsored &&
+    isBrand &&
+    !isExternalSponsored &&
+    (restaurant.slug === "coca-cola" || restaurant.slug === "eye-therapy-lab");
   const stats = statsFor(restaurant, product);
-  const posterIndex = Math.abs(restaurant.id * 7 + product.id * 3 + index) % VIDEO_POSTERS.length;
   const productPrice = product.effective_price ?? product.discount_price ?? product.price;
   const videoUri = product.video_url ?? null;
-  const posterSource = useMemo<ImageSourcePropType>(
-    () => ({ uri: resolveProductImageUri(product.image, product.id) || VIDEO_POSTERS[posterIndex] }),
-    [posterIndex, product.id, product.image],
-  );
   const feedVideoKey = productKey(restaurant.id, product.id);
   const [hasAudioTrack, setHasAudioTrack] = useState(product.has_audio ?? true);
   const canPlayAudio = hasRestaurantAudio || hasAudioTrack || product.has_audio === true;
@@ -862,7 +820,6 @@ function ProductVideoSlide({
         : feedVideoSourceForProduct(product),
     [isActive, product],
   );
-  const restaurantPosterUri = resolveRestaurantImageUri(restaurant.cover_image, restaurant.id, restaurant);
   const comments = stats.comments + commentBump;
   const [hasRenderedFrame, setHasRenderedFrame] = useState(false);
   const [hasPlaybackError, setHasPlaybackError] = useState(false);
@@ -1194,6 +1151,9 @@ function ProductVideoSlide({
     <View style={[styles.slide, { width, height }]}>
       {videoSource ? (
         <>
+          {!hasRenderedFrame ? (
+            <View style={styles.videoBlackFrame} />
+          ) : null}
           <VideoView
             player={player}
             style={[styles.videoSurface, hasPlaybackError && styles.videoSurfaceHidden]}
@@ -1215,12 +1175,10 @@ function ProductVideoSlide({
               });
             }}
           />
-          {hasPlaybackError ? (
-            <Image source={posterSource} style={styles.videoFallbackImage} resizeMode="cover" />
-          ) : null}
+          {hasPlaybackError ? <View style={styles.videoBlackFrame} /> : null}
         </>
       ) : (
-        <Image source={posterSource} style={styles.videoFallbackImage} resizeMode="cover" />
+        <View style={styles.videoBlackFrame} />
       )}
       {showVideoLoadingIndicator ? (
         <View pointerEvents="none" style={styles.videoLoadingLayer}>
@@ -1244,7 +1202,7 @@ function ProductVideoSlide({
       />
 
       <Pressable
-        style={styles.fullSlidePressable}
+        style={[styles.fullSlidePressable, { bottom: insets.bottom + 190 }]}
         onPress={(event) => handleVideoPress(event.nativeEvent.locationX)}
       />
 
@@ -1303,6 +1261,11 @@ function ProductVideoSlide({
       </View>
 
       <View style={styles.contentOverlay}>
+        {isSponsored ? (
+          <View style={styles.sponsoredTopRow}>
+            <RestaurantAvatarImage restaurant={restaurant} style={styles.sponsoredAvatar} resizeMode="contain" />
+          </View>
+        ) : null}
         <Pressable onPress={onOpenProduct}>
           <Text numberOfLines={2} style={styles.productTitle}>{product.name}</Text>
           <Text numberOfLines={2} style={styles.productDescription}>{product.description || restaurant.description}</Text>
@@ -1315,28 +1278,59 @@ function ProductVideoSlide({
           <View style={styles.restaurantTextBlock}>
             <Text numberOfLines={1} style={styles.restaurantName}>{restaurant.name}</Text>
             <Text numberOfLines={1} style={styles.restaurantMeta}>
-              {Number(restaurant.rating).toFixed(1)} ★ · {restaurant.estimated_delivery_time_min}-{restaurant.estimated_delivery_time_max} min · {money(restaurant.delivery_fee)} livrare
+              {isBrand
+                ? tr(
+                    isExternalSponsored
+                      ? "Brand verificat · deschidere direct pe site"
+                      : "Brand verificat · cumpărare directă din aplicație",
+                    isExternalSponsored
+                      ? "Verified brand · opens directly on brand site"
+                      : "Verified brand · in-app checkout",
+                  )
+                : `${Number(restaurant.rating).toFixed(1)} ★ · ${restaurant.estimated_delivery_time_min}-${restaurant.estimated_delivery_time_max} min · ${money(restaurant.delivery_fee)} livrare`}
             </Text>
           </View>
         </Pressable>
 
       </View>
       <View style={[styles.ctaRow, { bottom: insets.bottom + 58 }]}>
-        <View style={styles.ctaButtonsWrap}>
-          <Pressable style={styles.menuButton} onPress={onOpenRestaurant}>
-            <UtensilsCrossed size={16} stroke={colors.white} />
-            <Text style={styles.menuButtonText}>{tr("Meniu", "Menu")}</Text>
+        <View style={[styles.ctaButtonsWrap, (isExternalSponsored || usesWideShopCta) && styles.ctaButtonsWrapExternal]}>
+          <Pressable
+            style={[
+              styles.menuButton,
+              (isExternalSponsored || usesWideShopCta) && styles.externalWebsiteButton,
+              usesWideShopCta && styles.sponsoredShopButton,
+            ]}
+            onPress={onOpenRestaurant}
+          >
+            {isExternalSponsored ? (
+              <Globe size={16} stroke={colors.white} />
+            ) : isSponsored && isBrand ? (
+              <ShoppingBag size={16} stroke={colors.white} />
+            ) : (
+              <UtensilsCrossed size={16} stroke={colors.white} />
+            )}
+            <Text style={styles.menuButtonText}>
+              {tr(
+                isExternalSponsored ? "Vizitează site-ul" : isSponsored && isBrand ? "SHOP" : isBrand ? "Profil" : "Meniu",
+                isExternalSponsored ? "Visit website" : isSponsored && isBrand ? "SHOP" : isBrand ? "Profile" : "Menu",
+              )}
+            </Text>
           </Pressable>
-          <Pressable style={styles.orderButton} onPress={onQuickAdd}>
-            <ShoppingBag size={18} stroke="#111111" />
-            <Text style={styles.orderButtonText}>+ {tr("Adaugă", "Add")}</Text>
-            <View style={styles.orderButtonPriceBadge}>
-              <View style={styles.orderButtonPriceWrap}>
-                <Text style={styles.orderButtonPrice}>{money(productPrice).replace(",", ".")}</Text>
-                <View pointerEvents="none" style={styles.orderPriceLineGreenStrike} />
+          {!isExternalSponsored && !usesWideShopCta ? (
+            <Pressable style={styles.orderButton} onPress={onQuickAdd}>
+              <ShoppingBag size={18} stroke="#111111" />
+              <Text style={styles.orderButtonText}>
+                + {tr(isBrand ? "Cumpără" : "Adaugă", isBrand ? "Shop" : "Add")}
+              </Text>
+              <View style={styles.orderButtonPriceBadge}>
+                <View style={styles.orderButtonPriceWrap}>
+                  <Text style={styles.orderButtonPrice}>{money(productPrice).replace(",", ".")}</Text>
+                  <View pointerEvents="none" style={styles.orderPriceLineGreenStrike} />
+                </View>
               </View>
-            </View>
-          </Pressable>
+            </Pressable>
+          ) : null}
         </View>
       </View>
     </View>
@@ -1565,6 +1559,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: undefined,
     height: undefined,
+    zIndex: 1,
+  },
+  videoBlackFrame: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#050505",
     zIndex: 1,
   },
   videoLoadingLayer: {
@@ -2066,6 +2065,16 @@ const styles = StyleSheet.create({
     bottom: 176,
     zIndex: 11,
   },
+  sponsoredTopRow: {
+    alignSelf: "flex-start",
+    marginBottom: 14,
+  },
+  sponsoredAvatar: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "rgba(255,255,255,0.96)",
+  },
   restaurantHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -2134,6 +2143,9 @@ const styles = StyleSheet.create({
     alignItems: "stretch",
     gap: 10,
   },
+  ctaButtonsWrapExternal: {
+    justifyContent: "center",
+  },
   menuButton: {
     minHeight: 44,
     paddingHorizontal: 14,
@@ -2145,6 +2157,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexDirection: "row",
     gap: 8,
+  },
+  externalWebsiteButton: {
+    minWidth: "72%",
+    paddingHorizontal: 24,
+  },
+  sponsoredShopButton: {
+    minWidth: "78%",
+    justifyContent: "center",
   },
   menuButtonText: {
     color: colors.white,

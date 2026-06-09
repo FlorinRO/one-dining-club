@@ -16,15 +16,12 @@ type RestaurantImageContext = {
 };
 
 const restaurantAvatarBySlug: Record<string, string> = {
-  "gratarul-urban": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=900&auto=format&fit=crop",
   "romanian-grill-house": "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?q=80&w=900&auto=format&fit=crop",
   "grill-house": "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=900&auto=format&fit=crop",
   "sakura-bistro": "https://images.unsplash.com/photo-1611143669185-af224c5e3252?q=80&w=900&auto=format&fit=crop",
   "dolce-notte": "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=900&auto=format&fit=crop",
   "umami-reels": "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=900&auto=format&fit=crop",
-  "sakura-roll-house": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=900&auto=format&fit=crop",
   "sushi-neo": "https://images.unsplash.com/photo-1553621042-f6e147245754?q=80&w=900&auto=format&fit=crop",
-  "bao-district": "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=900&auto=format&fit=crop",
   "bistro-fusion": "https://images.unsplash.com/photo-1555126634-323283e090fa?q=80&w=900&auto=format&fit=crop",
   "casa-pastelor": "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?q=80&w=900&auto=format&fit=crop",
   "pasta-fresca-studio": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?q=80&w=900&auto=format&fit=crop",
@@ -53,7 +50,6 @@ const restaurantAvatarBySlug: Record<string, string> = {
   "ocean-bento": "https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=900&auto=format&fit=crop",
   "nordic-fish-bar": "https://images.unsplash.com/photo-1559847844-5315695dadae?q=80&w=900&auto=format&fit=crop",
   "seoul-crunch": "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?q=80&w=900&auto=format&fit=crop",
-  "delhi-spice-corner": "https://images.unsplash.com/photo-1585937421612-70a008356fbe?q=80&w=900&auto=format&fit=crop",
   "dolce-forno": "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=900&auto=format&fit=crop",
   "balkan-platter-co": "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?q=80&w=700&auto=format&fit=crop",
 };

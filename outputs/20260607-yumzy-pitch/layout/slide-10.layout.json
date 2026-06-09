@@ -2,13 +2,13 @@
   "schema": "openai.presentation.layout/v4",
   "unit": "px",
   "slide": {
-    "aid": "sl/f2ek6i",
-    "id": "f2ek6i",
+    "aid": "sl/dir4be",
+    "id": "dir4be",
     "slide": 10,
-    "layoutId": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+    "layoutId": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
     "layoutName": "Title Slide",
     "layoutType": "title",
-    "masterLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+    "masterLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
     "masterLayoutName": "Master",
     "backgroundColor": "#0B0B0D",
     "frame": {
@@ -46,15 +46,15 @@
   "inheritedLayers": [
     {
       "scope": "layout",
-      "id": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+      "id": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
       "name": "Title Slide",
       "type": "title",
-      "parentLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "parentLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "elements": []
     },
     {
       "scope": "master",
-      "id": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "id": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "name": "Master",
       "type": "master",
       "elements": []
@@ -65,7 +65,7 @@
       "order": 1,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/9cvixcze",
+      "aid": "sh/25kb6xkf",
       "id": "1",
       "bbox": [
         70,
@@ -146,7 +146,7 @@
       "order": 2,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/ylc7u54z",
+      "aid": "sh/9w3m94fu",
       "id": "2",
       "bbox": [
         70,
@@ -155,7 +155,7 @@
         14.4
       ],
       "composeSource": {
-        "run": 2,
+        "run": 19,
         "path": "0"
       },
       "geometry": "rect",
@@ -227,7 +227,7 @@
       "order": 3,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/r65wjudg",
+      "aid": "sh/kb6xkf6d",
       "id": "3",
       "bbox": [
         70,
@@ -236,7 +236,7 @@
         82.94
       ],
       "composeSource": {
-        "run": 3,
+        "run": 18,
         "path": "0"
       },
       "geometry": "rect",
@@ -312,7 +312,7 @@
       "order": 4,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/g3ex0nux",
+      "aid": "sh/re1w7mp0",
       "id": "4",
       "bbox": [
         70,
@@ -333,7 +333,7 @@
       "order": 5,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/5o7qpg3e",
+      "aid": "sh/2t83itgf",
       "id": "5",
       "bbox": [
         88,
@@ -354,7 +354,7 @@
       "order": 6,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/yxobm58z",
+      "aid": "sh/9knih4by",
       "id": "6",
       "bbox": [
         88,
@@ -437,7 +437,7 @@
       "order": 7,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/nih4byhg",
+      "aid": "sh/kzupwb2h",
       "id": "7",
       "bbox": [
         132,
@@ -518,7 +518,7 @@
       "order": 8,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/g7adsji5",
+      "aid": "sh/ra5gbq1o",
       "id": "8",
       "bbox": [
         70,
@@ -527,7 +527,7 @@
         62
       ],
       "composeSource": {
-        "run": 8,
+        "run": 13,
         "path": "0"
       },
       "geometry": "roundRect",
@@ -539,7 +539,7 @@
       "order": 9,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/9s36hcrm",
+      "aid": "sh/2p8nqxs7",
       "id": "9",
       "bbox": [
         88,
@@ -548,7 +548,7 @@
         24
       ],
       "composeSource": {
-        "run": 9,
+        "run": 12,
         "path": "0"
       },
       "geometry": "roundRect",
@@ -560,7 +560,7 @@
       "order": 10,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/d8v6psfi",
+      "aid": "sh/gvy90je9",
       "id": "10",
       "bbox": [
         88,
@@ -643,7 +643,7 @@
       "order": 11,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/onyd0z61",
+      "aid": "sh/9gr2p8nq",
       "id": "11",
       "bbox": [
         132,
@@ -724,7 +724,7 @@
       "order": 12,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/z25kb6xk",
+      "aid": "sh/2p8nqxs7",
       "id": "12",
       "bbox": [
         70,
@@ -745,7 +745,7 @@
       "order": 13,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/6hcrmhk3",
+      "aid": "sh/ra5gbq1o",
       "id": "13",
       "bbox": [
         88,
@@ -766,7 +766,7 @@
       "order": 14,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/dg7adsji",
+      "aid": "sh/kjm1cfa9",
       "id": "14",
       "bbox": [
         88,
@@ -849,7 +849,7 @@
       "order": 15,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/ovahoza1",
+      "aid": "sh/94fu18jq",
       "id": "15",
       "bbox": [
         132,
@@ -930,7 +930,7 @@
       "order": 16,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/vahoza1g",
+      "aid": "sh/2hwfyxob",
       "id": "16",
       "bbox": [
         70,
@@ -951,7 +951,7 @@
       "order": 17,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/6tovahoz",
+      "aid": "sh/r2p8nqxs",
       "id": "17",
       "bbox": [
         88,
@@ -972,7 +972,7 @@
       "order": 18,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/dsji5sne",
+      "aid": "sh/kb6xkf6d",
       "id": "18",
       "bbox": [
         88,
@@ -1055,7 +1055,7 @@
       "order": 19,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/o7qpg3ex",
+      "aid": "sh/9w3m94fu",
       "id": "19",
       "bbox": [
         132,
@@ -1136,7 +1136,7 @@
       "order": 20,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/kjm1cfa9",
+      "aid": "sh/dg7adsji",
       "id": "20",
       "bbox": [
         70,
@@ -1157,7 +1157,7 @@
       "order": 21,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/94fu18jq",
+      "aid": "sh/ovahoza1",
       "id": "21",
       "bbox": [
         88,
@@ -1178,7 +1178,7 @@
       "order": 22,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/2hwfyxob",
+      "aid": "sh/vahoza1g",
       "id": "22",
       "bbox": [
         88,
@@ -1261,7 +1261,7 @@
       "order": 23,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/r2p8nqxs",
+      "aid": "sh/6tovahoz",
       "id": "23",
       "bbox": [
         132,
@@ -1342,7 +1342,7 @@
       "order": 24,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/gvy90je9",
+      "aid": "sh/d8v6psfi",
       "id": "24",
       "bbox": [
         806,
@@ -1363,7 +1363,7 @@
       "order": 25,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/9gr2p8nq",
+      "aid": "sh/onyd0z61",
       "id": "25",
       "bbox": [
         842,
@@ -1444,7 +1444,7 @@
       "order": 26,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/2p8nqxs7",
+      "aid": "sh/z25kb6xk",
       "id": "26",
       "bbox": [
         842,
@@ -1525,7 +1525,7 @@
       "order": 27,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/ra5gbq1o",
+      "aid": "sh/6hcrmhk3",
       "id": "27",
       "bbox": [
         70,
@@ -1546,7 +1546,7 @@
       "order": 28,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/kzupwb2h",
+      "aid": "sh/d4vmtwra",
       "id": "28",
       "bbox": [
         70,
@@ -1624,7 +1624,7 @@
       "order": 29,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/9knih4by",
+      "aid": "sh/oj2t83it",
       "id": "29",
       "bbox": [
         1140,
@@ -1738,7 +1738,7 @@
         "text": "Avantaje pentru Agenții",
         "transform": "none",
         "element": {
-          "aid": "sh/9cvixcze",
+          "aid": "sh/25kb6xkf",
           "id": "1",
           "kind": "shape"
         }
@@ -1777,7 +1777,7 @@
         "text": "10",
         "transform": "none",
         "element": {
-          "aid": "sh/ylc7u54z",
+          "aid": "sh/9w3m94fu",
           "id": "2",
           "kind": "shape"
         }
@@ -1816,7 +1816,7 @@
         "text": "Un format media care nu se oprește la impresii, ci continuă până la comandă și livrare.",
         "transform": "none",
         "element": {
-          "aid": "sh/r65wjudg",
+          "aid": "sh/kb6xkf6d",
           "id": "3",
           "kind": "shape"
         }
@@ -1856,7 +1856,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/g3ex0nux",
+          "aid": "sh/re1w7mp0",
           "id": "4",
           "kind": "shape"
         }
@@ -1896,7 +1896,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/5o7qpg3e",
+          "aid": "sh/2t83itgf",
           "id": "5",
           "kind": "shape"
         }
@@ -1935,7 +1935,7 @@
         "text": "✓",
         "transform": "none",
         "element": {
-          "aid": "sh/yxobm58z",
+          "aid": "sh/9knih4by",
           "id": "6",
           "kind": "shape"
         }
@@ -1974,7 +1974,7 @@
         "text": "Canal nou și exclusiv",
         "transform": "none",
         "element": {
-          "aid": "sh/nih4byhg",
+          "aid": "sh/kzupwb2h",
           "id": "7",
           "kind": "shape"
         }
@@ -2014,7 +2014,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/g7adsji5",
+          "aid": "sh/ra5gbq1o",
           "id": "8",
           "kind": "shape"
         }
@@ -2054,7 +2054,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/9s36hcrm",
+          "aid": "sh/2p8nqxs7",
           "id": "9",
           "kind": "shape"
         }
@@ -2093,7 +2093,7 @@
         "text": "✓",
         "transform": "none",
         "element": {
-          "aid": "sh/d8v6psfi",
+          "aid": "sh/gvy90je9",
           "id": "10",
           "kind": "shape"
         }
@@ -2132,7 +2132,7 @@
         "text": "Marjă comercială flexibilă",
         "transform": "none",
         "element": {
-          "aid": "sh/onyd0z61",
+          "aid": "sh/9gr2p8nq",
           "id": "11",
           "kind": "shape"
         }
@@ -2172,7 +2172,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/z25kb6xk",
+          "aid": "sh/2p8nqxs7",
           "id": "12",
           "kind": "shape"
         }
@@ -2212,7 +2212,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/6hcrmhk3",
+          "aid": "sh/ra5gbq1o",
           "id": "13",
           "kind": "shape"
         }
@@ -2251,7 +2251,7 @@
         "text": "✓",
         "transform": "none",
         "element": {
-          "aid": "sh/dg7adsji",
+          "aid": "sh/kjm1cfa9",
           "id": "14",
           "kind": "shape"
         }
@@ -2290,7 +2290,7 @@
         "text": "Fără costuri operaționale",
         "transform": "none",
         "element": {
-          "aid": "sh/ovahoza1",
+          "aid": "sh/94fu18jq",
           "id": "15",
           "kind": "shape"
         }
@@ -2330,7 +2330,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/vahoza1g",
+          "aid": "sh/2hwfyxob",
           "id": "16",
           "kind": "shape"
         }
@@ -2370,7 +2370,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/6tovahoz",
+          "aid": "sh/r2p8nqxs",
           "id": "17",
           "kind": "shape"
         }
@@ -2409,7 +2409,7 @@
         "text": "✓",
         "transform": "none",
         "element": {
-          "aid": "sh/dsji5sne",
+          "aid": "sh/kb6xkf6d",
           "id": "18",
           "kind": "shape"
         }
@@ -2448,7 +2448,7 @@
         "text": "Raportare și măsurare",
         "transform": "none",
         "element": {
-          "aid": "sh/o7qpg3ex",
+          "aid": "sh/9w3m94fu",
           "id": "19",
           "kind": "shape"
         }
@@ -2488,7 +2488,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/kjm1cfa9",
+          "aid": "sh/dg7adsji",
           "id": "20",
           "kind": "shape"
         }
@@ -2528,7 +2528,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/94fu18jq",
+          "aid": "sh/ovahoza1",
           "id": "21",
           "kind": "shape"
         }
@@ -2567,7 +2567,7 @@
         "text": "✓",
         "transform": "none",
         "element": {
-          "aid": "sh/2hwfyxob",
+          "aid": "sh/vahoza1g",
           "id": "22",
           "kind": "shape"
         }
@@ -2606,7 +2606,7 @@
         "text": "Suport direct din partea echipei YUMZY",
         "transform": "none",
         "element": {
-          "aid": "sh/r2p8nqxs",
+          "aid": "sh/6tovahoz",
           "id": "23",
           "kind": "shape"
         }
@@ -2646,7 +2646,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/gvy90je9",
+          "aid": "sh/d8v6psfi",
           "id": "24",
           "kind": "shape"
         }
@@ -2685,7 +2685,7 @@
         "text": "YUMZY",
         "transform": "none",
         "element": {
-          "aid": "sh/9gr2p8nq",
+          "aid": "sh/onyd0z61",
           "id": "25",
           "kind": "shape"
         }
@@ -2724,7 +2724,7 @@
         "text": "Food delivery care transformă fiecare video într-o comandă posibilă.",
         "transform": "none",
         "element": {
-          "aid": "sh/2p8nqxs7",
+          "aid": "sh/z25kb6xk",
           "id": "26",
           "kind": "shape"
         }
@@ -2764,7 +2764,7 @@
         "children": [],
         "geometry": "rect",
         "element": {
-          "aid": "sh/ra5gbq1o",
+          "aid": "sh/6hcrmhk3",
           "id": "27",
           "kind": "shape"
         }
@@ -2803,7 +2803,7 @@
         "text": "YUMZY.ro",
         "transform": "none",
         "element": {
-          "aid": "sh/kzupwb2h",
+          "aid": "sh/d4vmtwra",
           "id": "28",
           "kind": "shape"
         }
@@ -2842,7 +2842,7 @@
         "text": "10",
         "transform": "none",
         "element": {
-          "aid": "sh/9knih4by",
+          "aid": "sh/oj2t83it",
           "id": "29",
           "kind": "shape"
         }

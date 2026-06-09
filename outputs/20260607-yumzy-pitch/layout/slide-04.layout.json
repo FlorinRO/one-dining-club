@@ -2,13 +2,13 @@
   "schema": "openai.presentation.layout/v4",
   "unit": "px",
   "slide": {
-    "aid": "sl/7d0q8m",
-    "id": "7d0q8m",
+    "aid": "sl/2yn49x",
+    "id": "2yn49x",
     "slide": 4,
-    "layoutId": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+    "layoutId": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
     "layoutName": "Title Slide",
     "layoutType": "title",
-    "masterLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+    "masterLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
     "masterLayoutName": "Master",
     "backgroundColor": "#0B0B0D",
     "frame": {
@@ -46,15 +46,15 @@
   "inheritedLayers": [
     {
       "scope": "layout",
-      "id": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+      "id": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
       "name": "Title Slide",
       "type": "title",
-      "parentLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "parentLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "elements": []
     },
     {
       "scope": "master",
-      "id": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "id": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "name": "Master",
       "type": "master",
       "elements": []
@@ -65,7 +65,7 @@
       "order": 1,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/nyd0z610",
+      "aid": "sh/8bat47y1",
       "id": "1",
       "bbox": [
         70,
@@ -146,7 +146,7 @@
       "order": 2,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/cj6tovah",
+      "aid": "sh/jqh0fepk",
       "id": "2",
       "bbox": [
         70,
@@ -155,7 +155,7 @@
         14.4
       ],
       "composeSource": {
-        "run": 2,
+        "run": 24,
         "path": "0"
       },
       "geometry": "rect",
@@ -227,7 +227,7 @@
       "order": 3,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/54zidony",
+      "aid": "sh/q5o7qpg3",
       "id": "3",
       "bbox": [
         70,
@@ -236,7 +236,7 @@
         110.88
       ],
       "composeSource": {
-        "run": 3,
+        "run": 25,
         "path": "0"
       },
       "geometry": "rect",
@@ -386,7 +386,7 @@
       "order": 4,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/upwb2hwf",
+      "aid": "sh/18jqh0fe",
       "id": "4",
       "bbox": [
         70,
@@ -395,7 +395,7 @@
         52
       ],
       "composeSource": {
-        "run": 4,
+        "run": 22,
         "path": "0"
       },
       "geometry": "roundRect",
@@ -407,7 +407,7 @@
       "order": 5,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/nap4r65w",
+      "aid": "sh/8nqxs72x",
       "id": "5",
       "bbox": [
         86,
@@ -416,7 +416,7 @@
         19.2
       ],
       "composeSource": {
-        "run": 5,
+        "run": 23,
         "path": "0"
       },
       "geometry": "rect",
@@ -490,7 +490,7 @@
       "order": 6,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/cvixczed",
+      "aid": "sh/j2t83itg",
       "id": "6",
       "bbox": [
         236,
@@ -499,7 +499,7 @@
         52
       ],
       "composeSource": {
-        "run": 6,
+        "run": 20,
         "path": "0"
       },
       "geometry": "roundRect",
@@ -511,7 +511,7 @@
       "order": 7,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/5gbq1ory",
+      "aid": "sh/qh0fepkz",
       "id": "7",
       "bbox": [
         252,
@@ -520,7 +520,7 @@
         38.4
       ],
       "composeSource": {
-        "run": 7,
+        "run": 21,
         "path": "0"
       },
       "geometry": "rect",
@@ -598,7 +598,7 @@
       "order": 8,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/u18jqh0f",
+      "aid": "sh/1cfa9w3m",
       "id": "8",
       "bbox": [
         402,
@@ -619,7 +619,7 @@
       "order": 9,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/jm1cfa9w",
+      "aid": "sh/crmhk3q5",
       "id": "9",
       "bbox": [
         418,
@@ -706,7 +706,7 @@
       "order": 10,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/b6xkf6dc",
+      "aid": "sh/2t83itgf",
       "id": "10",
       "bbox": [
         70,
@@ -727,7 +727,7 @@
       "order": 11,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/il0rqd4v",
+      "aid": "sh/re1w7mp0",
       "id": "11",
       "bbox": [
         86,
@@ -814,7 +814,7 @@
       "order": 12,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/tcj6tova",
+      "aid": "sh/kzupwb2h",
       "id": "12",
       "bbox": [
         236,
@@ -835,7 +835,7 @@
       "order": 13,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/0rqd4vmt",
+      "aid": "sh/9knih4by",
       "id": "13",
       "bbox": [
         252,
@@ -918,7 +918,7 @@
       "order": 14,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/byhgn29g",
+      "aid": "sh/25kb6xkf",
       "id": "14",
       "bbox": [
         402,
@@ -939,7 +939,7 @@
       "order": 15,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/idonyd0z",
+      "aid": "sh/rqd4vmtw",
       "id": "15",
       "bbox": [
         418,
@@ -1022,7 +1022,7 @@
       "order": 16,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/t47y1kre",
+      "aid": "sh/kb6xkf6d",
       "id": "16",
       "bbox": [
         70,
@@ -1043,7 +1043,7 @@
       "order": 17,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/0je9cvix",
+      "aid": "sh/9w3m94fu",
       "id": "17",
       "bbox": [
         86,
@@ -1126,7 +1126,7 @@
       "order": 18,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/bulwval8",
+      "aid": "sh/2hwfyxob",
       "id": "18",
       "bbox": [
         236,
@@ -1147,7 +1147,7 @@
       "order": 19,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/i9s36hcr",
+      "aid": "sh/r2p8nqxs",
       "id": "19",
       "bbox": [
         252,
@@ -1234,7 +1234,7 @@
       "order": 20,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/6xkf6dcb",
+      "aid": "sh/j2t83itg",
       "id": "20",
       "bbox": [
         402,
@@ -1255,7 +1255,7 @@
       "order": 21,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/zed8v6ps",
+      "aid": "sh/qh0fepkz",
       "id": "21",
       "bbox": [
         418,
@@ -1338,7 +1338,7 @@
       "order": 22,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/oza1gvy9",
+      "aid": "sh/18jqh0fe",
       "id": "22",
       "bbox": [
         70,
@@ -1359,7 +1359,7 @@
       "order": 23,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/hk3q5o7q",
+      "aid": "sh/8nqxs72x",
       "id": "23",
       "bbox": [
         86,
@@ -1446,7 +1446,7 @@
       "order": 24,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/65wjudg7",
+      "aid": "sh/jqh0fepk",
       "id": "24",
       "bbox": [
         236,
@@ -1467,7 +1467,7 @@
       "order": 25,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/zqtcj6to",
+      "aid": "sh/q5o7qpg3",
       "id": "25",
       "bbox": [
         252,
@@ -1550,7 +1550,7 @@
       "order": 26,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/obm58z25",
+      "aid": "sh/1w7mp0bi",
       "id": "26",
       "bbox": [
         824,
@@ -1571,7 +1571,7 @@
       "order": 27,
       "kind": "image",
       "scope": "slide",
-      "aid": "im/2x4nap4r",
+      "aid": "im/z25kb6xk",
       "id": "27",
       "bbox": [
         836,
@@ -1597,7 +1597,7 @@
         ]
       },
       "asset": {
-        "assetId": "f8ac45b0-c950-4f18-88df-a62afe38c3a4",
+        "assetId": "c491e489-e87c-4df2-beed-101407a5c4b4",
         "contentType": "image/png",
         "byteLength": 1986212
       }
@@ -1606,7 +1606,7 @@
       "order": 28,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/a9w3m94f",
+      "aid": "sh/ji5snelo",
       "id": "28",
       "bbox": [
         70,
@@ -1627,7 +1627,7 @@
       "order": 29,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/zupwb2hw",
+      "aid": "sh/uxc3ylc7",
       "id": "29",
       "bbox": [
         70,
@@ -1705,7 +1705,7 @@
       "order": 30,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/l0rqd4vm",
+      "aid": "sh/4vmtwra5",
       "id": "30",
       "bbox": [
         1140,
@@ -1819,7 +1819,7 @@
         "text": "Pentru Ce Tipuri de Branduri?",
         "transform": "none",
         "element": {
-          "aid": "sh/nyd0z610",
+          "aid": "sh/8bat47y1",
           "id": "1",
           "kind": "shape"
         }
@@ -1858,7 +1858,7 @@
         "text": "04",
         "transform": "none",
         "element": {
-          "aid": "sh/cj6tovah",
+          "aid": "sh/jqh0fepk",
           "id": "2",
           "kind": "shape"
         }
@@ -1897,7 +1897,7 @@
         "text": "Orice brand care dorește să transforme\npublicitatea în experiență\nși vânzare.",
         "transform": "none",
         "element": {
-          "aid": "sh/54zidony",
+          "aid": "sh/q5o7qpg3",
           "id": "3",
           "kind": "shape"
         }
@@ -1937,7 +1937,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/upwb2hwf",
+          "aid": "sh/18jqh0fe",
           "id": "4",
           "kind": "shape"
         }
@@ -1976,7 +1976,7 @@
         "text": "FMCG",
         "transform": "none",
         "element": {
-          "aid": "sh/nap4r65w",
+          "aid": "sh/8nqxs72x",
           "id": "5",
           "kind": "shape"
         }
@@ -2016,7 +2016,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/cvixczed",
+          "aid": "sh/j2t83itg",
           "id": "6",
           "kind": "shape"
         }
@@ -2055,7 +2055,7 @@
         "text": "eCommerce",
         "transform": "none",
         "element": {
-          "aid": "sh/5gbq1ory",
+          "aid": "sh/qh0fepkz",
           "id": "7",
           "kind": "shape"
         }
@@ -2095,7 +2095,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/u18jqh0f",
+          "aid": "sh/1cfa9w3m",
           "id": "8",
           "kind": "shape"
         }
@@ -2134,7 +2134,7 @@
         "text": "Băuturi",
         "transform": "none",
         "element": {
-          "aid": "sh/jm1cfa9w",
+          "aid": "sh/crmhk3q5",
           "id": "9",
           "kind": "shape"
         }
@@ -2174,7 +2174,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/b6xkf6dc",
+          "aid": "sh/2t83itgf",
           "id": "10",
           "kind": "shape"
         }
@@ -2213,7 +2213,7 @@
         "text": "Retail",
         "transform": "none",
         "element": {
-          "aid": "sh/il0rqd4v",
+          "aid": "sh/re1w7mp0",
           "id": "11",
           "kind": "shape"
         }
@@ -2253,7 +2253,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/tcj6tova",
+          "aid": "sh/kzupwb2h",
           "id": "12",
           "kind": "shape"
         }
@@ -2292,7 +2292,7 @@
         "text": "Beauty",
         "transform": "none",
         "element": {
-          "aid": "sh/0rqd4vmt",
+          "aid": "sh/9knih4by",
           "id": "13",
           "kind": "shape"
         }
@@ -2332,7 +2332,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/byhgn29g",
+          "aid": "sh/25kb6xkf",
           "id": "14",
           "kind": "shape"
         }
@@ -2371,7 +2371,7 @@
         "text": "Fashion",
         "transform": "none",
         "element": {
-          "aid": "sh/idonyd0z",
+          "aid": "sh/rqd4vmtw",
           "id": "15",
           "kind": "shape"
         }
@@ -2411,7 +2411,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/t47y1kre",
+          "aid": "sh/kb6xkf6d",
           "id": "16",
           "kind": "shape"
         }
@@ -2450,7 +2450,7 @@
         "text": "Telecom",
         "transform": "none",
         "element": {
-          "aid": "sh/0je9cvix",
+          "aid": "sh/9w3m94fu",
           "id": "17",
           "kind": "shape"
         }
@@ -2490,7 +2490,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/bulwval8",
+          "aid": "sh/2hwfyxob",
           "id": "18",
           "kind": "shape"
         }
@@ -2529,7 +2529,7 @@
         "text": "Banking",
         "transform": "none",
         "element": {
-          "aid": "sh/i9s36hcr",
+          "aid": "sh/r2p8nqxs",
           "id": "19",
           "kind": "shape"
         }
@@ -2569,7 +2569,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/6xkf6dcb",
+          "aid": "sh/j2t83itg",
           "id": "20",
           "kind": "shape"
         }
@@ -2608,7 +2608,7 @@
         "text": "Entertainment",
         "transform": "none",
         "element": {
-          "aid": "sh/zed8v6ps",
+          "aid": "sh/qh0fepkz",
           "id": "21",
           "kind": "shape"
         }
@@ -2648,7 +2648,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/oza1gvy9",
+          "aid": "sh/18jqh0fe",
           "id": "22",
           "kind": "shape"
         }
@@ -2687,7 +2687,7 @@
         "text": "Automotive",
         "transform": "none",
         "element": {
-          "aid": "sh/hk3q5o7q",
+          "aid": "sh/8nqxs72x",
           "id": "23",
           "kind": "shape"
         }
@@ -2727,7 +2727,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/65wjudg7",
+          "aid": "sh/jqh0fepk",
           "id": "24",
           "kind": "shape"
         }
@@ -2766,7 +2766,7 @@
         "text": "Tehnologie",
         "transform": "none",
         "element": {
-          "aid": "sh/zqtcj6to",
+          "aid": "sh/q5o7qpg3",
           "id": "25",
           "kind": "shape"
         }
@@ -2806,7 +2806,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/obm58z25",
+          "aid": "sh/1w7mp0bi",
           "id": "26",
           "kind": "shape"
         }
@@ -2850,7 +2850,7 @@
         "fit": "cover",
         "alt": "YUMZY mobile screen",
         "element": {
-          "aid": "im/2x4nap4r",
+          "aid": "im/z25kb6xk",
           "id": "27",
           "kind": "image"
         }
@@ -2890,7 +2890,7 @@
         "children": [],
         "geometry": "rect",
         "element": {
-          "aid": "sh/a9w3m94f",
+          "aid": "sh/ji5snelo",
           "id": "28",
           "kind": "shape"
         }
@@ -2929,7 +2929,7 @@
         "text": "YUMZY.ro",
         "transform": "none",
         "element": {
-          "aid": "sh/zupwb2hw",
+          "aid": "sh/uxc3ylc7",
           "id": "29",
           "kind": "shape"
         }
@@ -2968,7 +2968,7 @@
         "text": "04",
         "transform": "none",
         "element": {
-          "aid": "sh/l0rqd4vm",
+          "aid": "sh/4vmtwra5",
           "id": "30",
           "kind": "shape"
         }

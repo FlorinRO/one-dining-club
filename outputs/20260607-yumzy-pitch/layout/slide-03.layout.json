@@ -2,13 +2,13 @@
   "schema": "openai.presentation.layout/v4",
   "unit": "px",
   "slide": {
-    "aid": "sl/1vn1dz",
-    "id": "1vn1dz",
+    "aid": "sl/ubc6cu",
+    "id": "ubc6cu",
     "slide": 3,
-    "layoutId": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+    "layoutId": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
     "layoutName": "Title Slide",
     "layoutType": "title",
-    "masterLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+    "masterLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
     "masterLayoutName": "Master",
     "backgroundColor": "#0B0B0D",
     "frame": {
@@ -46,15 +46,15 @@
   "inheritedLayers": [
     {
       "scope": "layout",
-      "id": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+      "id": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
       "name": "Title Slide",
       "type": "title",
-      "parentLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "parentLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "elements": []
     },
     {
       "scope": "master",
-      "id": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "id": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "name": "Master",
       "type": "master",
       "elements": []
@@ -65,7 +65,7 @@
       "order": 1,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/2p8nqxs7",
+      "aid": "sh/kre1w7mp",
       "id": "1",
       "bbox": [
         70,
@@ -146,7 +146,7 @@
       "order": 2,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/9gr2p8nq",
+      "aid": "sh/val87ed8",
       "id": "2",
       "bbox": [
         70,
@@ -227,7 +227,7 @@
       "order": 3,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/gvy90je9",
+      "aid": "sh/6psfil0r",
       "id": "3",
       "bbox": [
         70,
@@ -386,7 +386,7 @@
       "order": 4,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/r2p8nqxs",
+      "aid": "sh/donyd0z6",
       "id": "4",
       "bbox": [
         70,
@@ -407,7 +407,7 @@
       "order": 5,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/2hwfyxob",
+      "aid": "sh/k3q5o7qp",
       "id": "5",
       "bbox": [
         94,
@@ -492,7 +492,7 @@
       "order": 6,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/94fu18jq",
+      "aid": "sh/vixczed8",
       "id": "6",
       "bbox": [
         362,
@@ -513,7 +513,7 @@
       "order": 7,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/kjm1cfa9",
+      "aid": "sh/2x4nap4r",
       "id": "7",
       "bbox": [
         390,
@@ -594,7 +594,7 @@
       "order": 8,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/rqd4vmtw",
+      "aid": "sh/d0z61032",
       "id": "8",
       "bbox": [
         824,
@@ -615,7 +615,7 @@
       "order": 9,
       "kind": "image",
       "scope": "slide",
-      "aid": "im/3q5o7qpg",
+      "aid": "im/d8bat47y",
       "id": "9",
       "bbox": [
         836,
@@ -641,7 +641,7 @@
         ]
       },
       "asset": {
-        "assetId": "a347d2b2-eb12-42de-abe4-444c5f844f72",
+        "assetId": "ba273f33-ce2a-4ea6-ae31-10543ecd36b1",
         "contentType": "image/png",
         "byteLength": 3275691
       }
@@ -650,7 +650,7 @@
       "order": 10,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/4fu18jqh",
+      "aid": "sh/ylc7u54z",
       "id": "10",
       "bbox": [
         70,
@@ -671,7 +671,7 @@
       "order": 11,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/x0nuxc3y",
+      "aid": "sh/r65wjudg",
       "id": "11",
       "bbox": [
         70,
@@ -749,7 +749,7 @@
       "order": 12,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/m94fu18j",
+      "aid": "sh/gr2p8nqx",
       "id": "12",
       "bbox": [
         1140,
@@ -863,7 +863,7 @@
         "text": "Agency Partner Program",
         "transform": "none",
         "element": {
-          "aid": "sh/2p8nqxs7",
+          "aid": "sh/kre1w7mp",
           "id": "1",
           "kind": "shape"
         }
@@ -902,7 +902,7 @@
         "text": "03",
         "transform": "none",
         "element": {
-          "aid": "sh/9gr2p8nq",
+          "aid": "sh/val87ed8",
           "id": "2",
           "kind": "shape"
         }
@@ -941,7 +941,7 @@
         "text": "Oferim agențiilor un nou canal media\ncare transformă conținutul video\nîn vânzări și experiențe reale.",
         "transform": "none",
         "element": {
-          "aid": "sh/gvy90je9",
+          "aid": "sh/6psfil0r",
           "id": "3",
           "kind": "shape"
         }
@@ -981,7 +981,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/r2p8nqxs",
+          "aid": "sh/donyd0z6",
           "id": "4",
           "kind": "shape"
         }
@@ -1020,7 +1020,7 @@
         "text": "Agenția gestionează relația cu clientul.",
         "transform": "none",
         "element": {
-          "aid": "sh/2hwfyxob",
+          "aid": "sh/k3q5o7qp",
           "id": "5",
           "kind": "shape"
         }
@@ -1060,7 +1060,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/94fu18jq",
+          "aid": "sh/vixczed8",
           "id": "6",
           "kind": "shape"
         }
@@ -1099,7 +1099,7 @@
         "text": "YUMZY furnizează platforma, distribuția și tehnologia.",
         "transform": "none",
         "element": {
-          "aid": "sh/kjm1cfa9",
+          "aid": "sh/2x4nap4r",
           "id": "7",
           "kind": "shape"
         }
@@ -1139,7 +1139,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/rqd4vmtw",
+          "aid": "sh/d0z61032",
           "id": "8",
           "kind": "shape"
         }
@@ -1183,7 +1183,7 @@
         "fit": "cover",
         "alt": "YUMZY mobile screen",
         "element": {
-          "aid": "im/3q5o7qpg",
+          "aid": "im/d8bat47y",
           "id": "9",
           "kind": "image"
         }
@@ -1223,7 +1223,7 @@
         "children": [],
         "geometry": "rect",
         "element": {
-          "aid": "sh/4fu18jqh",
+          "aid": "sh/ylc7u54z",
           "id": "10",
           "kind": "shape"
         }
@@ -1262,7 +1262,7 @@
         "text": "YUMZY.ro",
         "transform": "none",
         "element": {
-          "aid": "sh/x0nuxc3y",
+          "aid": "sh/r65wjudg",
           "id": "11",
           "kind": "shape"
         }
@@ -1301,7 +1301,7 @@
         "text": "03",
         "transform": "none",
         "element": {
-          "aid": "sh/m94fu18j",
+          "aid": "sh/gr2p8nqx",
           "id": "12",
           "kind": "shape"
         }

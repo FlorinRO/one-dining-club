@@ -19,6 +19,9 @@ class RestaurantCategoryAdmin(admin.ModelAdmin):
 class RestaurantAdmin(admin.ModelAdmin):
     list_display = (
         "name",
+        "entity_type",
+        "is_sponsored",
+        "sponsored_mode",
         "owner",
         "city",
         "rating",
@@ -28,7 +31,7 @@ class RestaurantAdmin(admin.ModelAdmin):
         "is_open",
         "is_active",
     )
-    list_filter = ("city", "supports_pickup", "is_open", "is_active", "categories")
+    list_filter = ("entity_type", "is_sponsored", "sponsored_mode", "city", "supports_pickup", "is_open", "is_active", "categories")
     search_fields = ("name", "description", "address", "owner__email")
     prepopulated_fields = {"slug": ("name",)}
     filter_horizontal = ("categories",)

@@ -8,6 +8,7 @@ export const ASSETS = {
   screenLogin: "/Users/florin/Desktop/IMG_3007.PNG",
   screenSushi: "/Users/florin/Desktop/IMG_3009 2.PNG",
   screenSalmon: "/Users/florin/Desktop/IMG_3002 (1).png",
+  heroLeft: "/Users/florin/Desktop/YUMZY-NEW-PREZENTATION/IMG_3084.PNG",
 };
 
 export const COLORS = {
@@ -77,6 +78,19 @@ export async function addPhone(slide, frame, assetPath, pad = 12, radius = 34) {
       height: frame.height - pad * 2,
     },
   });
+}
+
+export async function addAmbientImage(slide, frame, assetPath, overlay = "#0B0B0DD4", radius = 0) {
+  const dataUrl = await asDataUrl(assetPath);
+  slide.compose(image({
+    dataUrl,
+    fit: "cover",
+    borderRadius: radius || undefined,
+    alt: "Ambient lifestyle image",
+    width: "fill",
+    height: "fill",
+  }), { frame });
+  addRect(slide, frame, overlay, radius, { width: 0, fill: overlay });
 }
 
 export async function addLogo(slide, x = 70, y = 56) {

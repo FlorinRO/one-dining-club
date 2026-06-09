@@ -2,13 +2,13 @@
   "schema": "openai.presentation.layout/v4",
   "unit": "px",
   "slide": {
-    "aid": "sl/l32eam",
-    "id": "l32eam",
+    "aid": "sl/p20apc",
+    "id": "p20apc",
     "slide": 1,
-    "layoutId": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+    "layoutId": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
     "layoutName": "Title Slide",
     "layoutType": "title",
-    "masterLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+    "masterLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
     "masterLayoutName": "Master",
     "backgroundColor": "#0B0B0D",
     "frame": {
@@ -46,15 +46,15 @@
   "inheritedLayers": [
     {
       "scope": "layout",
-      "id": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+      "id": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
       "name": "Title Slide",
       "type": "title",
-      "parentLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "parentLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "elements": []
     },
     {
       "scope": "master",
-      "id": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "id": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "name": "Master",
       "type": "master",
       "elements": []
@@ -65,8 +65,54 @@
       "order": 1,
       "kind": "image",
       "scope": "slide",
-      "aid": "im/hcrmhk3q",
+      "aid": "im/r65wjudg",
       "id": "1",
+      "bbox": [
+        0,
+        0,
+        320,
+        720
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0"
+      },
+      "alt": "Ambient lifestyle image",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "asset": {
+        "assetId": "4ef0329e-f879-4742-90cb-0f78ef3add25",
+        "contentType": "image/png",
+        "byteLength": 3491796
+      }
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lszqtcj6",
+      "id": "2",
+      "bbox": [
+        0,
+        0,
+        320,
+        720
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "fillColor": "rgba(11, 11, 13, 0.7098)",
+      "lineColor": "rgba(11, 11, 13, 0.7098)",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/9cvixcze",
+      "id": "3",
       "bbox": [
         70,
         56,
@@ -74,24 +120,24 @@
         68
       ],
       "composeSource": {
-        "run": 1,
+        "run": 3,
         "path": "0"
       },
       "alt": "YUMZY icon",
       "contentType": "image/png",
       "imageFit": "contain",
       "asset": {
-        "assetId": "831cd38c-1716-40db-b85f-6127b1a37891",
+        "assetId": "b2f67403-c8fb-4d7a-9c4c-042e1754415b",
         "contentType": "image/png",
         "byteLength": 157702
       }
     },
     {
-      "order": 2,
+      "order": 4,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/bm58z25k",
-      "id": "2",
+      "aid": "sh/3ylc7u54",
+      "id": "4",
       "bbox": [
         148,
         66,
@@ -99,7 +145,7 @@
         40.8
       ],
       "composeSource": {
-        "run": 2,
+        "run": 4,
         "path": "0"
       },
       "geometry": "rect",
@@ -168,11 +214,11 @@
       ]
     },
     {
-      "order": 3,
+      "order": 5,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/m1cfa9w3",
-      "id": "3",
+      "aid": "sh/adsji5sn",
+      "id": "5",
       "bbox": [
         70,
         148,
@@ -180,7 +226,7 @@
         7
       ],
       "composeSource": {
-        "run": 3,
+        "run": 5,
         "path": "0"
       },
       "geometry": "roundRect",
@@ -189,11 +235,11 @@
       "lineWidth": 0
     },
     {
-      "order": 4,
+      "order": 6,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/tgfmlkjm",
-      "id": "4",
+      "aid": "sh/h4byhgn2",
+      "id": "6",
       "bbox": [
         220,
         148,
@@ -201,7 +247,7 @@
         7
       ],
       "composeSource": {
-        "run": 4,
+        "run": 6,
         "path": "0"
       },
       "geometry": "roundRect",
@@ -210,11 +256,11 @@
       "lineWidth": 0
     },
     {
-      "order": 5,
+      "order": 7,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/4vmtwra5",
-      "id": "5",
+      "aid": "sh/sji5snel",
+      "id": "7",
       "bbox": [
         70,
         182,
@@ -222,7 +268,7 @@
         26.4
       ],
       "composeSource": {
-        "run": 5,
+        "run": 7,
         "path": "0"
       },
       "geometry": "rect",
@@ -288,11 +334,11 @@
       ]
     },
     {
-      "order": 6,
+      "order": 8,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/bat47y1k",
-      "id": "6",
+      "aid": "sh/za1gvy90",
+      "id": "8",
       "bbox": [
         70,
         244,
@@ -300,7 +346,7 @@
         190.8
       ],
       "composeSource": {
-        "run": 6,
+        "run": 8,
         "path": "0"
       },
       "geometry": "rect",
@@ -490,11 +536,11 @@
       ]
     },
     {
-      "order": 7,
+      "order": 9,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/mp0bi9s3",
-      "id": "7",
+      "aid": "sh/ap4r65wj",
+      "id": "9",
       "bbox": [
         70,
         474,
@@ -502,7 +548,7 @@
         57.6
       ],
       "composeSource": {
-        "run": 7,
+        "run": 9,
         "path": "0"
       },
       "geometry": "rect",
@@ -572,11 +618,11 @@
       ]
     },
     {
-      "order": 8,
+      "order": 10,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/t83itgfm",
-      "id": "8",
+      "aid": "sh/0je9cvix",
+      "id": "10",
       "bbox": [
         800,
         58,
@@ -584,7 +630,7 @@
         610
       ],
       "composeSource": {
-        "run": 8,
+        "run": 10,
         "path": "0"
       },
       "geometry": "roundRect",
@@ -593,11 +639,11 @@
       "lineWidth": 2
     },
     {
-      "order": 9,
+      "order": 11,
       "kind": "image",
       "scope": "slide",
-      "aid": "im/hwfyxobm",
-      "id": "9",
+      "aid": "im/qpg3ex0n",
+      "id": "11",
       "bbox": [
         812,
         70,
@@ -605,7 +651,7 @@
         586
       ],
       "composeSource": {
-        "run": 9,
+        "run": 11,
         "path": "0"
       },
       "geometry": "roundRect",
@@ -622,17 +668,17 @@
         ]
       },
       "asset": {
-        "assetId": "b447933e-221b-415e-b766-15789bfe197d",
+        "assetId": "a7a2f2d1-ac64-46e7-9930-6a29b46b49d5",
         "contentType": "image/png",
         "byteLength": 3526161
       }
     },
     {
-      "order": 10,
+      "order": 12,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/u9knih4b",
-      "id": "10",
+      "aid": "sh/idonyd0z",
+      "id": "12",
       "bbox": [
         1160,
         78,
@@ -640,7 +686,7 @@
         15.6
       ],
       "composeSource": {
-        "run": 10,
+        "run": 12,
         "path": "0"
       },
       "geometry": "rect",
@@ -711,11 +757,11 @@
       ]
     },
     {
-      "order": 11,
+      "order": 13,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/judg7ads",
-      "id": "11",
+      "aid": "sh/byhgn29g",
+      "id": "13",
       "bbox": [
         70,
         680,
@@ -723,7 +769,7 @@
         1
       ],
       "composeSource": {
-        "run": 11,
+        "run": 13,
         "path": "0"
       },
       "geometry": "rect",
@@ -732,11 +778,11 @@
       "lineWidth": 0
     },
     {
-      "order": 12,
+      "order": 14,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/cfa9w3m9",
-      "id": "12",
+      "aid": "sh/0rqd4vmt",
+      "id": "14",
       "bbox": [
         70,
         688,
@@ -744,7 +790,7 @@
         13.2
       ],
       "composeSource": {
-        "run": 12,
+        "run": 14,
         "path": "0"
       },
       "geometry": "rect",
@@ -810,11 +856,11 @@
       ]
     },
     {
-      "order": 13,
+      "order": 15,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/1032lszq",
-      "id": "13",
+      "aid": "sh/tcj6tova",
+      "id": "15",
       "bbox": [
         1140,
         688,
@@ -822,7 +868,7 @@
         13.2
       ],
       "composeSource": {
-        "run": 13,
+        "run": 15,
         "path": "0"
       },
       "geometry": "rect",
@@ -897,6 +943,90 @@
     {
       "index": 1,
       "frame": {
+        "left": 0,
+        "top": 0,
+        "width": 320,
+        "height": 720
+      },
+      "root": {
+        "path": "0",
+        "kind": "image",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 0,
+          "top": 0,
+          "width": 320,
+          "height": 720
+        },
+        "children": [],
+        "source": {
+          "kind": "dataUrl"
+        },
+        "fit": "cover",
+        "alt": "Ambient lifestyle image",
+        "element": {
+          "aid": "im/r65wjudg",
+          "id": "1",
+          "kind": "image"
+        }
+      }
+    },
+    {
+      "index": 2,
+      "frame": {
+        "left": 0,
+        "top": 0,
+        "width": 320,
+        "height": 720
+      },
+      "root": {
+        "path": "0",
+        "kind": "shape",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "fill",
+            "value": 1
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 0
+        },
+        "frame": {
+          "left": 0,
+          "top": 0,
+          "width": 320,
+          "height": 720
+        },
+        "children": [],
+        "geometry": "rect",
+        "element": {
+          "aid": "sh/lszqtcj6",
+          "id": "2",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "frame": {
         "left": 70,
         "top": 56,
         "width": 62,
@@ -932,14 +1062,14 @@
         "fit": "contain",
         "alt": "YUMZY icon",
         "element": {
-          "aid": "im/hcrmhk3q",
-          "id": "1",
+          "aid": "im/9cvixcze",
+          "id": "3",
           "kind": "image"
         }
       }
     },
     {
-      "index": 2,
+      "index": 4,
       "frame": {
         "left": 148,
         "top": 66,
@@ -971,14 +1101,14 @@
         "text": "YUMZY",
         "transform": "none",
         "element": {
-          "aid": "sh/bm58z25k",
-          "id": "2",
+          "aid": "sh/3ylc7u54",
+          "id": "4",
           "kind": "shape"
         }
       }
     },
     {
-      "index": 3,
+      "index": 5,
       "frame": {
         "left": 70,
         "top": 148,
@@ -1011,14 +1141,14 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/m1cfa9w3",
-          "id": "3",
+          "aid": "sh/adsji5sn",
+          "id": "5",
           "kind": "shape"
         }
       }
     },
     {
-      "index": 4,
+      "index": 6,
       "frame": {
         "left": 220,
         "top": 148,
@@ -1051,14 +1181,14 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/tgfmlkjm",
-          "id": "4",
+          "aid": "sh/h4byhgn2",
+          "id": "6",
           "kind": "shape"
         }
       }
     },
     {
-      "index": 5,
+      "index": 7,
       "frame": {
         "left": 70,
         "top": 182,
@@ -1090,14 +1220,14 @@
         "text": "Watch. Discover. Order.",
         "transform": "none",
         "element": {
-          "aid": "sh/4vmtwra5",
-          "id": "5",
+          "aid": "sh/sji5snel",
+          "id": "7",
           "kind": "shape"
         }
       }
     },
     {
-      "index": 6,
+      "index": 8,
       "frame": {
         "left": 70,
         "top": 244,
@@ -1129,14 +1259,14 @@
         "text": "Primul ecosistem în care\nconținutul video, comerțul și\nlivrarea se întâlnesc într-o\nsingură experiență.",
         "transform": "none",
         "element": {
-          "aid": "sh/bat47y1k",
-          "id": "6",
+          "aid": "sh/za1gvy90",
+          "id": "8",
           "kind": "shape"
         }
       }
     },
     {
-      "index": 7,
+      "index": 9,
       "frame": {
         "left": 70,
         "top": 474,
@@ -1168,14 +1298,14 @@
         "text": "Food delivery în stil TikTok, unde fiecare video poate deveni instant o comandă reală.",
         "transform": "none",
         "element": {
-          "aid": "sh/mp0bi9s3",
-          "id": "7",
+          "aid": "sh/ap4r65wj",
+          "id": "9",
           "kind": "shape"
         }
       }
     },
     {
-      "index": 8,
+      "index": 10,
       "frame": {
         "left": 800,
         "top": 58,
@@ -1208,14 +1338,14 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/t83itgfm",
-          "id": "8",
+          "aid": "sh/0je9cvix",
+          "id": "10",
           "kind": "shape"
         }
       }
     },
     {
-      "index": 9,
+      "index": 11,
       "frame": {
         "left": 812,
         "top": 70,
@@ -1252,14 +1382,14 @@
         "fit": "cover",
         "alt": "YUMZY mobile screen",
         "element": {
-          "aid": "im/hwfyxobm",
-          "id": "9",
+          "aid": "im/qpg3ex0n",
+          "id": "11",
           "kind": "image"
         }
       }
     },
     {
-      "index": 10,
+      "index": 12,
       "frame": {
         "left": 1160,
         "top": 78,
@@ -1291,14 +1421,14 @@
         "text": "01",
         "transform": "none",
         "element": {
-          "aid": "sh/u9knih4b",
-          "id": "10",
+          "aid": "sh/idonyd0z",
+          "id": "12",
           "kind": "shape"
         }
       }
     },
     {
-      "index": 11,
+      "index": 13,
       "frame": {
         "left": 70,
         "top": 680,
@@ -1331,14 +1461,14 @@
         "children": [],
         "geometry": "rect",
         "element": {
-          "aid": "sh/judg7ads",
-          "id": "11",
+          "aid": "sh/byhgn29g",
+          "id": "13",
           "kind": "shape"
         }
       }
     },
     {
-      "index": 12,
+      "index": 14,
       "frame": {
         "left": 70,
         "top": 688,
@@ -1370,14 +1500,14 @@
         "text": "YUMZY.ro",
         "transform": "none",
         "element": {
-          "aid": "sh/cfa9w3m9",
-          "id": "12",
+          "aid": "sh/0rqd4vmt",
+          "id": "14",
           "kind": "shape"
         }
       }
     },
     {
-      "index": 13,
+      "index": 15,
       "frame": {
         "left": 1140,
         "top": 688,
@@ -1409,8 +1539,8 @@
         "text": "01",
         "transform": "none",
         "element": {
-          "aid": "sh/1032lszq",
-          "id": "13",
+          "aid": "sh/tcj6tova",
+          "id": "15",
           "kind": "shape"
         }
       }

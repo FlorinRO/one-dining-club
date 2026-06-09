@@ -44,6 +44,8 @@ type ProfileProductTileProps = {
 const PROFILE_COLUMNS = 3;
 const PROFILE_GAP = 2;
 const PROFILE_PRODUCT_LIMIT = 3;
+const isBrandProfile = (restaurant: Restaurant) => restaurant.entity_type === "brand";
+const isSponsoredProfile = (restaurant: Restaurant) => Boolean(restaurant.is_sponsored);
 
 const getVisibleRestaurantProducts = (products: Product[], restaurantId: number) =>
   products
@@ -155,6 +157,8 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
   const likeCount = profileProducts.reduce((total, product) => total + productViews(restaurant, product), 0);
   const restaurantHandle = `@${restaurant.slug || restaurant.name.toLowerCase().replace(/\s+/g, "")}`;
   const restaurantBackdropUri = resolveRestaurantImageUri(restaurant.logo || restaurant.cover_image, restaurant.id, restaurant);
+  const isBrand = isBrandProfile(restaurant);
+  const isSponsored = isSponsoredProfile(restaurant);
 
   const shareRestaurant = useCallback(async () => {
     await Share.share({
@@ -215,16 +219,23 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
           <RestaurantAvatarImage restaurant={restaurant} style={styles.avatar} />
         </View>
         <View style={styles.identityCopy}>
+          {isSponsored ? (
+            <View style={styles.profileBadge}>
+              <Text style={styles.profileBadgeText}>{tr("Sponsorizat", "Sponsored")}</Text>
+            </View>
+          ) : null}
           <Text style={styles.restaurantName}>{restaurant.name}</Text>
           <Text numberOfLines={1} style={styles.restaurantHandle}>{restaurantHandle}</Text>
           <Text numberOfLines={1} style={styles.restaurantMeta}>
-            {Number(restaurant.rating).toFixed(1)} ★ · {restaurant.estimated_delivery_time_min}-{restaurant.estimated_delivery_time_max} min · {money(restaurant.delivery_fee)} livrare
+            {isBrand
+              ? tr("Brand partner · produse promovate disponibile la comandă", "Partner brand · promoted products available to order")
+              : `${Number(restaurant.rating).toFixed(1)} ★ · ${restaurant.estimated_delivery_time_min}-${restaurant.estimated_delivery_time_max} min · ${money(restaurant.delivery_fee)} livrare`}
           </Text>
         </View>
       </View>
 
       <View style={styles.statsRow}>
-        <ProfileStat value={String(profileProducts.length)} label={tr("Produse", "Products")} />
+        <ProfileStat value={String(profileProducts.length)} label={tr(isBrand ? "Drop-uri" : "Produse", isBrand ? "Drops" : "Products")} />
         <ProfileStat value={compactCount(likeCount)} label={tr("Vizualizări", "Views")} />
         <ProfileStat value={Number(restaurant.rating).toFixed(1)} label={tr("Rating", "Rating")} />
       </View>
@@ -550,6 +561,22 @@ const styles = StyleSheet.create({
     width: "100%",
     gap: 3,
     alignItems: "center",
+  },
+  profileBadge: {
+    marginBottom: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.24)",
+    backgroundColor: "rgba(255,255,255,0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  profileBadgeText: {
+    color: dark.text,
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
   restaurantName: {
     color: dark.text,

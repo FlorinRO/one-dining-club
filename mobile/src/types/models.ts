@@ -21,6 +21,10 @@ export type Restaurant = {
   id: number;
   name: string;
   slug: string;
+  entity_type?: "restaurant" | "brand";
+  is_sponsored?: boolean;
+  sponsored_mode?: "native" | "external";
+  website_url?: string | null;
   description: string;
   logo?: string | null;
   cover_image?: string | null;
@@ -69,6 +73,7 @@ export type Product = {
   id: number;
   restaurant: number;
   restaurant_name?: string;
+  external_url?: string | null;
   category?: number | null;
   category_name?: string;
   name: string;

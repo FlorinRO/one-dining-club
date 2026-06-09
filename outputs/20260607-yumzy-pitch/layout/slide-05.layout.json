@@ -2,13 +2,13 @@
   "schema": "openai.presentation.layout/v4",
   "unit": "px",
   "slide": {
-    "aid": "sl/gtlapf",
-    "id": "gtlapf",
+    "aid": "sl/1lmrc3",
+    "id": "1lmrc3",
     "slide": 5,
-    "layoutId": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+    "layoutId": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
     "layoutName": "Title Slide",
     "layoutType": "title",
-    "masterLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+    "masterLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
     "masterLayoutName": "Master",
     "backgroundColor": "#0B0B0D",
     "frame": {
@@ -46,15 +46,15 @@
   "inheritedLayers": [
     {
       "scope": "layout",
-      "id": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+      "id": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
       "name": "Title Slide",
       "type": "title",
-      "parentLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "parentLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "elements": []
     },
     {
       "scope": "master",
-      "id": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "id": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "name": "Master",
       "type": "master",
       "elements": []
@@ -65,7 +65,7 @@
       "order": 1,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/kzupwb2h",
+      "aid": "sh/6tovahoz",
       "id": "1",
       "bbox": [
         70,
@@ -146,7 +146,7 @@
       "order": 2,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/re1w7mp0",
+      "aid": "sh/dg7adsji",
       "id": "2",
       "bbox": [
         70,
@@ -227,7 +227,7 @@
       "order": 3,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/2t83itgf",
+      "aid": "sh/ovahoza1",
       "id": "3",
       "bbox": [
         70,
@@ -386,7 +386,7 @@
       "order": 4,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/9w3m94fu",
+      "aid": "sh/z25kb6xk",
       "id": "4",
       "bbox": [
         70,
@@ -407,7 +407,7 @@
       "order": 5,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/kb6xkf6d",
+      "aid": "sh/6hcrmhk3",
       "id": "5",
       "bbox": [
         100,
@@ -488,7 +488,7 @@
       "order": 6,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/rqd4vmtw",
+      "aid": "sh/d8v6psfi",
       "id": "6",
       "bbox": [
         100,
@@ -686,7 +686,7 @@
       "order": 7,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/25kb6xkf",
+      "aid": "sh/onyd0z61",
       "id": "7",
       "bbox": [
         356,
@@ -771,7 +771,7 @@
       "order": 8,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/94fu18jq",
+      "aid": "sh/vy90je9c",
       "id": "8",
       "bbox": [
         824,
@@ -792,7 +792,7 @@
       "order": 9,
       "kind": "image",
       "scope": "slide",
-      "aid": "im/pg3ex0nu",
+      "aid": "im/vixczed8",
       "id": "9",
       "bbox": [
         836,
@@ -818,7 +818,7 @@
         ]
       },
       "asset": {
-        "assetId": "373a1d09-acd0-42bd-919e-0bde0ff7c9a6",
+        "assetId": "d1d2fedd-d334-4632-8439-9f713fff5af9",
         "contentType": "image/png",
         "byteLength": 3526161
       }
@@ -827,7 +827,7 @@
       "order": 10,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/mlkjm1cf",
+      "aid": "sh/4zidonyd",
       "id": "10",
       "bbox": [
         70,
@@ -848,7 +848,7 @@
       "order": 11,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/f6dcbulw",
+      "aid": "sh/xkf6dcbu",
       "id": "11",
       "bbox": [
         70,
@@ -926,7 +926,7 @@
       "order": 12,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/4r65wjud",
+      "aid": "sh/mtwra5gb",
       "id": "12",
       "bbox": [
         1140,
@@ -1040,7 +1040,7 @@
         "text": "De ce este diferit?",
         "transform": "none",
         "element": {
-          "aid": "sh/kzupwb2h",
+          "aid": "sh/6tovahoz",
           "id": "1",
           "kind": "shape"
         }
@@ -1079,7 +1079,7 @@
         "text": "05",
         "transform": "none",
         "element": {
-          "aid": "sh/re1w7mp0",
+          "aid": "sh/dg7adsji",
           "id": "2",
           "kind": "shape"
         }
@@ -1118,7 +1118,7 @@
         "text": "YUMZY este un nou canal de media și eCommerce\nunde reclamele video devin vânzări\nși experiențe livrate consumatorului.",
         "transform": "none",
         "element": {
-          "aid": "sh/2t83itgf",
+          "aid": "sh/ovahoza1",
           "id": "3",
           "kind": "shape"
         }
@@ -1158,7 +1158,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/9w3m94fu",
+          "aid": "sh/z25kb6xk",
           "id": "4",
           "kind": "shape"
         }
@@ -1197,7 +1197,7 @@
         "text": "Agențiile pot activa campanii prin:",
         "transform": "none",
         "element": {
-          "aid": "sh/kb6xkf6d",
+          "aid": "sh/6hcrmhk3",
           "id": "5",
           "kind": "shape"
         }
@@ -1236,7 +1236,7 @@
         "text": "• video ads\n• product placement\n• lansări exclusive\n• sampling prin livrare",
         "transform": "none",
         "element": {
-          "aid": "sh/rqd4vmtw",
+          "aid": "sh/d8v6psfi",
           "id": "6",
           "kind": "shape"
         }
@@ -1275,7 +1275,7 @@
         "text": "Fiecare campanie devine conversie reală și experiență de brand.",
         "transform": "none",
         "element": {
-          "aid": "sh/25kb6xkf",
+          "aid": "sh/onyd0z61",
           "id": "7",
           "kind": "shape"
         }
@@ -1315,7 +1315,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/94fu18jq",
+          "aid": "sh/vy90je9c",
           "id": "8",
           "kind": "shape"
         }
@@ -1359,7 +1359,7 @@
         "fit": "cover",
         "alt": "YUMZY mobile screen",
         "element": {
-          "aid": "im/pg3ex0nu",
+          "aid": "im/vixczed8",
           "id": "9",
           "kind": "image"
         }
@@ -1399,7 +1399,7 @@
         "children": [],
         "geometry": "rect",
         "element": {
-          "aid": "sh/mlkjm1cf",
+          "aid": "sh/4zidonyd",
           "id": "10",
           "kind": "shape"
         }
@@ -1438,7 +1438,7 @@
         "text": "YUMZY.ro",
         "transform": "none",
         "element": {
-          "aid": "sh/f6dcbulw",
+          "aid": "sh/xkf6dcbu",
           "id": "11",
           "kind": "shape"
         }
@@ -1477,7 +1477,7 @@
         "text": "05",
         "transform": "none",
         "element": {
-          "aid": "sh/4r65wjud",
+          "aid": "sh/mtwra5gb",
           "id": "12",
           "kind": "shape"
         }

@@ -40,6 +40,7 @@ import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDi
 import { useI18n } from "../i18n/useI18n";
 import { deliveryWindow, money } from "../lib/format";
 import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
+import { buildSponsoredFeed } from "../lib/sponsoredFeed";
 import { SearchStackParamList } from "../navigation/types";
 import { useFavoritesStore } from "../store/favoritesStore";
 import { Product, Restaurant } from "../types/models";
@@ -59,7 +60,6 @@ type DiscoveryCategory = {
   iconBackground: string;
 };
 
-const FEED_RESTAURANT_LIMIT = 12;
 const FEED_PRODUCT_LIMIT = 3;
 const SCREEN_EDGE_GUTTER = 14;
 
@@ -372,7 +372,7 @@ export function SearchScreen() {
       try {
         const feedRestaurants = await restaurantsApi.list({ ordering: "-rating" });
         const openRestaurants = feedRestaurants.filter((restaurant) => restaurant.is_open !== false);
-        const visibleRestaurants = openRestaurants.slice(0, FEED_RESTAURANT_LIMIT);
+        const visibleRestaurants = buildSponsoredFeed(openRestaurants);
         const productEntries = await Promise.all(
           visibleRestaurants.map(async (restaurant) => {
             const restaurantProducts = (await restaurantsApi.products(restaurant.id))

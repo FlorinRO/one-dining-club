@@ -2,13 +2,13 @@
   "schema": "openai.presentation.layout/v4",
   "unit": "px",
   "slide": {
-    "aid": "sl/58osei",
-    "id": "58osei",
+    "aid": "sl/pragwt",
+    "id": "pragwt",
     "slide": 2,
-    "layoutId": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+    "layoutId": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
     "layoutName": "Title Slide",
     "layoutType": "title",
-    "masterLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+    "masterLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
     "masterLayoutName": "Master",
     "backgroundColor": "#0B0B0D",
     "frame": {
@@ -46,15 +46,15 @@
   "inheritedLayers": [
     {
       "scope": "layout",
-      "id": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+      "id": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
       "name": "Title Slide",
       "type": "title",
-      "parentLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "parentLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "elements": []
     },
     {
       "scope": "master",
-      "id": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "id": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "name": "Master",
       "type": "master",
       "elements": []
@@ -65,7 +65,7 @@
       "order": 1,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/9knih4by",
+      "aid": "sh/tgfmlkjm",
       "id": "1",
       "bbox": [
         70,
@@ -146,7 +146,7 @@
       "order": 2,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/2t83itgf",
+      "aid": "sh/mp0bi9s3",
       "id": "2",
       "bbox": [
         70,
@@ -227,7 +227,7 @@
       "order": 3,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/re1w7mp0",
+      "aid": "sh/bat47y1k",
       "id": "3",
       "bbox": [
         70,
@@ -386,7 +386,7 @@
       "order": 4,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/kb6xkf6d",
+      "aid": "sh/47y1kre1",
       "id": "4",
       "bbox": [
         70,
@@ -464,7 +464,7 @@
       "order": 5,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/9w3m94fu",
+      "aid": "sh/tsvu9kni",
       "id": "5",
       "bbox": [
         70,
@@ -485,7 +485,7 @@
       "order": 6,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/25kb6xkf",
+      "aid": "sh/m1cfa9w3",
       "id": "6",
       "bbox": [
         90,
@@ -566,7 +566,7 @@
       "order": 7,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/rqd4vmtw",
+      "aid": "sh/bm58z25k",
       "id": "7",
       "bbox": [
         90,
@@ -647,7 +647,7 @@
       "order": 8,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/kjm1cfa9",
+      "aid": "sh/4byhgn29",
       "id": "8",
       "bbox": [
         254,
@@ -668,7 +668,7 @@
       "order": 9,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/94fu18jq",
+      "aid": "sh/twra5gbq",
       "id": "9",
       "bbox": [
         274,
@@ -749,7 +749,7 @@
       "order": 10,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/1orytsvu",
+      "aid": "sh/1cfa9w3m",
       "id": "10",
       "bbox": [
         274,
@@ -830,7 +830,7 @@
       "order": 11,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/c7u54zid",
+      "aid": "sh/crmhk3q5",
       "id": "11",
       "bbox": [
         438,
@@ -851,7 +851,7 @@
       "order": 12,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/jm1cfa9w",
+      "aid": "sh/j6tovaho",
       "id": "12",
       "bbox": [
         458,
@@ -932,7 +932,7 @@
       "order": 13,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/u18jqh0f",
+      "aid": "sh/ulwval87",
       "id": "13",
       "bbox": [
         458,
@@ -1013,7 +1013,7 @@
       "order": 14,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/1032lszq",
+      "aid": "sh/1kre1w7m",
       "id": "14",
       "bbox": [
         750,
@@ -1034,7 +1034,7 @@
       "order": 15,
       "kind": "image",
       "scope": "slide",
-      "aid": "im/3q5o7qpg",
+      "aid": "im/bq1oryts",
       "id": "15",
       "bbox": [
         760,
@@ -1060,7 +1060,7 @@
         ]
       },
       "asset": {
-        "assetId": "39ef7e60-17cc-4633-ae0b-8f2a2c4b72aa",
+        "assetId": "bf009fe1-3322-455b-aaca-5ee3d4bd052e",
         "contentType": "image/png",
         "byteLength": 3505489
       }
@@ -1069,7 +1069,7 @@
       "order": 16,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/judg7ads",
+      "aid": "sh/ji5snelo",
       "id": "16",
       "bbox": [
         970,
@@ -1090,7 +1090,7 @@
       "order": 17,
       "kind": "image",
       "scope": "slide",
-      "aid": "im/lwval87e",
+      "aid": "im/twra5gbq",
       "id": "17",
       "bbox": [
         980,
@@ -1116,7 +1116,7 @@
         ]
       },
       "asset": {
-        "assetId": "2c5f3a05-095d-4eb9-a1ea-253cec8023bd",
+        "assetId": "ea124f0c-fa58-4a8e-bc34-d23f74774b8e",
         "contentType": "image/png",
         "byteLength": 3473688
       }
@@ -1125,7 +1125,7 @@
       "order": 18,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/54zidony",
+      "aid": "sh/1w7mp0bi",
       "id": "18",
       "bbox": [
         70,
@@ -1146,7 +1146,7 @@
       "order": 19,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/cj6tovah",
+      "aid": "sh/8bat47y1",
       "id": "19",
       "bbox": [
         70,
@@ -1224,7 +1224,7 @@
       "order": 20,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/crmhk3q5",
+      "aid": "sh/o7qpg3ex",
       "id": "20",
       "bbox": [
         1140,
@@ -1338,7 +1338,7 @@
         "text": "Cine suntem?",
         "transform": "none",
         "element": {
-          "aid": "sh/9knih4by",
+          "aid": "sh/tgfmlkjm",
           "id": "1",
           "kind": "shape"
         }
@@ -1377,7 +1377,7 @@
         "text": "02",
         "transform": "none",
         "element": {
-          "aid": "sh/2t83itgf",
+          "aid": "sh/mp0bi9s3",
           "id": "2",
           "kind": "shape"
         }
@@ -1416,7 +1416,7 @@
         "text": "Un start-up de tehnologie și food delivery\nși prima platformă din Europa care transformă\nconținutul video în comenzi reale.",
         "transform": "none",
         "element": {
-          "aid": "sh/re1w7mp0",
+          "aid": "sh/bat47y1k",
           "id": "3",
           "kind": "shape"
         }
@@ -1455,7 +1455,7 @@
         "text": "Utilizatorii descoperă produse prin videoclipuri și le pot comanda instant, direct din experiența video, cu livrare rapidă la ușă.",
         "transform": "none",
         "element": {
-          "aid": "sh/kb6xkf6d",
+          "aid": "sh/47y1kre1",
           "id": "4",
           "kind": "shape"
         }
@@ -1495,7 +1495,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/9w3m94fu",
+          "aid": "sh/tsvu9kni",
           "id": "5",
           "kind": "shape"
         }
@@ -1534,7 +1534,7 @@
         "text": "Video-first",
         "transform": "none",
         "element": {
-          "aid": "sh/25kb6xkf",
+          "aid": "sh/m1cfa9w3",
           "id": "6",
           "kind": "shape"
         }
@@ -1573,7 +1573,7 @@
         "text": "descoperire",
         "transform": "none",
         "element": {
-          "aid": "sh/rqd4vmtw",
+          "aid": "sh/bm58z25k",
           "id": "7",
           "kind": "shape"
         }
@@ -1613,7 +1613,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/kjm1cfa9",
+          "aid": "sh/4byhgn29",
           "id": "8",
           "kind": "shape"
         }
@@ -1652,7 +1652,7 @@
         "text": "Instant",
         "transform": "none",
         "element": {
-          "aid": "sh/94fu18jq",
+          "aid": "sh/twra5gbq",
           "id": "9",
           "kind": "shape"
         }
@@ -1691,7 +1691,7 @@
         "text": "checkout",
         "transform": "none",
         "element": {
-          "aid": "sh/1orytsvu",
+          "aid": "sh/1cfa9w3m",
           "id": "10",
           "kind": "shape"
         }
@@ -1731,7 +1731,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/c7u54zid",
+          "aid": "sh/crmhk3q5",
           "id": "11",
           "kind": "shape"
         }
@@ -1770,7 +1770,7 @@
         "text": "Rapid",
         "transform": "none",
         "element": {
-          "aid": "sh/jm1cfa9w",
+          "aid": "sh/j6tovaho",
           "id": "12",
           "kind": "shape"
         }
@@ -1809,7 +1809,7 @@
         "text": "livrare",
         "transform": "none",
         "element": {
-          "aid": "sh/u18jqh0f",
+          "aid": "sh/ulwval87",
           "id": "13",
           "kind": "shape"
         }
@@ -1849,7 +1849,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/1032lszq",
+          "aid": "sh/1kre1w7m",
           "id": "14",
           "kind": "shape"
         }
@@ -1893,7 +1893,7 @@
         "fit": "cover",
         "alt": "YUMZY mobile screen",
         "element": {
-          "aid": "im/3q5o7qpg",
+          "aid": "im/bq1oryts",
           "id": "15",
           "kind": "image"
         }
@@ -1933,7 +1933,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/judg7ads",
+          "aid": "sh/ji5snelo",
           "id": "16",
           "kind": "shape"
         }
@@ -1977,7 +1977,7 @@
         "fit": "cover",
         "alt": "YUMZY mobile screen",
         "element": {
-          "aid": "im/lwval87e",
+          "aid": "im/twra5gbq",
           "id": "17",
           "kind": "image"
         }
@@ -2017,7 +2017,7 @@
         "children": [],
         "geometry": "rect",
         "element": {
-          "aid": "sh/54zidony",
+          "aid": "sh/1w7mp0bi",
           "id": "18",
           "kind": "shape"
         }
@@ -2056,7 +2056,7 @@
         "text": "YUMZY.ro",
         "transform": "none",
         "element": {
-          "aid": "sh/cj6tovah",
+          "aid": "sh/8bat47y1",
           "id": "19",
           "kind": "shape"
         }
@@ -2095,7 +2095,7 @@
         "text": "02",
         "transform": "none",
         "element": {
-          "aid": "sh/crmhk3q5",
+          "aid": "sh/o7qpg3ex",
           "id": "20",
           "kind": "shape"
         }

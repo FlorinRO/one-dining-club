@@ -2,13 +2,13 @@
   "schema": "openai.presentation.layout/v4",
   "unit": "px",
   "slide": {
-    "aid": "sl/w2ammw",
-    "id": "w2ammw",
+    "aid": "sl/qy1jiy",
+    "id": "qy1jiy",
     "slide": 7,
-    "layoutId": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+    "layoutId": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
     "layoutName": "Title Slide",
     "layoutType": "title",
-    "masterLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+    "masterLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
     "masterLayoutName": "Master",
     "backgroundColor": "#0B0B0D",
     "frame": {
@@ -46,15 +46,15 @@
   "inheritedLayers": [
     {
       "scope": "layout",
-      "id": "68eb9c8c-ec9b-41da-871f-ebbc2fa21e5e",
+      "id": "8487c72c-d1d5-4adb-a9f0-52189382cf2e",
       "name": "Title Slide",
       "type": "title",
-      "parentLayoutId": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "parentLayoutId": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "elements": []
     },
     {
       "scope": "master",
-      "id": "fa35353a-fdc8-432f-988f-bc236304d9ed",
+      "id": "962cdf2f-9a96-4226-9626-655f2b5dc74b",
       "name": "Master",
       "type": "master",
       "elements": []
@@ -65,7 +65,7 @@
       "order": 1,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/jqh0fepk",
+      "aid": "sh/jm1cfa9w",
       "id": "1",
       "bbox": [
         70,
@@ -146,7 +146,7 @@
       "order": 2,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/8bat47y1",
+      "aid": "sh/c7u54zid",
       "id": "2",
       "bbox": [
         70,
@@ -227,7 +227,7 @@
       "order": 3,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/1w7mp0bi",
+      "aid": "sh/1orytsvu",
       "id": "3",
       "bbox": [
         70,
@@ -308,7 +308,7 @@
       "order": 4,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/qh0fepkz",
+      "aid": "sh/u9knih4b",
       "id": "4",
       "bbox": [
         70,
@@ -317,7 +317,7 @@
         54.72
       ],
       "composeSource": {
-        "run": 11,
+        "run": 4,
         "path": "0"
       },
       "geometry": "rect",
@@ -390,7 +390,7 @@
       "order": 5,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/j2t83itg",
+      "aid": "sh/judg7ads",
       "id": "5",
       "bbox": [
         70,
@@ -411,7 +411,7 @@
       "order": 6,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/8nqxs72x",
+      "aid": "sh/cfa9w3m9",
       "id": "6",
       "bbox": [
         104,
@@ -420,7 +420,7 @@
         40.8
       ],
       "composeSource": {
-        "run": 13,
+        "run": 6,
         "path": "0"
       },
       "geometry": "rect",
@@ -492,7 +492,7 @@
       "order": 7,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/18jqh0fe",
+      "aid": "sh/1032lszq",
       "id": "7",
       "bbox": [
         104,
@@ -501,7 +501,7 @@
         25.92
       ],
       "composeSource": {
-        "run": 12,
+        "run": 7,
         "path": "0"
       },
       "geometry": "rect",
@@ -570,7 +570,7 @@
       "order": 8,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/ulwval87",
+      "aid": "sh/udg7adsj",
       "id": "8",
       "bbox": [
         104,
@@ -870,7 +870,7 @@
       "order": 9,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/j6tovaho",
+      "aid": "sh/nyd0z610",
       "id": "9",
       "bbox": [
         840,
@@ -891,7 +891,7 @@
       "order": 10,
       "kind": "image",
       "scope": "slide",
-      "aid": "im/onyd0z61",
+      "aid": "im/cfa9w3m9",
       "id": "10",
       "bbox": [
         852,
@@ -917,7 +917,7 @@
         ]
       },
       "asset": {
-        "assetId": "f50a4941-86e0-4867-8e35-38c2c9cdb4de",
+        "assetId": "1e694f59-9b24-4298-9371-3acaa62aa41a",
         "contentType": "image/png",
         "byteLength": 3275691
       }
@@ -926,7 +926,7 @@
       "order": 11,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/qh0fepkz",
+      "aid": "sh/2lszqtcj",
       "id": "11",
       "bbox": [
         70,
@@ -947,7 +947,7 @@
       "order": 12,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/18jqh0fe",
+      "aid": "sh/d8bat47y",
       "id": "12",
       "bbox": [
         70,
@@ -1025,7 +1025,7 @@
       "order": 13,
       "kind": "shape",
       "scope": "slide",
-      "aid": "sh/8nqxs72x",
+      "aid": "sh/knih4byh",
       "id": "13",
       "bbox": [
         1140,
@@ -1139,7 +1139,7 @@
         "text": "Launch Partner",
         "transform": "none",
         "element": {
-          "aid": "sh/jqh0fepk",
+          "aid": "sh/jm1cfa9w",
           "id": "1",
           "kind": "shape"
         }
@@ -1178,7 +1178,7 @@
         "text": "07",
         "transform": "none",
         "element": {
-          "aid": "sh/8bat47y1",
+          "aid": "sh/c7u54zid",
           "id": "2",
           "kind": "shape"
         }
@@ -1217,7 +1217,7 @@
         "text": "YUMZY este un nou canal media pe care agențiile îl pot activa lunar pentru clienții lor.",
         "transform": "none",
         "element": {
-          "aid": "sh/1w7mp0bi",
+          "aid": "sh/1orytsvu",
           "id": "3",
           "kind": "shape"
         }
@@ -1256,7 +1256,7 @@
         "text": "Combină video ads, product placement și experiențe reale livrate consumatorului.",
         "transform": "none",
         "element": {
-          "aid": "sh/qh0fepkz",
+          "aid": "sh/u9knih4b",
           "id": "4",
           "kind": "shape"
         }
@@ -1296,7 +1296,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/j2t83itg",
+          "aid": "sh/judg7ads",
           "id": "5",
           "kind": "shape"
         }
@@ -1335,7 +1335,7 @@
         "text": "€2.500 / lună",
         "transform": "none",
         "element": {
-          "aid": "sh/8nqxs72x",
+          "aid": "sh/cfa9w3m9",
           "id": "6",
           "kind": "shape"
         }
@@ -1374,7 +1374,7 @@
         "text": "Pentru brandurile care vor să fie printre primii parteneri ai platformei.",
         "transform": "none",
         "element": {
-          "aid": "sh/18jqh0fe",
+          "aid": "sh/1032lszq",
           "id": "7",
           "kind": "shape"
         }
@@ -1413,7 +1413,7 @@
         "text": "• 1 campanie activă în YUMZY\n• Video Ads în feed\n• Product Placement în conținut video\n• Sponsored Products\n• Raportare campanie\n• Suport dedicat\n• Menționare în comunicările YUMZY",
         "transform": "none",
         "element": {
-          "aid": "sh/ulwval87",
+          "aid": "sh/udg7adsj",
           "id": "8",
           "kind": "shape"
         }
@@ -1453,7 +1453,7 @@
         "children": [],
         "geometry": "roundRect",
         "element": {
-          "aid": "sh/j6tovaho",
+          "aid": "sh/nyd0z610",
           "id": "9",
           "kind": "shape"
         }
@@ -1497,7 +1497,7 @@
         "fit": "cover",
         "alt": "YUMZY mobile screen",
         "element": {
-          "aid": "im/onyd0z61",
+          "aid": "im/cfa9w3m9",
           "id": "10",
           "kind": "image"
         }
@@ -1537,7 +1537,7 @@
         "children": [],
         "geometry": "rect",
         "element": {
-          "aid": "sh/qh0fepkz",
+          "aid": "sh/2lszqtcj",
           "id": "11",
           "kind": "shape"
         }
@@ -1576,7 +1576,7 @@
         "text": "YUMZY.ro",
         "transform": "none",
         "element": {
-          "aid": "sh/18jqh0fe",
+          "aid": "sh/d8bat47y",
           "id": "12",
           "kind": "shape"
         }
@@ -1615,7 +1615,7 @@
         "text": "07",
         "transform": "none",
         "element": {
-          "aid": "sh/8nqxs72x",
+          "aid": "sh/knih4byh",
           "id": "13",
           "kind": "shape"
         }
