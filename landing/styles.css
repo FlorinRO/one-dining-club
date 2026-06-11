@@ -410,7 +410,7 @@ h1 {
 
 .phone-stage {
   position: relative;
-  min-height: clamp(410px, 41vw, 580px);
+  min-height: clamp(335px, 33vw, 470px);
   display: grid;
   place-items: start end;
   padding-top: 0;
@@ -443,7 +443,7 @@ h1 {
 
 .phone-frame {
   position: relative;
-  width: min(clamp(300px, 25vw, 370px), 100%);
+  width: min(clamp(240px, 19vw, 295px), 100%);
   aspect-ratio: 71.5 / 146.6;
   padding: 8px;
   min-height: 0;
@@ -880,13 +880,13 @@ h1 {
   }
 
   .phone-stage {
-    min-height: clamp(320px, 62vw, 420px);
+    min-height: clamp(270px, 50vw, 340px);
     margin-top: 0;
     place-items: center;
   }
 
   .phone-frame {
-    width: min(255px, 100%);
+    width: min(215px, 100%);
     transform: scale(0.9);
   }
 
@@ -930,11 +930,11 @@ h1 {
   }
 
   .phone-stage {
-    min-height: clamp(380px, 38vw, 500px);
+    min-height: clamp(310px, 30vw, 390px);
   }
 
   .phone-frame {
-    width: min(clamp(280px, 24vw, 340px), 100%);
+    width: min(clamp(220px, 18vw, 270px), 100%);
   }
 }
 
@@ -1137,13 +1137,13 @@ h1 {
   }
 
   .phone-stage {
-    min-height: clamp(400px, 112vw, 500px);
+    min-height: clamp(330px, 92vw, 420px);
     padding-top: 6px;
     transform-origin: top center;
   }
 
   .phone-frame {
-    width: min(clamp(255px, 76vw, 320px), 100%);
+    width: min(clamp(205px, 61vw, 250px), 100%);
     border-radius: 42px;
     transform: none;
   }
@@ -1232,11 +1232,11 @@ h1 {
   }
 
   .phone-stage {
-    min-height: 360px;
+    min-height: 290px;
   }
 
   .phone-frame {
-    width: min(250px, 100%);
+    width: min(195px, 100%);
   }
 }
 
