@@ -149,3 +149,9 @@ infoModal?.addEventListener("click", (event) => {
     infoModal.close();
   }
 });
+
+const footer = document.querySelector(".site-footer");
+
+if (footer) {
+  footer.classList.add("is-visible");
+}

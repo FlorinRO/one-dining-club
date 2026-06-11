@@ -15,10 +15,11 @@
   --radius-xl: 34px;
   --radius-lg: 24px;
   --radius-md: 16px;
-  --max: 1360px;
-  --shell-gutter: clamp(16px, 3vw, 36px);
-  --hero-gap: clamp(24px, 3vw, 56px);
-  --hero-top-offset: clamp(18px, 3vh, 32px);
+  --max: 1280px;
+  --shell-gutter: clamp(18px, 3vw, 42px);
+  --hero-gap: clamp(28px, 3vw, 52px);
+  --hero-top-offset: clamp(52px, 7vh, 84px);
+  --hero-min-height-offset: clamp(118px, 16vh, 176px);
 }
 
 * {
@@ -32,13 +33,15 @@
 }
 
 html {
-  scroll-behavior: smooth;
   width: 100%;
   max-width: 100%;
+  height: 100%;
   min-height: 100%;
   overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
   overflow-x: hidden;
   overflow-x: clip;
+  overflow-y: hidden;
   background: #070807;
 }
 
@@ -47,14 +50,17 @@ body {
   margin: 0;
   width: 100%;
   max-width: 100%;
+  height: var(--app-height);
   min-height: var(--app-height);
   color: var(--ink);
   font-family: Sora, Avenir Next, Montserrat, Trebuchet MS, sans-serif;
   background: transparent;
   overflow-x: hidden;
   overflow-x: clip;
+  overflow-y: hidden;
   overscroll-behavior-x: none;
-  touch-action: pan-y pinch-zoom;
+  overscroll-behavior-y: none;
+  touch-action: pinch-zoom;
 }
 
 @media (max-width: 560px) {
@@ -128,8 +134,14 @@ input {
   width: min(100% - (var(--shell-gutter) * 2), var(--max));
   max-width: 100%;
   margin: 0 auto;
+  height: var(--app-height);
   min-height: var(--app-height);
-  padding: 0 0 clamp(18px, 2.8vh, 28px);
+  padding: 0;
+}
+
+main {
+  display: flex;
+  min-height: 0;
 }
 
 .top-logo {
@@ -138,13 +150,8 @@ input {
   display: flex;
   align-items: center;
   margin-top: 0;
-  margin-bottom: clamp(14px, 2.6vh, 28px);
+  margin-bottom: clamp(8px, 1.6vh, 16px);
   transform: none;
-}
-
-main {
-  display: flex;
-  min-height: 0;
 }
 
 .nav {
@@ -180,7 +187,7 @@ main {
 }
 
 .brand-large .logo-word {
-  font-size: 40px;
+  font-size: 42px;
 }
 
 .brand-large .logo-line i,
@@ -189,7 +196,7 @@ main {
 }
 
 .brand-large .logo-line i {
-  width: 108px;
+  width: 112px;
 }
 
 .brand-large .logo-line b {
@@ -264,12 +271,11 @@ main {
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.02fr) minmax(320px, clamp(360px, 32vw, 440px));
+  grid-template-columns: minmax(0, 1.12fr) minmax(320px, clamp(360px, 28vw, 460px));
   align-items: center;
   gap: var(--hero-gap);
-  flex: 1;
-  min-height: 0;
-  padding: clamp(4px, 1vh, 10px) 0;
+  min-height: calc(var(--app-height) - var(--hero-min-height-offset));
+  padding: 0;
   transform: none;
   overflow: visible;
 }
@@ -286,8 +292,12 @@ main:has(.hero.section-grid),
   overflow: visible;
 }
 
+#hero-title br {
+  display: block;
+}
+
 .eyebrow {
-  margin: 0 0 10px;
+  margin: 0 0 14px;
   color: var(--green);
   font-size: 13px;
   font-weight: 600;
@@ -308,42 +318,42 @@ p {
 }
 
 h1 {
-  max-width: 760px;
+  max-width: 860px;
   margin-left: 0;
   margin-right: 0;
-  margin-bottom: 18px;
-  font-size: clamp(2.3rem, 4vw, 4.7rem);
+  margin-bottom: 22px;
+  font-size: clamp(2.35rem, 4vw, 5rem);
   font-weight: 600;
-  line-height: 0.92;
+  line-height: 0.9;
   letter-spacing: -0.08em;
 }
 
 .hero-lead {
-  max-width: 620px;
+  max-width: 700px;
   margin-left: 0;
   margin-right: 0;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
   color: var(--muted);
-  font-size: clamp(1rem, 1.6vw, 1.15rem);
-  line-height: 1.55;
+  font-size: clamp(1.08rem, 1.35vw, 1.28rem);
+  line-height: 1.52;
 }
 
 .hero-actions {
   display: flex;
   justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 14px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 16px;
   overflow: visible;
 }
 
 .hero-subtext {
-  max-width: 420px;
+  max-width: 520px;
   margin: 0;
   color: rgba(255, 255, 255, 0.88);
-  font-size: 0.94rem;
+  font-size: 1rem;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .button {
@@ -352,18 +362,18 @@ h1 {
 }
 
 .hero-actions .button {
-  min-height: 54px;
-  min-width: 204px;
+  min-height: 58px;
+  min-width: 220px;
   padding: 0 22px;
-  border-radius: 12px;
+  border-radius: 16px;
   font-weight: 600;
-  font-size: 0.96rem;
-  gap: 12px;
+  font-size: 1rem;
+  gap: 14px;
 }
 
 .apple-logo {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   fill: currentColor;
   flex: 0 0 auto;
 }
@@ -400,11 +410,13 @@ h1 {
 
 .phone-stage {
   position: relative;
-  min-height: clamp(400px, 42vw, 560px);
+  min-height: clamp(410px, 41vw, 580px);
   display: grid;
-  place-items: start center;
+  place-items: start end;
   padding-top: 0;
-  margin-top: clamp(-48px, -2vw, -12px);
+  margin-top: clamp(-28px, -1.6vw, -4px);
+  transform: scale(1);
+  transform-origin: top right;
   overflow: visible;
 }
 
@@ -431,7 +443,7 @@ h1 {
 
 .phone-frame {
   position: relative;
-  width: min(clamp(280px, 24vw, 360px), 100%);
+  width: min(clamp(300px, 25vw, 370px), 100%);
   aspect-ratio: 71.5 / 146.6;
   padding: 8px;
   min-height: 0;
@@ -441,7 +453,7 @@ h1 {
     0 60px 120px rgba(0, 0, 0, 0.2),
     0 20px 40px rgba(0, 0, 0, 0.15),
     inset 0 1px 1px rgba(255, 255, 255, 0.12);
-  transform: scale(0.92);
+  transform: scale(1);
   transform-origin: top center;
   overflow: visible;
   isolation: isolate;
@@ -847,22 +859,35 @@ h1 {
     grid-template-columns: 1fr;
   }
 
+  .site-footer {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    margin-top: 18px;
+    padding: 0;
+  }
+
+  .footer-links {
+    gap: 12px 22px;
+    font-size: 0.78rem;
+  }
+
   .hero {
     gap: 30px;
     min-height: auto;
-    padding-top: 10px;
-    padding-bottom: 0;
+    padding-top: 8px;
   }
 
   .phone-stage {
-    min-height: clamp(420px, 72vw, 560px);
+    min-height: clamp(320px, 62vw, 420px);
     margin-top: 0;
     place-items: center;
   }
 
   .phone-frame {
-    width: min(clamp(292px, 50vw, 360px), 100%);
-    transform: scale(0.93);
+    width: min(255px, 100%);
+    transform: scale(0.9);
   }
 
   .step-grid,
@@ -892,12 +917,12 @@ h1 {
 
 @media (min-width: 921px) and (max-width: 1180px) {
   .hero {
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 35vw);
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 32vw);
   }
 
   h1 {
     max-width: 680px;
-    font-size: clamp(2.5rem, 4vw, 4.1rem);
+    font-size: clamp(2.2rem, 3.3vw, 3.9rem);
   }
 
   .hero-lead {
@@ -905,84 +930,80 @@ h1 {
   }
 
   .phone-stage {
-    min-height: clamp(390px, 38vw, 500px);
+    min-height: clamp(380px, 38vw, 500px);
   }
 
   .phone-frame {
-    width: min(clamp(260px, 25vw, 320px), 100%);
+    width: min(clamp(280px, 24vw, 340px), 100%);
   }
 }
 
 @media (min-width: 1440px) {
   :root {
-    --max: 1480px;
+    --max: 1180px;
   }
 
   .hero-copy {
-    padding-right: clamp(0px, 1.4vw, 18px);
+    padding-right: clamp(0px, 1vw, 12px);
   }
 
   .phone-stage {
-    min-height: clamp(460px, 34vw, 640px);
+    min-height: clamp(300px, 26vw, 420px);
   }
 }
 
 @media (min-width: 1920px) {
   :root {
-    --max: 1620px;
+    --max: 1220px;
   }
 
   h1 {
-    max-width: 880px;
-    font-size: clamp(3.4rem, 4vw, 5.6rem);
+    max-width: 620px;
+    font-size: clamp(2.35rem, 2.5vw, 3.8rem);
   }
 
   .hero-lead {
-    max-width: 680px;
-    font-size: clamp(1.08rem, 1.35vw, 1.34rem);
+    max-width: 500px;
+    font-size: clamp(0.98rem, 0.88vw, 1.02rem);
   }
 
   .phone-frame {
-    width: min(clamp(320px, 21vw, 420px), 100%);
+    width: min(clamp(300px, 19vw, 380px), 100%);
   }
 }
 
-@media (max-height: 900px) and (min-width: 921px) {
+@media (max-height: 820px) and (min-width: 921px) {
   .top-logo {
-    top: 14px !important;
-    margin-bottom: 12px;
+    top: 24px !important;
+    margin-bottom: 6px;
   }
 
   .hero {
-    align-items: start;
-  }
-
-  .phone-stage {
-    min-height: clamp(340px, 32vw, 430px);
-    margin-top: 0;
+    min-height: calc(var(--app-height) - 98px);
+    align-items: center;
   }
 
   h1 {
     margin-bottom: 14px;
-    font-size: clamp(2.1rem, 3.4vw, 4rem);
+    font-size: clamp(1.8rem, 2.9vw, 3.2rem);
   }
 
   .hero-lead {
-    margin-bottom: 18px;
-    font-size: clamp(0.96rem, 1.2vw, 1.06rem);
+    margin-bottom: 16px;
+    font-size: 0.95rem;
   }
 
   .hero-actions {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
 
   .hero-actions .button {
-    min-height: 50px;
+    min-height: 44px;
   }
 
-  .footer-links {
-    gap: 8px 22px;
-    font-size: 0.82rem;
+  .phone-stage {
+    min-height: clamp(350px, 36vw, 480px);
+    margin-top: 0;
   }
 }
 
@@ -990,7 +1011,7 @@ h1 {
   :root {
     --mobile-gap: 22px;
     --shell-gutter: 11px;
-    --hero-top-offset: 24px;
+    --hero-top-offset: 42px;
   }
 
   .top-logo {
@@ -1005,15 +1026,15 @@ h1 {
   }
 
   .brand-large .logo-word {
-    font-size: 30px;
+    font-size: 36px;
   }
 
   .brand-large .logo-line i {
-    width: 82px;
+    width: 98px;
   }
 
   .brand-large .logo-line b {
-    width: 26px;
+    width: 30px;
   }
 
   .nav {
@@ -1046,7 +1067,7 @@ h1 {
     margin-right: auto;
     margin-bottom: 16px;
     max-width: 100%;
-    font-size: clamp(1.78rem, 8.2vw, 2.25rem);
+    font-size: clamp(2.1rem, 9vw, 2.7rem);
     line-height: 1.06;
     letter-spacing: -0.02em;
   }
@@ -1056,7 +1077,7 @@ h1 {
     margin-right: auto;
     margin-bottom: 24px;
     max-width: 100%;
-    font-size: 0.96rem;
+    font-size: 1.04rem;
     line-height: 1.5;
   }
 
@@ -1084,22 +1105,22 @@ h1 {
   .hero-subtext {
     margin-left: auto;
     margin-right: auto;
-    max-width: 280px;
-    font-size: 0.92rem;
+    max-width: 320px;
+    font-size: 0.98rem;
   }
 
   .hero-actions .button {
     width: auto;
-    min-width: 188px;
-    max-width: 230px;
-    min-height: 54px;
-    padding: 0 18px;
-    font-size: 0.95rem;
+    min-width: 210px;
+    max-width: 250px;
+    min-height: 58px;
+    padding: 0 22px;
+    font-size: 1rem;
   }
 
   .apple-logo {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
   }
 
   .trust-row span {
@@ -1116,12 +1137,13 @@ h1 {
   }
 
   .phone-stage {
-    min-height: clamp(380px, 118vw, 470px);
+    min-height: clamp(400px, 112vw, 500px);
     padding-top: 6px;
+    transform-origin: top center;
   }
 
   .phone-frame {
-    width: min(clamp(248px, 82vw, 312px), 100%);
+    width: min(clamp(255px, 76vw, 320px), 100%);
     border-radius: 42px;
     transform: none;
   }
@@ -1178,6 +1200,7 @@ h1 {
   .restaurant-metrics div {
     min-height: 136px;
   }
+
 }
 
 @media (max-width: 380px) {
@@ -1191,15 +1214,15 @@ h1 {
   }
 
   .brand-large .logo-word {
-    font-size: 27px;
+    font-size: 31px;
   }
 
   h1 {
-    font-size: clamp(1.62rem, 9.5vw, 2rem);
+    font-size: clamp(1.9rem, 9.8vw, 2.3rem);
   }
 
   .hero-lead {
-    font-size: 0.92rem;
+    font-size: 0.98rem;
   }
 
   .hero-actions .button {
@@ -1209,11 +1232,11 @@ h1 {
   }
 
   .phone-stage {
-    min-height: 340px;
+    min-height: 360px;
   }
 
   .phone-frame {
-    width: min(262px, 100%);
+    width: min(250px, 100%);
   }
 }
 
@@ -1242,13 +1265,16 @@ h1 {
 }
 
 .site-footer {
-  position: relative;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 18px;
   z-index: 10;
   display: flex;
   justify-content: center;
   width: 100%;
-  margin-top: clamp(10px, 2vh, 20px);
-  padding: 0;
+  margin-top: 0;
+  padding: 0 var(--shell-gutter);
   transform: none;
 }
 
@@ -1258,7 +1284,7 @@ h1 {
   justify-content: center;
   gap: 10px 28px;
   color: rgba(255, 255, 255, 0.72);
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   font-weight: 600;
   width: 100%;
   min-width: 0;
@@ -1489,11 +1515,6 @@ h1 {
 }
 
 @media (max-width: 560px) {
-  .site-footer {
-    margin-top: 18px;
-    padding-bottom: max(0px, env(safe-area-inset-bottom));
-  }
-
   .footer-links {
     gap: 10px 22px;
     font-size: 0.74rem;
