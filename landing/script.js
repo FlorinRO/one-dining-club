@@ -149,18 +149,3 @@ infoModal?.addEventListener("click", (event) => {
     infoModal.close();
   }
 });
-
-const footer = document.querySelector(".site-footer");
-const bottomThreshold = 8;
-
-const syncFooterVisibility = () => {
-  if (!footer) return;
-  const scrollBottom = window.scrollY + window.innerHeight;
-  const pageBottom = document.documentElement.scrollHeight;
-  const isAtBottom = scrollBottom >= pageBottom - bottomThreshold;
-  footer.classList.toggle("is-visible", isAtBottom);
-};
-
-window.addEventListener("scroll", syncFooterVisibility, { passive: true });
-window.addEventListener("resize", syncFooterVisibility);
-syncFooterVisibility();
