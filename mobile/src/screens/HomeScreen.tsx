@@ -39,6 +39,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { addressesApi } from "../api/addressesApi";
+import { productsApi } from "../api/productsApi";
 import { restaurantsApi } from "../api/restaurantsApi";
 import { ProductCommentsSheet } from "../components/ProductCommentsSheet";
 import { RestaurantAvatarImage } from "../components/RestaurantAvatarImage";
@@ -105,6 +106,11 @@ const buildFallbackProduct = (restaurant: Restaurant): Product => ({
   allergens: "",
   option_groups: [],
 });
+
+const hasServerSocial = (product: Product) =>
+  typeof product.likes_count === "number" ||
+  typeof product.comments_count === "number" ||
+  typeof product.is_liked === "boolean";
 
 export function HomeScreen({ navigation }: Props) {
   const { tr } = useI18n();
@@ -323,11 +329,56 @@ export function HomeScreen({ navigation }: Props) {
     [navigation, openSponsoredDestination],
   );
 
+  const updateProductSocial = useCallback(
+    (restaurantId: number, productId: number, patch: Partial<Pick<Product, "likes_count" | "comments_count" | "is_liked">>) => {
+      setProductsByRestaurant((current) => {
+        const restaurantProducts = current[restaurantId];
+        if (!restaurantProducts) return current;
+
+        return {
+          ...current,
+          [restaurantId]: restaurantProducts.map((item) => (item.id === productId ? { ...item, ...patch } : item)),
+        };
+      });
+    },
+    [],
+  );
+
   const toggleLike = useCallback((restaurant: Restaurant, product: Product) => {
     const key = productKey(restaurant.id, product.id);
-    setLikedPosts((current) => ({ ...current, [key]: !current[key] }));
+    const isServerBacked = hasServerSocial(product);
+    const currentLiked = typeof product.is_liked === "boolean" ? product.is_liked : Boolean(likedPosts[key]);
+    const nextLiked = !currentLiked;
+
+    if (!isServerBacked) {
+      setLikedPosts((current) => ({ ...current, [key]: !current[key] }));
+      void Haptics.selectionAsync();
+      return;
+    }
+
+    const currentCount = typeof product.likes_count === "number" ? product.likes_count : 0;
+    updateProductSocial(restaurant.id, product.id, {
+      is_liked: nextLiked,
+      likes_count: Math.max(0, currentCount + (nextLiked ? 1 : -1)),
+    });
+
+    productsApi
+      .toggleLike(product.id)
+      .then((summary) => {
+        updateProductSocial(restaurant.id, product.id, {
+          is_liked: summary.is_liked,
+          likes_count: summary.likes_count,
+          comments_count: summary.comments_count,
+        });
+      })
+      .catch(() => {
+        updateProductSocial(restaurant.id, product.id, {
+          is_liked: currentLiked,
+          likes_count: currentCount,
+        });
+      });
     void Haptics.selectionAsync();
-  }, []);
+  }, [likedPosts, updateProductSocial]);
 
   const openCommentsSheet = useCallback((restaurant: Restaurant, product: Product) => {
     setCommentsSheetPost({ restaurant, product });
@@ -497,6 +548,11 @@ export function HomeScreen({ navigation }: Props) {
         restaurant={commentsSheetPost?.restaurant ?? null}
         product={commentsSheetPost?.product ?? null}
         onClose={() => setCommentsSheetPost(null)}
+        onProductSocialChange={(productId, patch) => {
+          if (commentsSheetPost) {
+            updateProductSocial(commentsSheetPost.restaurant.id, productId, patch);
+          }
+        }}
       />
     </View>
   );
@@ -622,6 +678,7 @@ function RestaurantFeedPage({
         renderItem={({ item: product, index }) => {
           const key = productKey(item.restaurant.id, product.id);
           const isSlideActive = isActive && index === clampedActiveProductIndex;
+          const isProductLiked = typeof product.is_liked === "boolean" ? product.is_liked : Boolean(likedPosts[key]);
           return (
             <ProductVideoSlide
               restaurant={item.restaurant}
@@ -633,7 +690,7 @@ function RestaurantFeedPage({
               isAudible={audiblePostKey === key && isSlideActive}
               hasRestaurantAudio={hasRestaurantAudio}
               isRestaurantAudioActive={isRestaurantAudible}
-              isLiked={Boolean(likedPosts[key])}
+              isLiked={isProductLiked}
               commentBump={commentBumps[key] ?? 0}
               onOpenRestaurant={onOpenRestaurant}
               onOpenProduct={() => onOpenProduct(product, index)}
@@ -820,7 +877,8 @@ function ProductVideoSlide({
         : feedVideoSourceForProduct(product),
     [isActive, product],
   );
-  const comments = stats.comments + commentBump;
+  const likes = typeof product.likes_count === "number" ? product.likes_count : stats.likes + (isLiked ? 1 : 0);
+  const comments = typeof product.comments_count === "number" ? product.comments_count : stats.comments + commentBump;
   const [hasRenderedFrame, setHasRenderedFrame] = useState(false);
   const [hasPlaybackError, setHasPlaybackError] = useState(false);
   const [showVideoLoadingIndicator, setShowVideoLoadingIndicator] = useState(false);
@@ -1231,7 +1289,7 @@ function ProductVideoSlide({
             ))}
           </View>
           <SocialButton
-            label={compactCount(stats.likes + (isLiked ? 1 : 0))}
+            label={compactCount(likes)}
             active={isLiked}
             onPress={handleLikePress}
             icon={<Heart size={24} stroke="#000000" strokeWidth={1} fill={isLiked ? "#FF4D6D" : colors.white} />}

@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { productsApi } from "../api/productsApi";
 import { ProductCommentsSheet } from "../components/ProductCommentsSheet";
 import { QuantityStepper } from "../components/QuantityStepper";
 import { RestaurantAvatarImage } from "../components/RestaurantAvatarImage";
@@ -83,6 +84,11 @@ const videoUriFromSource = (source: VideoSource): string | null => {
   return null;
 };
 
+const hasServerSocial = (product: Product) =>
+  typeof product.likes_count === "number" ||
+  typeof product.comments_count === "number" ||
+  typeof product.is_liked === "boolean";
+
 const parseCaloriesValue = (value?: number | string) => {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -109,12 +115,18 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   const { tr } = useI18n();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const { product, restaurant } = route.params;
+  const { product: initialProduct, restaurant } = route.params;
+  const [productSocial, setProductSocial] = useState<Partial<Pick<Product, "likes_count" | "comments_count" | "is_liked">>>({
+    likes_count: initialProduct.likes_count,
+    comments_count: initialProduct.comments_count,
+    is_liked: initialProduct.is_liked,
+  });
+  const product = useMemo<Product>(() => ({ ...initialProduct, ...productSocial }), [initialProduct, productSocial]);
   const isBrand = restaurant.entity_type === "brand";
   const isSponsored = Boolean(restaurant.is_sponsored);
   const addItem = useCartStore((state) => state.addItem);
   const cartRestaurant = useCartStore((state) => state.restaurant);
-  const isFavorite = useFavoritesStore((state) => state.isProductFavorite(product.id));
+  const isLocalFavorite = useFavoritesStore((state) => state.isProductFavorite(initialProduct.id));
   const toggleProductFavorite = useFavoritesStore((state) => state.toggleProduct);
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<ProductOption[]>([]);
@@ -269,7 +281,37 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   };
 
   const onFavoritePress = () => {
-    toggleProductFavorite(product.id);
+    if (!hasServerSocial(product)) {
+      toggleProductFavorite(product.id);
+      return;
+    }
+
+    const currentLiked = Boolean(product.is_liked);
+    const currentLikes = product.likes_count ?? 0;
+    const nextLiked = !currentLiked;
+    setProductSocial((current) => ({
+      ...current,
+      is_liked: nextLiked,
+      likes_count: Math.max(0, currentLikes + (nextLiked ? 1 : -1)),
+    }));
+
+    productsApi
+      .toggleLike(product.id)
+      .then((summary) => {
+        setProductSocial((current) => ({
+          ...current,
+          is_liked: summary.is_liked,
+          likes_count: summary.likes_count,
+          comments_count: summary.comments_count,
+        }));
+      })
+      .catch(() => {
+        setProductSocial((current) => ({
+          ...current,
+          is_liked: currentLiked,
+          likes_count: currentLikes,
+        }));
+      });
   };
 
   const onCommentPress = () => {
@@ -370,7 +412,11 @@ export function ProductDetailsModal({ navigation, route }: Props) {
                 <Share2 size={20} stroke={dark.text} />
               </Pressable>
               <Pressable onPress={onFavoritePress} style={styles.roundIconButton}>
-                <Heart size={20} stroke={isFavorite ? "#EF4444" : dark.text} fill={isFavorite ? "#EF4444" : "transparent"} />
+                <Heart
+                  size={20}
+                  stroke={(product.is_liked ?? isLocalFavorite) ? "#EF4444" : dark.text}
+                  fill={(product.is_liked ?? isLocalFavorite) ? "#EF4444" : "transparent"}
+                />
               </Pressable>
               <Pressable onPress={onCommentPress} style={styles.roundIconButton}>
                 <MessageSquareText size={20} stroke={dark.text} />
@@ -592,6 +638,11 @@ export function ProductDetailsModal({ navigation, route }: Props) {
         restaurant={restaurant}
         product={product}
         onClose={() => setIsCommentsSheetVisible(false)}
+        onProductSocialChange={(productId, patch) => {
+          if (productId === product.id) {
+            setProductSocial((current) => ({ ...current, ...patch }));
+          }
+        }}
       />
     </KeyboardAvoidingView>
   );

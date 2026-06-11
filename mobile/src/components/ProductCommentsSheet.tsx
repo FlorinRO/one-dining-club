@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import Reanimated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 
+import { productsApi } from "../api/productsApi";
 import {
   buildFeedComments,
   compactCount,
@@ -33,13 +34,14 @@ import {
 } from "../lib/feedSocial";
 import { useCommentsStore } from "../store/commentsStore";
 import { colors } from "../theme/colors";
-import { Product, Restaurant } from "../types/models";
+import { Product, ProductComment, Restaurant } from "../types/models";
 
 type ProductCommentsSheetProps = {
   visible: boolean;
   restaurant: Restaurant | null;
   product: Product | null;
   onClose: () => void;
+  onProductSocialChange?: (productId: number, patch: Partial<Pick<Product, "comments_count" | "likes_count" | "is_liked">>) => void;
 };
 
 type PendingPhoto = {
@@ -47,7 +49,69 @@ type PendingPhoto = {
   uri?: string;
 };
 
-export function ProductCommentsSheet({ visible, restaurant, product, onClose }: ProductCommentsSheetProps) {
+const API_COMMENT_ID_PREFIX = "api-comment-";
+
+const hasServerSocial = (product: Product) =>
+  typeof product.likes_count === "number" ||
+  typeof product.comments_count === "number" ||
+  typeof product.is_liked === "boolean";
+
+const apiCommentFeedId = (id: number) => `${API_COMMENT_ID_PREFIX}${id}`;
+
+const apiCommentIdFromFeedId = (id: string) => {
+  if (!id.startsWith(API_COMMENT_ID_PREFIX)) return null;
+  const numericId = Number(id.slice(API_COMMENT_ID_PREFIX.length));
+  return Number.isFinite(numericId) ? numericId : null;
+};
+
+const createdAtMillis = (value?: string) => {
+  if (!value) return undefined;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const countApiComments = (comments: ProductComment[]): number =>
+  comments.reduce((total, comment) => total + 1 + countApiComments(comment.replies ?? []), 0);
+
+const mapApiComment = (comment: ProductComment): FeedComment => ({
+  id: apiCommentFeedId(comment.id),
+  author: comment.author || "user",
+  text: comment.text,
+  likes: comment.likes_count,
+  isLiked: comment.is_liked,
+  minutesAgo: 0,
+  createdAt: createdAtMillis(comment.created_at),
+  photos: comment.photo_urls ?? [],
+  replies: (comment.replies ?? []).map(mapApiComment),
+});
+
+const updateServerComment = (
+  comments: FeedComment[],
+  commentId: string,
+  patch: Partial<Pick<FeedComment, "likes" | "isLiked">>,
+): FeedComment[] =>
+  comments.map((comment) => {
+    if (comment.id === commentId) return { ...comment, ...patch };
+    if (!comment.replies?.length) return comment;
+    return { ...comment, replies: updateServerReplies(comment.replies, commentId, patch) };
+  });
+
+const updateServerReplies = (
+  replies: FeedReply[],
+  replyId: string,
+  patch: Partial<Pick<FeedReply, "likes" | "isLiked">>,
+): FeedReply[] =>
+  replies.map((reply) => (reply.id === replyId ? { ...reply, ...patch } : reply));
+
+const appendServerReply = (comments: FeedComment[], parentId: string, reply: FeedReply): FeedComment[] =>
+  comments.map((comment) => {
+    if (comment.id === parentId) {
+      return { ...comment, replies: [reply, ...(comment.replies ?? [])] };
+    }
+    return comment;
+  });
+
+export function ProductCommentsSheet({ visible, restaurant, product, onClose, onProductSocialChange }: ProductCommentsSheetProps) {
   const { width: screenWidth } = useWindowDimensions();
   const [commentDraft, setCommentDraft] = useState("");
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
@@ -55,6 +119,8 @@ export function ProductCommentsSheet({ visible, restaurant, product, onClose }: 
   const [replyTarget, setReplyTarget] = useState<{ id: string; author: string } | null>(null);
   const [commentClock, setCommentClock] = useState(Date.now());
   const [galleryViewer, setGalleryViewer] = useState<{ uris: string[]; initialIndex: number } | null>(null);
+  const [serverComments, setServerComments] = useState<FeedComment[] | null>(null);
+  const [serverCommentCount, setServerCommentCount] = useState<number | null>(null);
 
   const commentBumps = useCommentsStore((state) => state.commentBumps);
   const commentRepliesByComment = useCommentsStore((state) => state.commentRepliesByComment);
@@ -68,8 +134,12 @@ export function ProductCommentsSheet({ visible, restaurant, product, onClose }: 
   const toggleReplyLike = useCommentsStore((state) => state.toggleReplyLike);
 
   const activePostKey = restaurant && product ? productKey(restaurant.id, product.id) : null;
+  const isServerBacked = Boolean(product && hasServerSocial(product));
+  const localCommentBump = activePostKey ? commentBumps[activePostKey] ?? 0 : 0;
   const commentCount = restaurant && product && activePostKey
-    ? statsFor(restaurant, product).comments + (commentBumps[activePostKey] ?? 0)
+    ? isServerBacked
+      ? (serverCommentCount ?? product.comments_count ?? 0) + localCommentBump
+      : statsFor(restaurant, product).comments + localCommentBump
     : 0;
 
   const resetComposer = useCallback(() => {
@@ -102,18 +172,56 @@ export function ProductCommentsSheet({ visible, restaurant, product, onClose }: 
     return () => clearInterval(intervalId);
   }, [visible]);
 
+  useEffect(() => {
+    if (!visible || !product || !isServerBacked) {
+      setServerComments(null);
+      setServerCommentCount(null);
+      return undefined;
+    }
+
+    let isMounted = true;
+    productsApi
+      .comments(product.id)
+      .then((comments) => {
+        if (!isMounted) return;
+        const mappedComments = comments.map(mapApiComment);
+        const loadedCount = countApiComments(comments);
+        const nextCount = Math.max(product.comments_count ?? 0, loadedCount);
+        setServerComments(mappedComments);
+        setServerCommentCount(nextCount);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setServerComments([]);
+        setServerCommentCount(product.comments_count ?? 0);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isServerBacked, product, visible]);
+
   const commentsForSheet = useMemo(() => {
     if (!restaurant || !product || !activePostKey) return [];
-    const generatedComments = buildFeedComments(restaurant, product, statsFor(restaurant, product).comments).map((comment) => ({
-      ...comment,
-      replies: commentRepliesByComment[comment.id] ?? [],
-    }));
     const userComments = (userCommentsByPost[activePostKey] ?? []).map((comment) => ({
       ...comment,
       replies: commentRepliesByComment[comment.id] ?? [],
     }));
+
+    if (isServerBacked) {
+      const hydratedServerComments = (serverComments ?? []).map((comment) => ({
+        ...comment,
+        replies: [...(commentRepliesByComment[comment.id] ?? []), ...(comment.replies ?? [])],
+      }));
+      return [...userComments, ...hydratedServerComments];
+    }
+
+    const generatedComments = buildFeedComments(restaurant, product, statsFor(restaurant, product).comments).map((comment) => ({
+      ...comment,
+      replies: commentRepliesByComment[comment.id] ?? [],
+    }));
     return [...userComments, ...generatedComments];
-  }, [activePostKey, commentRepliesByComment, product, restaurant, userCommentsByPost]);
+  }, [activePostKey, commentRepliesByComment, isServerBacked, product, restaurant, serverComments, userCommentsByPost]);
 
   const handleAddPhoto = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -140,7 +248,42 @@ export function ProductCommentsSheet({ visible, restaurant, product, onClose }: 
     ]);
   }, []);
 
-  const handleSendComment = useCallback(() => {
+  const addLocalCommentOrReply = useCallback(
+    (text: string, photoUris: string[]) => {
+      if (!activePostKey) return;
+      const now = Date.now();
+
+      if (replyTarget) {
+        const reply: FeedReply = {
+          id: `reply-${now}`,
+          author: "tu",
+          text,
+          likes: 0,
+          minutesAgo: 0,
+          createdAt: now,
+          photos: photoUris,
+        };
+        addReply(replyTarget.id, reply);
+      } else {
+        const comment: FeedComment = {
+          id: `comment-${activePostKey}-${now}`,
+          author: "tu",
+          text,
+          likes: 0,
+          minutesAgo: 0,
+          createdAt: now,
+          photos: photoUris,
+          replies: [],
+        };
+        addComment(activePostKey, comment);
+      }
+
+      bumpCommentCount(activePostKey);
+    },
+    [activePostKey, addComment, addReply, bumpCommentCount, replyTarget],
+  );
+
+  const handleSendComment = useCallback(async () => {
     if (!activePostKey || !restaurant || !product) return;
     const hasText = commentDraft.trim().length > 0;
     if (!hasText && pendingPhotos.length === 0) return;
@@ -148,39 +291,99 @@ export function ProductCommentsSheet({ visible, restaurant, product, onClose }: 
     runSmoothLayoutAnimation();
     const text = hasText ? commentDraft.trim() : "";
     const photoUris = pendingPhotos.map((photo) => photo.uri).filter((uri): uri is string => Boolean(uri));
-    const now = Date.now();
 
-    if (replyTarget) {
-      const reply: FeedReply = {
-        id: `reply-${now}`,
-        author: "tu",
-        text,
-        likes: 0,
-        minutesAgo: 0,
-        createdAt: now,
-        photos: photoUris,
-      };
-      addReply(replyTarget.id, reply);
+    if (isServerBacked) {
+      const parentId = replyTarget ? apiCommentIdFromFeedId(replyTarget.id) : null;
+
+      try {
+        if (replyTarget && !parentId) {
+          throw new Error("Cannot persist replies to local comments.");
+        }
+
+        const savedComment = await productsApi.addComment(product.id, {
+          text,
+          parent: parentId,
+          photo_urls: photoUris,
+        });
+        const mappedComment = mapApiComment(savedComment);
+        setServerComments((current) => {
+          const existingComments = current ?? [];
+          return parentId
+            ? appendServerReply(existingComments, apiCommentFeedId(parentId), mappedComment)
+            : [mappedComment, ...existingComments];
+        });
+        const nextCount = (serverCommentCount ?? product.comments_count ?? 0) + 1;
+        setServerCommentCount(nextCount);
+        onProductSocialChange?.(product.id, { comments_count: nextCount });
+      } catch {
+        addLocalCommentOrReply(text, photoUris);
+      }
     } else {
-      const comment: FeedComment = {
-        id: `comment-${activePostKey}-${now}`,
-        author: "tu",
-        text,
-        likes: 0,
-        minutesAgo: 0,
-        createdAt: now,
-        photos: photoUris,
-        replies: [],
-      };
-      addComment(activePostKey, comment);
+      addLocalCommentOrReply(text, photoUris);
     }
 
-    bumpCommentCount(activePostKey);
     setCommentDraft("");
     setPendingPhotos([]);
     setReplyTarget(null);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [activePostKey, addComment, addReply, bumpCommentCount, commentDraft, pendingPhotos, product, replyTarget, restaurant, runSmoothLayoutAnimation]);
+  }, [
+    activePostKey,
+    addLocalCommentOrReply,
+    commentDraft,
+    isServerBacked,
+    onProductSocialChange,
+    pendingPhotos,
+    product,
+    replyTarget,
+    restaurant,
+    runSmoothLayoutAnimation,
+    serverCommentCount,
+  ]);
+
+  const patchServerCommentLike = useCallback(
+    (commentId: string, patch: Partial<Pick<FeedComment, "likes" | "isLiked">>) => {
+      setServerComments((current) => (current ? updateServerComment(current, commentId, patch) : current));
+    },
+    [],
+  );
+
+  const handleToggleCommentReaction = useCallback(
+    (comment: FeedReply, isReply = false) => {
+      const apiCommentId = apiCommentIdFromFeedId(comment.id);
+      if (!apiCommentId) {
+        if (isReply) {
+          toggleReplyLike(comment.id);
+        } else {
+          toggleCommentLike(comment.id);
+        }
+        return;
+      }
+
+      const wasLiked = Boolean(comment.isLiked);
+      const previousLikes = comment.likes;
+      const nextLiked = !wasLiked;
+      patchServerCommentLike(comment.id, {
+        isLiked: nextLiked,
+        likes: Math.max(0, previousLikes + (nextLiked ? 1 : -1)),
+      });
+
+      productsApi
+        .toggleCommentLike(apiCommentId)
+        .then((summary) => {
+          patchServerCommentLike(comment.id, {
+            isLiked: summary.is_liked,
+            likes: summary.likes_count,
+          });
+        })
+        .catch(() => {
+          patchServerCommentLike(comment.id, {
+            isLiked: wasLiked,
+            likes: previousLikes,
+          });
+        });
+    },
+    [patchServerCommentLike, toggleCommentLike, toggleReplyLike],
+  );
 
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={closeSheet}>
@@ -270,14 +473,18 @@ export function ProductCommentsSheet({ visible, restaurant, product, onClose }: 
                               ) : null}
                             </View>
                           </View>
-                          <Pressable style={styles.commentLikeCol} onPress={() => toggleCommentLike(comment.id)}>
+                          <Pressable style={styles.commentLikeCol} onPress={() => handleToggleCommentReaction(comment)}>
                             <Heart
                               size={14}
-                              stroke={likedComments[comment.id] ? "#FF4D6D" : "#9DA3AF"}
-                              fill={likedComments[comment.id] ? "#FF4D6D" : "transparent"}
+                              stroke={(comment.isLiked ?? likedComments[comment.id]) ? "#FF4D6D" : "#9DA3AF"}
+                              fill={(comment.isLiked ?? likedComments[comment.id]) ? "#FF4D6D" : "transparent"}
                             />
-                            <Text style={[styles.commentLikeCount, likedComments[comment.id] && styles.commentLikeCountActive]}>
-                              {compactCount(comment.likes + (likedComments[comment.id] ? 1 : 0))}
+                            <Text style={[styles.commentLikeCount, (comment.isLiked ?? likedComments[comment.id]) && styles.commentLikeCountActive]}>
+                              {compactCount(
+                                apiCommentIdFromFeedId(comment.id)
+                                  ? comment.likes
+                                  : comment.likes + (likedComments[comment.id] ? 1 : 0),
+                              )}
                             </Text>
                           </Pressable>
                         </View>
@@ -324,14 +531,18 @@ export function ProductCommentsSheet({ visible, restaurant, product, onClose }: 
                                   <Text style={styles.replyButtonText}>Raspunde</Text>
                                 </Pressable>
                               </View>
-                              <Pressable style={styles.replyLikeCol} onPress={() => toggleReplyLike(reply.id)}>
+                              <Pressable style={styles.replyLikeCol} onPress={() => handleToggleCommentReaction(reply, true)}>
                                 <Heart
                                   size={12}
-                                  stroke={likedReplies[reply.id] ? "#FF4D6D" : "#9DA3AF"}
-                                  fill={likedReplies[reply.id] ? "#FF4D6D" : "transparent"}
+                                  stroke={(reply.isLiked ?? likedReplies[reply.id]) ? "#FF4D6D" : "#9DA3AF"}
+                                  fill={(reply.isLiked ?? likedReplies[reply.id]) ? "#FF4D6D" : "transparent"}
                                 />
-                                <Text style={[styles.replyLikeCount, likedReplies[reply.id] && styles.replyLikeCountActive]}>
-                                  {compactCount(reply.likes + (likedReplies[reply.id] ? 1 : 0))}
+                                <Text style={[styles.replyLikeCount, (reply.isLiked ?? likedReplies[reply.id]) && styles.replyLikeCountActive]}>
+                                  {compactCount(
+                                    apiCommentIdFromFeedId(reply.id)
+                                      ? reply.likes
+                                      : reply.likes + (likedReplies[reply.id] ? 1 : 0),
+                                  )}
                                 </Text>
                               </Pressable>
                             </Reanimated.View>

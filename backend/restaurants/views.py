@@ -1,16 +1,22 @@
 from django.db.models import Count, Exists, OuterRef
 from rest_framework import decorators, permissions, response, viewsets
 
+from core.permissions import IsRestaurantOwner
 from menus.serializers import ProductCategorySerializer
 from products.models import Product
 from products.serializers import ProductSerializer
+from products.views import with_product_social_counts
 from restaurants.filters import RestaurantFilter
 from restaurants.models import Restaurant, RestaurantCategory
 from restaurants.serializers import (
     RestaurantCategorySerializer,
     RestaurantDetailSerializer,
     RestaurantListSerializer,
+    RestaurantOwnerOverviewSerializer,
+    RestaurantOwnerSerializer,
 )
+from reviews.models import Review
+from reviews.serializers import ReviewSerializer
 
 
 class RestaurantCategoryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -69,6 +75,7 @@ class RestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             .filter(is_available=True)
             .order_by("id")
         )
+        products = with_product_social_counts(products, request)
         page = self.paginate_queryset(products)
         if page is not None:
             serializer = ProductSerializer(page, many=True, context={"request": request})
@@ -81,4 +88,36 @@ class RestaurantViewSet(viewsets.ReadOnlyModelViewSet):
         restaurant = self.get_object()
         categories = restaurant.product_categories.filter(is_active=True)
         serializer = ProductCategorySerializer(categories, many=True, context={"request": request})
+        return response.Response(serializer.data)
+
+    @decorators.action(detail=True, methods=["get"], permission_classes=[permissions.AllowAny])
+    def reviews(self, request, id=None):
+        restaurant = self.get_object()
+        reviews = Review.objects.select_related("customer", "restaurant", "order").filter(restaurant=restaurant)
+        page = self.paginate_queryset(reviews)
+        if page is not None:
+            serializer = ReviewSerializer(page, many=True, context={"request": request})
+            return self.get_paginated_response(serializer.data)
+        serializer = ReviewSerializer(reviews, many=True, context={"request": request})
+        return response.Response(serializer.data)
+
+
+class RestaurantOwnerRestaurantViewSet(viewsets.ModelViewSet):
+    permission_classes = (IsRestaurantOwner,)
+    serializer_class = RestaurantOwnerSerializer
+    http_method_names = ("get", "post", "patch", "head", "options")
+    search_fields = ("name", "city", "description")
+    ordering_fields = ("name", "created_at", "updated_at")
+
+    def get_queryset(self):
+        return (
+            Restaurant.objects.select_related("owner")
+            .prefetch_related("categories", "opening_hours", "product_categories")
+            .filter(owner=self.request.user)
+        )
+
+    @decorators.action(detail=False, methods=["get"])
+    def overview(self, request):
+        queryset = RestaurantOwnerOverviewSerializer.with_metrics(self.get_queryset())
+        serializer = RestaurantOwnerOverviewSerializer(queryset, many=True, context={"request": request})
         return response.Response(serializer.data)

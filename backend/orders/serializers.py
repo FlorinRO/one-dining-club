@@ -11,6 +11,7 @@ from payments.models import Payment, PaymentProvider
 from products.models import Product, ProductOption
 from promotions.models import DiscountType, PromoCode
 from restaurants.models import Restaurant
+from reviews.serializers import ReviewSerializer
 
 
 class OrderItemOptionSerializer(serializers.ModelSerializer):
@@ -41,6 +42,7 @@ class OrderSerializer(serializers.ModelSerializer):
     customer_email = serializers.EmailField(source="customer.email", read_only=True)
     courier_email = serializers.EmailField(source="courier.email", read_only=True)
     items = OrderItemSerializer(many=True, read_only=True)
+    review = ReviewSerializer(read_only=True)
 
     class Meta:
         model = Order
@@ -63,6 +65,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "customer_note",
             "restaurant_note",
             "items",
+            "review",
             "created_at",
             "updated_at",
         )
@@ -291,4 +294,3 @@ class CourierOrderStatusSerializer(serializers.Serializer):
             OrderStatus.CANCELLED,
         )
     )
-

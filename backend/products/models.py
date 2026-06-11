@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import models
 
 
@@ -77,3 +78,61 @@ class ProductOption(models.Model):
 
     def __str__(self):
         return f"{self.option_group.name} - {self.name}"
+
+
+class ProductLike(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="likes")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="product_likes")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("product", "user")
+        indexes = [
+            models.Index(fields=("product", "created_at")),
+            models.Index(fields=("user", "created_at")),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} liked {self.product_id}"
+
+
+class ProductComment(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="comments")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="product_comments")
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="replies",
+    )
+    text = models.TextField(blank=True)
+    photo_urls = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=("product", "-created_at")),
+            models.Index(fields=("parent", "created_at")),
+        ]
+
+    def __str__(self):
+        return f"Comment {self.pk} on {self.product_id}"
+
+
+class ProductCommentLike(models.Model):
+    comment = models.ForeignKey(ProductComment, on_delete=models.CASCADE, related_name="likes")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="product_comment_likes")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("comment", "user")
+        indexes = [
+            models.Index(fields=("comment", "created_at")),
+            models.Index(fields=("user", "created_at")),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} liked comment {self.comment_id}"

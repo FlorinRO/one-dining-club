@@ -7,6 +7,10 @@ type Paginated<T> = {
 };
 
 const unwrap = <T>(payload: T[] | Paginated<T>) => (Array.isArray(payload) ? payload : payload.results);
+const mergeById = <T extends { id: number }>(primary: T[], fallback: T[]) => {
+  const seen = new Set(primary.map((item) => item.id));
+  return [...primary, ...fallback.filter((item) => !seen.has(item.id))];
+};
 const normalize = (value: string) =>
   value
     .normalize("NFD")
@@ -103,7 +107,7 @@ export const restaurantsApi = {
       const { data } = await apiClient.get<Restaurant[] | Paginated<Restaurant>>("/restaurants/", { params });
       const items = unwrap(data);
       if (__DEV__ && items.length <= 1) {
-        return localFilterRestaurants(mockRestaurants, params);
+        return mergeById(items, localFilterRestaurants(mockRestaurants, params));
       }
       return items;
     } catch {

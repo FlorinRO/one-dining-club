@@ -7,9 +7,10 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from addresses.views import AddressViewSet
 from couriers.views import CourierOrderViewSet, CourierProfileView
+from menus.views import RestaurantOwnerProductCategoryViewSet
 from orders.views import OrderViewSet, RestaurantOwnerOrderViewSet
-from products.views import ProductViewSet, RestaurantOwnerProductViewSet
-from restaurants.views import RestaurantCategoryViewSet, RestaurantViewSet
+from products.views import ProductCommentViewSet, ProductViewSet, RestaurantOwnerProductViewSet
+from restaurants.views import RestaurantCategoryViewSet, RestaurantOwnerRestaurantViewSet, RestaurantViewSet
 from users.views import (
     EmailTemplatePreviewView,
     EmailVerificationConfirmView,
@@ -34,6 +35,7 @@ router = DefaultRouter()
 router.register("restaurant-categories", RestaurantCategoryViewSet, basename="restaurant-category")
 router.register("restaurants", RestaurantViewSet, basename="restaurant")
 router.register("products", ProductViewSet, basename="product")
+router.register("product-comments", ProductCommentViewSet, basename="product-comment")
 router.register("addresses", AddressViewSet, basename="address")
 router.register("orders", OrderViewSet, basename="order")
 router.register(
@@ -45,6 +47,16 @@ router.register(
     "restaurant-owner/products",
     RestaurantOwnerProductViewSet,
     basename="restaurant-owner-product",
+)
+router.register(
+    "restaurant-owner/restaurants",
+    RestaurantOwnerRestaurantViewSet,
+    basename="restaurant-owner-restaurant",
+)
+router.register(
+    "restaurant-owner/categories",
+    RestaurantOwnerProductCategoryViewSet,
+    basename="restaurant-owner-category",
 )
 router.register("courier/orders", CourierOrderViewSet, basename="courier-order")
 

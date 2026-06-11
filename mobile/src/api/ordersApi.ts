@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import { Order, PaymentMethod } from "../types/models";
+import { Order, PaymentMethod, Review } from "../types/models";
 
 export type CreateOrderPayload = {
   restaurant_id: number;
@@ -35,5 +35,9 @@ export const ordersApi = {
     const { data } = await apiClient.patch<Order>(`/orders/${id}/cancel/`);
     return data;
   },
-};
 
+  async review(id: number, payload: { rating: number; comment?: string }) {
+    const { data } = await apiClient.post<Review>(`/orders/${id}/review/`, payload);
+    return data;
+  },
+};

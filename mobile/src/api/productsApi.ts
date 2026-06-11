@@ -1,6 +1,6 @@
 import { apiClient } from "./client";
 import { mockProducts, mockRestaurants } from "../data/mockData";
-import { Product } from "../types/models";
+import { Product, ProductComment, ProductCommentLikeSummary, ProductSocialSummary } from "../types/models";
 
 type Paginated<T> = {
   results: T[];
@@ -13,6 +13,11 @@ const normalize = (value: string) =>
     .toLowerCase();
 
 const toNumber = (value: string | number | null | undefined) => (value == null ? null : Number(value));
+
+const mergeById = <T extends { id: number }>(primary: T[], fallback: T[]) => {
+  const seen = new Set(primary.map((item) => item.id));
+  return [...primary, ...fallback.filter((item) => !seen.has(item.id))];
+};
 
 const localFilterProducts = (
   products: Product[],
@@ -109,7 +114,7 @@ export const productsApi = {
       const { data } = await apiClient.get<Product[] | Paginated<Product>>("/products/", { params });
       const items = Array.isArray(data) ? data : data.results;
       if (__DEV__ && items.length <= 2) {
-        return localFilterProducts(mockProducts, params);
+        return mergeById(items, localFilterProducts(mockProducts, params));
       }
       return items;
     } catch {
@@ -124,5 +129,25 @@ export const productsApi = {
     } catch {
       return mockProducts.find((product) => product.id === id) ?? mockProducts[0];
     }
+  },
+
+  async toggleLike(id: number) {
+    const { data } = await apiClient.post<ProductSocialSummary>(`/products/${id}/like/`);
+    return data;
+  },
+
+  async comments(id: number) {
+    const { data } = await apiClient.get<ProductComment[] | Paginated<ProductComment>>(`/products/${id}/comments/`);
+    return Array.isArray(data) ? data : data.results;
+  },
+
+  async addComment(id: number, payload: { text: string; parent?: number | null; photo_urls?: string[] }) {
+    const { data } = await apiClient.post<ProductComment>(`/products/${id}/comments/`, payload);
+    return data;
+  },
+
+  async toggleCommentLike(id: number) {
+    const { data } = await apiClient.post<ProductCommentLikeSummary>(`/product-comments/${id}/like/`);
+    return data;
   },
 };

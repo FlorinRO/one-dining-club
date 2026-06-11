@@ -92,6 +92,9 @@ export type Product = {
   ingredients?: string;
   calories?: number;
   option_groups?: ProductOptionGroup[];
+  likes_count?: number;
+  comments_count?: number;
+  is_liked?: boolean;
 };
 
 export type Address = {
@@ -144,4 +147,44 @@ export type Order = {
     options?: Array<{ id: number; option_name: string; extra_price: string | number }>;
   }>;
   address?: Address | number;
+  review?: Review | null;
+};
+
+export type ProductComment = {
+  id: number;
+  product: number;
+  parent?: number | null;
+  author: string;
+  text: string;
+  photo_urls?: string[];
+  likes_count: number;
+  is_liked: boolean;
+  replies?: ProductComment[];
+  created_at: string;
+  updated_at?: string;
+};
+
+export type ProductSocialSummary = {
+  id: number;
+  likes_count: number;
+  comments_count: number;
+  is_liked: boolean;
+};
+
+export type ProductCommentLikeSummary = {
+  id: number;
+  likes_count: number;
+  is_liked: boolean;
+};
+
+export type Review = {
+  id: number;
+  customer: number;
+  customer_name?: string;
+  restaurant: number;
+  restaurant_name?: string;
+  order: number;
+  rating: number;
+  comment?: string;
+  created_at: string;
 };

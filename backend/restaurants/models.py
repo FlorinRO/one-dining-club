@@ -45,6 +45,9 @@ class Restaurant(models.Model):
         default=SponsoredMode.NATIVE,
     )
     website_url = models.URLField(blank=True)
+    promo_video_url = models.URLField(blank=True)
+    instagram_url = models.URLField(blank=True)
+    tiktok_url = models.URLField(blank=True)
     description = models.TextField(blank=True)
     logo = models.ImageField(upload_to="restaurants/logos/", blank=True, null=True)
     cover_image = models.ImageField(upload_to="restaurants/covers/", blank=True, null=True)

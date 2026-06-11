@@ -1,5 +1,3 @@
-const printButton = document.querySelector("[data-print-deck]");
-const printButtonLabel = printButton?.textContent ?? "Export PDF";
 const deckVideoSources = [
   {
     src: "./assets/login-videos/mixkit-a-couple-of-young-girls-savour-a-the-the-licious-51238-full-hd.mp4",
@@ -20,11 +18,9 @@ const deckVideoSources = [
 ];
 const videoLayers = Array.from(document.querySelectorAll(".deck-video-layer"));
 const videoElements = videoLayers.map((layer) => layer.querySelector(".deck-video"));
-const slideVideos = Array.from(document.querySelectorAll(".slide video"));
 const VIDEO_MAX_VISIBLE_MS = 4000;
 const VIDEO_CROSSFADE_MS = 1000;
 const VIDEO_TRANSITION_DELAY_MS = VIDEO_MAX_VISIBLE_MS - VIDEO_CROSSFADE_MS;
-let isPrinting = false;
 
 function primeDeckVideo(video, source) {
   if (!video || !source) return;
@@ -79,63 +75,5 @@ function bootDeckVideos() {
 
   scheduleTransition();
 }
-
-function setPrintButtonState(isBusy) {
-  if (!printButton) return;
-  printButton.disabled = isBusy;
-  printButton.textContent = isBusy ? "Se pregateste PDF..." : printButtonLabel;
-}
-
-function toggleVideoPlayback(shouldPause) {
-  [...videoElements, ...slideVideos].forEach((video) => {
-    if (!video) return;
-    if (shouldPause) {
-      video.pause();
-      return;
-    }
-
-    const playAttempt = video.play();
-    if (playAttempt?.catch) {
-      playAttempt.catch(() => {});
-    }
-  });
-}
-
-function beginPrintPreparation() {
-  if (isPrinting) return false;
-  isPrinting = true;
-  document.body.classList.add("is-exporting-pdf");
-  setPrintButtonState(true);
-  toggleVideoPlayback(true);
-  return true;
-}
-
-function endPrintPreparation() {
-  if (!isPrinting) return;
-  isPrinting = false;
-  document.body.classList.remove("is-exporting-pdf");
-  setPrintButtonState(false);
-  toggleVideoPlayback(false);
-}
-
-async function exportDeckToPdf() {
-  if (!beginPrintPreparation()) return;
-
-  await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
-  await new Promise((resolve) => window.setTimeout(resolve, 120));
-
-  try {
-    window.print();
-  } finally {
-    window.setTimeout(endPrintPreparation, 400);
-  }
-}
-
-window.addEventListener("beforeprint", beginPrintPreparation);
-window.addEventListener("afterprint", endPrintPreparation);
-
-printButton?.addEventListener("click", () => {
-  exportDeckToPdf();
-});
 
 bootDeckVideos();

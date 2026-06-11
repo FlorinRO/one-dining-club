@@ -1,12 +1,15 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ChevronLeft, ChevronRight, CreditCard, LifeBuoy, RotateCcw } from "lucide-react-native";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ChevronLeft, ChevronRight, CreditCard, LifeBuoy, RotateCcw, Star } from "lucide-react-native";
+import { useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ordersApi } from "../api/ordersApi";
 import { OrdersStackParamList } from "../navigation/types";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { formatDateTime } from "../lib/dateFormat";
+import { useAuthStore } from "../store/authStore";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrderDetails">;
@@ -18,6 +21,7 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
   const topOverlayHeight = insets.top + 1;
   const bottomSafeSpacing = Math.max(insets.bottom, 18) + 86;
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
+  const accessToken = useAuthStore((state) => state.accessToken);
   const { order } = route.params;
   const safeOrderId = typeof order?.id === "number" ? order.id : 0;
   const safeOrderItems = Array.isArray(order?.items) ? order.items : [];
@@ -33,6 +37,33 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
   const primaryAddress = typeof order.address === "object" ? `${order.address.address_line_1}, ${order.address.city}` : tr("Adresă salvată", "Saved address");
   const extraAddressLines = typeof order.address === "object" ? [order.address.address_line_2, order.address.instructions].filter(Boolean) : [];
   const paymentLabel = order.payment_method === "cash" ? tr("Plată cash", "Cash payment") : tr("Plată online", "Online payment");
+  const [review, setReview] = useState(order.review ?? null);
+  const [ratingDraft, setRatingDraft] = useState(review?.rating ?? 0);
+  const [reviewComment, setReviewComment] = useState(review?.comment ?? "");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const canSubmitReview = Boolean(accessToken) && order.order_status === "delivered";
+
+  const submitReview = async () => {
+    if (!canSubmitReview || isSubmittingReview) return;
+    if (ratingDraft < 1) {
+      Alert.alert(tr("Alege un rating", "Choose a rating"), tr("Selectează între 1 și 5 stele.", "Select 1 to 5 stars."));
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+      const savedReview = await ordersApi.review(order.id, {
+        rating: ratingDraft,
+        comment: reviewComment.trim(),
+      });
+      setReview(savedReview);
+      Alert.alert(tr("Mulțumim", "Thank you"), tr("Ratingul a fost salvat.", "Your rating was saved."));
+    } catch {
+      Alert.alert(tr("Eroare", "Error"), tr("Nu am putut salva ratingul.", "Could not save the rating."));
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   return (
     <View style={styles.page}>
@@ -101,6 +132,47 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
             <ChevronRight size={34} color={colors.muted} strokeWidth={1.8} />
           </View>
         </Pressable>
+
+        {canSubmitReview ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>
+              {review ? tr("Ratingul tău", "Your rating") : tr("Evaluează comanda", "Rate this order")}
+            </Text>
+            <View style={styles.ratingRow}>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <Pressable key={value} hitSlop={8} onPress={() => setRatingDraft(value)} style={styles.starButton}>
+                  <Star
+                    size={30}
+                    color={value <= ratingDraft ? colors.warning : colors.muted}
+                    fill={value <= ratingDraft ? colors.warning : "transparent"}
+                    strokeWidth={2}
+                  />
+                </Pressable>
+              ))}
+            </View>
+            <TextInput
+              value={reviewComment}
+              onChangeText={setReviewComment}
+              placeholder={tr("Spune pe scurt cum a fost.", "Briefly say how it was.")}
+              placeholderTextColor={colors.muted}
+              multiline
+              style={styles.reviewInput}
+            />
+            <Pressable
+              disabled={isSubmittingReview}
+              style={[styles.reviewButton, isSubmittingReview && styles.reviewButtonDisabled]}
+              onPress={submitReview}
+            >
+              <Text style={styles.reviewButtonText}>
+                {isSubmittingReview
+                  ? tr("Se salvează...", "Saving...")
+                  : review
+                    ? tr("Actualizează rating", "Update rating")
+                    : tr("Trimite rating", "Submit rating")}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.actionsCard}>
           <View style={styles.actionsBlock}>
@@ -310,6 +382,46 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     fontWeight: "500",
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  starButton: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewInput: {
+    minHeight: 88,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.cardSoft,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: colors.text,
+    fontSize: 15,
+    lineHeight: 20,
+    textAlignVertical: "top",
+  },
+  reviewButton: {
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: ORDER_ACTION_GREEN,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewButtonDisabled: {
+    opacity: 0.62,
+  },
+  reviewButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "700",
   },
   actionsBlock: {
     flexDirection: "row",

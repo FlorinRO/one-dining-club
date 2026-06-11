@@ -16,4 +16,5 @@ Deschide apoi `http://127.0.0.1:5173`.
 - `index.html` - conținutul paginii
 - `styles.css` - design responsive și logo YUMZY replicat din `LoginScreen.tsx`
 - `script.js` - animații la scroll și demo pentru formularul de waitlist
+- `dashboard/` - dashboard static pentru restaurante, gândit pentru `dashboard.yumzy.ro`
 - `assets/` - imagini copiate din aplicația mobilă pentru deploy autonom

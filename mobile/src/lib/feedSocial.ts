@@ -5,6 +5,7 @@ export type FeedReply = {
   author: string;
   text: string;
   likes: number;
+  isLiked?: boolean;
   minutesAgo: number;
   createdAt?: number;
   photos?: string[];
