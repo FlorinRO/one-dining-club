@@ -93,3 +93,27 @@ class CustomerProfile(models.Model):
     def __str__(self):
         return f"Customer profile for {self.user.email}"
 
+
+class SocialAccount(models.Model):
+    PROVIDER_GOOGLE = "google"
+    PROVIDER_FACEBOOK = "facebook"
+    PROVIDER_APPLE = "apple"
+    PROVIDER_CHOICES = (
+        (PROVIDER_GOOGLE, "Google"),
+        (PROVIDER_FACEBOOK, "Facebook"),
+        (PROVIDER_APPLE, "Apple"),
+    )
+
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="social_accounts")
+    provider = models.CharField(max_length=32, choices=PROVIDER_CHOICES)
+    subject = models.CharField(max_length=255)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=("provider", "subject"), name="users_social_account_provider_subject_uniq"),
+        ]
+        ordering = ("provider", "subject")
+
+    def __str__(self):
+        return f"{self.provider}:{self.subject}"

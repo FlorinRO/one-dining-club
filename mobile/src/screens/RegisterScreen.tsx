@@ -340,8 +340,11 @@ export function RegisterScreen({ navigation }: Props) {
 
                   <SocialButton
                     provider="apple"
-                    loading={false}
-                    onPress={() => {}}
+                    loading={socialLoading === "apple"}
+                    onPress={() => {
+                      setError(null);
+                      startSocialLogin("apple");
+                    }}
                   />
                 </View>
 
@@ -513,8 +516,7 @@ type SocialButtonProps = {
 };
 
 function SocialButton({ provider, loading, onPress }: SocialButtonProps) {
-  const isApple = provider === "apple";
-  const disabled = loading || isApple;
+  const disabled = loading;
   return (
     <Pressable
       onPress={onPress}

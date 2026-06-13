@@ -1,15 +1,17 @@
+import * as AppleAuthentication from "expo-apple-authentication";
 import * as Facebook from "expo-auth-session/providers/facebook";
 import * as Google from "expo-auth-session/providers/google";
 import { ResponseType } from "expo-auth-session";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
+import { AxiosError } from "axios";
 import { useEffect, useMemo, useState } from "react";
 
 import { AuthResponse, authApi } from "../api/authApi";
 
 WebBrowser.maybeCompleteAuthSession();
 
-export type SocialProvider = "google" | "facebook";
+export type SocialProvider = "google" | "facebook" | "apple";
 
 type AuthExtra = {
   googleWebClientId?: string;
@@ -25,8 +27,30 @@ type UseSocialAuthOptions = {
 
 const extra = (Constants.expoConfig?.extra ?? {}) as AuthExtra;
 
+function extractApiErrorMessage(error: unknown): string | null {
+  if (!(error instanceof AxiosError)) return null;
+
+  const data = error.response?.data;
+  if (typeof data === "string" && data.trim()) return data.trim();
+  if (!data || typeof data !== "object") return null;
+
+  const values = Object.values(data as Record<string, unknown>);
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (Array.isArray(value) && typeof value[0] === "string" && value[0].trim()) return value[0].trim();
+  }
+
+  return null;
+}
+
+function isExpoGoRuntime() {
+  const runtime = Constants.executionEnvironment;
+  return runtime === "storeClient";
+}
+
 export function useSocialAuth({ onSuccess, onError }: UseSocialAuthOptions) {
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(null);
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
 
   const googleConfig = useMemo(
     () => ({
@@ -58,6 +82,12 @@ export function useSocialAuth({ onSuccess, onError }: UseSocialAuthOptions) {
   const hasFacebookClient = Boolean(extra.facebookClientId);
 
   useEffect(() => {
+    AppleAuthentication.isAvailableAsync()
+      .then(setAppleAuthAvailable)
+      .catch(() => setAppleAuthAvailable(false));
+  }, []);
+
+  useEffect(() => {
     if (googleResponse?.type !== "success") {
       return;
     }
@@ -76,7 +106,7 @@ export function useSocialAuth({ onSuccess, onError }: UseSocialAuthOptions) {
     authApi
       .socialLogin("google", token, tokenType)
       .then(onSuccess)
-      .catch(() => onError("Could not validate Google account."))
+      .catch((error) => onError(extractApiErrorMessage(error) ?? "Could not validate Google account."))
       .finally(() => setLoadingProvider(null));
   }, [googleResponse, onError, onSuccess]);
 
@@ -95,7 +125,7 @@ export function useSocialAuth({ onSuccess, onError }: UseSocialAuthOptions) {
     authApi
       .socialLogin("facebook", accessToken)
       .then(onSuccess)
-      .catch(() => onError("Could not validate Facebook account."))
+      .catch((error) => onError(extractApiErrorMessage(error) ?? "Could not validate Facebook account."))
       .finally(() => setLoadingProvider(null));
   }, [facebookResponse, onError, onSuccess]);
 
@@ -108,8 +138,45 @@ export function useSocialAuth({ onSuccess, onError }: UseSocialAuthOptions) {
       onError("Configure EXPO_PUBLIC_FACEBOOK_CLIENT_ID for Facebook login.");
       return;
     }
+    if (provider === "apple" && !appleAuthAvailable) {
+      if (isExpoGoRuntime()) {
+        onError("Apple Sign In must be tested from a native iOS build or TestFlight, not Expo Go.");
+        return;
+      }
+      onError("Apple Sign In is not available on this device.");
+      return;
+    }
 
     setLoadingProvider(provider);
+    if (provider === "apple") {
+      try {
+        const credential = await AppleAuthentication.signInAsync({
+          requestedScopes: [
+            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+            AppleAuthentication.AppleAuthenticationScope.EMAIL,
+          ],
+        });
+        if (!credential.identityToken) {
+          onError("Apple did not return a valid token.");
+          return;
+        }
+        const session = await authApi.socialLogin("apple", credential.identityToken, "id_token");
+        onSuccess(session);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          "code" in error &&
+          error.code === "ERR_REQUEST_CANCELED"
+        ) {
+          return;
+        }
+        onError(extractApiErrorMessage(error) ?? "Apple authentication failed.");
+      } finally {
+        setLoadingProvider(null);
+      }
+      return;
+    }
+
     const response = provider === "google" ? await promptGoogle() : await promptFacebook();
     if (response.type === "cancel" || response.type === "dismiss") {
       setLoadingProvider(null);
@@ -120,5 +187,5 @@ export function useSocialAuth({ onSuccess, onError }: UseSocialAuthOptions) {
     }
   };
 
-  return { loadingProvider, startSocialLogin };
+  return { appleAuthAvailable, loadingProvider, startSocialLogin };
 }

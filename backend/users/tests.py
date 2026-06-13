@@ -3,11 +3,12 @@ from django.test import TestCase
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APIClient
+from unittest.mock import patch
 
 from addresses.models import Address
 from orders.models import Order, PaymentMethod
 from restaurants.models import Restaurant
-from users.models import User, UserRole
+from users.models import SocialAccount, User, UserRole
 
 
 class EmailVerificationConfirmFlowTests(TestCase):
@@ -180,3 +181,74 @@ class DeleteAccountFlowTests(TestCase):
         self.assertEqual(address.phone, "")
         self.assertEqual(address.address_line_1, "")
         self.assertEqual(address.city, "")
+
+
+class SocialLoginFlowTests(TestCase):
+    @patch("users.serializers.send_welcome_email")
+    @patch("users.serializers.SocialLoginSerializer._fetch_profile")
+    def test_google_social_login_creates_active_user_and_social_account(self, mock_fetch_profile, mock_send_welcome_email):
+        mock_fetch_profile.return_value = {
+            "subject": "google-subject-1",
+            "email": "social@example.com",
+            "first_name": "Social",
+            "last_name": "User",
+        }
+
+        response = self.client.post(
+            "/api/auth/social/",
+            {"provider": "google", "id_token": "token"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        user = User.objects.get(email="social@example.com")
+        self.assertTrue(user.is_active)
+        self.assertFalse(user.has_usable_password())
+        self.assertEqual(user.first_name, "Social")
+        self.assertTrue(
+            SocialAccount.objects.filter(user=user, provider="google", subject="google-subject-1").exists()
+        )
+        mock_send_welcome_email.assert_called_once_with(user)
+
+    @patch("users.serializers.SocialLoginSerializer._fetch_profile")
+    def test_apple_social_login_uses_existing_subject_mapping_without_email(self, mock_fetch_profile):
+        user = User.objects.create_user(
+            email="apple@example.com",
+            password=None,
+            role=UserRole.CUSTOMER,
+            is_active=True,
+        )
+        SocialAccount.objects.create(user=user, provider="apple", subject="apple-user-123")
+        mock_fetch_profile.return_value = {
+            "subject": "apple-user-123",
+            "email": None,
+            "first_name": "",
+            "last_name": "",
+        }
+
+        response = self.client.post(
+            "/api/auth/social/",
+            {"provider": "apple", "id_token": "token"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["user"]["email"], "apple@example.com")
+
+    @patch("users.serializers.SocialLoginSerializer._fetch_profile")
+    def test_apple_social_login_rejects_first_login_without_email(self, mock_fetch_profile):
+        mock_fetch_profile.return_value = {
+            "subject": "apple-user-456",
+            "email": None,
+            "first_name": "",
+            "last_name": "",
+        }
+
+        response = self.client.post(
+            "/api/auth/social/",
+            {"provider": "apple", "id_token": "token"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()[0], "The social account did not return an email address.")

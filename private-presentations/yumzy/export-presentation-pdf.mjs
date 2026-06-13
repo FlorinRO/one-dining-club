@@ -1,7 +1,7 @@
 import { chromium } from "/Users/florin/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs";
 
-const inputUrl = "file:///Users/florin/Desktop/one-dining-club/landing/presentation.html";
-const outputPath = "/Users/florin/Desktop/one-dining-club/landing/YUMZY-presentation.pdf";
+const inputUrl = "file:///Users/florin/Desktop/one-dining-club/private-presentations/yumzy/presentation.html";
+const outputPath = "/Users/florin/Desktop/one-dining-club/private-presentations/yumzy/YUMZY-presentation.pdf";
 
 const browser = await chromium.launch({ headless: true });
 

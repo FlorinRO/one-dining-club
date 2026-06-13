@@ -315,6 +315,7 @@ class Command(BaseCommand):
             },
         )
         customer.set_password("password123")
+        customer.is_active = True
         customer.save()
         CustomerProfile.objects.get_or_create(user=customer, defaults={"phone_number": customer.phone})
 
@@ -328,6 +329,7 @@ class Command(BaseCommand):
             },
         )
         owner.set_password("password123")
+        owner.is_active = True
         owner.save()
 
         Restaurant.objects.filter(

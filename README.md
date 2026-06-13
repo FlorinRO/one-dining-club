@@ -24,8 +24,8 @@ python manage.py runserver 0.0.0.0:8000
 
 Useful demo users after `seed_demo`:
 
-- Customer: `demo@onedining.club` / `password123`
-- Restaurant owner: `owner@onedining.club` / `password123`
+- Customer: `demo@yumzy.ro` / `password123`
+- Restaurant owner: `owner@yumzy.ro` / `password123`
 
 The backend defaults to SQLite if `DATABASE_URL` is not set. For the intended MVP setup, set `DATABASE_URL` to PostgreSQL in `backend/.env`.
 
@@ -67,6 +67,10 @@ EXPO_PUBLIC_FACEBOOK_CLIENT_ID=...
 ```
 
 Google needs OAuth client IDs from Google Cloud Console for the platforms you test. Facebook needs a Meta app ID, and the mobile app must be allowed to use the `fb<FACEBOOK_CLIENT_ID>` URL scheme; `app.config.ts` adds that scheme automatically when `EXPO_PUBLIC_FACEBOOK_CLIENT_ID` is set.
+
+For App Store / TestFlight builds, the same variables must exist in the EAS production environment before running `eas build --platform ios --profile production`. Apple Sign In also needs the iOS capability enabled for the `club.onedining.customer` bundle ID, and the backend must allow `APPLE_SIGN_IN_AUDIENCES=club.onedining.customer`.
+
+Apple Sign In should be validated from a native iOS build or TestFlight. Expo Go is not a reliable validation path for the App Store review flow.
 
 After changing these values, restart Expo with cache clear:
 

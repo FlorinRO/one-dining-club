@@ -18,3 +18,10 @@ Deschide apoi `http://127.0.0.1:5173`.
 - `script.js` - animații la scroll și demo pentru formularul de waitlist
 - `dashboard/` - dashboard static pentru restaurante, gândit pentru `dashboard.yumzy.ro`
 - `assets/` - imagini copiate din aplicația mobilă pentru deploy autonom
+
+## Prezentare internă
+
+Prezentarea comercială nu mai este servită din `landing/`.
+
+- fișierele locale sunt în `../private-presentations/yumzy/`
+- nu sunt expuse de serverul static pornit din `landing/`

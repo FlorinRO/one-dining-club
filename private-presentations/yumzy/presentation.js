@@ -1,19 +1,19 @@
 const deckVideoSources = [
   {
-    src: "./assets/login-videos/mixkit-a-couple-of-young-girls-savour-a-the-the-licious-51238-full-hd.mp4",
-    poster: "./assets/login-videos/mixkit-a-couple-of-young-girls-savour-a-the-the-licious-51238-poster.jpg",
+    src: "../../landing/assets/login-videos/mixkit-a-couple-of-young-girls-savour-a-the-the-licious-51238-full-hd.mp4",
+    poster: "../../landing/assets/login-videos/mixkit-a-couple-of-young-girls-savour-a-the-the-licious-51238-poster.jpg",
   },
   {
-    src: "./assets/login-videos/mixkit-a-young-woman-poses-to-the-mobile-camera-for-a-51236-full-hd.mp4",
-    poster: "./assets/login-videos/mixkit-a-young-woman-poses-to-the-mobile-camera-for-a-51236-poster.jpg",
+    src: "../../landing/assets/login-videos/mixkit-a-young-woman-poses-to-the-mobile-camera-for-a-51236-full-hd.mp4",
+    poster: "../../landing/assets/login-videos/mixkit-a-young-woman-poses-to-the-mobile-camera-for-a-51236-poster.jpg",
   },
   {
-    src: "./assets/login-videos/mixkit-man-eating-a-hamburger-372-hd-ready.mp4",
-    poster: "./assets/login-videos/mixkit-man-eating-a-hamburger-372-poster.jpg",
+    src: "../../landing/assets/login-videos/mixkit-man-eating-a-hamburger-372-hd-ready.mp4",
+    poster: "../../landing/assets/login-videos/mixkit-man-eating-a-hamburger-372-poster.jpg",
   },
   {
-    src: "./assets/login-videos/mixkit-woman-eating-noodles-41350-full-hd.mp4",
-    poster: "./assets/login-videos/mixkit-woman-eating-noodles-41350-poster.jpg",
+    src: "../../landing/assets/login-videos/mixkit-woman-eating-noodles-41350-full-hd.mp4",
+    poster: "../../landing/assets/login-videos/mixkit-woman-eating-noodles-41350-poster.jpg",
   },
 ];
 const videoLayers = Array.from(document.querySelectorAll(".deck-video-layer"));

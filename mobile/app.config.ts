@@ -2,6 +2,29 @@ import type { ExpoConfig } from "expo/config";
 
 const env = (name: string, fallback?: unknown) => process.env[name] ?? fallback;
 
+function assertRequiredProductionSocialEnv(config: ExpoConfig) {
+  if (process.env.EAS_BUILD_PROFILE !== "production") {
+    return;
+  }
+
+  const required = [
+    ["EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID", config.extra?.googleWebClientId],
+    ["EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID", config.extra?.googleIosClientId],
+    ["EXPO_PUBLIC_FACEBOOK_CLIENT_ID", config.extra?.facebookClientId],
+  ] as const;
+
+  const missing = required
+    .filter(([name, fallback]) => !(process.env[name] ?? fallback))
+    .map(([name]) => name);
+
+  if (missing.length) {
+    throw new Error(
+      `Missing required iOS social auth env for production build: ${missing.join(", ")}. ` +
+        "Set them in the EAS production environment before building for TestFlight/App Store.",
+    );
+  }
+}
+
 function appendFacebookScheme(scheme: ExpoConfig["scheme"], facebookClientId?: string) {
   if (!facebookClientId) return scheme;
 
@@ -11,12 +34,21 @@ function appendFacebookScheme(scheme: ExpoConfig["scheme"], facebookClientId?: s
 
 export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
   const facebookClientId = env("EXPO_PUBLIC_FACEBOOK_CLIENT_ID", config.extra?.facebookClientId) as string | undefined;
+  assertRequiredProductionSocialEnv(config);
   const basePlugins = Array.isArray(config.plugins) ? config.plugins : [];
-  const plugins = basePlugins.includes("expo-audio") ? basePlugins : [...basePlugins, "expo-audio"];
+  const requiredPlugins = ["expo-audio", "expo-apple-authentication"];
+  const plugins = requiredPlugins.reduce(
+    (acc, plugin) => (acc.includes(plugin) ? acc : [...acc, plugin]),
+    basePlugins,
+  );
 
   return {
     ...config,
     plugins,
+    ios: {
+      ...config.ios,
+      usesAppleSignIn: true,
+    },
     scheme: appendFacebookScheme(config.scheme, facebookClientId),
     extra: {
       ...(config.extra ?? {}),

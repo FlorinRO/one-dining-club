@@ -14,9 +14,10 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+from jwt import DecodeError, InvalidTokenError, PyJWKClient, decode as jwt_decode
 
 from core.email import EmailDeliveryError, send_transactional_email
-from users.models import CustomerProfile, User, UserRole
+from users.models import CustomerProfile, SocialAccount, User, UserRole
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -194,7 +195,7 @@ class LoginSerializer(TokenObtainPairSerializer):
 
 
 class SocialLoginSerializer(serializers.Serializer):
-    provider = serializers.ChoiceField(choices=("google", "facebook"))
+    provider = serializers.ChoiceField(choices=("google", "facebook", "apple"))
     access_token = serializers.CharField(required=False, allow_blank=True)
     id_token = serializers.CharField(required=False, allow_blank=True)
 
@@ -202,36 +203,58 @@ class SocialLoginSerializer(serializers.Serializer):
         provider = attrs["provider"]
         token = attrs.get("id_token") or attrs.get("access_token")
         if not token:
-            raise serializers.ValidationError("A Google or Facebook token is required.")
+            raise serializers.ValidationError("A Google, Facebook, or Apple token is required.")
 
         profile = self._fetch_profile(provider, token, bool(attrs.get("id_token")))
-        email = profile.get("email")
-        if not email:
-            raise serializers.ValidationError("The social account did not return an email address.")
+        subject = profile.get("subject")
+        if not subject:
+            raise serializers.ValidationError("The social account did not return a valid subject identifier.")
 
-        user, created = User.objects.get_or_create(
-            email=User.objects.normalize_email(email),
-            defaults={
-                "first_name": profile.get("first_name", ""),
-                "last_name": profile.get("last_name", ""),
-                "role": UserRole.CUSTOMER,
-            },
-        )
+        email = profile.get("email")
+        social_account = SocialAccount.objects.select_related("user").filter(provider=provider, subject=subject).first()
+        created = False
+
+        if social_account:
+            user = social_account.user
+        else:
+            if not email:
+                raise serializers.ValidationError("The social account did not return an email address.")
+            user, created = User.objects.get_or_create(
+                email=User.objects.normalize_email(email),
+                defaults={
+                    "first_name": profile.get("first_name", ""),
+                    "last_name": profile.get("last_name", ""),
+                    "role": UserRole.CUSTOMER,
+                },
+            )
+            SocialAccount.objects.get_or_create(user=user, provider=provider, subject=subject)
+
+        updated_fields = []
+        if profile.get("first_name") and not user.first_name:
+            user.first_name = profile["first_name"]
+            updated_fields.append("first_name")
+        if profile.get("last_name") and not user.last_name:
+            user.last_name = profile["last_name"]
+            updated_fields.append("last_name")
+
         if created:
             user.is_active = True
             user.set_unusable_password()
-            user.save(update_fields=["is_active", "password"])
+            updated_fields.extend(["is_active", "password"])
             try:
                 send_welcome_email(user)
             except EmailDeliveryError:
                 pass
         elif not user.is_active:
             user.is_active = True
-            user.save(update_fields=["is_active"])
+            updated_fields.append("is_active")
             try:
                 send_welcome_email(user)
             except EmailDeliveryError:
                 pass
+
+        if updated_fields:
+            user.save(update_fields=list(dict.fromkeys(updated_fields)))
         CustomerProfile.objects.get_or_create(user=user, defaults={"phone_number": user.phone})
 
         return build_auth_response(user, self.context)
@@ -249,10 +272,14 @@ class SocialLoginSerializer(serializers.Serializer):
                     headers={"Authorization": f"Bearer {token}"},
                 )
             return {
+                "subject": data.get("sub"),
                 "email": data.get("email"),
                 "first_name": data.get("given_name", ""),
                 "last_name": data.get("family_name", ""),
             }
+
+        if provider == "apple":
+            return self._fetch_apple_profile(token)
 
         params = urlencode(
             {
@@ -262,9 +289,30 @@ class SocialLoginSerializer(serializers.Serializer):
         )
         data = self._get_json(f"https://graph.facebook.com/me?{params}")
         return {
+            "subject": data.get("id"),
             "email": data.get("email"),
             "first_name": data.get("first_name", ""),
             "last_name": data.get("last_name", ""),
+        }
+
+    def _fetch_apple_profile(self, token):
+        try:
+            signing_key = PyJWKClient("https://appleid.apple.com/auth/keys").get_signing_key_from_jwt(token)
+            data = jwt_decode(
+                token,
+                signing_key.key,
+                algorithms=["RS256"],
+                audience=settings.APPLE_SIGN_IN_AUDIENCES,
+                issuer="https://appleid.apple.com",
+            )
+        except (InvalidTokenError, DecodeError, URLError, TimeoutError, ValueError) as exc:
+            raise serializers.ValidationError("Could not verify the social login token.") from exc
+
+        return {
+            "subject": data.get("sub"),
+            "email": data.get("email"),
+            "first_name": "",
+            "last_name": "",
         }
 
     def _get_json(self, url, headers=None):

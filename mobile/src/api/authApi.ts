@@ -24,7 +24,11 @@ export const authApi = {
     return data;
   },
 
-  async socialLogin(provider: "google" | "facebook", token: string, tokenType: "access_token" | "id_token" = "access_token") {
+  async socialLogin(
+    provider: "google" | "facebook" | "apple",
+    token: string,
+    tokenType: "access_token" | "id_token" = "access_token",
+  ) {
     const { data } = await apiClient.post<AuthResponse>("/auth/social/", {
       provider,
       [tokenType]: token,

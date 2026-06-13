@@ -154,6 +154,7 @@ EMAIL_USE_SSL = get_env_bool("EMAIL_USE_SSL", default=False)
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "20"))
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 SENDGRID_API_BASE_URL = os.getenv("SENDGRID_API_BASE_URL", "https://api.sendgrid.com").rstrip("/")
+APPLE_SIGN_IN_AUDIENCES = get_env_list("APPLE_SIGN_IN_AUDIENCES", "club.onedining.customer")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
