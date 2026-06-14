@@ -1,5 +1,6 @@
 const revealItems = document.querySelectorAll(".reveal");
 const landingVideos = document.querySelectorAll("video");
+const mobileViewport = window.matchMedia("(max-width: 920px)");
 
 const syncAppHeight = () => {
   document.documentElement.style.setProperty("--app-height", `${window.innerHeight}px`);
@@ -28,6 +29,15 @@ const ensureVideoPlayback = (video) => {
   }
 };
 
+const ensureAllVideosPlayback = () => {
+  landingVideos.forEach((video) => ensureVideoPlayback(video));
+};
+
+const resumeMobileVideoPlayback = () => {
+  if (!mobileViewport.matches) return;
+  ensureAllVideosPlayback();
+};
+
 syncAppHeight();
 window.addEventListener("resize", syncAppHeight);
 window.addEventListener("orientationchange", syncAppHeight);
@@ -42,13 +52,17 @@ landingVideos.forEach((video) => {
 
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
-    landingVideos.forEach((video) => ensureVideoPlayback(video));
+    ensureAllVideosPlayback();
   }
 });
 
 window.addEventListener("focus", () => {
-  landingVideos.forEach((video) => ensureVideoPlayback(video));
+  ensureAllVideosPlayback();
 });
+
+document.addEventListener("touchstart", resumeMobileVideoPlayback, { passive: true });
+document.addEventListener("pointerdown", resumeMobileVideoPlayback, { passive: true });
+window.addEventListener("pageshow", resumeMobileVideoPlayback);
 
 const revealObserver = new IntersectionObserver(
   (entries) => {
