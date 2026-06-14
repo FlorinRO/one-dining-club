@@ -88,7 +88,7 @@ body {
   body {
     height: auto;
     min-height: var(--app-height);
-    overflow-y: auto;
+    overflow-y: visible;
     overscroll-behavior-y: auto;
     touch-action: pan-y pinch-zoom;
   }
