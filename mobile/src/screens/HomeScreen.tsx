@@ -122,6 +122,7 @@ export function HomeScreen({ navigation }: Props) {
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [productsByRestaurant, setProductsByRestaurant] = useState<Record<number, Product[]>>({});
+  const [resolvedRestaurantProductIds, setResolvedRestaurantProductIds] = useState<number[]>([]);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const commentBumps = useCommentsStore((state) => state.commentBumps);
   const [activeRestaurantIndex, setActiveRestaurantIndex] = useState(0);
@@ -160,6 +161,7 @@ export function HomeScreen({ navigation }: Props) {
     );
 
     setProductsByRestaurant(Object.fromEntries(productEntries));
+    setResolvedRestaurantProductIds(visibleRestaurants.map((restaurant) => restaurant.id));
   }, []);
 
   useEffect(() => {
@@ -187,16 +189,22 @@ export function HomeScreen({ navigation }: Props) {
   }, [fetchFeed]);
 
   const feedData = useMemo<FeedRestaurant[]>(() => {
-    return restaurants.map((restaurant, restaurantIndex) => {
+    const resolvedRestaurantIds = new Set(resolvedRestaurantProductIds);
+
+    return restaurants.flatMap((restaurant) => {
       const products = (productsByRestaurant[restaurant.id] ?? []).filter((product) => Number(product.restaurant) === restaurant.id);
+      if (!products.length && !resolvedRestaurantIds.has(restaurant.id)) {
+        return [];
+      }
+
       const resolvedProducts = products.length ? products : [buildFallbackProduct(restaurant)];
-      return {
+      return [{
         restaurant,
         products: resolvedProducts,
         initialProductIndex: 0,
-      };
+      }];
     });
-  }, [productsByRestaurant, restaurants]);
+  }, [productsByRestaurant, resolvedRestaurantProductIds, restaurants]);
 
   const loadCurrentLocationLabel = useCallback(async () => {
     if (!accessToken) {

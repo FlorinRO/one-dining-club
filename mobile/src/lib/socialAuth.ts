@@ -49,6 +49,18 @@ function extractApiErrorMessage(error: unknown): string | null {
   return null;
 }
 
+function extractNativeErrorMessage(error: unknown): string | null {
+  if (!(error instanceof Error)) return null;
+
+  const parts = [error.message.trim()];
+  if ("code" in error && typeof error.code === "string" && error.code.trim()) {
+    parts.unshift(error.code.trim());
+  }
+
+  const message = parts.filter(Boolean).join(": ").trim();
+  return message || null;
+}
+
 function isExpoGoRuntime() {
   const runtime = Constants.executionEnvironment;
   return runtime === "storeClient";
@@ -176,7 +188,7 @@ export function useSocialAuth({ onSuccess, onError }: UseSocialAuthOptions) {
         ) {
           return;
         }
-        onError(extractApiErrorMessage(error) ?? "Apple authentication failed.");
+        onError(extractApiErrorMessage(error) ?? extractNativeErrorMessage(error) ?? "Apple authentication failed.");
       } finally {
         setLoadingProvider(null);
       }
