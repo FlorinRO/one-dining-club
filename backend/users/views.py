@@ -3,6 +3,7 @@ from django.db import transaction
 from django.db.models.deletion import ProtectedError
 from django.shortcuts import render, redirect
 from django.urls import reverse
+import logging
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -20,6 +21,8 @@ from users.serializers import (
     UserSerializer,
     validate_password_reset_user,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -291,9 +294,20 @@ class SocialLoginView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def post(self, request):
-        serializer = SocialLoginSerializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
-        return Response(serializer.validated_data)
+        try:
+            serializer = SocialLoginSerializer(data=request.data, context={"request": request})
+            serializer.is_valid(raise_exception=True)
+            return Response(serializer.validated_data)
+        except Exception:
+            logger.exception(
+                "Social login request failed.",
+                extra={
+                    "provider": request.data.get("provider"),
+                    "has_access_token": bool(request.data.get("access_token")),
+                    "has_id_token": bool(request.data.get("id_token")),
+                },
+            )
+            raise
 
 
 class LogoutView(APIView):

@@ -1,4 +1,5 @@
 import json
+import logging
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -18,6 +19,8 @@ from jwt import DecodeError, InvalidTokenError, PyJWKClient, PyJWKClientError, d
 
 from core.email import EmailDeliveryError, send_transactional_email
 from users.models import CustomerProfile, SocialAccount, User, UserRole
+
+logger = logging.getLogger(__name__)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -243,15 +246,21 @@ class SocialLoginSerializer(serializers.Serializer):
             updated_fields.extend(["is_active", "password"])
             try:
                 send_welcome_email(user)
-            except EmailDeliveryError:
-                pass
+            except Exception:
+                logger.exception(
+                    "Welcome email failed during social signup.",
+                    extra={"provider": provider, "user_id": user.pk, "email": user.email},
+                )
         elif not user.is_active:
             user.is_active = True
             updated_fields.append("is_active")
             try:
                 send_welcome_email(user)
-            except EmailDeliveryError:
-                pass
+            except Exception:
+                logger.exception(
+                    "Welcome email failed during social reactivation.",
+                    extra={"provider": provider, "user_id": user.pk, "email": user.email},
+                )
 
         if updated_fields:
             user.save(update_fields=list(dict.fromkeys(updated_fields)))
@@ -306,6 +315,9 @@ class SocialLoginSerializer(serializers.Serializer):
                 issuer="https://appleid.apple.com",
             )
         except (InvalidTokenError, DecodeError, PyJWKClientError, URLError, TimeoutError, ValueError) as exc:
+            raise serializers.ValidationError("Could not verify the social login token.") from exc
+        except Exception as exc:
+            logger.exception("Unexpected Apple token verification failure.")
             raise serializers.ValidationError("Could not verify the social login token.") from exc
 
         return {
