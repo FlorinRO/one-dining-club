@@ -1518,13 +1518,26 @@ h1 {
 }
 
 .legal-body {
+  height: auto;
   min-height: 100vh;
+  overflow-y: visible;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y pinch-zoom;
+}
+
+html:has(body.legal-body) {
+  height: auto;
+  min-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior-y: auto;
 }
 
 .legal-shell {
   width: min(100% - 36px, 960px);
   margin: 0 auto;
   padding: 56px 0 96px;
+  position: relative;
+  z-index: 1;
 }
 
 .legal-header {
@@ -1550,6 +1563,7 @@ h1 {
 }
 
 .legal-card {
+  display: block;
   padding: clamp(26px, 4vw, 44px);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 30px;

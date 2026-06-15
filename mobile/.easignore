@@ -1,0 +1,27 @@
+# Dependencies installed locally.
+node_modules/
+
+# Expo and local build artifacts.
+.expo/
+dist/
+web-build/
+
+# Local environments and logs.
+.venv/
+venv/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Native iOS artifacts generated locally.
+ios/Pods/
+ios/build/
+ios/DerivedData/
+ios/.xcode.env.local
+
+# Local editor and OS files.
+.DS_Store
+
+# One-off local exports and diagnostics.
+Build Eirent_*.txt
