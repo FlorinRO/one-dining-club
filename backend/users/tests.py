@@ -2,6 +2,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.test import TestCase
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+from jwt import PyJWKClientError
 from rest_framework.test import APIClient
 from unittest.mock import patch
 
@@ -251,4 +252,17 @@ class SocialLoginFlowTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()[0], "The social account did not return an email address.")
+        self.assertEqual(response.json()["non_field_errors"][0], "The social account did not return an email address.")
+
+    @patch("users.serializers.PyJWKClient.get_signing_key_from_jwt")
+    def test_apple_social_login_returns_400_when_jwk_lookup_fails(self, mock_get_signing_key):
+        mock_get_signing_key.side_effect = PyJWKClientError("boom")
+
+        response = self.client.post(
+            "/api/auth/social/",
+            {"provider": "apple", "id_token": "token"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["non_field_errors"][0], "Could not verify the social login token.")

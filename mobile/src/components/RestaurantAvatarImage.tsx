@@ -3,7 +3,7 @@ import { Image, ImageProps, StyleSheet, View } from "react-native";
 import { SvgXml } from "react-native-svg";
 
 import { brandAvatarAssets } from "../lib/brandAvatars";
-import { resolveRestaurantAvatarUri } from "../lib/images";
+import { resolveRestaurantAvatarFallbackUri, resolveRestaurantAvatarUri } from "../lib/images";
 import { Restaurant } from "../types/models";
 
 type Props = Omit<ImageProps, "source"> & {
@@ -12,12 +12,13 @@ type Props = Omit<ImageProps, "source"> & {
 
 export function RestaurantAvatarImage({ restaurant, ...props }: Props) {
   const brandAsset = restaurant.slug ? brandAvatarAssets[restaurant.slug] : undefined;
-  const fallbackUri = resolveRestaurantAvatarUri(restaurant);
-  const [uri, setUri] = useState(fallbackUri);
+  const initialUri = resolveRestaurantAvatarUri(restaurant);
+  const fallbackUri = resolveRestaurantAvatarFallbackUri(restaurant);
+  const [uri, setUri] = useState(initialUri);
 
   useEffect(() => {
-    setUri(fallbackUri);
-  }, [fallbackUri]);
+    setUri(initialUri);
+  }, [initialUri]);
 
   if (brandAsset) {
     return (

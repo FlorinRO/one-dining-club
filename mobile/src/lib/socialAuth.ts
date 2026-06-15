@@ -31,7 +31,13 @@ function extractApiErrorMessage(error: unknown): string | null {
   if (!(error instanceof AxiosError)) return null;
 
   const data = error.response?.data;
-  if (typeof data === "string" && data.trim()) return data.trim();
+  if (typeof data === "string" && data.trim()) {
+    const trimmed = data.trim();
+    if (trimmed.startsWith("<!doctype html") || trimmed.startsWith("<html")) {
+      return null;
+    }
+    return trimmed;
+  }
   if (!data || typeof data !== "object") return null;
 
   const values = Object.values(data as Record<string, unknown>);

@@ -27,6 +27,7 @@ const restaurantAvatarBySlug: Record<string, string> = {
   "pasta-fresca-studio": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?q=80&w=900&auto=format&fit=crop",
   "ravioli-atelier": "https://images.unsplash.com/photo-1484980972926-edee96e0960d?q=80&w=900&auto=format&fit=crop",
   "luna-rossa-kitchen": "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=900&auto=format&fit=crop",
+  "wok-yard": "https://images.unsplash.com/photo-1526318896980-cf78c088247c?q=80&w=900&auto=format&fit=crop",
   "pizzeria-napoli": "https://images.unsplash.com/photo-1571066811602-716837d681de?q=80&w=900&auto=format&fit=crop",
   "napoli-slice-club": "https://images.unsplash.com/photo-1571066811602-716837d681de?q=80&w=900&auto=format&fit=crop",
   "burger-forge": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=900&auto=format&fit=crop",
@@ -266,11 +267,14 @@ export function resolveRestaurantImageUri(uri: string | null | undefined, restau
   return fallback;
 }
 
-export function resolveRestaurantAvatarUri(restaurant: RestaurantImageContext & { logo?: string | null; cover_image?: string | null }) {
+export function resolveRestaurantAvatarFallbackUri(restaurant: RestaurantImageContext) {
   const override = findRestaurantAvatarOverride(restaurant);
   if (override) return override;
+  return buildRestaurantImageFallback(restaurant);
+}
 
-  const fallback = buildRestaurantImageFallback(restaurant);
+export function resolveRestaurantAvatarUri(restaurant: RestaurantImageContext & { logo?: string | null; cover_image?: string | null }) {
+  const fallback = resolveRestaurantAvatarFallbackUri(restaurant);
   if (restaurant.logo) return resolveImageUri(restaurant.logo, fallback);
   if (restaurant.cover_image) return resolveImageUri(restaurant.cover_image, fallback);
   return fallback;

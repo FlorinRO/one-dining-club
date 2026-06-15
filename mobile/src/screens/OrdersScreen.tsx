@@ -12,12 +12,13 @@ import { Screen } from "../components/Screen";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { formatDateTime } from "../lib/dateFormat";
-import { resolveProductImageUri } from "../lib/images";
+import { resolveRestaurantAvatarUri } from "../lib/images";
 import { OrdersStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
+import { mockRestaurants } from "../data/mockData";
 import { useOrdersStore } from "../store/ordersStore";
 import { colors } from "../theme/colors";
-import { Order, OrderStatus, Product } from "../types/models";
+import { Order, OrderStatus, Product, Restaurant } from "../types/models";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrdersHome">;
 
@@ -35,25 +36,6 @@ type OrderRow = {
   productLine: string;
   imageUri?: string;
 };
-
-const ORDER_ROW_IMAGE_POOL = [
-  "https://images.unsplash.com/photo-1628840042765-356cda07504e?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1625398407796-82650a8c135f?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1557872943-16a5ac26437e?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1526318896980-cf78c088247c?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1565299585323-38174c4a6471?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1555126634-323283e090fa?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=1000&auto=format&fit=crop",
-];
 
 export function OrdersScreen({ navigation }: Props) {
   const { tr, language } = useI18n();
@@ -124,7 +106,6 @@ export function OrdersScreen({ navigation }: Props) {
     <Screen padded={false} edges={["left", "right"]}>
       <View style={styles.page}>
         <FoodBackground />
-        <View pointerEvents="none" style={[styles.statusBarMask, { height: topOverlayHeight }]} />
         {errorMessage ? <Text style={styles.errorBanner}>{errorMessage}</Text> : null}
 
         <FlatList
@@ -224,21 +205,8 @@ function productPrice(product: Product) {
   return toNumber(product.effective_price ?? product.discount_price ?? product.price);
 }
 
-function productImageUri(product: Product) {
-  return resolveProductImageUri(product.image, product.id);
-}
-
 function normalizeProductName(product: Product) {
   return product.name.trim().toLowerCase();
-}
-
-function imageVisualKey(uri: string) {
-  try {
-    const parsed = new URL(uri);
-    return `${parsed.origin}${parsed.pathname}`;
-  } catch {
-    return uri.split("?")[0];
-  }
 }
 
 function uniqueProductsByName(products: Product[]) {
@@ -263,14 +231,13 @@ function orderProductIds(order: SafeOrder) {
     .filter((productId): productId is number => typeof productId === "number");
 }
 
-function pickUniqueProduct(candidates: Product[], usedProductIds: Set<number>, usedImageKeys: Set<string>, usedProductNames: Set<string>) {
+function pickUniqueProduct(candidates: Product[], usedProductIds: Set<number>, usedProductNames: Set<string>) {
   const cleanCandidates = candidates.filter(Boolean);
 
   return (
     cleanCandidates.find((product) => {
-      const imageKey = imageVisualKey(productImageUri(product));
       const name = normalizeProductName(product);
-      return !usedProductIds.has(product.id) && !usedImageKeys.has(imageKey) && !usedProductNames.has(name);
+      return !usedProductIds.has(product.id) && !usedProductNames.has(name);
     }) ??
     cleanCandidates.find((product) => {
       const name = normalizeProductName(product);
@@ -279,43 +246,60 @@ function pickUniqueProduct(candidates: Product[], usedProductIds: Set<number>, u
   );
 }
 
-function uniqueOrderImageUri(product: Product | undefined, usedImageKeys: Set<string>, fallbackIndex: number) {
-  if (product) {
-    const productUri = productImageUri(product);
-    const productImageKey = imageVisualKey(productUri);
-    if (!usedImageKeys.has(productImageKey)) return productUri;
-  }
+function normalizeRestaurantName(value: string) {
+  return value.trim().toLowerCase();
+}
 
-  for (let offset = 0; offset < ORDER_ROW_IMAGE_POOL.length; offset += 1) {
-    const fallbackUri = ORDER_ROW_IMAGE_POOL[(fallbackIndex + offset) % ORDER_ROW_IMAGE_POOL.length];
-    const fallbackKey = imageVisualKey(fallbackUri);
-    if (!usedImageKeys.has(fallbackKey)) return fallbackUri;
-  }
+function dashedSlugFromName(name: string) {
+  return normalizeRestaurantName(name)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
-  return product ? productImageUri(product) : undefined;
+function resolveOrderRestaurantImageUri(order: SafeOrder, product?: Product) {
+  const restaurantById = mockRestaurants.find((restaurant) => restaurant.id === order.restaurant);
+  const restaurantByName = mockRestaurants.find(
+    (restaurant) => normalizeRestaurantName(restaurant.name) === normalizeRestaurantName(order.restaurant_name),
+  );
+  const matchedRestaurant = restaurantById ?? restaurantByName;
+
+  const restaurantContext: Restaurant = matchedRestaurant ?? {
+    id: order.restaurant,
+    name: order.restaurant_name,
+    slug: dashedSlugFromName(order.restaurant_name),
+    description: product?.description ?? "",
+    city: "",
+    delivery_fee: 0,
+    minimum_order: 0,
+    estimated_delivery_time_min: 0,
+    estimated_delivery_time_max: 0,
+    rating: 0,
+    is_open: true,
+  };
+
+  return resolveRestaurantAvatarUri(restaurantContext);
 }
 
 function buildOrderRows(orders: SafeOrder[], products: Product[]): OrderRow[] {
   const productsById = new Map(products.map((product) => [product.id, product]));
   const uniqueProducts = uniqueProductsByName(products);
   const usedProductIds = new Set<number>();
-  const usedImageKeys = new Set<string>();
   const usedProductNames = new Set<string>();
 
-  return orders.map((order, index) => {
+  return orders.map((order) => {
     const orderProducts = orderProductIds(order)
       .map((productId) => productsById.get(productId))
       .filter((product): product is Product => Boolean(product));
     const restaurantProducts = uniqueProducts.filter((product) => product.restaurant === order.restaurant);
-    const product = pickUniqueProduct([...orderProducts, ...restaurantProducts, ...uniqueProducts], usedProductIds, usedImageKeys, usedProductNames);
-    const imageUri = uniqueOrderImageUri(product, usedImageKeys, index);
+    const product = pickUniqueProduct([...orderProducts, ...restaurantProducts, ...uniqueProducts], usedProductIds, usedProductNames);
+    const imageUri = resolveOrderRestaurantImageUri(order, product);
 
     if (product) {
       usedProductIds.add(product.id);
       usedProductNames.add(normalizeProductName(product));
-    }
-    if (imageUri) {
-      usedImageKeys.add(imageVisualKey(imageUri));
     }
 
     return {
@@ -443,15 +427,6 @@ function statusLabel(status: OrderStatus, tr: (ro: string, en: string) => string
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-  },
-  statusBarMask: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    elevation: 20,
-    backgroundColor: "#000000",
   },
   titleBlock: {
     paddingHorizontal: 18,

@@ -14,7 +14,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
-from jwt import DecodeError, InvalidTokenError, PyJWKClient, decode as jwt_decode
+from jwt import DecodeError, InvalidTokenError, PyJWKClient, PyJWKClientError, decode as jwt_decode
 
 from core.email import EmailDeliveryError, send_transactional_email
 from users.models import CustomerProfile, SocialAccount, User, UserRole
@@ -305,7 +305,7 @@ class SocialLoginSerializer(serializers.Serializer):
                 audience=settings.APPLE_SIGN_IN_AUDIENCES,
                 issuer="https://appleid.apple.com",
             )
-        except (InvalidTokenError, DecodeError, URLError, TimeoutError, ValueError) as exc:
+        except (InvalidTokenError, DecodeError, PyJWKClientError, URLError, TimeoutError, ValueError) as exc:
             raise serializers.ValidationError("Could not verify the social login token.") from exc
 
         return {

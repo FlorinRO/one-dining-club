@@ -1,9 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { Image, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import {
-  BURGER_BACKGROUND_IMAGE,
-  FOOD_BACKGROUND_BLUR_RADIUS,
   FOOD_BACKGROUND_GRADIENT_COLORS,
   FOOD_BACKGROUND_GRADIENT_LOCATIONS,
 } from "../theme/foodBackground";
@@ -15,19 +13,23 @@ type Props = {
 export function FoodBackground({ topOffset = 0 }: Props) {
   return (
     <>
-      <View style={[styles.imageFrame, { top: topOffset }]}>
-        <Image
-          source={BURGER_BACKGROUND_IMAGE}
-          style={styles.image}
-          resizeMode="contain"
-          blurRadius={FOOD_BACKGROUND_BLUR_RADIUS + 2}
-        />
-      </View>
-      <View pointerEvents="none" style={[styles.overlay, { top: topOffset }]} />
       <LinearGradient
         pointerEvents="none"
         colors={FOOD_BACKGROUND_GRADIENT_COLORS}
         locations={FOOD_BACKGROUND_GRADIENT_LOCATIONS}
+        style={[StyleSheet.absoluteFillObject, { top: topOffset }]}
+      />
+      <View pointerEvents="none" style={[styles.baseTint, { top: topOffset }]} />
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(255,255,255,0.08)", "rgba(255,255,255,0.01)", "rgba(255,255,255,0)"]}
+        locations={[0, 0.28, 1]}
+        style={[StyleSheet.absoluteFillObject, { top: topOffset }]}
+      />
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.008)", "rgba(255,255,255,0.035)"]}
+        locations={[0, 0.78, 1]}
         style={[StyleSheet.absoluteFillObject, { top: topOffset }]}
       />
     </>
@@ -35,17 +37,8 @@ export function FoodBackground({ topOffset = 0 }: Props) {
 }
 
 const styles = StyleSheet.create({
-  imageFrame: {
+  baseTint: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  image: {
-    width: "250%",
-    height: "250%",
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.7)",
+    backgroundColor: "rgba(7,8,10,0.78)",
   },
 });

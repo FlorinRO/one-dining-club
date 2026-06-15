@@ -203,6 +203,14 @@ function buildUrl(path, params) {
   return url.toString();
 }
 
+function resolveMediaUrl(path) {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+
+  const apiRoot = state.apiBase.replace(/\/api\/?$/, "");
+  return `${apiRoot}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 async function apiFetch(path, options = {}, retry = true) {
   const headers = new Headers(options.headers || {});
   if (state.accessToken) {
@@ -544,8 +552,8 @@ function renderOverviewView(restaurant, overview) {
           </div>
         </div>
         <div class="preview-row">
-          ${restaurant.logo ? `<img class="media-preview" src="${restaurant.logo}" alt="Logo restaurant" />` : ""}
-          ${restaurant.cover_image ? `<img class="media-preview" src="${restaurant.cover_image}" alt="Cover restaurant" />` : ""}
+          ${restaurant.logo ? `<img class="media-preview" src="${resolveMediaUrl(restaurant.logo)}" alt="Logo restaurant" />` : ""}
+          ${restaurant.cover_image ? `<img class="media-preview" src="${resolveMediaUrl(restaurant.cover_image)}" alt="Cover restaurant" />` : ""}
         </div>
         <p>${escapeHtml(restaurant.description || "Adaugă o descriere care explică stilul restaurantului.")}</p>
         <div class="pill-row">
@@ -677,7 +685,7 @@ function renderProfileView(restaurant) {
             <small>Upload imagine pentru iconul restaurantului.</small>
           </div>
         </div>
-        ${restaurant.logo ? `<img class="media-preview" src="${restaurant.logo}" alt="Logo restaurant" />` : `<p class="panel-note">Logo lipsă.</p>`}
+        ${restaurant.logo ? `<img class="media-preview" src="${resolveMediaUrl(restaurant.logo)}" alt="Logo restaurant" />` : `<p class="panel-note">Logo lipsă.</p>`}
         <form class="toolbar" data-media-form="logo">
           <input type="file" name="logo" accept="image/*" required />
           <button class="button" type="submit">Upload logo</button>
@@ -690,7 +698,7 @@ function renderProfileView(restaurant) {
             <small>Upload imagine hero pentru pagina restaurantului.</small>
           </div>
         </div>
-        ${restaurant.cover_image ? `<img class="media-preview" src="${restaurant.cover_image}" alt="Cover restaurant" />` : `<p class="panel-note">Cover lipsă.</p>`}
+        ${restaurant.cover_image ? `<img class="media-preview" src="${resolveMediaUrl(restaurant.cover_image)}" alt="Cover restaurant" />` : `<p class="panel-note">Cover lipsă.</p>`}
         <form class="toolbar" data-media-form="cover_image">
           <input type="file" name="cover_image" accept="image/*" required />
           <button class="button" type="submit">Upload cover</button>
@@ -819,7 +827,7 @@ function renderProductsView() {
             .map(
               (product) => `
                 <article class="product-card">
-                  ${product.image ? `<img src="${product.image}" alt="${escapeHtml(product.name)}" />` : ""}
+                  ${product.image ? `<img src="${resolveMediaUrl(product.image)}" alt="${escapeHtml(product.name)}" />` : ""}
                   <div class="section-header">
                     <div>
                       <h3>${escapeHtml(product.name)}</h3>
