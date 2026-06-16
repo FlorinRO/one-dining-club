@@ -8,6 +8,7 @@ from products.serializers import ProductSerializer
 from products.views import with_product_social_counts
 from restaurants.filters import RestaurantFilter
 from restaurants.models import Restaurant, RestaurantCategory
+from restaurants.ownership import get_primary_restaurant_id_for_owner
 from restaurants.serializers import (
     RestaurantCategorySerializer,
     RestaurantDetailSerializer,
@@ -110,10 +111,14 @@ class RestaurantOwnerRestaurantViewSet(viewsets.ModelViewSet):
     ordering_fields = ("name", "created_at", "updated_at")
 
     def get_queryset(self):
+        primary_restaurant_id = get_primary_restaurant_id_for_owner(self.request.user)
+        if not primary_restaurant_id:
+            return Restaurant.objects.none()
+
         return (
             Restaurant.objects.select_related("owner")
             .prefetch_related("categories", "opening_hours", "product_categories")
-            .filter(owner=self.request.user)
+            .filter(owner=self.request.user, id=primary_restaurant_id)
         )
 
     @decorators.action(detail=False, methods=["get"])

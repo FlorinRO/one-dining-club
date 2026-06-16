@@ -12,6 +12,7 @@ from products.serializers import (
     ProductSocialSummarySerializer,
     RestaurantOwnerProductSerializer,
 )
+from restaurants.ownership import get_primary_restaurant_id_for_owner
 
 
 def with_product_social_counts(queryset, request):
@@ -110,8 +111,10 @@ class RestaurantOwnerProductViewSet(viewsets.ModelViewSet):
     ordering_fields = ("name", "price", "created_at", "updated_at")
 
     def get_queryset(self):
+        primary_restaurant_id = get_primary_restaurant_id_for_owner(self.request.user)
         queryset = Product.objects.select_related("restaurant", "category").filter(
-            restaurant__owner=self.request.user
+            restaurant__owner=self.request.user,
+            restaurant_id=primary_restaurant_id,
         )
         return with_product_social_counts(queryset, self.request)
 

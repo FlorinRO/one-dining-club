@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from menus.models import ProductCategory
 from restaurants.models import Restaurant
+from restaurants.ownership import get_primary_restaurant_id_for_owner
 
 
 class ProductCategorySerializer(serializers.ModelSerializer):
@@ -10,7 +11,8 @@ class ProductCategorySerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return
-        self.fields["restaurant"].queryset = Restaurant.objects.filter(owner=request.user)
+        primary_restaurant_id = get_primary_restaurant_id_for_owner(request.user)
+        self.fields["restaurant"].queryset = Restaurant.objects.filter(owner=request.user, id=primary_restaurant_id)
 
     class Meta:
         model = ProductCategory

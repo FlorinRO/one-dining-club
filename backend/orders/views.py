@@ -7,6 +7,7 @@ from orders.serializers import (
     OrderSerializer,
     RestaurantOwnerOrderStatusSerializer,
 )
+from restaurants.ownership import get_primary_restaurant_id_for_owner
 from reviews.models import update_restaurant_rating
 from reviews.serializers import ReviewCreateSerializer, ReviewSerializer
 
@@ -89,10 +90,11 @@ class RestaurantOwnerOrderViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ("created_at", "total", "order_status")
 
     def get_queryset(self):
+        primary_restaurant_id = get_primary_restaurant_id_for_owner(self.request.user)
         return (
             Order.objects.select_related("customer", "restaurant", "courier", "address")
             .prefetch_related("items__options")
-            .filter(restaurant__owner=self.request.user)
+            .filter(restaurant__owner=self.request.user, restaurant_id=primary_restaurant_id)
         )
 
     @decorators.action(detail=True, methods=["patch"])

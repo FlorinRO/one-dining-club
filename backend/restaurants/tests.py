@@ -127,6 +127,37 @@ class RestaurantOwnerDashboardApiTests(TestCase):
         self.assertEqual(overview["delivered_orders_count"], 1)
         self.assertEqual(overview["gross_revenue"], "42.00")
 
+    def test_owner_dashboard_exposes_only_primary_restaurant(self):
+        Restaurant.objects.create(
+            owner=self.owner,
+            name="Secondary Kitchen",
+            address="Strada Test 2",
+            city="Bucuresti",
+        )
+
+        response = self.client.get("/api/restaurant-owner/restaurants/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        results = payload["results"]
+        self.assertEqual(payload["count"], 1)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["id"], self.restaurant.id)
+
+    def test_owner_cannot_create_second_restaurant(self):
+        response = self.client.post(
+            "/api/restaurant-owner/restaurants/",
+            {
+                "name": "Second Restaurant",
+                "address": "Strada Noua 4",
+                "city": "Brasov",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Restaurant.objects.filter(owner=self.owner).count(), 1)
+
     def test_owner_can_create_category_only_for_owned_restaurant(self):
         response = self.client.post(
             "/api/restaurant-owner/categories/",

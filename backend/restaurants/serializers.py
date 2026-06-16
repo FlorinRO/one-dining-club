@@ -7,6 +7,7 @@ from rest_framework import serializers
 from menus.serializers import ProductCategorySerializer
 from orders.models import OrderStatus
 from restaurants.models import Restaurant, RestaurantCategory, RestaurantOpeningHours
+from restaurants.ownership import get_primary_restaurant_id_for_owner
 
 
 class RestaurantCategorySerializer(serializers.ModelSerializer):
@@ -176,9 +177,13 @@ class RestaurantOwnerSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "owner", "slug", "rating", "created_at", "updated_at")
 
     def create(self, validated_data):
+        owner = self.context["request"].user
+        if get_primary_restaurant_id_for_owner(owner):
+            raise serializers.ValidationError({"restaurant": "This account already has a restaurant."})
+
         categories = validated_data.pop("categories", [])
         opening_hours = validated_data.pop("opening_hours", [])
-        restaurant = Restaurant.objects.create(owner=self.context["request"].user, **validated_data)
+        restaurant = Restaurant.objects.create(owner=owner, **validated_data)
         if categories:
             restaurant.categories.set(categories)
         self._sync_opening_hours(restaurant, opening_hours)

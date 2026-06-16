@@ -39,13 +39,22 @@ const AUTH_VIDEO_SOURCES = [
 const AUTH_VIDEO_VISIBLE_MS = 4000;
 const AUTH_VIDEO_CROSSFADE_MS = 1000;
 const AUTH_VIDEO_TRANSITION_DELAY_MS = AUTH_VIDEO_VISIBLE_MS - AUTH_VIDEO_CROSSFADE_MS;
+const DEFAULT_DASHBOARD_VIEW = "overview";
+const NAV_ITEMS = [
+  { view: "overview", label: "Overview", icon: "ri-dashboard-2-line" },
+  { view: "profile", label: "Profil restaurant", icon: "ri-store-2-line" },
+  { view: "categories", label: "Categorii meniu", icon: "ri-folder-2-line" },
+  { view: "products", label: "Produse & video", icon: "ri-video-on-line" },
+  { view: "orders", label: "Comenzi", icon: "ri-bill-line" },
+  { view: "account", label: "Cont", icon: "ri-user-settings-line" },
+];
 
 const state = {
-  apiBase: localStorage.getItem("yumzyDashboardApiBase") || DEFAULT_API_BASE,
+  apiBase: DEFAULT_API_BASE,
   accessToken: localStorage.getItem("yumzyDashboardAccess") || "",
   refreshToken: localStorage.getItem("yumzyDashboardRefresh") || "",
   user: JSON.parse(localStorage.getItem("yumzyDashboardUser") || "null"),
-  currentView: location.hash.replace("#", "") || "overview",
+  currentView: location.hash.replace("#", "") || DEFAULT_DASHBOARD_VIEW,
   restaurants: [],
   overview: [],
   productCategories: [],
@@ -156,10 +165,6 @@ function clearAuth() {
   localStorage.removeItem("yumzyDashboardUser");
 }
 
-function persistApiBase() {
-  localStorage.setItem("yumzyDashboardApiBase", state.apiBase);
-}
-
 function setNotice(message) {
   state.notice = message;
   state.error = "";
@@ -180,15 +185,56 @@ function setView(view) {
 
 function setSelectedRestaurant(restaurantId) {
   state.selectedRestaurantId = restaurantId ? Number(restaurantId) : null;
+  persistSelectedRestaurant();
+  if (state.selectedRestaurantId && !state.currentView) {
+    state.currentView = DEFAULT_DASHBOARD_VIEW;
+  }
   fetchOwnerData();
 }
 
 function getSelectedRestaurant() {
-  return state.restaurants.find((item) => item.id === state.selectedRestaurantId) || state.restaurants[0] || null;
+  if (!state.selectedRestaurantId) return null;
+  return state.restaurants.find((item) => item.id === state.selectedRestaurantId) || null;
 }
 
 function getOverviewRestaurant() {
-  return state.overview.find((item) => item.id === state.selectedRestaurantId) || state.overview[0] || null;
+  if (!state.selectedRestaurantId) return null;
+  return state.overview.find((item) => item.id === state.selectedRestaurantId) || null;
+}
+
+function getRestaurantStorageKey() {
+  return state.user ? `yumzyDashboardSelectedRestaurant:${state.user.id}` : "";
+}
+
+function hydrateSelectedRestaurant() {
+  const storageKey = getRestaurantStorageKey();
+  if (!storageKey) return;
+
+  const storedValue = localStorage.getItem(storageKey);
+  state.selectedRestaurantId = storedValue ? Number(storedValue) : null;
+}
+
+function persistSelectedRestaurant() {
+  const storageKey = getRestaurantStorageKey();
+  if (!storageKey) return;
+
+  if (state.selectedRestaurantId) {
+    localStorage.setItem(storageKey, String(state.selectedRestaurantId));
+    return;
+  }
+
+  localStorage.removeItem(storageKey);
+}
+
+function syncSelectedRestaurant() {
+  if (!state.restaurants.length) {
+    state.selectedRestaurantId = null;
+    persistSelectedRestaurant();
+    return;
+  }
+
+  state.selectedRestaurantId = state.restaurants[0].id;
+  persistSelectedRestaurant();
 }
 
 function buildUrl(path, params) {
@@ -305,6 +351,7 @@ async function fetchCurrentUser() {
   const user = await apiFetch("auth/me/");
   state.user = user;
   localStorage.setItem("yumzyDashboardUser", JSON.stringify(user));
+  hydrateSelectedRestaurant();
   if (user.role !== "restaurant_owner" && user.role !== "admin") {
     throw new Error("Contul autentificat nu are acces de restaurant owner.");
   }
@@ -315,28 +362,25 @@ async function fetchOwnerData() {
   state.loading = true;
   render();
   try {
-    const [restaurants, overview, productCategories, restaurantCategories, products, orders] = await Promise.all([
+    const [restaurants, overview, restaurantCategories] = await Promise.all([
       apiFetch("restaurant-owner/restaurants/"),
       apiFetch("restaurant-owner/restaurants/overview/"),
-      apiFetch("restaurant-owner/categories/"),
       apiFetch("restaurant-categories/"),
-      apiFetch("restaurant-owner/products/", { params: selectedRestaurantParams() }),
-      apiFetch("restaurant-owner/orders/", { params: selectedRestaurantParams() }),
     ]);
 
     state.restaurants = restaurants.results || restaurants;
     state.overview = overview;
-    state.productCategories = productCategories.results || productCategories;
     state.restaurantCategories = restaurantCategories.results || restaurantCategories;
-    state.products = products.results || products;
-    state.orders = orders.results || orders;
+    syncSelectedRestaurant();
 
-    if (!state.selectedRestaurantId && state.restaurants[0]) {
-      state.selectedRestaurantId = state.restaurants[0].id;
-    }
     if (state.selectedRestaurantId) {
       await Promise.all([reloadProducts(), reloadOrders(), reloadCategories()]);
+    } else {
+      state.productCategories = [];
+      state.products = [];
+      state.orders = [];
     }
+
     state.loading = false;
     render();
   } catch (error) {
@@ -346,8 +390,7 @@ async function fetchOwnerData() {
 }
 
 function selectedRestaurantParams() {
-  const restaurant = getSelectedRestaurant();
-  return restaurant ? { restaurant: restaurant.id } : {};
+  return state.selectedRestaurantId ? { restaurant: state.selectedRestaurantId } : {};
 }
 
 async function reloadProducts() {
@@ -376,29 +419,18 @@ function renderLogin() {
       <div class="login-card">
         <section class="login-copy">
           <div>
-            <div class="brand-mark">
-              <div class="brand-word">YUMZ<span>Y</span></div>
-              <div class="brand-line"><i></i><b></b></div>
-            </div>
-            <p class="eyebrow">Restaurant Dashboard</p>
             <h2 class="hero-title">Controlezi meniul, profilul și comenzile dintr-un singur loc.</h2>
             <p class="hero-lead">
               Dashboard-ul YUMZY este făcut pentru restaurante care vor să își actualizeze rapid produsele,
               clipurile video și informațiile publice.
             </p>
-            <ul class="hero-list">
-              <li>Login vizual inspirat din aplicația mobilă YUMZY.</li>
-              <li>Profil restaurant, program, social links, imagini și video promo.</li>
-              <li>Produse, categorii, prețuri, clipuri și procesare comenzi.</li>
-            </ul>
           </div>
-          <p class="login-hint">Subdomeniu recomandat pentru deploy: dashboard.yumzy.ro.</p>
         </section>
 
         <section class="login-panel">
-          <div class="brand-mark">
-            <div class="brand-word">YUMZ<span>Y</span></div>
-            <div class="brand-line"><i></i><b></b></div>
+          <div class="brand brand-large" aria-label="YUMZY">
+            <span class="logo-word">YUMZ<span>Y</span></span>
+            <span class="logo-line" aria-hidden="true"><i></i><b></b></span>
           </div>
           <h1>Conectare</h1>
           <p class="muted">Intră în contul restaurantului pentru a-ți administra prezența în aplicație.</p>
@@ -413,10 +445,6 @@ function renderLogin() {
               <span>Parolă</span>
               <input name="password" type="password" placeholder="Parolă" required />
             </label>
-            <label class="field">
-              <span>API base</span>
-              <input name="apiBase" type="url" value="${escapeHtml(state.apiBase)}" placeholder="https://api.yumzy.ro/api" required />
-            </label>
             <div class="button-row">
               <button class="button" type="submit">Intră în dashboard</button>
             </div>
@@ -430,44 +458,31 @@ function renderLogin() {
 function renderDashboard() {
   const restaurant = getSelectedRestaurant();
   const overview = getOverviewRestaurant();
-  const view = state.currentView || "overview";
+  const view = state.currentView || DEFAULT_DASHBOARD_VIEW;
+  const subtitle = pageSubtitle(view, restaurant);
+  const isInitialDashboardLoading = state.loading && !state.restaurants.length;
+  const dashboardContent = isInitialDashboardLoading ? renderDashboardLoadingState() : restaurant ? renderView(view, restaurant, overview) : renderEmptyRestaurantState();
 
   return `
     <div class="dashboard-shell">
       <aside class="shell-sidebar">
-        <div class="sidebar-block">
-          <div class="brand-mark">
-            <div class="brand-word">YUMZ<span>Y</span></div>
-            <div class="brand-line"><i></i><b></b></div>
-          </div>
+        <div class="sidebar-brand">
+          <a class="brand brand-large" href="../index.html" aria-label="YUMZY home">
+            <span class="logo-word">YUMZ<span>Y</span></span>
+            <span class="logo-line" aria-hidden="true"><i></i><b></b></span>
+          </a>
+        </div>
+        <nav class="sidebar-nav">
+          ${NAV_ITEMS.map((item) => renderNavButton(item, view)).join("")}
+        </nav>
+        <div class="sidebar-profile">
+          <div class="avatar-mark">${escapeHtml(getInitials(restaurant?.name || state.user?.full_name || state.user?.email || "Y"))}</div>
           <div>
-            <strong>${escapeHtml(state.user?.full_name || state.user?.email || "Owner")}</strong>
+            <strong>${escapeHtml(restaurant?.name || state.user?.full_name || state.user?.email || "Owner")}</strong>
             <div class="muted">${escapeHtml(state.user?.email || "")}</div>
           </div>
         </div>
-        <div class="sidebar-block">
-          <small class="muted">Restaurant activ</small>
-          <select id="restaurant-switcher">
-            ${state.restaurants
-              .map(
-                (item) => `
-                  <option value="${item.id}" ${item.id === state.selectedRestaurantId ? "selected" : ""}>
-                    ${escapeHtml(item.name)}
-                  </option>
-                `,
-              )
-              .join("")}
-          </select>
-        </div>
-        <nav class="sidebar-nav">
-          ${renderNavButton("overview", "Overview", view)}
-          ${renderNavButton("profile", "Profil restaurant", view)}
-          ${renderNavButton("categories", "Categorii meniu", view)}
-          ${renderNavButton("products", "Produse & video", view)}
-          ${renderNavButton("orders", "Comenzi", view)}
-          ${renderNavButton("account", "Cont & API", view)}
-        </nav>
-        <div class="sidebar-block">
+        <div class="sidebar-footer">
           <button class="ghost-button" id="logout-button" type="button">Logout</button>
         </div>
       </aside>
@@ -476,44 +491,49 @@ function renderDashboard() {
         <div class="topbar">
           <div>
             <h1 class="page-title">${escapeHtml(pageTitle(view))}</h1>
-            <p class="page-subtitle">${escapeHtml(pageSubtitle(view, restaurant))}</p>
+            ${subtitle ? `<p class="page-subtitle">${escapeHtml(subtitle)}</p>` : ""}
           </div>
           <div class="top-actions">
-            ${state.loading ? `<span class="status-chip">Se încarcă...</span>` : ""}
+            ${state.loading && !isInitialDashboardLoading ? `<span class="status-chip">Se încarcă...</span>` : ""}
             ${state.notice ? `<span class="status-chip delivered">${escapeHtml(state.notice)}</span>` : ""}
             ${state.error ? `<span class="status-chip cancelled">${escapeHtml(state.error)}</span>` : ""}
           </div>
         </div>
-        ${restaurant ? renderView(view, restaurant, overview) : renderEmptyRestaurantState()}
+        ${dashboardContent}
       </main>
     </div>
   `;
 }
 
-function renderNavButton(view, label, currentView) {
-  return `<button class="nav-button ${currentView === view ? "is-active" : ""}" data-view="${view}" type="button">${label}</button>`;
+function renderNavButton(item, currentView) {
+  return `
+    <button class="nav-button ${currentView === item.view ? "is-active" : ""}" data-view="${item.view}" type="button">
+      <i class="${item.icon}" aria-hidden="true"></i>
+      <span>${escapeHtml(item.label)}</span>
+    </button>
+  `;
 }
 
 function pageTitle(view) {
   return {
-    overview: "Control Center",
+    overview: "Dashboard Restaurant",
     profile: "Profil Restaurant",
     categories: "Categorii Meniu",
     products: "Produse & Video",
     orders: "Comenzi Live",
-    account: "Cont & Config",
+    account: "Cont",
   }[view];
 }
 
 function pageSubtitle(view, restaurant) {
   const name = restaurant?.name || "restaurantul tău";
   return {
-    overview: `Indicatori rapizi pentru ${name}.`,
+    overview: "",
     profile: `Date publice, contact și program pentru ${name}.`,
     categories: `Organizează meniul și secțiunile interne pentru ${name}.`,
     products: `Actualizează produsele, prețurile și clipurile pentru ${name}.`,
     orders: `Monitorizează și actualizează starea comenzilor pentru ${name}.`,
-    account: "Setări cont și configurare endpoint API.",
+    account: "Detalii despre sesiunea activă și contul owner.",
   }[view];
 }
 
@@ -537,174 +557,384 @@ function renderView(view, restaurant, overview) {
 
 function renderOverviewView(restaurant, overview) {
   return `
-    <section class="metrics-grid">
-      ${renderMetric("Produse", overview?.products_count || 0)}
-      ${renderMetric("Produse active", overview?.active_products_count || 0)}
-      ${renderMetric("Comenzi", overview?.orders_count || 0)}
-      ${renderMetric("Venit livrat", `${overview?.gross_revenue || "0.00"} RON`)}
-    </section>
     <section class="overview-grid">
       <div class="panel">
         <div class="section-header">
           <div>
-            <h2>Snapshot restaurant</h2>
-            <small>Informații publice și vizibilitate în aplicație.</small>
+            <h2>Performanță restaurant</h2>
+            <small>Fiecare indicator are propriul grafic, calculat din meniul și comenzile deja încărcate.</small>
           </div>
         </div>
-        <div class="preview-row">
-          ${restaurant.logo ? `<img class="media-preview" src="${resolveMediaUrl(restaurant.logo)}" alt="Logo restaurant" />` : ""}
-          ${restaurant.cover_image ? `<img class="media-preview" src="${resolveMediaUrl(restaurant.cover_image)}" alt="Cover restaurant" />` : ""}
-        </div>
-        <p>${escapeHtml(restaurant.description || "Adaugă o descriere care explică stilul restaurantului.")}</p>
-        <div class="pill-row">
-          ${(overview?.categories_detail || []).map((item) => `<span class="pill">${escapeHtml(item.name)}</span>`).join("")}
-        </div>
-      </div>
-      <div class="panel">
-        <div class="section-header">
-          <div>
-            <h2>Operațional</h2>
-            <small>Stare actuală și trafic în dashboard.</small>
-          </div>
-        </div>
-        <div class="toolbar">
-          <div class="status-chip ${restaurant.is_open ? "delivered" : "cancelled"}">
-            ${restaurant.is_open ? "Restaurant deschis" : "Restaurant închis"}
-          </div>
-          <div class="status-chip ${restaurant.is_active ? "delivered" : "cancelled"}">
-            ${restaurant.is_active ? "Profil activ" : "Profil inactiv"}
-          </div>
-          <div class="status-chip pending">${overview?.pending_orders_count || 0} comenzi active</div>
-          <div class="status-chip delivered">${overview?.delivered_orders_count || 0} livrate</div>
-        </div>
-        ${
-          overview?.promo_video_url
-            ? `<p><a class="pill" href="${overview.promo_video_url}" target="_blank" rel="noreferrer">Deschide video promo</a></p>`
-            : `<p class="panel-note">Adaugă un video promo în profil pentru o prezentare mai bună.</p>`
-        }
+        ${renderOverviewPerformanceChart(restaurant, overview)}
       </div>
     </section>
   `;
 }
 
-function renderMetric(label, value) {
+function renderMetricCard({ label, value, icon, note, detail, chart, accentClass = "" }) {
   return `
-    <article class="metric-card">
+    <article class="metric-card metric-card-chart ${accentClass}">
+      <span class="metric-icon"><i class="${icon}" aria-hidden="true"></i></span>
       <small>${label}</small>
-      <strong>${value}</strong>
+      <strong>${escapeHtml(value)}</strong>
+      <em>${escapeHtml(note)}</em>
+      <div class="metric-chart-shell">
+        ${chart}
+      </div>
+      <span class="metric-detail">${escapeHtml(detail)}</span>
     </article>
   `;
 }
 
-function renderProfileView(restaurant) {
+function renderOverviewPerformanceChart(restaurant, overview) {
+  const activeProducts = Number(overview?.active_products_count || 0);
+  const totalProducts = Number(overview?.products_count || 0);
+  const inactiveProducts = Math.max(totalProducts - activeProducts, 0);
+  const availabilityRate = totalProducts ? Math.round((activeProducts / totalProducts) * 100) : 0;
+  const pendingOrders = Number(overview?.pending_orders_count || 0);
+  const deliveredOrders = Number(overview?.delivered_orders_count || 0);
+  const totalOrders = Number(overview?.orders_count || 0);
+  const remainingOrders = Math.max(totalOrders - pendingOrders - deliveredOrders, 0);
+  const grossRevenue = Number(overview?.gross_revenue || 0);
+  const averageDeliveredOrderValue = deliveredOrders ? grossRevenue / deliveredOrders : 0;
+
   return `
-    <section class="panel">
-      <div class="section-header">
-        <div>
-          <h2>Date publice</h2>
-          <small>Aici configurezi profilul restaurantului din aplicația YUMZY.</small>
+    <div class="performance-chart-card">
+      <div class="chart-metric-grid">
+        ${renderMetricCard({
+          label: "Produse",
+          value: String(totalProducts),
+          icon: "ri-restaurant-2-line",
+          note: "Total articole în meniu",
+          detail: `${activeProducts} active, ${inactiveProducts} indisponibile`,
+          accentClass: "metric-accent-products",
+          chart: renderSegmentChart([
+            { label: "Active", value: activeProducts, toneClass: "tone-green" },
+            { label: "Indisponibile", value: inactiveProducts, toneClass: "tone-amber" },
+          ]),
+        })}
+        ${renderMetricCard({
+          label: "Active",
+          value: String(activeProducts),
+          icon: "ri-checkbox-circle-line",
+          note: "Disponibile în aplicație",
+          detail: `${availabilityRate}% din meniu este public acum`,
+          accentClass: "metric-accent-active",
+          chart: renderProgressChart(availabilityRate, "Rată disponibilitate"),
+        })}
+        ${renderMetricCard({
+          label: "Comenzi",
+          value: String(totalOrders),
+          icon: "ri-shopping-bag-3-line",
+          note: `${pendingOrders} active acum`,
+          detail: `${deliveredOrders} livrate, ${remainingOrders} în alt status`,
+          accentClass: "metric-accent-orders",
+          chart: renderMiniBarChart([
+            { label: "Active", value: pendingOrders, toneClass: "tone-blue" },
+            { label: "Livrate", value: deliveredOrders, toneClass: "tone-green" },
+            { label: "Altele", value: remainingOrders, toneClass: "tone-slate" },
+          ]),
+        })}
+        ${renderMetricCard({
+          label: "Venit livrat",
+          value: `${grossRevenue.toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RON`,
+          icon: "ri-bank-card-line",
+          note: "Venit încasat",
+          detail: deliveredOrders ? `Medie ${averageDeliveredOrderValue.toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RON / livrare` : "Nu există încă livrări finalizate",
+          accentClass: "metric-accent-revenue",
+          chart: renderSegmentChart([
+            { label: "Livrate", value: deliveredOrders, toneClass: "tone-green" },
+            { label: "Neîncasate", value: Math.max(totalOrders - deliveredOrders, 0), toneClass: "tone-slate" },
+          ]),
+        })}
+      </div>
+      <div class="pill-row">
+        ${(overview?.categories_detail || []).map((item) => `<span class="pill">${escapeHtml(item.name)}</span>`).join("") || `<span class="pill is-muted">Adaugă categorii publice</span>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderSegmentChart(segments) {
+  const total = segments.reduce((sum, item) => sum + Number(item.value || 0), 0);
+  return `
+    <div class="segment-chart" role="img" aria-label="${escapeHtml(segments.map((item) => `${item.label} ${item.value}`).join(", "))}">
+      <div class="segment-chart-bar">
+        ${segments
+          .map((item) => {
+            const width = total ? Math.max((Number(item.value || 0) / total) * 100, Number(item.value || 0) > 0 ? 6 : 0) : 0;
+            return `<span class="segment-fill ${item.toneClass || ""}" style="width:${width}%"></span>`;
+          })
+          .join("")}
+      </div>
+      <div class="segment-chart-legend">
+        ${segments
+          .map(
+            (item) => `
+              <span><i class="segment-dot ${item.toneClass || ""}"></i>${escapeHtml(item.label)} ${escapeHtml(String(item.value || 0))}</span>
+            `,
+          )
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderProgressChart(percentage, label) {
+  const safeValue = Math.max(0, Math.min(Number(percentage || 0), 100));
+  return `
+    <div class="progress-chart" role="img" aria-label="${escapeHtml(label)} ${safeValue}%">
+      <div class="progress-chart-ring" style="--progress:${safeValue}%">
+        <span>${safeValue}%</span>
+      </div>
+      <div class="progress-chart-bar">
+        <span style="width:${safeValue}%"></span>
+      </div>
+    </div>
+  `;
+}
+
+function renderMiniBarChart(items) {
+  const maxValue = Math.max(...items.map((item) => Number(item.value || 0)), 1);
+  return `
+    <div class="mini-bar-chart" role="img" aria-label="${escapeHtml(items.map((item) => `${item.label} ${item.value}`).join(", "))}">
+      <div class="mini-bar-chart-bars">
+        ${items
+          .map((item) => {
+            const height = Math.max((Number(item.value || 0) / maxValue) * 100, Number(item.value || 0) > 0 ? 16 : 6);
+            return `
+              <span class="mini-bar-column">
+                <i class="mini-bar-fill ${item.toneClass || ""}" style="height:${height}%"></i>
+              </span>
+            `;
+          })
+          .join("")}
+      </div>
+      <div class="mini-bar-chart-labels">
+        ${items.map((item) => `<span>${escapeHtml(item.label)}</span>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderProfileView(restaurant) {
+  const categories = restaurant.categories_detail || [];
+  const completionItems = getProfileCompletionItems(restaurant);
+  const completedItems = completionItems.filter((item) => item.done).length;
+  const completionPercent = Math.round((completedItems / completionItems.length) * 100);
+  const deliveryRange = `${restaurant.estimated_delivery_time_min || 25}-${restaurant.estimated_delivery_time_max || 45} min`;
+  const selectedCategoryNames = categories.map((category) => category.name).filter(Boolean);
+
+  return `
+    <section class="profile-hero panel">
+      <div class="profile-cover-preview">
+        ${
+          restaurant.cover_image
+            ? `<img src="${resolveMediaUrl(restaurant.cover_image)}" alt="Cover ${escapeHtml(restaurant.name || "restaurant")}" />`
+            : `<div class="profile-cover-empty"><i class="ri-image-add-line" aria-hidden="true"></i><span>Adaugă cover</span></div>`
+        }
+        <div class="profile-logo-preview">
+          ${
+            restaurant.logo
+              ? `<img src="${resolveMediaUrl(restaurant.logo)}" alt="Logo ${escapeHtml(restaurant.name || "restaurant")}" />`
+              : `<span>${escapeHtml((restaurant.name || "Y").slice(0, 1).toUpperCase())}</span>`
+          }
         </div>
       </div>
-      <form id="profile-form" class="form-grid">
-        <div class="split">
-          <label class="field"><span>Nume restaurant</span><input name="name" value="${escapeHtml(restaurant.name || "")}" required /></label>
-          <label class="field"><span>Oraș</span><input name="city" value="${escapeHtml(restaurant.city || "")}" required /></label>
+      <div class="profile-hero-copy">
+        <span class="status-chip ${restaurant.is_active ? "delivered" : "cancelled"}">
+          <i class="${restaurant.is_active ? "ri-checkbox-circle-line" : "ri-error-warning-line"}" aria-hidden="true"></i>
+          ${restaurant.is_active ? "Profil activ" : "Profil inactiv"}
+        </span>
+        <div>
+          <h2>${escapeHtml(restaurant.name || "Restaurant fără nume")}</h2>
+          <p>${escapeHtml(restaurant.description || "Adaugă o descriere scurtă, clară și orientată spre client.")}</p>
         </div>
-        <label class="field"><span>Adresă</span><input name="address" value="${escapeHtml(restaurant.address || "")}" required /></label>
-        <div class="split">
-          <label class="field"><span>Email public</span><input type="email" name="email" value="${escapeHtml(restaurant.email || "")}" /></label>
-          <label class="field"><span>Telefon</span><input name="phone" value="${escapeHtml(restaurant.phone || "")}" /></label>
+        <div class="profile-quick-facts">
+          <span><i class="ri-map-pin-line" aria-hidden="true"></i>${escapeHtml(restaurant.city || "Oraș lipsă")}</span>
+          <span><i class="ri-timer-line" aria-hidden="true"></i>${escapeHtml(deliveryRange)}</span>
+          <span><i class="ri-price-tag-3-line" aria-hidden="true"></i>${Number(restaurant.minimum_order || 0).toLocaleString("ro-RO", { maximumFractionDigits: 2 })} RON minim</span>
         </div>
-        <label class="field"><span>Descriere</span><textarea name="description">${escapeHtml(restaurant.description || "")}</textarea></label>
-        <div class="split">
-          <label class="field"><span>Website</span><input type="url" name="website_url" value="${escapeHtml(restaurant.website_url || "")}" /></label>
-          <label class="field"><span>Video promo</span><input type="url" name="promo_video_url" value="${escapeHtml(restaurant.promo_video_url || "")}" /></label>
-        </div>
-        <div class="split">
-          <label class="field"><span>Instagram</span><input type="url" name="instagram_url" value="${escapeHtml(restaurant.instagram_url || "")}" /></label>
-          <label class="field"><span>TikTok</span><input type="url" name="tiktok_url" value="${escapeHtml(restaurant.tiktok_url || "")}" /></label>
-        </div>
-        <div class="split">
-          <label class="field"><span>Delivery fee</span><input type="number" step="0.01" name="delivery_fee" value="${restaurant.delivery_fee || 0}" /></label>
-          <label class="field"><span>Comandă minimă</span><input type="number" step="0.01" name="minimum_order" value="${restaurant.minimum_order || 0}" /></label>
-        </div>
-        <div class="split">
-          <label class="field"><span>Timp livrare minim</span><input type="number" name="estimated_delivery_time_min" value="${restaurant.estimated_delivery_time_min || 25}" /></label>
-          <label class="field"><span>Timp livrare maxim</span><input type="number" name="estimated_delivery_time_max" value="${restaurant.estimated_delivery_time_max || 45}" /></label>
-        </div>
-        <div class="split">
-          <label class="field">
-            <span>Tip entitate</span>
-            <select name="entity_type">
-              <option value="restaurant" ${restaurant.entity_type === "restaurant" ? "selected" : ""}>Restaurant</option>
-              <option value="brand" ${restaurant.entity_type === "brand" ? "selected" : ""}>Brand</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Categorii publice</span>
-            <select name="categories" multiple size="5">
-              ${state.restaurantCategories
-                .map(
-                  (item) => `
-                    <option value="${item.id}" ${(restaurant.categories_detail || []).some((category) => category.id === item.id) ? "selected" : ""}>
-                      ${escapeHtml(item.name)}
-                    </option>
-                  `,
-                )
-                .join("")}
-            </select>
-          </label>
-        </div>
-        <div class="split">
-          <label class="checkbox-field"><input type="checkbox" name="supports_pickup" ${restaurant.supports_pickup ? "checked" : ""} /><span>Permite pickup</span></label>
-          <label class="checkbox-field"><input type="checkbox" name="is_open" ${restaurant.is_open ? "checked" : ""} /><span>Restaurant deschis</span></label>
-        </div>
-        <div class="split">
-          <label class="checkbox-field"><input type="checkbox" name="is_active" ${restaurant.is_active ? "checked" : ""} /><span>Profil activ</span></label>
-          <label class="checkbox-field"><input type="checkbox" name="is_sponsored" ${restaurant.is_sponsored ? "checked" : ""} /><span>Locație sponsorizată</span></label>
-        </div>
-        <div class="section-header">
-          <div>
-            <h2>Program</h2>
-            <small>Actualizează orele afișate în aplicație.</small>
+      </div>
+      <aside class="profile-health-card">
+        <small>Completare profil</small>
+        <strong>${completionPercent}%</strong>
+        <div class="profile-health-bar" aria-hidden="true"><span style="width:${completionPercent}%"></span></div>
+        <ul>
+          ${completionItems
+            .map(
+              (item) => `
+                <li class="${item.done ? "is-done" : ""}">
+                  <i class="${item.done ? "ri-checkbox-circle-fill" : "ri-circle-line"}" aria-hidden="true"></i>
+                  ${escapeHtml(item.label)}
+                </li>
+              `,
+            )
+            .join("")}
+        </ul>
+      </aside>
+    </section>
+
+    <div class="profile-layout">
+      <aside class="profile-side-stack">
+        <section class="panel profile-summary-card">
+          <div class="section-header">
+            <div>
+              <h2>Pe scurt</h2>
+              <small>Ce vede clientul înainte să intre în meniu.</small>
+            </div>
           </div>
-        </div>
-        <div class="hours-grid">
-          ${renderHoursRows(restaurant.opening_hours || [])}
-        </div>
-        <div class="button-row">
-          <button class="button" type="submit">Salvează profilul</button>
+          <div class="profile-summary-list">
+            <span><strong>${escapeHtml(restaurant.entity_type === "brand" ? "Brand" : "Restaurant")}</strong><small>Tip profil</small></span>
+            <span><strong>${restaurant.is_open ? "Deschis" : "Închis"}</strong><small>Status curent</small></span>
+            <span><strong>${restaurant.supports_pickup ? "Da" : "Nu"}</strong><small>Pickup</small></span>
+            <span><strong>${restaurant.is_sponsored ? "Da" : "Nu"}</strong><small>Sponsorizat</small></span>
+          </div>
+          <div class="pill-row profile-category-pills">
+            ${selectedCategoryNames.length ? selectedCategoryNames.map((name) => `<span class="pill">${escapeHtml(name)}</span>`).join("") : `<span class="pill is-muted">Alege categorii publice</span>`}
+          </div>
+        </section>
+
+        <section class="panel profile-media-card">
+          <div class="section-header">
+            <div>
+              <h2>Media</h2>
+              <small>Actualizează rapid identitatea vizuală.</small>
+            </div>
+          </div>
+          ${renderProfileMediaUpload("logo", "Logo", "Iconul rotund din aplicație.", restaurant.logo)}
+          ${renderProfileMediaUpload("cover_image", "Cover", "Imaginea mare din profil.", restaurant.cover_image)}
+        </section>
+      </aside>
+
+      <form id="profile-form" class="profile-form-stack">
+        <section class="panel profile-form-card">
+          <div class="form-section-title">
+            <strong>Informații esențiale</strong>
+            <span>Completează întâi numele, orașul, adresa și descrierea. Acestea influențează direct conversia.</span>
+          </div>
+          <div class="profile-card-fields">
+            <div class="split">
+              <label class="field"><span>Nume restaurant</span><input name="name" value="${escapeHtml(restaurant.name || "")}" placeholder="Ex: Yumzy Kitchen" required /></label>
+              <label class="field"><span>Oraș</span><input name="city" value="${escapeHtml(restaurant.city || "")}" placeholder="Ex: București" required /></label>
+            </div>
+            <label class="field"><span>Adresă</span><input name="address" value="${escapeHtml(restaurant.address || "")}" placeholder="Stradă, număr, zonă" required /></label>
+            <label class="field"><span>Descriere</span><textarea name="description" placeholder="Descrie specificul, preparatele populare și motivul pentru care clientul ar comanda.">${escapeHtml(restaurant.description || "")}</textarea></label>
+          </div>
+        </section>
+
+        <section class="panel profile-form-card">
+          <div class="form-section-title">
+            <strong>Contact și linkuri</strong>
+            <span>Datele publice trebuie să fie ușor de verificat și de modificat.</span>
+          </div>
+          <div class="profile-card-fields">
+            <div class="split">
+              <label class="field"><span>Email public</span><input type="email" name="email" value="${escapeHtml(restaurant.email || "")}" placeholder="contact@restaurant.ro" /></label>
+              <label class="field"><span>Telefon</span><input name="phone" value="${escapeHtml(restaurant.phone || "")}" placeholder="+40..." /></label>
+            </div>
+            <div class="split">
+              <label class="field"><span>Website</span><input type="url" name="website_url" value="${escapeHtml(restaurant.website_url || "")}" placeholder="https://..." /></label>
+              <label class="field"><span>Video promo</span><input type="url" name="promo_video_url" value="${escapeHtml(restaurant.promo_video_url || "")}" placeholder="https://..." /></label>
+            </div>
+            <div class="split">
+              <label class="field"><span>Instagram</span><input type="url" name="instagram_url" value="${escapeHtml(restaurant.instagram_url || "")}" placeholder="https://instagram.com/..." /></label>
+              <label class="field"><span>TikTok</span><input type="url" name="tiktok_url" value="${escapeHtml(restaurant.tiktok_url || "")}" placeholder="https://tiktok.com/..." /></label>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel profile-form-card">
+          <div class="form-section-title">
+            <strong>Setări operaționale</strong>
+            <span>Controlează cum apare restaurantul și ce poate face clientul.</span>
+          </div>
+          <div class="profile-card-fields">
+            <div class="split">
+              <label class="field"><span>Delivery fee</span><input type="number" step="0.01" name="delivery_fee" value="${restaurant.delivery_fee || 0}" /></label>
+              <label class="field"><span>Comandă minimă</span><input type="number" step="0.01" name="minimum_order" value="${restaurant.minimum_order || 0}" /></label>
+            </div>
+            <div class="split">
+              <label class="field"><span>Timp livrare minim</span><input type="number" name="estimated_delivery_time_min" value="${restaurant.estimated_delivery_time_min || 25}" /></label>
+              <label class="field"><span>Timp livrare maxim</span><input type="number" name="estimated_delivery_time_max" value="${restaurant.estimated_delivery_time_max || 45}" /></label>
+            </div>
+            <div class="split">
+              <label class="field">
+                <span>Tip entitate</span>
+                <select name="entity_type">
+                  <option value="restaurant" ${restaurant.entity_type === "restaurant" ? "selected" : ""}>Restaurant</option>
+                  <option value="brand" ${restaurant.entity_type === "brand" ? "selected" : ""}>Brand</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Categorii publice</span>
+                <select name="categories" multiple size="5">
+                  ${state.restaurantCategories
+                    .map(
+                      (item) => `
+                        <option value="${item.id}" ${categories.some((category) => category.id === item.id) ? "selected" : ""}>
+                          ${escapeHtml(item.name)}
+                        </option>
+                      `,
+                    )
+                    .join("")}
+                </select>
+              </label>
+            </div>
+            <div class="check-card-grid profile-toggle-grid">
+              <label class="checkbox-field"><input type="checkbox" name="supports_pickup" ${restaurant.supports_pickup ? "checked" : ""} /><span>Permite pickup</span></label>
+              <label class="checkbox-field"><input type="checkbox" name="is_open" ${restaurant.is_open ? "checked" : ""} /><span>Restaurant deschis</span></label>
+              <label class="checkbox-field"><input type="checkbox" name="is_active" ${restaurant.is_active ? "checked" : ""} /><span>Profil activ</span></label>
+              <label class="checkbox-field"><input type="checkbox" name="is_sponsored" ${restaurant.is_sponsored ? "checked" : ""} /><span>Locație sponsorizată</span></label>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel profile-form-card">
+          <div class="form-section-title">
+            <strong>Program</strong>
+            <span>Setează orele pe zile. Bifează „Închis” ca să dezactivezi rapid intervalul.</span>
+          </div>
+          <div class="hours-grid">
+            ${renderHoursRows(restaurant.opening_hours || [])}
+          </div>
+        </section>
+
+        <div class="profile-save-bar">
+          <div>
+            <strong>Gata de publicat?</strong>
+            <span>Salvarea actualizează profilul din aplicația YUMZY.</span>
+          </div>
+          <button class="button" type="submit"><i class="ri-save-3-line" aria-hidden="true"></i> Salvează profilul</button>
         </div>
       </form>
-    </section>
-    <section class="upload-grid">
-      <div class="panel">
-        <div class="section-header">
-          <div>
-            <h2>Logo</h2>
-            <small>Upload imagine pentru iconul restaurantului.</small>
-          </div>
+    </div>
+  `;
+}
+
+function getProfileCompletionItems(restaurant) {
+  return [
+    { label: "Nume și adresă", done: Boolean(restaurant.name && restaurant.city && restaurant.address) },
+    { label: "Contact public", done: Boolean(restaurant.email || restaurant.phone) },
+    { label: "Descriere", done: Boolean((restaurant.description || "").trim()) },
+    { label: "Categorii", done: Boolean((restaurant.categories_detail || []).length) },
+    { label: "Logo și cover", done: Boolean(restaurant.logo && restaurant.cover_image) },
+  ];
+}
+
+function renderProfileMediaUpload(fieldName, title, note, imageUrl) {
+  return `
+    <div class="profile-media-upload">
+      ${imageUrl ? `<img class="media-preview" src="${resolveMediaUrl(imageUrl)}" alt="${escapeHtml(title)} restaurant" />` : `<div class="profile-media-empty"><i class="ri-image-line" aria-hidden="true"></i><span>${escapeHtml(title)} lipsă</span></div>`}
+      <form class="toolbar" data-media-form="${fieldName}">
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <small>${escapeHtml(note)}</small>
         </div>
-        ${restaurant.logo ? `<img class="media-preview" src="${resolveMediaUrl(restaurant.logo)}" alt="Logo restaurant" />` : `<p class="panel-note">Logo lipsă.</p>`}
-        <form class="toolbar" data-media-form="logo">
-          <input type="file" name="logo" accept="image/*" required />
-          <button class="button" type="submit">Upload logo</button>
-        </form>
-      </div>
-      <div class="panel">
-        <div class="section-header">
-          <div>
-            <h2>Cover</h2>
-            <small>Upload imagine hero pentru pagina restaurantului.</small>
-          </div>
-        </div>
-        ${restaurant.cover_image ? `<img class="media-preview" src="${resolveMediaUrl(restaurant.cover_image)}" alt="Cover restaurant" />` : `<p class="panel-note">Cover lipsă.</p>`}
-        <form class="toolbar" data-media-form="cover_image">
-          <input type="file" name="cover_image" accept="image/*" required />
-          <button class="button" type="submit">Upload cover</button>
-        </form>
-      </div>
-    </section>
+        <input type="file" name="${fieldName}" accept="image/*" required />
+        <button class="outline-button" type="submit">Upload</button>
+      </form>
+    </div>
   `;
 }
 
@@ -774,47 +1004,78 @@ function renderCategoriesView() {
 
 function renderProductsView() {
   return `
-    <section class="panel">
+    <section class="panel product-workbench">
       <div class="section-header">
         <div>
           <h2>${state.editingProductId ? "Editează produs" : "Produs nou"}</h2>
-          <small>Poți adăuga imagine, audio și video pentru fiecare produs.</small>
+          <small>Completează întâi informațiile esențiale, apoi atașează imaginea și video-ul produsului.</small>
         </div>
+        <span class="status-chip pending"><i class="ri-video-on-line" aria-hidden="true"></i> Video-ready</span>
       </div>
       <form id="product-form" class="form-grid">
-        <div class="split">
-          <label class="field"><span>Nume</span><input name="name" required /></label>
-          <label class="field">
-            <span>Categorie</span>
-            <select name="category_id">
-              <option value="">Fără categorie</option>
-              ${state.productCategories.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("")}
-            </select>
-          </label>
+        <div class="form-section">
+          <div class="form-section-title">
+            <strong>Informații de bază</strong>
+            <span>Nume, categorie, descriere și preț.</span>
+          </div>
+          <div class="form-section-fields">
+            <div class="split">
+              <label class="field"><span>Nume produs</span><input name="name" placeholder="Ex: Smash burger cu cheddar" required /></label>
+              <label class="field">
+                <span>Categorie</span>
+                <select name="category_id">
+                  <option value="">Fără categorie</option>
+                  ${state.productCategories.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("")}
+                </select>
+              </label>
+            </div>
+            <label class="field"><span>Descriere scurtă</span><textarea name="description" placeholder="Ce îl face bun? Ingrediente, stil, recomandare."></textarea></label>
+            <div class="split">
+              <label class="field"><span>Preț</span><input type="number" step="0.01" name="price" required /></label>
+              <label class="field"><span>Preț promo</span><input type="number" step="0.01" name="discount_price" /></label>
+            </div>
+          </div>
         </div>
-        <label class="field"><span>Descriere</span><textarea name="description"></textarea></label>
-        <div class="split">
-          <label class="field"><span>Preț</span><input type="number" step="0.01" name="price" required /></label>
-          <label class="field"><span>Preț promo</span><input type="number" step="0.01" name="discount_price" /></label>
+        <div class="form-section">
+          <div class="form-section-title">
+            <strong>Detalii utile</strong>
+            <span>Ajută clientul să aleagă mai repede.</span>
+          </div>
+          <div class="form-section-fields">
+            <div class="split">
+              <label class="field"><span>Timp preparare (minute)</span><input type="number" name="preparation_time" value="15" /></label>
+              <label class="field"><span>Calorii</span><input type="number" name="calories" /></label>
+            </div>
+            <div class="split">
+              <label class="field"><span>Ingrediente</span><input name="ingredients" placeholder="carne, cheddar, sos..." /></label>
+              <label class="field"><span>Alergeni</span><input name="allergens" placeholder="gluten, lactoză..." /></label>
+            </div>
+          </div>
         </div>
-        <div class="split">
-          <label class="field"><span>Timp preparare (minute)</span><input type="number" name="preparation_time" value="15" /></label>
-          <label class="field"><span>Calorii</span><input type="number" name="calories" /></label>
+        <div class="form-section">
+          <div class="form-section-title">
+            <strong>Media produs</strong>
+            <span>Video-ul este elementul principal în experiența YUMZY.</span>
+          </div>
+          <div class="form-section-fields">
+            <div class="split">
+              <label class="field"><span>Video URL</span><input type="url" name="video_url" placeholder="https://..." /></label>
+              <label class="field"><span>Audio URL</span><input type="url" name="audio_url" placeholder="https://..." /></label>
+            </div>
+            <label class="field"><span>Imagine produs</span><input type="file" name="image" accept="image/*" /></label>
+          </div>
         </div>
-        <div class="split">
-          <label class="field"><span>Ingrediente</span><input name="ingredients" /></label>
-          <label class="field"><span>Alergeni</span><input name="allergens" /></label>
+        <div class="form-section is-compact">
+          <div class="form-section-title">
+            <strong>Status</strong>
+            <span>Controlează vizibilitatea produsului.</span>
+          </div>
+          <div class="check-card-grid">
+            <label class="checkbox-field"><input type="checkbox" name="is_available" checked /><span>Disponibil</span></label>
+            <label class="checkbox-field"><input type="checkbox" name="is_popular" /><span>Popular</span></label>
+            <label class="checkbox-field"><input type="checkbox" name="has_audio" checked /><span>Are audio</span></label>
+          </div>
         </div>
-        <div class="split">
-          <label class="field"><span>Audio URL</span><input type="url" name="audio_url" /></label>
-          <label class="field"><span>Video URL</span><input type="url" name="video_url" /></label>
-        </div>
-        <label class="field"><span>Imagine produs</span><input type="file" name="image" accept="image/*" /></label>
-        <div class="split">
-          <label class="checkbox-field"><input type="checkbox" name="is_available" checked /><span>Disponibil</span></label>
-          <label class="checkbox-field"><input type="checkbox" name="is_popular" /><span>Popular</span></label>
-        </div>
-        <label class="checkbox-field"><input type="checkbox" name="has_audio" checked /><span>Produsul are audio</span></label>
         <div class="button-row">
           <button class="button" type="submit">${state.editingProductId ? "Salvează produsul" : "Adaugă produs"}</button>
           ${state.editingProductId ? `<button class="ghost-button" type="button" id="cancel-product-edit">Renunță</button>` : ""}
@@ -827,7 +1088,7 @@ function renderProductsView() {
             .map(
               (product) => `
                 <article class="product-card">
-                  ${product.image ? `<img src="${resolveMediaUrl(product.image)}" alt="${escapeHtml(product.name)}" />` : ""}
+                  ${renderProductMedia(product)}
                   <div class="section-header">
                     <div>
                       <h3>${escapeHtml(product.name)}</h3>
@@ -852,6 +1113,25 @@ function renderProductsView() {
             .join("")
         : `<article class="empty-card"><h3>Niciun produs</h3><small>Adaugă primul produs și atașează-i media.</small></article>`}
     </section>
+  `;
+}
+
+function renderProductMedia(product) {
+  if (product.image) {
+    return `
+      <div class="product-media">
+        <img src="${resolveMediaUrl(product.image)}" alt="${escapeHtml(product.name)}" />
+        ${product.video_url ? `<a class="play-badge" href="${product.video_url}" target="_blank" rel="noreferrer"><i class="ri-play-fill" aria-hidden="true"></i> Video</a>` : `<span class="play-badge is-muted"><i class="ri-video-off-line" aria-hidden="true"></i> Fără video</span>`}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="product-media is-empty">
+      <i class="ri-image-add-line" aria-hidden="true"></i>
+      <span>Adaugă imagine</span>
+      ${product.video_url ? `<a class="play-badge" href="${product.video_url}" target="_blank" rel="noreferrer"><i class="ri-play-fill" aria-hidden="true"></i> Video</a>` : ""}
+    </div>
   `;
 }
 
@@ -920,12 +1200,7 @@ function renderAccountView() {
       <div class="account-grid">
         <div><strong>Email</strong><div class="muted">${escapeHtml(state.user?.email || "")}</div></div>
         <div><strong>Rol</strong><div class="muted">${escapeHtml(state.user?.role || "")}</div></div>
-        <div><strong>API base curent</strong><div class="muted">${escapeHtml(state.apiBase)}</div></div>
       </div>
-      <form id="api-base-form" class="toolbar">
-        <input name="apiBase" type="url" value="${escapeHtml(state.apiBase)}" />
-        <button class="button" type="submit">Salvează endpointul</button>
-      </form>
     </section>
   `;
 }
@@ -962,10 +1237,17 @@ function renderEmptyRestaurantState() {
   `;
 }
 
+function renderDashboardLoadingState() {
+  return `
+    <section class="dashboard-loading-shell" aria-label="Se încarcă">
+      <div class="dashboard-loading-indicator" aria-hidden="true"></div>
+    </section>
+  `;
+}
+
 function bindEvents() {
   document.querySelector("#login-form")?.addEventListener("submit", handleLogin);
   document.querySelector("#logout-button")?.addEventListener("click", handleLogout);
-  document.querySelector("#restaurant-switcher")?.addEventListener("change", (event) => setSelectedRestaurant(event.target.value));
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => setView(button.dataset.view));
   });
@@ -994,7 +1276,6 @@ function bindEvents() {
     form.addEventListener("submit", handleOrderUpdate);
   });
 
-  document.querySelector("#api-base-form")?.addEventListener("submit", handleApiBaseSubmit);
   document.querySelector("#create-restaurant-form")?.addEventListener("submit", handleCreateRestaurant);
   bindHoursToggles();
   hydrateEditingForms();
@@ -1053,8 +1334,6 @@ function hydrateEditingForms() {
 async function handleLogin(event) {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
-  state.apiBase = form.get("apiBase").trim();
-  persistApiBase();
 
   try {
     const session = await apiFetch("auth/login/", {
@@ -1078,6 +1357,7 @@ function handleLogout() {
   state.restaurants = [];
   state.overview = [];
   state.productCategories = [];
+  state.restaurantCategories = [];
   state.products = [];
   state.orders = [];
   state.selectedRestaurantId = null;
@@ -1306,14 +1586,6 @@ async function handleOrderUpdate(event) {
   }
 }
 
-function handleApiBaseSubmit(event) {
-  event.preventDefault();
-  const form = new FormData(event.currentTarget);
-  state.apiBase = form.get("apiBase").trim();
-  persistApiBase();
-  setNotice("Endpointul API a fost salvat local.");
-}
-
 async function handleCreateRestaurant(event) {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
@@ -1357,6 +1629,16 @@ function getField(form, name) {
   return form.querySelector(`[name="${name}"]`);
 }
 
+function getInitials(value) {
+  return String(value || "Y")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -1367,7 +1649,7 @@ function escapeHtml(value) {
 }
 
 window.addEventListener("hashchange", () => {
-  state.currentView = location.hash.replace("#", "") || "overview";
+  state.currentView = location.hash.replace("#", "") || DEFAULT_DASHBOARD_VIEW;
   render();
 });
 

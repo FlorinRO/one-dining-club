@@ -3,6 +3,7 @@ from rest_framework import serializers
 from menus.models import ProductCategory
 from products.models import Product, ProductComment, ProductCommentLike, ProductOption, ProductOptionGroup
 from restaurants.models import Restaurant
+from restaurants.ownership import get_primary_restaurant_for_owner, get_primary_restaurant_id_for_owner
 
 
 def display_name_for_user(user):
@@ -145,20 +146,19 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return
-        restaurants = Restaurant.objects.filter(owner=request.user)
-        self.fields["restaurant_id"].queryset = restaurants
-        self.fields["category_id"].queryset = ProductCategory.objects.filter(restaurant__owner=request.user)
+        primary_restaurant_id = get_primary_restaurant_id_for_owner(request.user)
+        self.fields["restaurant_id"].queryset = Restaurant.objects.filter(owner=request.user, id=primary_restaurant_id)
+        self.fields["category_id"].queryset = ProductCategory.objects.filter(restaurant_id=primary_restaurant_id)
 
     def validate(self, attrs):
         restaurant = attrs.get("restaurant") or getattr(self.instance, "restaurant", None)
         category = attrs.get("category")
 
         if restaurant is None:
-            restaurants = Restaurant.objects.filter(owner=self.context["request"].user)
-            if restaurants.count() == 1:
-                attrs["restaurant"] = restaurants.first()
-            else:
+            restaurant = get_primary_restaurant_for_owner(self.context["request"].user)
+            if not restaurant:
                 raise serializers.ValidationError({"restaurant_id": "Restaurant is required."})
+            attrs["restaurant"] = restaurant
 
         if category and category.restaurant_id != attrs.get("restaurant", restaurant).id:
             raise serializers.ValidationError({"category_id": "Category must belong to the selected restaurant."})

@@ -213,11 +213,11 @@ main {
 }
 
 .brand-large .logo-line i {
-  width: 112px;
+  width: 128px;
 }
 
 .brand-large .logo-line b {
-  width: 34px;
+  width: 38px;
 }
 
 .logo-word span {
@@ -234,16 +234,16 @@ main {
 .logo-line b {
   display: block;
   height: 3px;
-  border-radius: 999px;
+  border-radius: 0;
 }
 
 .logo-line i {
-  width: 74px;
+  width: 86px;
   background: var(--green);
 }
 
 .logo-line b {
-  width: 24px;
+  width: 27px;
   background: #fff;
 }
 
