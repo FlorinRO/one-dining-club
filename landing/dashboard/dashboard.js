@@ -718,21 +718,14 @@ function renderMiniBarChart(items) {
 }
 
 function renderProfileView(restaurant) {
-  const categories = restaurant.categories_detail || [];
-  const completionItems = getProfileCompletionItems(restaurant);
-  const completedItems = completionItems.filter((item) => item.done).length;
-  const completionPercent = Math.round((completedItems / completionItems.length) * 100);
+  const profileCompletion = getProfileCompletionState(restaurant);
+  const completionPercent = profileCompletion.percent;
   const deliveryRange = `${restaurant.estimated_delivery_time_min || 25}-${restaurant.estimated_delivery_time_max || 45} min`;
-  const selectedCategoryNames = categories.map((category) => category.name).filter(Boolean);
+  const pickupOnly = Boolean(restaurant.supports_pickup) && Number(restaurant.delivery_fee || 0) === 0;
 
   return `
     <section class="profile-hero panel">
-      <div class="profile-cover-preview">
-        ${
-          restaurant.cover_image
-            ? `<img src="${resolveMediaUrl(restaurant.cover_image)}" alt="Cover ${escapeHtml(restaurant.name || "restaurant")}" />`
-            : `<div class="profile-cover-empty"><i class="ri-image-add-line" aria-hidden="true"></i><span>Adaugă cover</span></div>`
-        }
+      <div class="profile-logo-hero">
         <div class="profile-logo-preview">
           ${
             restaurant.logo
@@ -740,12 +733,14 @@ function renderProfileView(restaurant) {
               : `<span>${escapeHtml((restaurant.name || "Y").slice(0, 1).toUpperCase())}</span>`
           }
         </div>
+        <form class="profile-avatar-upload" data-media-form="logo">
+          <label class="profile-avatar-action" aria-label="Actualizează logo-ul restaurantului">
+            <i class="ri-add-line" aria-hidden="true"></i>
+            <input type="file" name="logo" accept="image/*" data-auto-submit-media required />
+          </label>
+        </form>
       </div>
       <div class="profile-hero-copy">
-        <span class="status-chip ${restaurant.is_active ? "delivered" : "cancelled"}">
-          <i class="${restaurant.is_active ? "ri-checkbox-circle-line" : "ri-error-warning-line"}" aria-hidden="true"></i>
-          ${restaurant.is_active ? "Profil activ" : "Profil inactiv"}
-        </span>
         <div>
           <h2>${escapeHtml(restaurant.name || "Restaurant fără nume")}</h2>
           <p>${escapeHtml(restaurant.description || "Adaugă o descriere scurtă, clară și orientată spre client.")}</p>
@@ -760,53 +755,10 @@ function renderProfileView(restaurant) {
         <small>Completare profil</small>
         <strong>${completionPercent}%</strong>
         <div class="profile-health-bar" aria-hidden="true"><span style="width:${completionPercent}%"></span></div>
-        <ul>
-          ${completionItems
-            .map(
-              (item) => `
-                <li class="${item.done ? "is-done" : ""}">
-                  <i class="${item.done ? "ri-checkbox-circle-fill" : "ri-circle-line"}" aria-hidden="true"></i>
-                  ${escapeHtml(item.label)}
-                </li>
-              `,
-            )
-            .join("")}
-        </ul>
       </aside>
     </section>
 
     <div class="profile-layout">
-      <aside class="profile-side-stack">
-        <section class="panel profile-summary-card">
-          <div class="section-header">
-            <div>
-              <h2>Pe scurt</h2>
-              <small>Ce vede clientul înainte să intre în meniu.</small>
-            </div>
-          </div>
-          <div class="profile-summary-list">
-            <span><strong>${escapeHtml(restaurant.entity_type === "brand" ? "Brand" : "Restaurant")}</strong><small>Tip profil</small></span>
-            <span><strong>${restaurant.is_open ? "Deschis" : "Închis"}</strong><small>Status curent</small></span>
-            <span><strong>${restaurant.supports_pickup ? "Da" : "Nu"}</strong><small>Pickup</small></span>
-            <span><strong>${restaurant.is_sponsored ? "Da" : "Nu"}</strong><small>Sponsorizat</small></span>
-          </div>
-          <div class="pill-row profile-category-pills">
-            ${selectedCategoryNames.length ? selectedCategoryNames.map((name) => `<span class="pill">${escapeHtml(name)}</span>`).join("") : `<span class="pill is-muted">Alege categorii publice</span>`}
-          </div>
-        </section>
-
-        <section class="panel profile-media-card">
-          <div class="section-header">
-            <div>
-              <h2>Media</h2>
-              <small>Actualizează rapid identitatea vizuală.</small>
-            </div>
-          </div>
-          ${renderProfileMediaUpload("logo", "Logo", "Iconul rotund din aplicație.", restaurant.logo)}
-          ${renderProfileMediaUpload("cover_image", "Cover", "Imaginea mare din profil.", restaurant.cover_image)}
-        </section>
-      </aside>
-
       <form id="profile-form" class="profile-form-stack">
         <section class="panel profile-form-card">
           <div class="form-section-title">
@@ -816,7 +768,12 @@ function renderProfileView(restaurant) {
           <div class="profile-card-fields">
             <div class="split">
               <label class="field"><span>Nume restaurant</span><input name="name" value="${escapeHtml(restaurant.name || "")}" placeholder="Ex: Yumzy Kitchen" required /></label>
-              <label class="field"><span>Oraș</span><input name="city" value="${escapeHtml(restaurant.city || "")}" placeholder="Ex: București" required /></label>
+              <label class="field">
+                <span>Oraș</span>
+                <select name="city" required>
+                  ${renderRomaniaCityOptions(restaurant.city || "")}
+                </select>
+              </label>
             </div>
             <label class="field"><span>Adresă</span><input name="address" value="${escapeHtml(restaurant.address || "")}" placeholder="Stradă, număr, zonă" required /></label>
             <label class="field"><span>Descriere</span><textarea name="description" placeholder="Descrie specificul, preparatele populare și motivul pentru care clientul ar comanda.">${escapeHtml(restaurant.description || "")}</textarea></label>
@@ -831,7 +788,7 @@ function renderProfileView(restaurant) {
           <div class="profile-card-fields">
             <div class="split">
               <label class="field"><span>Email public</span><input type="email" name="email" value="${escapeHtml(restaurant.email || "")}" placeholder="contact@restaurant.ro" /></label>
-              <label class="field"><span>Telefon</span><input name="phone" value="${escapeHtml(restaurant.phone || "")}" placeholder="+40..." /></label>
+              <label class="field"><span>Telefon</span><input name="phone" value="${escapeHtml(restaurant.phone || "")}" placeholder="+40..." inputmode="tel" pattern="[0-9+()]*" data-phone-input /></label>
             </div>
             <div class="split">
               <label class="field"><span>Website</span><input type="url" name="website_url" value="${escapeHtml(restaurant.website_url || "")}" placeholder="https://..." /></label>
@@ -850,42 +807,50 @@ function renderProfileView(restaurant) {
             <span>Controlează cum apare restaurantul și ce poate face clientul.</span>
           </div>
           <div class="profile-card-fields">
-            <div class="split">
-              <label class="field"><span>Delivery fee</span><input type="number" step="0.01" name="delivery_fee" value="${restaurant.delivery_fee || 0}" /></label>
-              <label class="field"><span>Comandă minimă</span><input type="number" step="0.01" name="minimum_order" value="${restaurant.minimum_order || 0}" /></label>
-            </div>
-            <div class="split">
-              <label class="field"><span>Timp livrare minim</span><input type="number" name="estimated_delivery_time_min" value="${restaurant.estimated_delivery_time_min || 25}" /></label>
-              <label class="field"><span>Timp livrare maxim</span><input type="number" name="estimated_delivery_time_max" value="${restaurant.estimated_delivery_time_max || 45}" /></label>
-            </div>
-            <div class="split">
-              <label class="field">
-                <span>Tip entitate</span>
-                <select name="entity_type">
-                  <option value="restaurant" ${restaurant.entity_type === "restaurant" ? "selected" : ""}>Restaurant</option>
-                  <option value="brand" ${restaurant.entity_type === "brand" ? "selected" : ""}>Brand</option>
-                </select>
+            <div class="ops-metric-grid">
+              <label class="field ops-metric-card">
+                <span>Taxă livrare</span>
+                <input type="number" step="0.01" name="delivery_fee" value="${restaurant.delivery_fee || 0}" ${pickupOnly ? "disabled" : ""} data-delivery-fee />
+                <small>Setează costul standard pentru livrare.</small>
               </label>
-              <label class="field">
-                <span>Categorii publice</span>
-                <select name="categories" multiple size="5">
-                  ${state.restaurantCategories
-                    .map(
-                      (item) => `
-                        <option value="${item.id}" ${categories.some((category) => category.id === item.id) ? "selected" : ""}>
-                          ${escapeHtml(item.name)}
-                        </option>
-                      `,
-                    )
-                    .join("")}
-                </select>
+              <label class="field ops-metric-card">
+                <span>Comandă minimă</span>
+                <input type="number" step="0.01" name="minimum_order" value="${restaurant.minimum_order || 0}" />
+                <small>Pragul minim pentru plasarea comenzii.</small>
+              </label>
+              <label class="field ops-metric-card">
+                <span>Timp livrare minim</span>
+                <input type="number" name="estimated_delivery_time_min" value="${restaurant.estimated_delivery_time_min || 25}" />
+                <small>Estimarea optimistă afișată în aplicație.</small>
+              </label>
+              <label class="field ops-metric-card">
+                <span>Timp livrare maxim</span>
+                <input type="number" name="estimated_delivery_time_max" value="${restaurant.estimated_delivery_time_max || 45}" />
+                <small>Estimarea conservatoare pentru client.</small>
               </label>
             </div>
-            <div class="check-card-grid profile-toggle-grid">
-              <label class="checkbox-field"><input type="checkbox" name="supports_pickup" ${restaurant.supports_pickup ? "checked" : ""} /><span>Permite pickup</span></label>
-              <label class="checkbox-field"><input type="checkbox" name="is_open" ${restaurant.is_open ? "checked" : ""} /><span>Restaurant deschis</span></label>
-              <label class="checkbox-field"><input type="checkbox" name="is_active" ${restaurant.is_active ? "checked" : ""} /><span>Profil activ</span></label>
-              <label class="checkbox-field"><input type="checkbox" name="is_sponsored" ${restaurant.is_sponsored ? "checked" : ""} /><span>Locație sponsorizată</span></label>
+            <div class="check-card-grid profile-toggle-grid ops-toggle-grid">
+              <label class="checkbox-field ops-toggle-card">
+                <input type="checkbox" name="pickup_only" ${pickupOnly ? "checked" : ""} data-pickup-only />
+                <span>
+                  <strong>Doar colectare</strong>
+                  <small>Restaurantul acceptă doar ridicare din locație și nu percepe taxă de livrare.</small>
+                </span>
+              </label>
+              <label class="checkbox-field ops-toggle-card">
+                <input type="checkbox" name="supports_pickup" ${restaurant.supports_pickup ? "checked" : ""} ${pickupOnly ? "disabled" : ""} data-supports-pickup />
+                <span>
+                  <strong>Permite pickup</strong>
+                  <small>Clientul poate ridica și comenzi plasate prin aplicație.</small>
+                </span>
+              </label>
+              <label class="checkbox-field ops-toggle-card">
+                <input type="checkbox" name="is_open" ${restaurant.is_open ? "checked" : ""} />
+                <span>
+                  <strong>Restaurant deschis</strong>
+                  <small>Activează disponibilitatea imediată pentru comenzi noi.</small>
+                </span>
+              </label>
             </div>
           </div>
         </section>
@@ -900,42 +865,70 @@ function renderProfileView(restaurant) {
           </div>
         </section>
 
-        <div class="profile-save-bar">
-          <div>
-            <strong>Gata de publicat?</strong>
-            <span>Salvarea actualizează profilul din aplicația YUMZY.</span>
-          </div>
-          <button class="button" type="submit"><i class="ri-save-3-line" aria-hidden="true"></i> Salvează profilul</button>
-        </div>
+        ${
+          profileCompletion.isComplete
+            ? `
+              <div class="profile-save-bar">
+                <div>
+                  <strong>Gata de publicat?</strong>
+                  <span>Salvarea actualizează profilul din aplicația YUMZY.</span>
+                </div>
+                <button class="button" type="submit"><i class="ri-save-3-line" aria-hidden="true"></i> Salvează profilul</button>
+              </div>
+            `
+            : ""
+        }
       </form>
     </div>
   `;
 }
 
-function getProfileCompletionItems(restaurant) {
-  return [
-    { label: "Nume și adresă", done: Boolean(restaurant.name && restaurant.city && restaurant.address) },
-    { label: "Contact public", done: Boolean(restaurant.email || restaurant.phone) },
-    { label: "Descriere", done: Boolean((restaurant.description || "").trim()) },
-    { label: "Categorii", done: Boolean((restaurant.categories_detail || []).length) },
-    { label: "Logo și cover", done: Boolean(restaurant.logo && restaurant.cover_image) },
+function getProfileCompletionState(restaurant) {
+  const checks = [
+    Boolean(restaurant.name && restaurant.city && restaurant.address),
+    Boolean(restaurant.email || restaurant.phone),
+    Boolean((restaurant.description || "").trim()),
+    Boolean(restaurant.logo),
+    hasCompleteOpeningHours(restaurant.opening_hours || []),
   ];
+  const completedItems = checks.filter(Boolean).length;
+  return {
+    isComplete: completedItems === checks.length,
+    percent: Math.round((completedItems / checks.length) * 100),
+  };
 }
 
-function renderProfileMediaUpload(fieldName, title, note, imageUrl) {
+function renderRomaniaCityOptions(selectedCity) {
+  const normalizedSelectedCity = (selectedCity || "").trim();
+  const cityOptions = Array.isArray(window.ROMANIA_CITY_OPTIONS) ? window.ROMANIA_CITY_OPTIONS : [];
+  const hasSelectedOption = cityOptions.some((option) => option.value === normalizedSelectedCity);
+  const customSelectedOption =
+    normalizedSelectedCity && !hasSelectedOption
+      ? `<option value="${escapeHtml(normalizedSelectedCity)}" selected>${escapeHtml(normalizedSelectedCity)}</option>`
+      : "";
+
   return `
-    <div class="profile-media-upload">
-      ${imageUrl ? `<img class="media-preview" src="${resolveMediaUrl(imageUrl)}" alt="${escapeHtml(title)} restaurant" />` : `<div class="profile-media-empty"><i class="ri-image-line" aria-hidden="true"></i><span>${escapeHtml(title)} lipsă</span></div>`}
-      <form class="toolbar" data-media-form="${fieldName}">
-        <div>
-          <strong>${escapeHtml(title)}</strong>
-          <small>${escapeHtml(note)}</small>
-        </div>
-        <input type="file" name="${fieldName}" accept="image/*" required />
-        <button class="outline-button" type="submit">Upload</button>
-      </form>
-    </div>
+    <option value="" ${normalizedSelectedCity ? "" : "selected"} disabled>Alege orașul</option>
+    ${customSelectedOption}
+    ${cityOptions
+      .map(
+        (option) => `
+          <option value="${escapeHtml(option.value)}" ${option.value === normalizedSelectedCity ? "selected" : ""}>
+            ${escapeHtml(option.label)}
+          </option>
+        `,
+      )
+      .join("")}
   `;
+}
+
+function hasCompleteOpeningHours(hours) {
+  return DAY_LABELS.every((_, index) => {
+    const entry = hours.find((item) => item.day_of_week === index);
+    if (!entry) return false;
+    if (entry.is_closed) return true;
+    return Boolean(entry.opening_time && entry.closing_time);
+  });
 }
 
 function renderHoursRows(hours) {
@@ -943,10 +936,22 @@ function renderHoursRows(hours) {
     const entry = hours.find((item) => item.day_of_week === index) || {};
     return `
       <div class="hour-row">
-        <strong>${dayLabel}</strong>
-        <input type="time" name="opening_time_${index}" value="${(entry.opening_time || "").slice(0, 5)}" ${entry.is_closed ? "disabled" : ""} />
-        <input type="time" name="closing_time_${index}" value="${(entry.closing_time || "").slice(0, 5)}" ${entry.is_closed ? "disabled" : ""} />
-        <label class="checkbox-field">
+        <div class="hour-day">
+          <strong>${dayLabel}</strong>
+          ${entry.is_closed ? "<small>Închis</small>" : ""}
+        </div>
+        <div class="hour-time-group">
+          <label class="hour-time-field">
+            <span>Deschide</span>
+            <input type="time" name="opening_time_${index}" value="${(entry.opening_time || "").slice(0, 5)}" ${entry.is_closed ? "disabled" : ""} />
+          </label>
+          <span class="hour-time-separator" aria-hidden="true">—</span>
+          <label class="hour-time-field">
+            <span>Închide</span>
+            <input type="time" name="closing_time_${index}" value="${(entry.closing_time || "").slice(0, 5)}" ${entry.is_closed ? "disabled" : ""} />
+          </label>
+        </div>
+        <label class="checkbox-field hour-closed-toggle">
           <input type="checkbox" name="is_closed_${index}" ${entry.is_closed ? "checked" : ""} />
           <span>Închis</span>
         </label>
@@ -1217,12 +1222,17 @@ function renderEmptyRestaurantState() {
       <form id="create-restaurant-form" class="form-grid">
         <div class="split">
           <label class="field"><span>Nume restaurant</span><input name="name" required /></label>
-          <label class="field"><span>Oraș</span><input name="city" required /></label>
+          <label class="field">
+            <span>Oraș</span>
+            <select name="city" required>
+              ${renderRomaniaCityOptions("")}
+            </select>
+          </label>
         </div>
         <label class="field"><span>Adresă</span><input name="address" required /></label>
         <div class="split">
           <label class="field"><span>Email public</span><input type="email" name="email" /></label>
-          <label class="field"><span>Telefon</span><input name="phone" /></label>
+          <label class="field"><span>Telefon</span><input name="phone" inputmode="tel" pattern="[0-9+()]*" data-phone-input /></label>
         </div>
         <label class="field"><span>Descriere</span><textarea name="description" placeholder="Spune pe scurt ce face restaurantul special."></textarea></label>
         <div class="split">
@@ -1254,6 +1264,13 @@ function bindEvents() {
 
   document.querySelector("#profile-form")?.addEventListener("submit", handleProfileSubmit);
   document.querySelectorAll("[data-media-form]").forEach((form) => form.addEventListener("submit", handleMediaSubmit));
+  document.querySelectorAll("[data-auto-submit-media]").forEach((input) => {
+    input.addEventListener("change", () => {
+      if (input.files?.[0]) input.form?.requestSubmit();
+    });
+  });
+  bindPhoneInputs();
+  bindOperationalControls();
   document.querySelector("#category-form")?.addEventListener("submit", handleCategorySubmit);
   document.querySelector("#cancel-category-edit")?.addEventListener("click", resetCategoryEditing);
   document.querySelectorAll("[data-edit-category]").forEach((button) => {
@@ -1292,6 +1309,32 @@ function bindHoursToggles() {
       if (close) close.disabled = disabled;
     });
   });
+}
+
+function bindPhoneInputs() {
+  document.querySelectorAll("[data-phone-input]").forEach((input) => {
+    input.addEventListener("input", () => {
+      input.value = (input.value || "").replace(/[^0-9+()]/g, "");
+    });
+  });
+}
+
+function bindOperationalControls() {
+  const pickupOnly = document.querySelector("[data-pickup-only]");
+  const supportsPickup = document.querySelector("[data-supports-pickup]");
+  const deliveryFee = document.querySelector("[data-delivery-fee]");
+  if (!pickupOnly || !supportsPickup || !deliveryFee) return;
+
+  const syncOperationalControls = () => {
+    const isPickupOnly = pickupOnly.checked;
+    supportsPickup.checked = isPickupOnly || supportsPickup.checked;
+    supportsPickup.disabled = isPickupOnly;
+    deliveryFee.disabled = isPickupOnly;
+    if (isPickupOnly) deliveryFee.value = "0";
+  };
+
+  pickupOnly.addEventListener("change", syncOperationalControls);
+  syncOperationalControls();
 }
 
 function hydrateEditingForms() {
@@ -1371,7 +1414,7 @@ async function handleProfileSubmit(event) {
   const restaurant = getSelectedRestaurant();
   if (!restaurant) return;
   const form = new FormData(event.currentTarget);
-  const categories = Array.from(event.currentTarget.querySelector('[name="categories"]').selectedOptions).map((item) => Number(item.value));
+  const pickupOnly = form.get("pickup_only") === "on";
   const openingHours = DAY_LABELS.map((_, index) => {
     const isClosed = form.get(`is_closed_${index}`) === "on";
     return {
@@ -1396,16 +1439,12 @@ async function handleProfileSubmit(event) {
         promo_video_url: form.get("promo_video_url"),
         instagram_url: form.get("instagram_url"),
         tiktok_url: form.get("tiktok_url"),
-        delivery_fee: form.get("delivery_fee") || "0",
+        delivery_fee: pickupOnly ? "0" : form.get("delivery_fee") || "0",
         minimum_order: form.get("minimum_order") || "0",
         estimated_delivery_time_min: Number(form.get("estimated_delivery_time_min") || 25),
         estimated_delivery_time_max: Number(form.get("estimated_delivery_time_max") || 45),
-        entity_type: form.get("entity_type"),
-        supports_pickup: form.get("supports_pickup") === "on",
+        supports_pickup: pickupOnly || form.get("supports_pickup") === "on",
         is_open: form.get("is_open") === "on",
-        is_active: form.get("is_active") === "on",
-        is_sponsored: form.get("is_sponsored") === "on",
-        categories,
         opening_hours: openingHours,
       },
     });
