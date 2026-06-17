@@ -400,7 +400,7 @@ h1 {
   height: 30px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.7;
+  stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
   flex: 0 0 auto;
@@ -416,6 +416,10 @@ h1 {
   color: #fff;
   border-color: rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.08);
+}
+
+.button-android {
+  border-color: var(--green);
 }
 
 .trust-row {
