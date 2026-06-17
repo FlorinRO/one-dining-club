@@ -395,6 +395,17 @@ h1 {
   flex: 0 0 auto;
 }
 
+.android-logo {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: 0 0 auto;
+}
+
 .button-primary {
   color: #071007;
   background: linear-gradient(135deg, var(--green), #b8ffd0);
@@ -1156,6 +1167,11 @@ h1 {
   .apple-logo {
     width: 32px;
     height: 32px;
+  }
+
+  .android-logo {
+    width: 30px;
+    height: 30px;
   }
 
   .trust-row span {
