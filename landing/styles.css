@@ -17,9 +17,11 @@
   --radius-md: 16px;
   --max: 1280px;
   --shell-gutter: clamp(18px, 3vw, 42px);
-  --hero-gap: clamp(28px, 3vw, 52px);
-  --hero-top-offset: clamp(52px, 7vh, 84px);
-  --hero-min-height-offset: clamp(118px, 16vh, 176px);
+  --hero-gap: clamp(28px, 4vw, 76px);
+  --hero-top-offset: clamp(34px, 5.5vh, 72px);
+  --hero-margin-top: clamp(38px, 7.5vh, 92px);
+  --hero-min-height-offset: clamp(132px, 17vh, 188px);
+  --phone-width: clamp(238px, 20vw, 340px);
 }
 
 * {
@@ -288,13 +290,18 @@ main {
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.12fr) minmax(320px, clamp(360px, 28vw, 460px));
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--hero-gap);
-  min-height: calc(var(--app-height) - var(--hero-min-height-offset));
+  min-height: min(760px, calc(var(--app-height) - var(--hero-min-height-offset)));
   padding: 0;
   transform: none;
   overflow: visible;
+}
+
+.hero.section-grid {
+  margin-top: var(--hero-margin-top);
 }
 
 main:has(.hero.section-grid),
@@ -339,7 +346,7 @@ h1 {
   margin-left: 0;
   margin-right: 0;
   margin-bottom: 22px;
-  font-size: clamp(2.35rem, 4vw, 5rem);
+  font-size: 4rem;
   font-weight: 600;
   line-height: 0.9;
   letter-spacing: -0.08em;
@@ -351,7 +358,7 @@ h1 {
   margin-right: 0;
   margin-bottom: 28px;
   color: var(--muted);
-  font-size: clamp(1.08rem, 1.35vw, 1.28rem);
+  font-size: 1.16rem;
   line-height: 1.52;
 }
 
@@ -398,12 +405,17 @@ h1 {
 .android-logo {
   width: 30px;
   height: 30px;
-  fill: none;
-  stroke: currentColor;
+  fill: #3ddc84;
+  stroke: #3ddc84;
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
   flex: 0 0 auto;
+}
+
+.android-logo circle {
+  fill: #071007;
+  stroke: none;
 }
 
 .button-primary {
@@ -442,11 +454,14 @@ h1 {
 
 .phone-stage {
   position: relative;
-  min-height: clamp(335px, 33vw, 470px);
+  width: min(var(--phone-width), 31vh);
+  width: min(var(--phone-width), 31svh);
+  min-height: 0;
   display: grid;
+  justify-self: end;
   place-items: start end;
   padding-top: 0;
-  margin-top: clamp(-28px, -1.6vw, -4px);
+  margin-top: 0;
   transform: scale(1);
   transform-origin: top right;
   overflow: visible;
@@ -475,7 +490,7 @@ h1 {
 
 .phone-frame {
   position: relative;
-  width: min(clamp(240px, 19vw, 295px), 100%);
+  width: 100%;
   aspect-ratio: 71.5 / 146.6;
   padding: 8px;
   min-height: 0;
@@ -928,8 +943,14 @@ h1 {
     padding-bottom: 32px;
   }
 
+  .hero.section-grid {
+    margin-top: 42px;
+  }
+
   .phone-stage {
+    width: 100%;
     min-height: clamp(360px, 58vw, 420px);
+    justify-self: stretch;
     margin-top: 0;
     margin-bottom: 24px;
     place-items: center;
@@ -966,76 +987,109 @@ h1 {
 }
 
 @media (min-width: 921px) and (max-width: 1180px) {
+  :root {
+    --hero-gap: 28px;
+    --phone-width: clamp(224px, 19vw, 260px);
+  }
+
   .hero {
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 32vw);
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   h1 {
     max-width: 680px;
-    font-size: clamp(2.2rem, 3.3vw, 3.9rem);
+    font-size: 3.25rem;
   }
 
   .hero-lead {
     max-width: 560px;
+    font-size: 1.02rem;
   }
 
   .phone-stage {
-    min-height: clamp(310px, 30vw, 390px);
-  }
-
-  .phone-frame {
-    width: min(clamp(220px, 18vw, 270px), 100%);
+    min-height: 0;
   }
 }
 
 @media (min-width: 1440px) {
   :root {
-    --max: 1180px;
+    --max: 1400px;
+    --phone-width: clamp(300px, 18vw, 380px);
   }
 
   .hero-copy {
-    padding-right: clamp(0px, 1vw, 12px);
+    padding-right: 12px;
   }
 
-  .phone-stage {
-    min-height: clamp(300px, 26vw, 420px);
+  h1 {
+    max-width: 920px;
+    font-size: 4.6rem;
+  }
+
+  .hero-lead {
+    max-width: 720px;
+    font-size: 1.24rem;
   }
 }
 
 @media (min-width: 1920px) {
   :root {
-    --max: 1220px;
+    --max: 1560px;
+    --hero-gap: clamp(56px, 5vw, 112px);
+    --hero-margin-top: clamp(52px, 6.5vh, 104px);
+    --phone-width: clamp(350px, 17vw, 440px);
   }
 
   h1 {
-    max-width: 620px;
-    font-size: clamp(2.35rem, 2.5vw, 3.8rem);
+    max-width: 1120px;
+    font-size: 4.9rem;
   }
 
   .hero-lead {
-    max-width: 500px;
-    font-size: clamp(0.98rem, 0.88vw, 1.02rem);
+    max-width: 760px;
+    font-size: 1.34rem;
+  }
+}
+
+@media (min-width: 2560px) {
+  :root {
+    --max: 1760px;
+    --phone-width: clamp(410px, 14vw, 480px);
   }
 
-  .phone-frame {
-    width: min(clamp(300px, 19vw, 380px), 100%);
+  h1 {
+    max-width: 1200px;
+    font-size: 5.3rem;
+  }
+
+  .hero-lead {
+    font-size: 1.42rem;
   }
 }
 
 @media (max-height: 820px) and (min-width: 921px) {
+  :root {
+    --hero-top-offset: 24px;
+    --hero-margin-top: clamp(14px, 3vh, 26px);
+    --hero-min-height-offset: 150px;
+    --phone-width: clamp(208px, 16vw, 236px);
+  }
+
   .top-logo {
     top: 24px !important;
     margin-bottom: 6px;
   }
 
   .hero {
-    min-height: calc(var(--app-height) - 98px);
+    min-height: calc(var(--app-height) - var(--hero-min-height-offset));
     align-items: center;
   }
 
   h1 {
     margin-bottom: 14px;
-    font-size: clamp(1.8rem, 2.9vw, 3.2rem);
+    max-width: 680px;
+    font-size: 3rem;
+    line-height: 0.94;
   }
 
   .hero-lead {
@@ -1049,11 +1103,40 @@ h1 {
 
   .hero-actions .button {
     min-height: 44px;
+    min-width: 190px;
+    font-size: 0.92rem;
   }
 
   .phone-stage {
-    min-height: clamp(350px, 36vw, 480px);
+    min-height: 0;
     margin-top: 0;
+  }
+}
+
+@media (max-height: 700px) and (min-width: 921px) {
+  :root {
+    --hero-top-offset: 18px;
+    --hero-margin-top: 12px;
+    --hero-min-height-offset: 132px;
+    --phone-width: clamp(190px, 15vw, 212px);
+  }
+
+  .top-logo {
+    top: 18px !important;
+  }
+
+  h1 {
+    font-size: 2.55rem;
+  }
+
+  .eyebrow {
+    margin-bottom: 8px;
+    font-size: 11px;
+  }
+
+  .hero-lead {
+    max-width: 520px;
+    line-height: 1.42;
   }
 }
 
@@ -1188,6 +1271,10 @@ h1 {
   .gallery-section,
   .restaurant-panel,
   .waitlist-section {
+    margin-top: calc(var(--mobile-gap) * 2);
+  }
+
+  .hero.section-grid {
     margin-top: calc(var(--mobile-gap) * 2);
   }
 
