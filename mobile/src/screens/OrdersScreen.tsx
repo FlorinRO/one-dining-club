@@ -53,8 +53,7 @@ export function OrdersScreen({ navigation }: Props) {
   const [products, setProducts] = useState<Product[]>([]);
 
   const safeOrders = useMemo(() => sanitizeOrders(storeOrders), [storeOrders]);
-  const displayOrders = useMemo(() => (safeOrders.length ? safeOrders : buildDemoOrders(products)), [products, safeOrders]);
-  const orderRows = useMemo(() => buildOrderRows(displayOrders, products), [displayOrders, products]);
+  const orderRows = useMemo(() => buildOrderRows(safeOrders, products), [products, safeOrders]);
 
   const loadOrders = useCallback(
     async (mode: "initial" | "refresh", shouldCommit: () => boolean) => {
@@ -201,10 +200,6 @@ function money(value: number) {
   return `${value.toFixed(2).replace(".", ",")} lei`;
 }
 
-function productPrice(product: Product) {
-  return toNumber(product.effective_price ?? product.discount_price ?? product.price);
-}
-
 function normalizeProductName(product: Product) {
   return product.name.trim().toLowerCase();
 }
@@ -307,49 +302,6 @@ function buildOrderRows(orders: SafeOrder[], products: Product[]): OrderRow[] {
       product,
       imageUri,
       productLine: orderProductLine(order, product),
-    };
-  });
-}
-
-function buildDemoOrders(products: Product[]): SafeOrder[] {
-  const demoProducts = uniqueProductsByName(products).slice(0, 5);
-  const statuses: OrderStatus[] = ["delivered", "on_the_way", "preparing", "delivered", "accepted"];
-  const createdDates = [
-    "2026-05-29T18:30:00Z",
-    "2026-05-26T12:15:00Z",
-    "2026-05-21T20:45:00Z",
-    "2026-05-17T13:05:00Z",
-    "2026-05-12T19:20:00Z",
-  ];
-
-  return demoProducts.map((product, index) => {
-    const subtotal = productPrice(product);
-    const deliveryFee = index % 2 === 0 ? 9.99 : 7.5;
-    const discount = index === 0 ? 0 : index % 2 === 0 ? 5 : 0;
-    const total = Number((subtotal + deliveryFee - discount).toFixed(2));
-
-    return {
-      id: 90000 + product.id,
-      restaurant: product.restaurant,
-      restaurant_name: product.restaurant_name ?? "YUMZY",
-      subtotal,
-      delivery_fee: deliveryFee,
-      discount,
-      total,
-      payment_method: index % 2 === 0 ? "card" : "cash",
-      order_status: statuses[index] ?? "delivered",
-      created_at: createdDates[index] ?? createdDates[0],
-      address: 1,
-      items: [
-        {
-          id: 91000 + product.id,
-          product: product.id,
-          product_name: product.name,
-          quantity: 1,
-          unit_price: subtotal,
-          total_price: subtotal,
-        },
-      ],
     };
   });
 }

@@ -1120,6 +1120,7 @@ export const mockOrders: Order[] = [
     delivery_fee: 9.99,
     discount: 10,
     total: 90.99,
+    fulfillment_type: "delivery",
     payment_method: "cash",
     order_status: "preparing",
     created_at: new Date().toISOString(),

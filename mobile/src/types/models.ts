@@ -124,6 +124,7 @@ export type OrderStatus =
   | "rejected";
 
 export type PaymentMethod = "cash" | "card" | "apple_pay" | "google_pay";
+export type FulfillmentType = "delivery" | "pickup";
 
 export type Order = {
   id: number;
@@ -133,6 +134,7 @@ export type Order = {
   delivery_fee: string | number;
   discount: string | number;
   total: string | number;
+  fulfillment_type?: FulfillmentType;
   payment_method: PaymentMethod;
   order_status: OrderStatus;
   created_at: string;

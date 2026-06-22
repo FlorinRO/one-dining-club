@@ -6,7 +6,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from addresses.models import Address
-from orders.models import Order, OrderItem, OrderItemOption, OrderStatus, PaymentMethod, PaymentStatus
+from orders.models import FulfillmentType, Order, OrderItem, OrderItemOption, OrderStatus, PaymentMethod, PaymentStatus
 from payments.models import Payment, PaymentProvider
 from products.models import Product, ProductOption
 from promotions.models import DiscountType, PromoCode
@@ -59,6 +59,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "delivery_fee",
             "discount",
             "total",
+            "fulfillment_type",
             "payment_method",
             "payment_status",
             "order_status",
@@ -85,9 +86,10 @@ class OrderCreateItemSerializer(serializers.Serializer):
 
 class OrderCreateSerializer(serializers.Serializer):
     restaurant_id = serializers.IntegerField()
-    address_id = serializers.IntegerField()
+    address_id = serializers.IntegerField(required=False)
     items = OrderCreateItemSerializer(many=True)
     promo_code = serializers.CharField(required=False, allow_blank=True)
+    fulfillment_type = serializers.ChoiceField(choices=FulfillmentType.choices, default=FulfillmentType.DELIVERY)
     payment_method = serializers.ChoiceField(choices=PaymentMethod.choices, default=PaymentMethod.CASH)
     customer_note = serializers.CharField(required=False, allow_blank=True)
 
@@ -107,10 +109,20 @@ class OrderCreateSerializer(serializers.Serializer):
         if not restaurant.is_open:
             raise serializers.ValidationError({"restaurant_id": "Restaurant is currently closed."})
 
-        try:
-            address = Address.objects.get(id=attrs["address_id"], user=request.user)
-        except Address.DoesNotExist as exc:
-            raise serializers.ValidationError({"address_id": "Address not found."}) from exc
+        fulfillment_type = attrs.get("fulfillment_type", FulfillmentType.DELIVERY)
+        address = None
+        if fulfillment_type == FulfillmentType.PICKUP:
+            if not restaurant.supports_pickup:
+                raise serializers.ValidationError({"fulfillment_type": "Pickup is not available for this restaurant."})
+        else:
+            address_id = attrs.get("address_id")
+            if not address_id:
+                raise serializers.ValidationError({"address_id": "Address is required for delivery orders."})
+
+            try:
+                address = Address.objects.get(id=address_id, user=request.user)
+            except Address.DoesNotExist as exc:
+                raise serializers.ValidationError({"address_id": "Address not found."}) from exc
 
         if not attrs["items"]:
             raise serializers.ValidationError({"items": "At least one item is required."})
@@ -152,12 +164,13 @@ class OrderCreateSerializer(serializers.Serializer):
             )
 
         discount = self._calculate_discount(attrs.get("promo_code", ""), subtotal)
-        delivery_fee = restaurant.delivery_fee
+        delivery_fee = Decimal("0.00") if fulfillment_type == FulfillmentType.PICKUP else restaurant.delivery_fee
         total = subtotal + delivery_fee - discount
 
         attrs["_calculated"] = {
             "restaurant": restaurant,
             "address": address,
+            "fulfillment_type": fulfillment_type,
             "items": calculated_items,
             "subtotal": subtotal,
             "delivery_fee": delivery_fee,
@@ -233,6 +246,7 @@ class OrderCreateSerializer(serializers.Serializer):
             delivery_fee=calculated["delivery_fee"],
             discount=calculated["discount"],
             total=calculated["total"],
+            fulfillment_type=calculated["fulfillment_type"],
             payment_method=payment_method,
             payment_status=payment_status,
             customer_note=validated_data.get("customer_note", ""),

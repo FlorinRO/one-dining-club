@@ -1,16 +1,20 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ChevronLeft, ChevronRight, CreditCard, LifeBuoy, RotateCcw, Star } from "lucide-react-native";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ordersApi } from "../api/ordersApi";
-import { OrdersStackParamList } from "../navigation/types";
+import { restaurantsApi } from "../api/restaurantsApi";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { formatDateTime } from "../lib/dateFormat";
+import { OrdersStackParamList } from "../navigation/types";
+import { CartItem, useCartStore } from "../store/cartStore";
 import { useAuthStore } from "../store/authStore";
+import { useOrdersStore } from "../store/ordersStore";
 import { colors } from "../theme/colors";
+import { Order, Product, ProductOption, ProductOptionGroup, Restaurant } from "../types/models";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrderDetails">;
 const ORDER_ACTION_GREEN = "#22C55E";
@@ -22,25 +26,56 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
   const bottomSafeSpacing = Math.max(insets.bottom, 18) + 86;
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
   const accessToken = useAuthStore((state) => state.accessToken);
-  const { order } = route.params;
+  const cartRestaurant = useCartStore((state) => state.restaurant);
+  const replaceCart = useCartStore((state) => state.replaceCart);
+  const updateStoredOrder = useOrdersStore((state) => state.updateOrder);
+
+  const [order, setOrder] = useState<Order>(route.params.order);
+  const [review, setReview] = useState(route.params.order.review ?? null);
+  const [ratingDraft, setRatingDraft] = useState(route.params.order.review?.rating ?? 0);
+  const [reviewComment, setReviewComment] = useState(route.params.order.review?.comment ?? "");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    ordersApi
+      .detail(route.params.order.id)
+      .then((freshOrder) => {
+        if (!active) return;
+        setOrder(freshOrder);
+        setReview(freshOrder.review ?? null);
+        setRatingDraft(freshOrder.review?.rating ?? 0);
+        setReviewComment(freshOrder.review?.comment ?? "");
+        updateStoredOrder(freshOrder);
+      })
+      .catch(() => {
+        // Keep the route snapshot when the network refresh fails.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [route.params.order.id, updateStoredOrder]);
+
   const safeOrderId = typeof order?.id === "number" ? order.id : 0;
   const safeOrderItems = Array.isArray(order?.items) ? order.items : [];
   const subtotal = Number(order.subtotal || 0);
   const discount = Number(order.discount || 0);
   const deliveryFee = Number(order.delivery_fee || 0);
+  const fulfillmentType = order.fulfillment_type ?? "delivery";
+  const isPickupOrder = fulfillmentType === "pickup";
+  const addressObject = order.address && typeof order.address === "object" ? order.address : null;
   const serviceFee = Math.max(0, Math.round(subtotal * 0.02 * 100) / 100);
   const subtotalAfterDiscount = Math.max(0, subtotal - discount);
   const total = Number(order.total || 0);
   const orderCode = `#${`I${safeOrderId.toString(36).toUpperCase()}`}`;
   const statusLabel = order.order_status === "delivered" ? tr("Livrată", "Delivered") : tr("În curs", "In progress");
   const formattedDate = formatDateTime(order.created_at, language === "en" ? "en-US" : "ro-RO", tr("Dată necunoscută", "Unknown date"));
-  const primaryAddress = typeof order.address === "object" ? `${order.address.address_line_1}, ${order.address.city}` : tr("Adresă salvată", "Saved address");
-  const extraAddressLines = typeof order.address === "object" ? [order.address.address_line_2, order.address.instructions].filter(Boolean) : [];
+  const primaryAddress = addressObject ? `${addressObject.address_line_1}, ${addressObject.city}` : tr("Adresă salvată", "Saved address");
+  const extraAddressLines = addressObject ? [addressObject.address_line_2, addressObject.instructions].filter(Boolean) : [];
   const paymentLabel = order.payment_method === "cash" ? tr("Plată cash", "Cash payment") : tr("Plată online", "Online payment");
-  const [review, setReview] = useState(order.review ?? null);
-  const [ratingDraft, setRatingDraft] = useState(review?.rating ?? 0);
-  const [reviewComment, setReviewComment] = useState(review?.comment ?? "");
-  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const canSubmitReview = Boolean(accessToken) && order.order_status === "delivered";
 
   const submitReview = async () => {
@@ -56,7 +91,10 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
         rating: ratingDraft,
         comment: reviewComment.trim(),
       });
+      const updatedOrder = { ...order, review: savedReview };
       setReview(savedReview);
+      setOrder(updatedOrder);
+      updateStoredOrder(updatedOrder);
       Alert.alert(tr("Mulțumim", "Thank you"), tr("Ratingul a fost salvat.", "Your rating was saved."));
     } catch {
       Alert.alert(tr("Eroare", "Error"), tr("Nu am putut salva ratingul.", "Could not save the rating."));
@@ -64,6 +102,94 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
       setIsSubmittingReview(false);
     }
   };
+
+  const openRestaurantMenu = useCallback(
+    async (restaurantOverride?: Restaurant, productsOverride?: Product[]) => {
+      const restaurant = restaurantOverride ?? (await restaurantsApi.detail(order.restaurant));
+      const products = productsOverride ?? (await restaurantsApi.products(restaurant.id));
+      navigation.getParent()?.navigate("HomeTab", {
+        screen: "RestaurantDetails",
+        params: { restaurant, products },
+      });
+    },
+    [navigation, order.restaurant],
+  );
+
+  const openSupport = useCallback(() => {
+    navigation.getParent()?.navigate("ProfileTab", {
+      screen: "ProfileInfo",
+      params: { topic: "support" },
+    });
+  }, [navigation]);
+
+  const openCart = useCallback(() => {
+    navigation.getParent()?.navigate("HomeTab", {
+      screen: "CartFlow",
+      params: { screen: "CartHome" },
+    });
+  }, [navigation]);
+
+  const handleOrderAgain = useCallback(async () => {
+    if (isReordering) return;
+
+    setIsReordering(true);
+    try {
+      const restaurant = await restaurantsApi.detail(order.restaurant);
+      const products = await restaurantsApi.products(restaurant.id);
+      const { items, missingProducts, unresolvedProducts } = buildReorderCartItems(order, restaurant, products);
+
+      if (!items.length) {
+        Alert.alert(
+          tr("Comanda nu poate fi refăcută", "Order cannot be rebuilt"),
+          tr(
+            "Produsele din această comandă nu mai sunt disponibile în forma inițială. Deschidem meniul restaurantului ca să alegi din nou.",
+            "Items from this order are no longer available in their original form. Opening the restaurant menu so you can choose again.",
+          ),
+          [{ text: "OK", onPress: () => void openRestaurantMenu(restaurant, products) }],
+        );
+        return;
+      }
+
+      const applyCart = () => {
+        replaceCart({ restaurant, items, promoCode: "" });
+
+        if (missingProducts.length || unresolvedProducts.length) {
+          Alert.alert(
+            tr("Comandă refăcută parțial", "Order rebuilt partially"),
+            buildPartialReorderMessage({ tr, missingProducts, unresolvedProducts }),
+            [{ text: "OK", onPress: openCart }],
+          );
+          return;
+        }
+
+        openCart();
+      };
+
+      if (cartRestaurant && cartRestaurant.id !== restaurant.id) {
+        Alert.alert(
+          tr("Înlocuiești coșul?", "Replace cart?"),
+          tr(
+            `Coșul tău are produse de la ${cartRestaurant.name}. Dacă refaci comanda de la ${restaurant.name}, coșul curent va fi înlocuit.`,
+            `Your cart contains items from ${cartRestaurant.name}. Reordering from ${restaurant.name} will replace the current cart.`,
+          ),
+          [
+            { text: tr("Renunță", "Cancel"), style: "cancel" },
+            { text: tr("Continuă", "Continue"), style: "destructive", onPress: applyCart },
+          ],
+        );
+        return;
+      }
+
+      applyCart();
+    } catch {
+      Alert.alert(
+        tr("Nu am putut reface comanda", "Could not rebuild the order"),
+        tr("Verifică conexiunea și încearcă din nou.", "Check your connection and try again."),
+      );
+    } finally {
+      setIsReordering(false);
+    }
+  }, [cartRestaurant, isReordering, navigation, openCart, openRestaurantMenu, order, replaceCart, tr]);
 
   return (
     <View style={styles.page}>
@@ -115,17 +241,22 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{tr("Adresa de livrare", "Delivery address")}</Text>
-          <Text style={styles.addressMain}>{primaryAddress}</Text>
-          {extraAddressLines.map((line) => (
-            <Text key={line} style={styles.addressMuted}>
-              {line}
-            </Text>
-          ))}
-          {!extraAddressLines.length ? <Text style={styles.addressMuted}>{tr("La apartamentul 10", "At apartment 10")}</Text> : null}
+          <Text style={styles.sectionTitle}>{isPickupOrder ? tr("Ridicare", "Pickup") : tr("Adresa de livrare", "Delivery address")}</Text>
+          {isPickupOrder ? (
+            <Text style={styles.addressMain}>{tr("Comanda se ridică direct din locație.", "This order will be picked up directly from the restaurant.")}</Text>
+          ) : (
+            <>
+              <Text style={styles.addressMain}>{primaryAddress}</Text>
+              {extraAddressLines.map((line) => (
+                <Text key={line} style={styles.addressMuted}>
+                  {line}
+                </Text>
+              ))}
+            </>
+          )}
         </View>
 
-        <Pressable style={styles.card} onPress={() => Alert.alert(tr("Meniu", "Menu"), tr(`Deschidem meniul pentru ${order.restaurant_name}.`, `Opening menu for ${order.restaurant_name}.`))}>
+        <Pressable style={styles.card} onPress={() => void openRestaurantMenu()}>
           <Text style={styles.sectionTitle}>{order.restaurant_name}</Text>
           <View style={styles.menuRow}>
             <Text style={styles.menuText}>{tr("Vezi meniul", "View menu")}</Text>
@@ -176,13 +307,13 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
 
         <View style={styles.actionsCard}>
           <View style={styles.actionsBlock}>
-            <Pressable style={styles.orderAgainButton} onPress={() => Alert.alert(tr("Comandă din nou", "Order again"), tr("Funcția de reorder se poate conecta acum la coș.", "Reorder can now be connected to cart."))}>
+            <Pressable style={[styles.orderAgainButton, isReordering && styles.orderAgainButtonDisabled]} onPress={() => void handleOrderAgain()} disabled={isReordering}>
               <View style={styles.actionButtonContent}>
                 <RotateCcw size={15} color={ORDER_ACTION_GREEN} strokeWidth={2.4} />
-                <Text style={styles.orderAgainText}>{tr("Comandă din nou", "Order again")}</Text>
+                <Text style={styles.orderAgainText}>{isReordering ? tr("Se reface...", "Rebuilding...") : tr("Comandă din nou", "Order again")}</Text>
               </View>
             </Pressable>
-            <Pressable style={styles.helpButton} onPress={() => Alert.alert(tr("Ajutor", "Help"), tr("Suportul pentru această comandă va fi conectat aici.", "Support for this order will be connected here."))}>
+            <Pressable style={styles.helpButton} onPress={openSupport}>
               <View style={styles.actionButtonContent}>
                 <LifeBuoy size={15} color={colors.text} strokeWidth={2.4} />
                 <Text style={styles.helpText}>{tr("Ajutor", "Help")}</Text>
@@ -197,6 +328,142 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
 
 function money(value: string | number) {
   return `${Number(value).toFixed(2).replace(".", ",")} lei`;
+}
+
+function minimumRequiredForGroup(group: ProductOptionGroup) {
+  return Math.max(group.min_select, group.is_required ? 1 : 0);
+}
+
+function selectedCountForGroup(selectedOptions: ProductOption[], group: ProductOptionGroup) {
+  const optionIds = new Set(group.options.map((option) => option.id));
+  return selectedOptions.filter((option) => optionIds.has(option.id)).length;
+}
+
+function normalizeOptionText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function toOptionPrice(value: string | number) {
+  return Number(Number(value ?? 0).toFixed(2));
+}
+
+function buildReorderCartItems(order: Order, restaurant: Restaurant, products: Product[]) {
+  const items: CartItem[] = [];
+  const missingProducts: string[] = [];
+  const unresolvedProducts: string[] = [];
+  const productsById = new Map(products.map((product) => [product.id, product]));
+
+  for (const orderItem of order.items ?? []) {
+    const product = productsById.get(orderItem.product);
+    if (!product || product.is_available === false) {
+      missingProducts.push(orderItem.product_name);
+      continue;
+    }
+
+    const availableOptions = (product.option_groups ?? []).flatMap((group) => group.options).filter((option) => option.is_available !== false);
+    const usedOptionIds = new Set<number>();
+    const selectedOptions: ProductOption[] = [];
+    let unresolvedOption = false;
+
+    for (const savedOption of orderItem.options ?? []) {
+      const match = availableOptions.find(
+        (option) =>
+          !usedOptionIds.has(option.id) &&
+          normalizeOptionText(option.name) === normalizeOptionText(savedOption.option_name) &&
+          toOptionPrice(option.extra_price) === toOptionPrice(savedOption.extra_price),
+      );
+
+      if (!match) {
+        unresolvedOption = true;
+        break;
+      }
+
+      usedOptionIds.add(match.id);
+      selectedOptions.push(match);
+    }
+
+    if (unresolvedOption) {
+      unresolvedProducts.push(orderItem.product_name);
+      continue;
+    }
+
+    const missingRequiredGroups = (product.option_groups ?? []).some(
+      (group) => minimumRequiredForGroup(group) > 0 && selectedCountForGroup(selectedOptions, group) < minimumRequiredForGroup(group),
+    );
+    if (missingRequiredGroups) {
+      unresolvedProducts.push(orderItem.product_name);
+      continue;
+    }
+
+    const itemId = [
+        product.id,
+        ...selectedOptions.map((option) => option.id).sort((a, b) => a - b),
+        orderItem.notes?.trim() ? `notes=${orderItem.notes.trim()}` : "",
+      ]
+        .filter(Boolean)
+        .join(":");
+    const existingItem = items.find((item) => item.id === itemId);
+
+    if (existingItem) {
+      existingItem.quantity += Math.max(1, Number(orderItem.quantity || 1));
+      continue;
+    }
+
+    items.push({
+      id: itemId,
+      product,
+      restaurant,
+      quantity: Math.max(1, Number(orderItem.quantity || 1)),
+      selectedOptions,
+      notes: orderItem.notes,
+      mediaVideoUrl: product.video_url,
+    });
+  }
+
+  return { items, missingProducts, unresolvedProducts };
+}
+
+function buildPartialReorderMessage({
+  tr,
+  missingProducts,
+  unresolvedProducts,
+}: {
+  tr: (ro: string, en: string) => string;
+  missingProducts: string[];
+  unresolvedProducts: string[];
+}) {
+  const parts: string[] = [];
+
+  if (missingProducts.length) {
+    parts.push(
+      tr(
+        `Nu mai sunt disponibile: ${missingProducts.join(", ")}.`,
+        `No longer available: ${missingProducts.join(", ")}.`,
+      ),
+    );
+  }
+
+  if (unresolvedProducts.length) {
+    parts.push(
+      tr(
+        `Au nevoie de reselectarea opțiunilor: ${unresolvedProducts.join(", ")}.`,
+        `Their options need to be selected again: ${unresolvedProducts.join(", ")}.`,
+      ),
+    );
+  }
+
+  parts.push(
+    tr(
+      "Am pus în coș doar produsele care au putut fi reconstruite exact.",
+      "Only the items that could be rebuilt exactly were added to the cart.",
+    ),
+  );
+
+  return parts.join(" ");
 }
 
 function SummaryRow({ label, value, strong, large }: { label: string; value: string; strong?: boolean; large?: boolean }) {
@@ -448,6 +715,9 @@ const styles = StyleSheet.create({
     borderColor: ORDER_ACTION_GREEN,
     alignItems: "center",
     justifyContent: "center",
+  },
+  orderAgainButtonDisabled: {
+    opacity: 0.72,
   },
   orderAgainText: {
     color: ORDER_ACTION_GREEN,

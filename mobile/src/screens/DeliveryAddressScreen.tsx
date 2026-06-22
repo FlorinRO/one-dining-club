@@ -31,6 +31,7 @@ export function DeliveryAddressScreen({ navigation }: Props) {
   const colorScheme = useColorScheme();
   const separatorColor = colorScheme === "dark" ? "#1A1A1A" : colors.border;
   const accessToken = useAuthStore((state) => state.accessToken);
+  const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,6 +47,8 @@ export function DeliveryAddressScreen({ navigation }: Props) {
       if (!accessToken) {
         setAddresses([]);
         setError(tr("Intră în cont ca să vezi adresele.", "Sign in to view addresses."));
+        setLoading(false);
+        setRefreshing(false);
         return;
       }
 
@@ -208,6 +211,17 @@ export function DeliveryAddressScreen({ navigation }: Props) {
           <Text style={styles.mapText}>{tr("Alege pe hartă", "Choose on map")}</Text>
         </Pressable>
         {savingCurrent ? <Text style={styles.autoLocationText}>{tr("Setăm automat locația curentă...", "Setting current location automatically...")}</Text> : null}
+        {!accessToken ? (
+          <Pressable style={styles.signInBanner} onPress={logout}>
+            <Text style={styles.signInBannerTitle}>{tr("Intră în cont pentru checkout", "Sign in for checkout")}</Text>
+            <Text style={styles.signInBannerText}>
+              {tr(
+                "Produsele din coș rămân salvate. După autentificare poți seta adresa și continua comanda.",
+                "Your cart items stay saved. After signing in you can set your address and continue the order.",
+              )}
+            </Text>
+          </Pressable>
+        ) : null}
 
         <View style={[styles.divider, { backgroundColor: separatorColor }]} />
 
@@ -328,6 +342,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     color: colors.muted,
+  },
+  signInBanner: {
+    marginTop: 12,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: colors.cardSoft,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 6,
+  },
+  signInBannerTitle: {
+    color: colors.text,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "700",
+  },
+  signInBannerText: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "500",
   },
   divider: {
     height: 1,

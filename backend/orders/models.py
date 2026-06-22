@@ -29,6 +29,11 @@ class PaymentMethod(models.TextChoices):
     GOOGLE_PAY = "google_pay", "Google Pay"
 
 
+class FulfillmentType(models.TextChoices):
+    DELIVERY = "delivery", "Delivery"
+    PICKUP = "pickup", "Pickup"
+
+
 class Order(models.Model):
     customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="orders")
     restaurant = models.ForeignKey("restaurants.Restaurant", on_delete=models.PROTECT, related_name="orders")
@@ -39,11 +44,12 @@ class Order(models.Model):
         blank=True,
         related_name="courier_orders",
     )
-    address = models.ForeignKey("addresses.Address", on_delete=models.PROTECT, related_name="orders")
+    address = models.ForeignKey("addresses.Address", on_delete=models.PROTECT, related_name="orders", null=True, blank=True)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     delivery_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     discount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     total = models.DecimalField(max_digits=10, decimal_places=2)
+    fulfillment_type = models.CharField(max_length=24, choices=FulfillmentType.choices, default=FulfillmentType.DELIVERY)
     payment_method = models.CharField(max_length=24, choices=PaymentMethod.choices, default=PaymentMethod.CASH)
     payment_status = models.CharField(max_length=24, choices=PaymentStatus.choices, default=PaymentStatus.UNPAID)
     order_status = models.CharField(max_length=32, choices=OrderStatus.choices, default=OrderStatus.PENDING)
@@ -94,4 +100,3 @@ class OrderItemOption(models.Model):
 
     def __str__(self):
         return self.option_name
-

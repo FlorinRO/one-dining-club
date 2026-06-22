@@ -3,7 +3,8 @@ import { Order, PaymentMethod, Review } from "../types/models";
 
 export type CreateOrderPayload = {
   restaurant_id: number;
-  address_id: number;
+  address_id?: number;
+  fulfillment_type?: "delivery" | "pickup";
   payment_method: PaymentMethod;
   customer_note?: string;
   promo_code?: string;

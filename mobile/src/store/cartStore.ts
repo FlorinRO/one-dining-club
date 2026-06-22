@@ -17,6 +17,7 @@ type CartState = {
   items: CartItem[];
   promoCode: string;
   setPromoCode: (code: string) => void;
+  replaceCart: (payload: { restaurant: Restaurant; items: CartItem[]; promoCode?: string }) => void;
   addItem: (payload: {
     product: Product;
     restaurant: Restaurant;
@@ -57,6 +58,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   promoCode: "",
   setPromoCode: (promoCode) => set({ promoCode }),
+  replaceCart: ({ restaurant, items, promoCode = "" }) => set({ restaurant, items, promoCode }),
   addItem: ({ product, restaurant, quantity = 1, selectedOptions = [], notes, mediaVideoUrl }) => {
     const id = itemKey(product, selectedOptions, notes);
     const currentRestaurant = get().restaurant;

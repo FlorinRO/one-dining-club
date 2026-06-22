@@ -1,6 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
 import { useVideoPlayer, VideoView } from "expo-video";
+import { AxiosError } from "axios";
 import { AlertTriangle, ArrowLeft, Bike, ChevronRight, Clock3, CreditCard, MapPin, PlusCircle, ShoppingCart, Trash2, Wallet } from "lucide-react-native";
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Animated, Image, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme } from "react-native";
@@ -15,6 +16,7 @@ import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
 import { resolveProductImageUri } from "../lib/images";
 import { CartStackParamList } from "../navigation/types";
+import { useAuthStore } from "../store/authStore";
 import { useCartStore } from "../store/cartStore";
 import { useOrdersStore } from "../store/ordersStore";
 import { colors } from "../theme/colors";
@@ -98,11 +100,28 @@ function CartItemMedia({
   );
 }
 
+function extractApiErrorMessage(error: unknown): string | null {
+  if (!(error instanceof AxiosError)) return null;
+
+  const data = error.response?.data;
+  if (typeof data === "string" && data.trim()) return data.trim();
+  if (!data || typeof data !== "object") return null;
+
+  for (const value of Object.values(data as Record<string, unknown>)) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (Array.isArray(value) && typeof value[0] === "string" && value[0].trim()) return value[0].trim();
+  }
+
+  return null;
+}
+
 export function CartScreen({ navigation }: Props) {
   const { tr } = useI18n();
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === "dark";
   const insets = useSafeAreaInsets();
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const logout = useAuthStore((state) => state.logout);
   const items = useCartStore((state) => state.items);
   const restaurant = useCartStore((state) => state.restaurant);
   const increaseQuantity = useCartStore((state) => state.increaseQuantity);
@@ -136,17 +155,27 @@ export function CartScreen({ navigation }: Props) {
   );
 
   const selectedAddress = addresses.find((address) => address.is_default) ?? addresses[0];
+  const supportsPickup = Boolean(restaurant?.supports_pickup);
+  const isPickupSelected = fulfillmentType === "pickup";
   const serviceFee = useMemo(() => Math.round(subtotal * 0.02 * 100) / 100, [subtotal]);
   const minimumOrder = Number(restaurant?.minimum_order ?? 0);
   const smallOrderFee = useMemo(() => {
     if (!subtotal || subtotal >= minimumOrder) return 0;
     return Math.max(0.75, Number(((minimumOrder - subtotal) * 0.08).toFixed(2)));
   }, [minimumOrder, subtotal]);
-  const deliveryCost = fulfillmentType === "pickup" ? 0 : deliveryFee;
+  const deliveryCost = isPickupSelected ? 0 : deliveryFee;
+  const appliedTip = isPickupSelected ? 0 : tip;
   const total = useMemo(
-    () => Math.max(0, subtotal - discount + deliveryCost + serviceFee + smallOrderFee + tip),
-    [deliveryCost, discount, serviceFee, smallOrderFee, subtotal, tip],
+    () => Math.max(0, subtotal - discount + deliveryCost + serviceFee + smallOrderFee + appliedTip),
+    [appliedTip, deliveryCost, discount, serviceFee, smallOrderFee, subtotal],
   );
+  const canPlaceOrder = Boolean(items.length && restaurant);
+
+  useEffect(() => {
+    if (!supportsPickup && isPickupSelected) {
+      setFulfillmentType("delivery");
+    }
+  }, [isPickupSelected, supportsPickup]);
 
   const clearAll = () => {
     Alert.alert(tr("Golești coșul?", "Clear cart?"), tr("Toate produsele vor fi șterse.", "All items will be removed."), [
@@ -192,9 +221,32 @@ export function CartScreen({ navigation }: Props) {
     }
   };
 
+  const openSignIn = () => {
+    Alert.alert(
+      tr("Autentificare necesară", "Authentication required"),
+      tr(
+        "Intră în cont pentru a continua checkout-ul. Produsele din coș rămân salvate.",
+        "Sign in to continue checkout. Your cart items will stay saved.",
+      ),
+      [
+        { text: tr("Anulează", "Cancel"), style: "cancel" },
+        { text: tr("Intră în cont", "Sign in"), onPress: logout },
+      ],
+    );
+  };
+
   const submit = async () => {
-    if (!restaurant || !selectedAddress || !items.length) {
-      if (!selectedAddress) openDeliveryAddressChooser();
+    if (!restaurant || !items.length) {
+      return;
+    }
+
+    if (!accessToken) {
+      openSignIn();
+      return;
+    }
+
+    if (!isPickupSelected && !selectedAddress) {
+      openDeliveryAddressChooser();
       return;
     }
 
@@ -202,16 +254,19 @@ export function CartScreen({ navigation }: Props) {
     try {
       const order = await ordersApi.create({
         restaurant_id: restaurant.id,
-        address_id: selectedAddress.id,
+        address_id: isPickupSelected ? undefined : selectedAddress?.id,
+        fulfillment_type: fulfillmentType,
         payment_method: paymentMethod,
         customer_note: [
           note,
-          dropoffType === "leave"
-            ? tr("Predare: lasă la ușă", "Dropoff: leave at door")
-            : dropoffType === "outside"
-              ? tr("Predare: întâlnește-mă afară", "Dropoff: meet outside")
-              : tr("Predare: la ușă", "Dropoff: meet at door"),
-          tip ? tr(`Tips: ${money(tip)}`, `Tip: ${money(tip)}`) : "",
+          isPickupSelected
+            ? tr("Ridicare din locație", "Pickup from restaurant")
+            : dropoffType === "leave"
+              ? tr("Predare: lasă la ușă", "Dropoff: leave at door")
+              : dropoffType === "outside"
+                ? tr("Predare: întâlnește-mă afară", "Dropoff: meet outside")
+                : tr("Predare: la ușă", "Dropoff: meet at door"),
+          !isPickupSelected && appliedTip ? tr(`Tips: ${money(appliedTip)}`, `Tip: ${money(appliedTip)}`) : "",
         ]
           .filter(Boolean)
           .join(" • "),
@@ -226,8 +281,15 @@ export function CartScreen({ navigation }: Props) {
       clearCart();
       Alert.alert(tr("Comandă plasată", "Order placed"), tr("Statusul comenzii este disponibil în tabul Orders.", "Order status is available in the Orders tab."));
       navigation.getParent()?.navigate("OrdersTab", { screen: "OrdersHome" });
-    } catch {
-      Alert.alert(tr("Comanda nu a fost plasată", "Order was not placed"), tr("Verifică adresa, restaurantul și conexiunea cu backend-ul, apoi încearcă din nou.", "Check address, restaurant, and backend connection, then try again."));
+    } catch (error) {
+      Alert.alert(
+        tr("Comanda nu a fost plasată", "Order was not placed"),
+        extractApiErrorMessage(error) ??
+          tr(
+            "Verifică adresa, restaurantul și conexiunea cu backend-ul, apoi încearcă din nou.",
+            "Check address, restaurant, and backend connection, then try again.",
+          ),
+      );
     } finally {
       setLoading(false);
     }
@@ -306,45 +368,68 @@ export function CartScreen({ navigation }: Props) {
                     label={tr("Livrare", "Delivery")}
                     description={`${restaurant?.estimated_delivery_time_min ?? 25}-${restaurant?.estimated_delivery_time_max ?? 40} min`}
                     value={money(deliveryFee)}
-                    selected={fulfillmentType === "delivery"}
+                    selected={!isPickupSelected}
                     onPress={() => setFulfillmentType("delivery")}
                   />
-                  <View style={styles.rowDivider} />
-                  <OptionRow
-                    icon={<Clock3 size={20} stroke={colors.text} />}
-                    label={tr("Pickup", "Pickup")}
-                    description={tr("15-20 min", "15-20 min")}
-                    value={money(0)}
-                    selected={fulfillmentType === "pickup"}
-                    onPress={() => setFulfillmentType("pickup")}
-                  />
+                  {supportsPickup ? (
+                    <>
+                      <View style={styles.rowDivider} />
+                      <OptionRow
+                        icon={<Clock3 size={20} stroke={colors.text} />}
+                        label={tr("Pickup", "Pickup")}
+                        description={tr("15-20 min", "15-20 min")}
+                        value={money(0)}
+                        selected={isPickupSelected}
+                        onPress={() => setFulfillmentType("pickup")}
+                      />
+                    </>
+                  ) : null}
                 </View>
 
                 <View style={styles.card}>
-                  <Pressable style={styles.addressRow} onPress={openDeliveryAddressChooser}>
-                    <View style={styles.addressLeft}>
-                      <MapPin size={22} stroke={colors.text} />
-                      <Text numberOfLines={1} style={styles.addressText}>
-                        {selectedAddress ? `${selectedAddress.address_line_1}, ${selectedAddress.city}` : tr("Adaugă adresa de livrare", "Add delivery address")}
-                      </Text>
+                  {!isPickupSelected ? (
+                    <>
+                      <Pressable style={styles.addressRow} onPress={openDeliveryAddressChooser}>
+                        <View style={styles.addressLeft}>
+                          <MapPin size={22} stroke={colors.text} />
+                          <Text numberOfLines={1} style={styles.addressText}>
+                            {selectedAddress ? `${selectedAddress.address_line_1}, ${selectedAddress.city}` : tr("Adaugă adresa de livrare", "Add delivery address")}
+                          </Text>
+                        </View>
+                        <ChevronRight size={22} stroke={colors.muted} />
+                      </Pressable>
+                      <View style={styles.warningBox}>
+                        <AlertTriangle size={20} stroke={colors.redDark} />
+                        <Text style={styles.warningText}>
+                          {accessToken
+                            ? tr("Verifică adresa înainte de a plasa comanda.", "Check your address before placing the order.")
+                            : tr("Poți adăuga produse în coș acum, apoi intră în cont și setează adresa la checkout.", "You can add items to the cart now, then sign in and set your address at checkout.")}
+                        </Text>
+                      </View>
+                    </>
+                  ) : (
+                    <View style={styles.warningBox}>
+                      <Clock3 size={20} stroke={colors.redDark} />
+                      <Text style={styles.warningText}>{tr("Ridici comanda direct din locație. Nu este necesară adresa.", "You will pick up the order from the restaurant. No address is required.")}</Text>
                     </View>
-                    <ChevronRight size={22} stroke={colors.muted} />
-                  </Pressable>
-                  <View style={styles.warningBox}>
-                    <AlertTriangle size={20} stroke={colors.redDark} />
-                    <Text style={styles.warningText}>{tr("Verifică adresa înainte de a plasa comanda.", "Check your address before placing the order.")}</Text>
-                  </View>
-                  <Text style={styles.inputPersistentLabel}>{tr("Instrucțiuni pentru curier", "Instructions for courier")}</Text>
+                  )}
+                  <Text style={styles.inputPersistentLabel}>
+                    {isPickupSelected ? tr("Instrucțiuni pentru restaurant", "Instructions for restaurant") : tr("Instrucțiuni pentru curier", "Instructions for courier")}
+                  </Text>
                   <TextInput
                     ref={courierNoteInputRef}
                     value={note}
                     onChangeText={setNote}
-                placeholder={tr("Ex: interfon 12, etaj 3", "Ex: intercom 12, floor 3")}
-                placeholderTextColor={colors.muted}
-                style={[styles.input, isCourierNoteFocused && styles.inputFocused]}
-                multiline={false}
-                returnKeyType="done"
-                blurOnSubmit
+                    placeholder={
+                      isPickupSelected
+                        ? tr("Ex: ajung în 10 minute", "Ex: I will arrive in 10 minutes")
+                        : tr("Ex: interfon 12, etaj 3", "Ex: intercom 12, floor 3")
+                    }
+                    placeholderTextColor={colors.muted}
+                    style={[styles.input, isCourierNoteFocused && styles.inputFocused]}
+                    multiline={false}
+                    returnKeyType="done"
+                    blurOnSubmit
                     onFocus={() => {
                       setIsCourierNoteFocused(true);
                       setTimeout(() => scrollRef.current?.scrollTo({ y: 520, animated: true }), 120);
@@ -354,14 +439,16 @@ export function CartScreen({ navigation }: Props) {
                   />
                 </View>
 
-                <View style={[styles.card, styles.airySection]}>
-                  <Text style={styles.sectionTitle}>{tr("Instrucțiuni predare", "Dropoff instructions")}</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsRow}>
-                    <Pill label={tr("La ușă", "Meet at my door")} active={dropoffType === "meet"} onPress={() => setDropoffType("meet")} />
-                    <Pill label={tr("Lasă la ușă", "Leave at my door")} active={dropoffType === "leave"} onPress={() => setDropoffType("leave")} />
-                    <Pill label={tr("Afară", "Meet outside")} active={dropoffType === "outside"} onPress={() => setDropoffType("outside")} />
-                  </ScrollView>
-                </View>
+                {!isPickupSelected ? (
+                  <View style={[styles.card, styles.airySection]}>
+                    <Text style={styles.sectionTitle}>{tr("Instrucțiuni predare", "Dropoff instructions")}</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsRow}>
+                      <Pill label={tr("La ușă", "Meet at my door")} active={dropoffType === "meet"} onPress={() => setDropoffType("meet")} />
+                      <Pill label={tr("Lasă la ușă", "Leave at my door")} active={dropoffType === "leave"} onPress={() => setDropoffType("leave")} />
+                      <Pill label={tr("Afară", "Meet outside")} active={dropoffType === "outside"} onPress={() => setDropoffType("outside")} />
+                    </ScrollView>
+                  </View>
+                ) : null}
 
                 {fulfillmentType === "delivery" ? (
                   <View style={[styles.card, styles.airySection]}>
@@ -381,7 +468,7 @@ export function CartScreen({ navigation }: Props) {
                   <SummaryRow label={tr("Subtotal", "Subtotal")} value={money(Math.max(0, subtotal - discount))} strong />
                   <SummaryRow label={tr("Taxă comandă mică", "Small order fee")} value={money(smallOrderFee)} />
                   <SummaryRow label={tr("Taxă servicii", "Service fee")} value={money(serviceFee)} />
-                  <SummaryRow label={tr("Tips", "Tips")} value={money(tip)} />
+                  <SummaryRow label={tr("Tips", "Tips")} value={money(appliedTip)} />
                   <SummaryRow label={tr("Taxă livrare", "Delivery fee")} value={money(deliveryCost)} />
                   <View style={styles.divider} />
                   <SummaryRow label="Total" value={money(total)} total />
@@ -404,8 +491,12 @@ export function CartScreen({ navigation }: Props) {
                 <View style={styles.footerInline}>
                   <SwipeToConfirm
                     label={loading ? tr("Se plasează...", "Placing...") : tr("Plasează comanda", "Place order")}
-                    hint={tr("Derulează la dreapta pentru confirmare", "Slide right to confirm")}
-                    disabled={loading || !selectedAddress}
+                    hint={
+                      !accessToken
+                        ? tr("Derulează pentru a intra în cont și a continua", "Slide to sign in and continue")
+                        : tr("Derulează la dreapta pentru confirmare", "Slide right to confirm")
+                    }
+                    disabled={loading || !canPlaceOrder}
                     isDarkMode={isDarkMode}
                     onSlidingChange={setIsSlidingConfirm}
                     onConfirm={submit}
