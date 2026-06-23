@@ -17,6 +17,7 @@
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "bundleIdentifier": "club.onedining.customer",
+      "merchantIdentifier": "merchant.club.onedining.customer",
       "icon": "./assets/ios-icon-yumzy.png",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "YUMZY folosește locația pentru restaurante și livrare.",
@@ -32,6 +33,13 @@
       ]
     },
     "plugins": [
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.club.onedining.customer",
+          "enableGooglePay": true
+        }
+      ],
       "expo-video",
       "expo-notifications",
       [
@@ -43,6 +51,12 @@
     ],
     "extra": {
       "productionApiUrl": "https://api.yumzy.ro/api",
+      "stripePublishableKey": "pk_test_replace_me",
+      "stripeMerchantIdentifier": "merchant.club.onedining.customer",
+      "stripeMerchantCountryCode": "RO",
+      "stripeCurrencyCode": "RON",
+      "stripeMerchantDisplayName": "YUMZY",
+      "stripeReturnUrl": "onediningclub://stripe-redirect",
       "googleWebClientId": "",
       "googleIosClientId": "",
       "googleAndroidClientId": "",

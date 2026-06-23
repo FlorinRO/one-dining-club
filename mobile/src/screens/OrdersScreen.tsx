@@ -2,7 +2,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ListOrdered, RefreshCcw } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
-import { FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FoodBackground } from "../components/FoodBackground";
@@ -54,6 +54,7 @@ export function OrdersScreen({ navigation }: Props) {
 
   const safeOrders = useMemo(() => sanitizeOrders(storeOrders), [storeOrders]);
   const orderRows = useMemo(() => buildOrderRows(safeOrders, products), [products, safeOrders]);
+  const isInitialLoading = loading && orderRows.length === 0;
 
   const loadOrders = useCallback(
     async (mode: "initial" | "refresh", shouldCommit: () => boolean) => {
@@ -66,18 +67,29 @@ export function OrdersScreen({ navigation }: Props) {
       setErrorMessage(null);
 
       try {
-        const productsData = await productsApi.list();
-        if (!shouldCommit()) return;
-        setProducts(productsData);
-
         if (!accessToken) {
           setOrders([]);
+          setProducts([]);
           return;
         }
 
-        const ordersData = await ordersApi.list();
+        const [ordersResult, productsResult] = await Promise.allSettled([
+          ordersApi.list(),
+          productsApi.list(),
+        ]);
         if (!shouldCommit()) return;
-        setOrders(sanitizeOrders(ordersData));
+
+        if (ordersResult.status === "fulfilled") {
+          setOrders(sanitizeOrders(ordersResult.value));
+        } else {
+          setErrorMessage(tr("Nu am putut încărca comenzile. Încearcă din nou.", "Could not load your orders. Please try again."));
+        }
+
+        if (productsResult.status === "fulfilled") {
+          setProducts(productsResult.value);
+        } else {
+          setProducts([]);
+        }
       } catch {
         if (!shouldCommit()) return;
         setErrorMessage(tr("Nu am putut încărca comenzile. Încearcă din nou.", "Could not load your orders. Please try again."));
@@ -120,9 +132,11 @@ export function OrdersScreen({ navigation }: Props) {
             orderRows.length === 0 ? styles.emptyListContent : null,
           ]}
           ListHeaderComponent={
-            <View style={styles.titleBlock}>
-              <Text style={styles.title}>{tr("Comenzile mele", "My Orders")}</Text>
-            </View>
+            isInitialLoading ? null : (
+              <View style={styles.titleBlock}>
+                <Text style={styles.title}>{tr("Comenzile mele", "My Orders")}</Text>
+              </View>
+            )
           }
           renderItem={({ item }) => (
             <OrderListRow
@@ -136,16 +150,20 @@ export function OrdersScreen({ navigation }: Props) {
           )}
           ListEmptyComponent={
             <View style={styles.emptyBox}>
-              <View style={styles.emptyIconWrap}>
-                <ListOrdered size={24} color={colors.red} strokeWidth={2.2} />
-              </View>
-              <Text style={styles.emptyTitle}>{loading ? tr("Încărcăm comenzile...", "Loading orders...") : tr("Nu ai comenzi încă", "No orders yet")}</Text>
+              {isInitialLoading ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <View style={styles.emptyIconWrap}>
+                  <ListOrdered size={24} color={colors.red} strokeWidth={2.2} />
+                </View>
+              )}
+              <Text style={styles.emptyTitle}>{isInitialLoading ? tr("Încărcăm comenzile...", "Loading orders...") : tr("Nu ai comenzi încă", "No orders yet")}</Text>
               <Text style={styles.emptySubtitle}>
-                {loading
+                {isInitialLoading
                   ? tr("Așteaptă câteva secunde.", "Please wait a few seconds.")
                   : tr("După prima comandă, istoricul va apărea aici.", "After your first order, your history will appear here.")}
               </Text>
-              {!loading ? (
+              {!isInitialLoading ? (
                 <Pressable style={styles.retryButton} onPress={() => loadOrders("refresh", () => true)}>
                   <RefreshCcw size={16} color={colors.white} strokeWidth={2.3} />
                   <Text style={styles.retryButtonText}>{tr("Reîncearcă", "Retry")}</Text>

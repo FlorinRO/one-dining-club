@@ -78,6 +78,39 @@ After changing these values, restart Expo with cache clear:
 npx expo start -c --lan
 ```
 
+### Payments
+
+Stripe checkout scaffolding is wired for card, Apple Pay, and Google Pay.
+
+Backend values to fill in `backend/.env`:
+
+```bash
+STRIPE_SECRET_KEY=sk_live_or_test_...
+STRIPE_PUBLISHABLE_KEY=pk_live_or_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_MERCHANT_DISPLAY_NAME=YUMZY
+STRIPE_MERCHANT_COUNTRY_CODE=RO
+STRIPE_CURRENCY=ron
+```
+
+Mobile values to fill in `mobile/.env` or the EAS environment:
+
+```bash
+EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_or_test_...
+EXPO_PUBLIC_STRIPE_MERCHANT_IDENTIFIER=merchant.club.onedining.customer
+EXPO_PUBLIC_STRIPE_MERCHANT_COUNTRY_CODE=RO
+EXPO_PUBLIC_STRIPE_CURRENCY_CODE=RON
+EXPO_PUBLIC_STRIPE_MERCHANT_DISPLAY_NAME=YUMZY
+EXPO_PUBLIC_STRIPE_RETURN_URL=onediningclub://stripe-redirect
+```
+
+Backend endpoints added for the flow:
+
+- `POST /api/payments/checkout/` creates the order and prepares a Stripe `PaymentIntent` for online payments.
+- `POST /api/payments/stripe/webhook/` syncs Stripe events back into `payment_status`.
+
+Apple Pay and Google Pay still need to be enabled in Stripe and in the native app capabilities before production testing.
+
 ## MVP API
 
 - Auth: `/api/auth/register/`, `/api/auth/login/`, `/api/auth/refresh/`, `/api/auth/logout/`, `/api/auth/me/`

@@ -9,6 +9,7 @@ from addresses.views import AddressViewSet
 from couriers.views import CourierOrderViewSet, CourierProfileView
 from menus.views import RestaurantOwnerProductCategoryViewSet
 from orders.views import OrderViewSet, RestaurantOwnerOrderViewSet
+from payments.views import CheckoutView, StripeWebhookView
 from products.views import ProductCommentViewSet, ProductViewSet, RestaurantOwnerProductViewSet
 from restaurants.views import RestaurantCategoryViewSet, RestaurantOwnerRestaurantViewSet, RestaurantViewSet
 from users.views import (
@@ -79,6 +80,8 @@ urlpatterns = [
         name="auth-password-reset-confirm",
     ),
     path("api/courier/location/", CourierProfileView.as_view(), name="courier-location"),
+    path("api/payments/checkout/", CheckoutView.as_view(), name="payments-checkout"),
+    path("api/payments/stripe/webhook/", StripeWebhookView.as_view(), name="payments-stripe-webhook"),
     path("api/", include(router.urls)),
 ]
 

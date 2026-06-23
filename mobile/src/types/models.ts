@@ -125,6 +125,7 @@ export type OrderStatus =
 
 export type PaymentMethod = "cash" | "card" | "apple_pay" | "google_pay";
 export type FulfillmentType = "delivery" | "pickup";
+export type PaymentStatus = "unpaid" | "pending" | "paid" | "failed" | "refunded";
 
 export type Order = {
   id: number;
@@ -136,6 +137,7 @@ export type Order = {
   total: string | number;
   fulfillment_type?: FulfillmentType;
   payment_method: PaymentMethod;
+  payment_status?: PaymentStatus;
   order_status: OrderStatus;
   created_at: string;
   items: Array<{

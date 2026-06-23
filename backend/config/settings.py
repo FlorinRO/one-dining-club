@@ -155,6 +155,12 @@ EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "20"))
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 SENDGRID_API_BASE_URL = os.getenv("SENDGRID_API_BASE_URL", "https://api.sendgrid.com").rstrip("/")
 APPLE_SIGN_IN_AUDIENCES = get_env_list("APPLE_SIGN_IN_AUDIENCES", "club.onedining.customer")
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "").strip()
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
+STRIPE_MERCHANT_DISPLAY_NAME = os.getenv("STRIPE_MERCHANT_DISPLAY_NAME", "YUMZY").strip() or "YUMZY"
+STRIPE_MERCHANT_COUNTRY_CODE = os.getenv("STRIPE_MERCHANT_COUNTRY_CODE", "RO").strip().upper() or "RO"
+STRIPE_CURRENCY = os.getenv("STRIPE_CURRENCY", "ron").strip().lower() or "ron"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

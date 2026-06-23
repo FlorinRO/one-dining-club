@@ -1,5 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
+import { useStripe } from "@stripe/stripe-react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { AxiosError } from "axios";
 import { AlertTriangle, ArrowLeft, Bike, ChevronRight, Clock3, CreditCard, MapPin, PlusCircle, ShoppingCart, Trash2, Wallet } from "lucide-react-native";
@@ -8,6 +9,7 @@ import { Alert, Animated, Image, KeyboardAvoidingView, PanResponder, Platform, P
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { addressesApi } from "../api/addressesApi";
+import { paymentsApi } from "../api/paymentsApi";
 import { FoodBackground } from "../components/FoodBackground";
 import { ordersApi } from "../api/ordersApi";
 import { QuantityStepper } from "../components/QuantityStepper";
@@ -16,6 +18,12 @@ import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
 import { resolveProductImageUri } from "../lib/images";
 import { CartStackParamList } from "../navigation/types";
+import {
+  STRIPE_MERCHANT_COUNTRY_CODE,
+  STRIPE_MERCHANT_DISPLAY_NAME,
+  STRIPE_RETURN_URL,
+  isStripeConfigured,
+} from "../config/payments";
 import { useAuthStore } from "../store/authStore";
 import { useCartStore } from "../store/cartStore";
 import { useOrdersStore } from "../store/ordersStore";
@@ -117,6 +125,7 @@ function extractApiErrorMessage(error: unknown): string | null {
 
 export function CartScreen({ navigation }: Props) {
   const { tr } = useI18n();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === "dark";
   const insets = useSafeAreaInsets();
@@ -170,6 +179,7 @@ export function CartScreen({ navigation }: Props) {
     [appliedTip, deliveryCost, discount, serviceFee, smallOrderFee, subtotal],
   );
   const canPlaceOrder = Boolean(items.length && restaurant);
+  const isOnlinePayment = paymentMethod !== "cash";
 
   useEffect(() => {
     if (!supportsPickup && isPickupSelected) {
@@ -250,9 +260,20 @@ export function CartScreen({ navigation }: Props) {
       return;
     }
 
+    if (isOnlinePayment && !isStripeConfigured()) {
+      Alert.alert(
+        tr("Plata online nu este configurată", "Online payment is not configured"),
+        tr(
+          "Completează cheia publică Stripe și identificatorii pentru Apple Pay / Google Pay înainte de a testa checkout-ul.",
+          "Add the Stripe publishable key and the Apple Pay / Google Pay identifiers before testing checkout.",
+        ),
+      );
+      return;
+    }
+
     setLoading(true);
     try {
-      const order = await ordersApi.create({
+      const orderPayload = {
         restaurant_id: restaurant.id,
         address_id: isPickupSelected ? undefined : selectedAddress?.id,
         fulfillment_type: fulfillmentType,
@@ -276,10 +297,54 @@ export function CartScreen({ navigation }: Props) {
           notes: item.notes,
           option_ids: item.selectedOptions.map((option) => option.id),
         })),
+      };
+      if (!isOnlinePayment) {
+        const order = await ordersApi.create(orderPayload);
+        addOrder(order);
+        clearCart();
+        Alert.alert(tr("Comandă plasată", "Order placed"), tr("Statusul comenzii este disponibil în tabul Orders.", "Order status is available in the Orders tab."));
+        navigation.getParent()?.navigate("OrdersTab", { screen: "OrdersHome" });
+        return;
+      }
+
+      const checkout = await paymentsApi.checkout(orderPayload);
+      if (!checkout.payment_sheet) {
+        throw new Error("Payment sheet was not returned for an online payment.");
+      }
+
+      const initResult = await initPaymentSheet({
+        merchantDisplayName: checkout.payment_sheet.merchant_display_name || STRIPE_MERCHANT_DISPLAY_NAME,
+        paymentIntentClientSecret: checkout.payment_sheet.payment_intent_client_secret,
+        returnURL: STRIPE_RETURN_URL,
+        applePay: {
+          merchantCountryCode: checkout.payment_sheet.merchant_country_code || STRIPE_MERCHANT_COUNTRY_CODE,
+        },
+        googlePay: {
+          merchantCountryCode: checkout.payment_sheet.merchant_country_code || STRIPE_MERCHANT_COUNTRY_CODE,
+          testEnv: __DEV__,
+          currencyCode: checkout.payment_sheet.currency_code,
+        },
+        style: "alwaysDark",
       });
+      if (initResult.error) {
+        throw new Error(initResult.error.message);
+      }
+
+      const presentResult = await presentPaymentSheet();
+      if (presentResult.error) {
+        throw new Error(presentResult.error.message);
+      }
+
+      const order = checkout.order;
       addOrder(order);
       clearCart();
-      Alert.alert(tr("Comandă plasată", "Order placed"), tr("Statusul comenzii este disponibil în tabul Orders.", "Order status is available in the Orders tab."));
+      Alert.alert(
+        tr("Plata a fost trimisă", "Payment submitted"),
+        tr(
+          "Comanda a fost creată și plata a fost trimisă către procesator. Statusul final se actualizează automat după confirmarea Stripe.",
+          "The order was created and the payment was sent to the processor. The final status will update automatically after Stripe confirms it.",
+        ),
+      );
       navigation.getParent()?.navigate("OrdersTab", { screen: "OrdersHome" });
     } catch (error) {
       Alert.alert(

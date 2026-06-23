@@ -7,7 +7,8 @@ from rest_framework import serializers
 
 from addresses.models import Address
 from orders.models import FulfillmentType, Order, OrderItem, OrderItemOption, OrderStatus, PaymentMethod, PaymentStatus
-from payments.models import Payment, PaymentProvider
+from payments.models import Payment
+from payments.services import payment_provider_for_method
 from products.models import Product, ProductOption
 from promotions.models import DiscountType, PromoCode
 from restaurants.models import Restaurant
@@ -273,12 +274,7 @@ class OrderCreateSerializer(serializers.Serializer):
                 ]
             )
 
-        provider = {
-            PaymentMethod.CASH: PaymentProvider.CASH,
-            PaymentMethod.CARD: PaymentProvider.STRIPE,
-            PaymentMethod.APPLE_PAY: PaymentProvider.APPLE_PAY,
-            PaymentMethod.GOOGLE_PAY: PaymentProvider.GOOGLE_PAY,
-        }[payment_method]
+        provider = payment_provider_for_method(payment_method)
         Payment.objects.create(order=order, provider=provider, amount=order.total, status=payment_status)
         return order
 
