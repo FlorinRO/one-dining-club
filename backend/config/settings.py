@@ -161,6 +161,10 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
 STRIPE_MERCHANT_DISPLAY_NAME = os.getenv("STRIPE_MERCHANT_DISPLAY_NAME", "YUMZY").strip() or "YUMZY"
 STRIPE_MERCHANT_COUNTRY_CODE = os.getenv("STRIPE_MERCHANT_COUNTRY_CODE", "RO").strip().upper() or "RO"
 STRIPE_CURRENCY = os.getenv("STRIPE_CURRENCY", "ron").strip().lower() or "ron"
+PUSH_NOTIFICATIONS_ENABLED = get_env_bool("PUSH_NOTIFICATIONS_ENABLED", default=True)
+EXPO_PUSH_API_URL = os.getenv("EXPO_PUSH_API_URL", "https://exp.host/--/api/v2/push/send").strip()
+EXPO_PUSH_ACCESS_TOKEN = os.getenv("EXPO_PUSH_ACCESS_TOKEN", "").strip()
+EXPO_PUSH_TIMEOUT_SECONDS = float(os.getenv("EXPO_PUSH_TIMEOUT_SECONDS", "5"))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

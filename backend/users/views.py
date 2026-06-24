@@ -16,6 +16,8 @@ from users.serializers import (
     LoginSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
+    PushDeviceRegisterSerializer,
+    PushDeviceUnregisterSerializer,
     RegisterSerializer,
     SocialLoginSerializer,
     UserSerializer,
@@ -321,6 +323,22 @@ class LogoutView(APIView):
             RefreshToken(refresh_token).blacklist()
         except TokenError:
             return Response({"detail": "Invalid refresh token."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PushDeviceView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        serializer = PushDeviceRegisterSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        device = serializer.save()
+        return Response(PushDeviceRegisterSerializer(device).data, status=status.HTTP_201_CREATED)
+
+    def delete(self, request):
+        serializer = PushDeviceUnregisterSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

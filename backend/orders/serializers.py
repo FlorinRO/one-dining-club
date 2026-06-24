@@ -23,6 +23,8 @@ class OrderItemOptionSerializer(serializers.ModelSerializer):
 
 class OrderItemSerializer(serializers.ModelSerializer):
     options = OrderItemOptionSerializer(many=True, read_only=True)
+    product_image = serializers.ImageField(source="product.image", read_only=True)
+    product_video_url = serializers.CharField(source="product.video_url", read_only=True)
 
     class Meta:
         model = OrderItem
@@ -30,6 +32,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "id",
             "product",
             "product_name",
+            "product_image",
+            "product_video_url",
             "quantity",
             "unit_price",
             "total_price",
@@ -276,6 +280,9 @@ class OrderCreateSerializer(serializers.Serializer):
 
         provider = payment_provider_for_method(payment_method)
         Payment.objects.create(order=order, provider=provider, amount=order.total, status=payment_status)
+        from orders.notifications import queue_order_created_push
+
+        queue_order_created_push(order)
         return order
 
     def to_representation(self, instance):

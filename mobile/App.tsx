@@ -15,6 +15,7 @@ import {
   STRIPE_PUBLISHABLE_KEY,
   STRIPE_RETURN_URL,
 } from "./src/config/payments";
+import { AppAlertSheet } from "./src/components/AppAlertSheet";
 import { useNotificationSetup } from "./src/lib/notifications";
 import { useAuthStore } from "./src/store/authStore";
 import { demoProductAudioSources } from "./src/data/demoAudio";
@@ -65,6 +66,7 @@ export default function App() {
         <SafeAreaProvider>
           <StatusBar style="light" />
           <RootNavigator />
+          <AppAlertSheet />
         </SafeAreaProvider>
       </StripeProvider>
     </GestureHandlerRootView>

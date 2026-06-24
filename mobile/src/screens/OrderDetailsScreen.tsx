@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ChevronLeft, ChevronRight, CreditCard, LifeBuoy, RotateCcw, Star } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ordersApi } from "../api/ordersApi";
@@ -13,6 +13,7 @@ import { OrdersStackParamList } from "../navigation/types";
 import { CartItem, useCartStore } from "../store/cartStore";
 import { useAuthStore } from "../store/authStore";
 import { useOrdersStore } from "../store/ordersStore";
+import { showAppAlert } from "../store/uiStore";
 import { colors } from "../theme/colors";
 import { Order, Product, ProductOption, ProductOptionGroup, Restaurant } from "../types/models";
 
@@ -81,7 +82,12 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
   const submitReview = async () => {
     if (!canSubmitReview || isSubmittingReview) return;
     if (ratingDraft < 1) {
-      Alert.alert(tr("Alege un rating", "Choose a rating"), tr("Selectează între 1 și 5 stele.", "Select 1 to 5 stars."));
+      showAppAlert(
+        tr("Alege un rating", "Choose a rating"),
+        tr("Selectează între 1 și 5 stele.", "Select 1 to 5 stars."),
+        undefined,
+        { tone: "warning" },
+      );
       return;
     }
 
@@ -95,9 +101,9 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
       setReview(savedReview);
       setOrder(updatedOrder);
       updateStoredOrder(updatedOrder);
-      Alert.alert(tr("Mulțumim", "Thank you"), tr("Ratingul a fost salvat.", "Your rating was saved."));
+      showAppAlert(tr("Mulțumim", "Thank you"), tr("Ratingul a fost salvat.", "Your rating was saved."), undefined, { tone: "success" });
     } catch {
-      Alert.alert(tr("Eroare", "Error"), tr("Nu am putut salva ratingul.", "Could not save the rating."));
+      showAppAlert(tr("Eroare", "Error"), tr("Nu am putut salva ratingul.", "Could not save the rating."), undefined, { tone: "error" });
     } finally {
       setIsSubmittingReview(false);
     }
@@ -139,7 +145,7 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
       const { items, missingProducts, unresolvedProducts } = buildReorderCartItems(order, restaurant, products);
 
       if (!items.length) {
-        Alert.alert(
+        showAppAlert(
           tr("Comanda nu poate fi refăcută", "Order cannot be rebuilt"),
           tr(
             "Produsele din această comandă nu mai sunt disponibile în forma inițială. Deschidem meniul restaurantului ca să alegi din nou.",
@@ -154,10 +160,11 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
         replaceCart({ restaurant, items, promoCode: "" });
 
         if (missingProducts.length || unresolvedProducts.length) {
-          Alert.alert(
+          showAppAlert(
             tr("Comandă refăcută parțial", "Order rebuilt partially"),
             buildPartialReorderMessage({ tr, missingProducts, unresolvedProducts }),
             [{ text: "OK", onPress: openCart }],
+            { tone: "warning" },
           );
           return;
         }
@@ -166,7 +173,7 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
       };
 
       if (cartRestaurant && cartRestaurant.id !== restaurant.id) {
-        Alert.alert(
+        showAppAlert(
           tr("Înlocuiești coșul?", "Replace cart?"),
           tr(
             `Coșul tău are produse de la ${cartRestaurant.name}. Dacă refaci comanda de la ${restaurant.name}, coșul curent va fi înlocuit.`,
@@ -182,9 +189,11 @@ export function OrderDetailsScreen({ navigation, route }: Props) {
 
       applyCart();
     } catch {
-      Alert.alert(
+      showAppAlert(
         tr("Nu am putut reface comanda", "Could not rebuild the order"),
         tr("Verifică conexiunea și încearcă din nou.", "Check your connection and try again."),
+        undefined,
+        { tone: "error" },
       );
     } finally {
       setIsReordering(false);

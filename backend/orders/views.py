@@ -2,6 +2,7 @@ from rest_framework import decorators, permissions, response, status, viewsets
 
 from core.permissions import IsCustomer, IsRestaurantOwner
 from orders.models import Order, OrderStatus
+from orders.notifications import queue_order_status_push
 from orders.serializers import (
     OrderCreateSerializer,
     OrderSerializer,
@@ -19,7 +20,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return (
             Order.objects.select_related("customer", "restaurant", "courier", "address")
-            .prefetch_related("items__options")
+            .prefetch_related("items__product", "items__options")
             .filter(customer=self.request.user)
         )
 
@@ -41,8 +42,10 @@ class OrderViewSet(viewsets.ModelViewSet):
                 {"detail": "Order can no longer be cancelled."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        previous_status = order.order_status
         order.order_status = OrderStatus.CANCELLED
         order.save(update_fields=("order_status", "updated_at"))
+        queue_order_status_push(order, previous_status=previous_status, source="customer_cancel")
         serializer = self.get_serializer(order)
         return response.Response(serializer.data)
 
@@ -93,7 +96,7 @@ class RestaurantOwnerOrderViewSet(viewsets.ReadOnlyModelViewSet):
         primary_restaurant_id = get_primary_restaurant_id_for_owner(self.request.user)
         return (
             Order.objects.select_related("customer", "restaurant", "courier", "address")
-            .prefetch_related("items__options")
+            .prefetch_related("items__product", "items__options")
             .filter(restaurant__owner=self.request.user, restaurant_id=primary_restaurant_id)
         )
 
@@ -102,8 +105,10 @@ class RestaurantOwnerOrderViewSet(viewsets.ReadOnlyModelViewSet):
         order = self.get_object()
         serializer = RestaurantOwnerOrderStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        previous_status = order.order_status
         order.order_status = serializer.validated_data["order_status"]
         if "restaurant_note" in serializer.validated_data:
             order.restaurant_note = serializer.validated_data["restaurant_note"]
         order.save(update_fields=("order_status", "restaurant_note", "updated_at"))
+        queue_order_status_push(order, previous_status=previous_status, source="restaurant")
         return response.Response(OrderSerializer(order, context={"request": request}).data)

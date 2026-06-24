@@ -1,7 +1,8 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ListOrdered, RefreshCcw } from "lucide-react-native";
-import { useCallback, useMemo, useState } from "react";
+import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
+import { ListOrdered, Play, RefreshCcw } from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -12,13 +13,12 @@ import { Screen } from "../components/Screen";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { formatDateTime } from "../lib/dateFormat";
-import { resolveRestaurantAvatarUri } from "../lib/images";
+import { resolveImageUri } from "../lib/images";
 import { OrdersStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
-import { mockRestaurants } from "../data/mockData";
 import { useOrdersStore } from "../store/ordersStore";
 import { colors } from "../theme/colors";
-import { Order, OrderStatus, Product, Restaurant } from "../types/models";
+import { Order, OrderStatus, Product } from "../types/models";
 
 type Props = NativeStackScreenProps<OrdersStackParamList, "OrdersHome">;
 
@@ -35,6 +35,7 @@ type OrderRow = {
   product?: Product;
   productLine: string;
   imageUri?: string;
+  videoUri?: string;
 };
 
 export function OrdersScreen({ navigation }: Props) {
@@ -143,6 +144,7 @@ export function OrdersScreen({ navigation }: Props) {
               order={item.order}
               productLine={item.productLine}
               imageUri={item.imageUri}
+              videoUri={item.videoUri}
               language={language}
               tr={tr}
               onPress={() => navigation.navigate("OrderDetails", { order: item.order })}
@@ -218,122 +220,61 @@ function money(value: number) {
   return `${value.toFixed(2).replace(".", ",")} lei`;
 }
 
-function normalizeProductName(product: Product) {
-  return product.name.trim().toLowerCase();
-}
-
-function uniqueProductsByName(products: Product[]) {
-  const usedIds = new Set<number>();
-  const usedNames = new Set<string>();
-
-  return products.filter((product) => {
-    if (!product || typeof product.id !== "number" || !product.name.trim()) return false;
-
-    const name = normalizeProductName(product);
-    if (usedIds.has(product.id) || usedNames.has(name)) return false;
-
-    usedIds.add(product.id);
-    usedNames.add(name);
-    return true;
-  });
-}
-
-function orderProductIds(order: SafeOrder) {
-  return (Array.isArray(order.items) ? order.items : [])
-    .map((item) => item?.product)
-    .filter((productId): productId is number => typeof productId === "number");
-}
-
-function pickUniqueProduct(candidates: Product[], usedProductIds: Set<number>, usedProductNames: Set<string>) {
-  const cleanCandidates = candidates.filter(Boolean);
-
-  return (
-    cleanCandidates.find((product) => {
-      const name = normalizeProductName(product);
-      return !usedProductIds.has(product.id) && !usedProductNames.has(name);
-    }) ??
-    cleanCandidates.find((product) => {
-      const name = normalizeProductName(product);
-      return !usedProductIds.has(product.id) && !usedProductNames.has(name);
-    })
-  );
-}
-
-function normalizeRestaurantName(value: string) {
-  return value.trim().toLowerCase();
-}
-
-function dashedSlugFromName(name: string) {
-  return normalizeRestaurantName(name)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function resolveOrderRestaurantImageUri(order: SafeOrder, product?: Product) {
-  const restaurantById = mockRestaurants.find((restaurant) => restaurant.id === order.restaurant);
-  const restaurantByName = mockRestaurants.find(
-    (restaurant) => normalizeRestaurantName(restaurant.name) === normalizeRestaurantName(order.restaurant_name),
-  );
-  const matchedRestaurant = restaurantById ?? restaurantByName;
-
-  const restaurantContext: Restaurant = matchedRestaurant ?? {
-    id: order.restaurant,
-    name: order.restaurant_name,
-    slug: dashedSlugFromName(order.restaurant_name),
-    description: product?.description ?? "",
-    city: "",
-    delivery_fee: 0,
-    minimum_order: 0,
-    estimated_delivery_time_min: 0,
-    estimated_delivery_time_max: 0,
-    rating: 0,
-    is_open: true,
-  };
-
-  return resolveRestaurantAvatarUri(restaurantContext);
-}
-
 function buildOrderRows(orders: SafeOrder[], products: Product[]): OrderRow[] {
-  const productsById = new Map(products.map((product) => [product.id, product]));
-  const uniqueProducts = uniqueProductsByName(products);
-  const usedProductIds = new Set<number>();
-  const usedProductNames = new Set<string>();
+  const productsById = new Map(
+    products
+      .filter((product) => product && typeof product.id === "number")
+      .map((product) => [product.id, product]),
+  );
 
   return orders.map((order) => {
-    const orderProducts = orderProductIds(order)
-      .map((productId) => productsById.get(productId))
-      .filter((product): product is Product => Boolean(product));
-    const restaurantProducts = uniqueProducts.filter((product) => product.restaurant === order.restaurant);
-    const product = pickUniqueProduct([...orderProducts, ...restaurantProducts, ...uniqueProducts], usedProductIds, usedProductNames);
-    const imageUri = resolveOrderRestaurantImageUri(order, product);
-
-    if (product) {
-      usedProductIds.add(product.id);
-      usedProductNames.add(normalizeProductName(product));
-    }
+    const leadItem = getOrderItems(order)[0];
+    const product = findProductForOrderItem(order, leadItem, productsById);
+    const imageUri = resolveOrderMediaUri(leadItem?.product_image) ?? resolveOrderMediaUri(product?.image);
+    const videoUri = resolveOrderMediaUri(leadItem?.product_video_url) ?? resolveOrderMediaUri(product?.video_url);
 
     return {
       order,
       product,
       imageUri,
+      videoUri,
       productLine: orderProductLine(order, product),
     };
   });
 }
 
-function orderProductLine(order: SafeOrder, product?: Product) {
-  const items = Array.isArray(order.items) ? order.items : [];
-  if (product) {
-    const isOrderProduct = items.some((item) => item.product === product.id);
-    if (isOrderProduct && items.length > 1) return `${product.name} +${items.length - 1}`;
-    return product.name;
-  }
+function getOrderItems(order: SafeOrder) {
+  return Array.isArray(order.items) ? order.items : [];
+}
 
+function toProductId(value: unknown) {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function findProductForOrderItem(
+  order: SafeOrder,
+  item: SafeOrder["items"][number] | undefined,
+  productsById: Map<number, Product>,
+) {
+  const productId = toProductId(item?.product);
+  if (!productId) return undefined;
+
+  const product = productsById.get(productId);
+  if (!product) return undefined;
+
+  return Number(product.restaurant) === Number(order.restaurant) ? product : undefined;
+}
+
+function resolveOrderMediaUri(uri: string | null | undefined) {
+  const resolvedUri = resolveImageUri(uri, "");
+  return resolvedUri || undefined;
+}
+
+function orderProductLine(order: SafeOrder, product?: Product) {
+  const items = getOrderItems(order);
   if (!items.length) return "";
-  const firstName = items[0]?.product_name?.trim() || "";
+  const firstName = items[0]?.product_name?.trim() || product?.name.trim() || "";
   if (!firstName) return "";
   if (items.length === 1) return firstName;
   return `${firstName} +${items.length - 1}`;
@@ -343,6 +284,7 @@ function OrderListRow({
   order,
   productLine,
   imageUri,
+  videoUri,
   language,
   tr,
   onPress,
@@ -350,19 +292,14 @@ function OrderListRow({
   order: SafeOrder;
   productLine: string;
   imageUri?: string;
+  videoUri?: string;
   language: string;
   tr: (ro: string, en: string) => string;
   onPress: () => void;
 }) {
   return (
     <Pressable style={({ pressed }) => [styles.row, pressed && styles.rowPressed]} onPress={onPress}>
-      <View style={styles.mediaWrap}>
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.media} resizeMode="cover" />
-        ) : (
-          <View style={[styles.media, styles.mediaFallback]} />
-        )}
-      </View>
+      <OrderRowMedia imageUri={imageUri} videoUri={videoUri} />
 
       <View style={styles.rowCopy}>
         <Text style={styles.restaurantName} numberOfLines={1}>
@@ -383,6 +320,87 @@ function OrderListRow({
         <RefreshCcw size={18} color={colors.white} strokeWidth={2.2} />
       </View>
     </Pressable>
+  );
+}
+
+function OrderRowMedia({ imageUri, videoUri }: { imageUri?: string; videoUri?: string }) {
+  const videoSource = useMemo<VideoSource | null>(
+    () =>
+      videoUri
+        ? {
+            uri: videoUri,
+            contentType: "progressive",
+            useCaching: true,
+          }
+        : null,
+    [videoUri],
+  );
+  const [imageFailed, setImageFailed] = useState(false);
+  const [hasRenderedVideoFrame, setHasRenderedVideoFrame] = useState(false);
+  const player = useVideoPlayer(videoSource, (videoPlayer) => {
+    videoPlayer.loop = true;
+    videoPlayer.muted = true;
+    videoPlayer.volume = 0;
+    videoPlayer.audioMixingMode = "mixWithOthers";
+  });
+
+  useEffect(() => {
+    if (!videoSource) return undefined;
+
+    try {
+      player.play();
+    } catch {
+      // The static fallback remains visible if the preview cannot start.
+    }
+
+    return () => {
+      try {
+        player.pause();
+      } catch {
+        // Ignore cleanup failures from native video state.
+      }
+    };
+  }, [player, videoSource]);
+
+  useEffect(() => {
+    setHasRenderedVideoFrame(false);
+  }, [videoUri]);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [imageUri]);
+
+  const shouldShowImage = Boolean(imageUri && !imageFailed && (!videoSource || !hasRenderedVideoFrame));
+
+  return (
+    <View style={styles.mediaWrap}>
+      {shouldShowImage ? (
+        <Image source={{ uri: imageUri }} style={styles.media} resizeMode="cover" onError={() => setImageFailed(true)} />
+      ) : (
+        <View style={[styles.media, styles.mediaFallback]} />
+      )}
+
+      {videoSource ? (
+        <>
+          <VideoView
+            player={player}
+            style={[styles.mediaOverlay, !hasRenderedVideoFrame && styles.mediaHidden]}
+            contentFit="cover"
+            nativeControls={false}
+            fullscreenOptions={{ enable: false }}
+            allowsPictureInPicture={false}
+            playsInline
+            pointerEvents="none"
+            surfaceType="textureView"
+            useExoShutter={false}
+            onFirstFrameRender={() => setHasRenderedVideoFrame((current) => current || true)}
+          />
+          <View pointerEvents="none" style={styles.videoBadge}>
+            <Play size={10} color={colors.white} fill={colors.white} strokeWidth={2.2} />
+          </View>
+        </>
+      ) : null}
+    </View>
   );
 }
 
@@ -454,13 +472,32 @@ const styles = StyleSheet.create({
     height: 78,
     borderRadius: 18,
     overflow: "hidden",
+    position: "relative",
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
   media: {
     width: "100%",
     height: "100%",
   },
+  mediaOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  mediaHidden: {
+    opacity: 0,
+  },
   mediaFallback: {
     backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  videoBadge: {
+    position: "absolute",
+    right: 6,
+    bottom: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.56)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   rowCopy: {
     flex: 1,

@@ -144,6 +144,8 @@ export type Order = {
     id: number;
     product: number;
     product_name: string;
+    product_image?: string | null;
+    product_video_url?: string | null;
     quantity: number;
     unit_price: string | number;
     total_price: string | number;

@@ -9,7 +9,7 @@ from unittest.mock import patch
 from addresses.models import Address
 from orders.models import Order, PaymentMethod
 from restaurants.models import Restaurant
-from users.models import SocialAccount, User, UserRole
+from users.models import PushDevice, SocialAccount, User, UserRole
 
 
 class EmailVerificationConfirmFlowTests(TestCase):
@@ -182,6 +182,76 @@ class DeleteAccountFlowTests(TestCase):
         self.assertEqual(address.phone, "")
         self.assertEqual(address.address_line_1, "")
         self.assertEqual(address.city, "")
+
+
+class PushDeviceApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="push-user@example.com",
+            password="StrongPass123!",
+            role=UserRole.CUSTOMER,
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_register_push_device_creates_active_device(self):
+        response = self.client.post(
+            "/api/push/devices/",
+            {
+                "expo_push_token": "ExpoPushToken[test-token]",
+                "platform": "ios",
+                "device_id": "device-1",
+                "app_version": "0.1.0",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        device = PushDevice.objects.get()
+        self.assertEqual(device.user, self.user)
+        self.assertEqual(device.platform, "ios")
+        self.assertEqual(device.device_id, "device-1")
+        self.assertTrue(device.is_active)
+
+    def test_register_push_device_deactivates_previous_token_for_same_installation(self):
+        PushDevice.objects.create(
+            user=self.user,
+            expo_push_token="ExpoPushToken[old-token]",
+            platform="ios",
+            device_id="device-1",
+        )
+
+        response = self.client.post(
+            "/api/push/devices/",
+            {
+                "expo_push_token": "ExpoPushToken[new-token]",
+                "platform": "ios",
+                "device_id": "device-1",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertFalse(PushDevice.objects.get(expo_push_token="ExpoPushToken[old-token]").is_active)
+        self.assertTrue(PushDevice.objects.get(expo_push_token="ExpoPushToken[new-token]").is_active)
+
+    def test_unregister_push_device_marks_device_inactive(self):
+        device = PushDevice.objects.create(
+            user=self.user,
+            expo_push_token="ExpoPushToken[to-remove]",
+            platform="android",
+            device_id="device-2",
+        )
+
+        response = self.client.delete(
+            "/api/push/devices/",
+            {"expo_push_token": "ExpoPushToken[to-remove]"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 204)
+        device.refresh_from_db()
+        self.assertFalse(device.is_active)
 
 
 class SocialLoginFlowTests(TestCase):

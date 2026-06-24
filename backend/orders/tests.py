@@ -1,8 +1,9 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
+from unittest.mock import patch
 
 from addresses.models import Address
-from orders.models import FulfillmentType, Order
+from orders.models import FulfillmentType, Order, OrderStatus
 from products.models import Product
 from restaurants.models import Restaurant
 from users.models import User, UserRole
@@ -35,6 +36,8 @@ class OrderCreateApiTests(TestCase):
         self.product = Product.objects.create(
             restaurant=self.restaurant,
             name="Burger Test",
+            image="products/burger-test.jpg",
+            video_url="https://cdn.example.com/burger-test.mp4",
             price="35.00",
             is_available=True,
         )
@@ -113,3 +116,57 @@ class OrderCreateApiTests(TestCase):
         self.assertEqual(order.fulfillment_type, FulfillmentType.DELIVERY)
         self.assertEqual(order.address_id, self.address.id)
         self.assertEqual(str(order.delivery_fee), "12.00")
+
+    def test_order_list_includes_ordered_product_media(self):
+        self.client.post(
+            "/api/orders/",
+            {
+                "restaurant_id": self.restaurant.id,
+                "fulfillment_type": FulfillmentType.PICKUP,
+                "payment_method": "cash",
+                "items": [
+                    {
+                        "product_id": self.product.id,
+                        "quantity": 1,
+                    }
+                ],
+            },
+            format="json",
+        )
+
+        response = self.client.get("/api/orders/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        orders = payload["results"] if isinstance(payload, dict) else payload
+        order_item = orders[0]["items"][0]
+        self.assertEqual(order_item["product"], self.product.id)
+        self.assertEqual(order_item["product_name"], "Burger Test")
+        self.assertTrue(order_item["product_image"].endswith("/media/products/burger-test.jpg"))
+        self.assertEqual(order_item["product_video_url"], "https://cdn.example.com/burger-test.mp4")
+
+    def test_restaurant_status_update_queues_customer_push_notification(self):
+        order = Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            address=self.address,
+            subtotal="35.00",
+            delivery_fee="12.00",
+            total="47.00",
+        )
+        self.client.force_authenticate(user=self.owner)
+
+        with patch("orders.notifications.send_push_to_user") as mock_send:
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.patch(
+                    f"/api/restaurant-owner/orders/{order.id}/status/",
+                    {"order_status": OrderStatus.ACCEPTED},
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, 200)
+        mock_send.assert_called_once()
+        args, kwargs = mock_send.call_args
+        self.assertEqual(args[0], self.customer)
+        self.assertEqual(kwargs["title"], "Comanda a fost acceptata")
+        self.assertEqual(kwargs["data"]["order_id"], order.id)

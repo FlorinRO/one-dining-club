@@ -26,7 +26,7 @@ export const STRIPE_PUBLISHABLE_KEY = normalizeString(
 );
 export const STRIPE_MERCHANT_IDENTIFIER = normalizeString(
   process.env.EXPO_PUBLIC_STRIPE_MERCHANT_IDENTIFIER ?? extra.stripeMerchantIdentifier,
-  "merchant.club.onedining.customer",
+  "merchant.com.onediningclub",
 );
 export const STRIPE_MERCHANT_COUNTRY_CODE = normalizeString(
   process.env.EXPO_PUBLIC_STRIPE_MERCHANT_COUNTRY_CODE ?? extra.stripeMerchantCountryCode,

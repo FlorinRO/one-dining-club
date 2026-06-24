@@ -11,6 +11,13 @@ class UserRole(models.TextChoices):
     ADMIN = "admin", "Admin"
 
 
+class PushDevicePlatform(models.TextChoices):
+    IOS = "ios", "iOS"
+    ANDROID = "android", "Android"
+    WEB = "web", "Web"
+    UNKNOWN = "unknown", "Unknown"
+
+
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
@@ -117,3 +124,29 @@ class SocialAccount(models.Model):
 
     def __str__(self):
         return f"{self.provider}:{self.subject}"
+
+
+class PushDevice(models.Model):
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="push_devices")
+    expo_push_token = models.CharField(max_length=255, unique=True)
+    platform = models.CharField(
+        max_length=16,
+        choices=PushDevicePlatform.choices,
+        default=PushDevicePlatform.UNKNOWN,
+    )
+    device_id = models.CharField(max_length=128, blank=True, db_index=True)
+    app_version = models.CharField(max_length=32, blank=True)
+    is_active = models.BooleanField(default=True)
+    last_registered_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-last_registered_at",)
+        indexes = [
+            models.Index(fields=("user", "is_active"), name="users_pushd_user_id_07a34d_idx"),
+            models.Index(fields=("expo_push_token", "is_active"), name="users_pushd_expo_pu_d8df59_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.platform} push device for {self.user.email}"

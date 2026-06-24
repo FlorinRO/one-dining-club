@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ArrowLeft } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, InteractionManager, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { InteractionManager, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { authApi } from "../api/authApi";
@@ -12,6 +12,7 @@ import { useI18n } from "../i18n/useI18n";
 import { ProfileStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useCartStore } from "../store/cartStore";
+import { showAppAlert } from "../store/uiStore";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileEdit">;
@@ -99,7 +100,12 @@ export function ProfileEditScreen({ navigation, route }: Props) {
         return;
       }
       setPromoCode(promoCode.trim().toUpperCase());
-      Alert.alert(tr("Cod promo", "Promo code"), tr(`Codul ${promoCode.trim().toUpperCase()} a fost aplicat.`, `Code ${promoCode.trim().toUpperCase()} has been applied.`));
+      showAppAlert(
+        tr("Cod promo", "Promo code"),
+        tr(`Codul ${promoCode.trim().toUpperCase()} a fost aplicat.`, `Code ${promoCode.trim().toUpperCase()} has been applied.`),
+        undefined,
+        { tone: "success" },
+      );
       navigation.goBack();
       return;
     }
@@ -119,7 +125,7 @@ export function ProfileEditScreen({ navigation, route }: Props) {
       setUser(updatedUser);
       navigation.goBack();
     } catch {
-      Alert.alert(tr("Eroare", "Error"), tr("Nu am putut salva profilul. Încearcă din nou.", "Could not save profile. Try again."));
+      showAppAlert(tr("Eroare", "Error"), tr("Nu am putut salva profilul. Încearcă din nou.", "Could not save profile. Try again."), undefined, { tone: "error" });
     } finally {
       setSaving(false);
     }

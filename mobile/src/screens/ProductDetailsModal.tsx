@@ -4,7 +4,6 @@ import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
 import { ArrowLeft, Check, Clock3, Flame, Heart, MessageSquareText, Share2, ShoppingBag, Truck } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -28,6 +27,7 @@ import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images
 import { HomeStackParamList } from "../navigation/types";
 import { useCartStore } from "../store/cartStore";
 import { useFavoritesStore } from "../store/favoritesStore";
+import { showAppAlert } from "../store/uiStore";
 import { colors } from "../theme/colors";
 import { Product, ProductOption, ProductOptionGroup, Restaurant } from "../types/models";
 
@@ -350,7 +350,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
     };
 
     if (cartRestaurant && cartRestaurant.id !== restaurant.id) {
-      Alert.alert(
+      showAppAlert(
         tr("Înlocuiești coșul?", "Replace cart?"),
         tr(
           `Coșul tău are produse de la ${cartRestaurant.name}. Dacă adaugi de la ${restaurant.name}, coșul va fi golit și înlocuit cu noul produs.`,

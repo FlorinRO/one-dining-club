@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from users.models import CustomerProfile, User
+from users.models import CustomerProfile, PushDevice, User
 
 
 @admin.register(User)
@@ -33,3 +33,10 @@ class CustomerProfileAdmin(admin.ModelAdmin):
     search_fields = ("user__email", "phone_number")
     autocomplete_fields = ("user", "default_address")
 
+
+@admin.register(PushDevice)
+class PushDeviceAdmin(admin.ModelAdmin):
+    list_display = ("user", "platform", "is_active", "app_version", "last_registered_at")
+    list_filter = ("platform", "is_active", "last_registered_at")
+    search_fields = ("user__email", "expo_push_token", "device_id")
+    autocomplete_fields = ("user",)

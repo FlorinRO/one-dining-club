@@ -3,7 +3,6 @@ import * as ImagePicker from "expo-image-picker";
 import { ImagePlus, Heart, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -33,6 +32,7 @@ import {
   statsFor,
 } from "../lib/feedSocial";
 import { useCommentsStore } from "../store/commentsStore";
+import { showAppAlert } from "../store/uiStore";
 import { colors } from "../theme/colors";
 import { Product, ProductComment, Restaurant } from "../types/models";
 
@@ -226,7 +226,7 @@ export function ProductCommentsSheet({ visible, restaurant, product, onClose, on
   const handleAddPhoto = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permisiune necesara", "Permite accesul la galerie pentru a adauga fotografii.");
+      showAppAlert("Permisiune necesara", "Permite accesul la galerie pentru a adauga fotografii.", undefined, { tone: "warning" });
       return;
     }
 

@@ -5,6 +5,7 @@ from core.permissions import IsCourier
 from couriers.models import CourierProfile, Delivery, DeliveryStatus
 from couriers.serializers import CourierLocationSerializer, CourierProfileSerializer
 from orders.models import Order, OrderStatus
+from orders.notifications import queue_order_status_push
 from orders.serializers import CourierOrderStatusSerializer, OrderSerializer
 
 
@@ -32,9 +33,11 @@ class CourierOrderViewSet(viewsets.ReadOnlyModelViewSet):
         if order.order_status != OrderStatus.READY_FOR_PICKUP:
             return response.Response({"detail": "Order is not ready for pickup."}, status=status.HTTP_400_BAD_REQUEST)
 
+        previous_status = order.order_status
         order.courier = request.user
         order.order_status = OrderStatus.PICKED_UP
         order.save(update_fields=("courier", "order_status", "updated_at"))
+        queue_order_status_push(order, previous_status=previous_status, source="courier")
         Delivery.objects.get_or_create(
             order=order,
             defaults={
@@ -53,8 +56,10 @@ class CourierOrderViewSet(viewsets.ReadOnlyModelViewSet):
 
         serializer = CourierOrderStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        previous_status = order.order_status
         order.order_status = serializer.validated_data["order_status"]
         order.save(update_fields=("order_status", "updated_at"))
+        queue_order_status_push(order, previous_status=previous_status, source="courier")
 
         delivery, _ = Delivery.objects.get_or_create(order=order, defaults={"courier": request.user})
         delivery.courier = request.user
@@ -86,4 +91,3 @@ class CourierProfileView(views.APIView):
             setattr(profile, field, value)
         profile.save()
         return response.Response(CourierProfileSerializer(profile).data)
-

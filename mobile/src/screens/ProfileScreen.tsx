@@ -14,12 +14,14 @@ import {
   Tag,
   UserRound,
   Wallet,
+  X,
 } from "lucide-react-native";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -29,17 +31,17 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { addressesApi } from "../api/addressesApi";
 import { authApi } from "../api/authApi";
-import { ordersApi } from "../api/ordersApi";
 import { FoodBackground } from "../components/FoodBackground";
 import { Screen } from "../components/Screen";
 import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDirection";
 import { useI18n } from "../i18n/useI18n";
 import { ProfileStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
+import { usePaymentPreferencesStore } from "../store/paymentPreferencesStore";
+import { showAppAlert } from "../store/uiStore";
 import { colors } from "../theme/colors";
-import { Address, Order, PaymentMethod } from "../types/models";
+import { PaymentMethod } from "../types/models";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileHome">;
 const PROFILE_GREEN = "#22C55E";
@@ -69,12 +71,13 @@ export function ProfileScreen({ navigation }: Props) {
   const isGuest = useAuthStore((state) => state.isGuest);
   const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
+  const preferredPaymentMethod = usePaymentPreferencesStore((state) => state.preferredPaymentMethod);
+  const setPreferredPaymentMethod = usePaymentPreferencesStore((state) => state.setPreferredPaymentMethod);
 
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isPaymentMenuOpen, setIsPaymentMenuOpen] = useState(false);
   const trackFloatingCartScrollDirection = useFloatingCartScrollDirection();
 
   const displayName = useMemo(
@@ -82,17 +85,14 @@ export function ProfileScreen({ navigation }: Props) {
     [isGuest, user?.first_name, user?.full_name, user?.last_name],
   );
   const greetingName = useMemo(() => firstWord(displayName) || firstWord(user?.email?.split("@")[0]) || tr("Client", "Customer"), [displayName, tr, user?.email]);
-  const lastPaymentOrder = orders.find((order) => order.payment_method !== "cash") ?? orders[0];
-  const paymentMethod = lastPaymentOrder?.payment_method;
-  const paymentTitle = paymentMethod ? paymentMethodLabel(paymentMethod, tr) : tr("Adaugă metodă de plată", "Add payment method");
-  const paymentHint = lastPaymentOrder ? tr(`Ultima comandă #${lastPaymentOrder.id}`, `Last order #${lastPaymentOrder.id}`) : tr("Alegi la checkout", "Choose at checkout");
+  const paymentTitle = paymentMethodLabel(preferredPaymentMethod, tr);
+  const paymentHint = tr("Metodă standard", "Default method");
+  const paymentMethods = useMemo(() => availablePaymentMethods(), []);
   const accountBalance = 0;
 
   const loadAccount = useCallback(
     async (mode: "initial" | "refresh" = "initial") => {
       if (isGuest || !accessToken) {
-        setAddresses([]);
-        setOrders([]);
         setLoadError(null);
         setLoading(false);
         setRefreshing(false);
@@ -106,22 +106,15 @@ export function ProfileScreen({ navigation }: Props) {
       }
       setLoadError(null);
 
-      const [profileResult, addressResult, orderResult] = await Promise.allSettled([
-        authApi.me(),
-        addressesApi.list(),
-        ordersApi.list(),
-      ]);
-
-      if (profileResult.status === "fulfilled") setUser(profileResult.value);
-      if (addressResult.status === "fulfilled") setAddresses(addressResult.value);
-      if (orderResult.status === "fulfilled") setOrders(orderResult.value);
-
-      if ([profileResult, addressResult, orderResult].some((result) => result.status === "rejected")) {
-        setLoadError(tr("Nu am putut sincroniza toate datele contului. Trage în jos pentru reîncărcare.", "Could not sync all account data. Pull down to refresh."));
+      try {
+        const profile = await authApi.me();
+        setUser(profile);
+      } catch {
+        setLoadError(tr("Nu am putut sincroniza profilul. Trage în jos pentru reîncărcare.", "Could not sync your profile. Pull down to refresh."));
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-
-      setLoading(false);
-      setRefreshing(false);
     },
     [accessToken, isGuest, setUser],
   );
@@ -132,16 +125,21 @@ export function ProfileScreen({ navigation }: Props) {
     }, [loadAccount]),
   );
 
-  const openCart = () => navigation.getParent()?.navigate("CartTab", { screen: "CartHome" });
-  const openOrders = () => navigation.getParent()?.navigate("OrdersTab", { screen: "OrdersHome" });
+  const openOrders = useCallback(() => {
+    navigation.getParent()?.navigate("OrdersTab", { screen: "OrdersHome" });
+  }, [navigation]);
 
-  const openPaymentHelp = () => {
-    Alert.alert(
-      tr("Plată", "Payment"),
-      tr("YUMZY trimite metoda de plată aleasă către backend atunci când plasezi o comandă. Cardurile salvate nu sunt stocate încă în acest backend.", "YUMZY sends your selected payment method to the backend when you place an order. Saved cards are not stored in this backend yet."),
-      [{ text: tr("Vezi comenzile", "View orders"), onPress: openOrders }, { text: "OK" }],
-    );
-  };
+  const openPaymentMenu = useCallback(() => {
+    setIsPaymentMenuOpen(true);
+  }, []);
+
+  const selectPaymentMethod = useCallback(
+    (method: PaymentMethod) => {
+      setPreferredPaymentMethod(method);
+      setIsPaymentMenuOpen(false);
+    },
+    [setPreferredPaymentMethod],
+  );
 
   if (isGuest) {
     return (
@@ -200,14 +198,14 @@ export function ProfileScreen({ navigation }: Props) {
         {loadError && <Text style={styles.errorBanner}>{loadError}</Text>}
 
         <View style={styles.sectionBlock}>
-          <SectionHeader title={tr("Plată", "Payment")} action={tr("Editează", "Edit")} onPress={openPaymentHelp} />
-          <Pressable style={styles.paymentMethodRow} onPress={openPaymentHelp}>
+          <SectionHeader title={tr("Plată", "Payment")} action={tr("Editează", "Edit")} onPress={openPaymentMenu} />
+          <Pressable style={styles.paymentMethodRow} onPress={openPaymentMenu}>
             <View style={styles.paymentBadge}>
               <CreditCard size={20} color={colors.white} strokeWidth={2.6} />
             </View>
             <View style={styles.paymentCopy}>
               <Text style={styles.paymentTitle}>{paymentTitle}</Text>
-              <Text style={styles.inlineAction}>{tr("Schimbă", "Change")}</Text>
+              <Text style={styles.inlineAction}>{tr("Schimbă metoda", "Change method")}</Text>
             </View>
             <Text style={styles.paymentHint} numberOfLines={1}>
               {paymentHint}
@@ -258,7 +256,7 @@ export function ProfileScreen({ navigation }: Props) {
               title="ONE Plus"
               accent
               icon={<Plus size={24} color={colors.white} strokeWidth={3.6} />}
-              onPress={() => Alert.alert("ONE Plus", tr("Abonamentele pot fi conectate când backend-ul expune planuri de membership.", "Subscriptions can be connected when backend exposes membership plans."))}
+              onPress={() => showAppAlert("ONE Plus", tr("Abonamentele pot fi conectate când backend-ul expune planuri de membership.", "Subscriptions can be connected when backend exposes membership plans."))}
             />
             <OtherRow title={tr("Coduri promo", "Promo codes")} icon={<Tag size={22} color={colors.text} strokeWidth={2.4} />} onPress={() => navigation.navigate("ProfileEdit", { field: "promo" })} />
             <OtherRow title={t("profile.others.settings")} icon={<Settings size={22} color={colors.text} strokeWidth={2.4} />} onPress={() => navigation.navigate("ProfileSettings")} />
@@ -277,6 +275,15 @@ export function ProfileScreen({ navigation }: Props) {
         </View>
 
         </ScrollView>
+        <PaymentMethodSheet
+          visible={isPaymentMenuOpen}
+          bottomInset={insets.bottom}
+          methods={paymentMethods}
+          selectedMethod={preferredPaymentMethod}
+          tr={tr}
+          onClose={() => setIsPaymentMenuOpen(false)}
+          onSelect={selectPaymentMethod}
+        />
       </View>
     </Screen>
   );
@@ -342,6 +349,77 @@ function OtherRow({ title, icon, onPress, accent }: OtherRowProps) {
   );
 }
 
+function PaymentMethodSheet({
+  visible,
+  bottomInset,
+  methods,
+  selectedMethod,
+  tr,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  bottomInset: number;
+  methods: PaymentMethod[];
+  selectedMethod: PaymentMethod;
+  tr: (ro: string, en: string) => string;
+  onClose: () => void;
+  onSelect: (method: PaymentMethod) => void;
+}) {
+  return (
+    <Modal transparent visible={visible} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+      <View style={styles.paymentSheetRoot}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={[styles.paymentSheet, { paddingBottom: Math.max(bottomInset, 14) }]}>
+          <View style={styles.paymentSheetHandle} />
+          <View style={styles.paymentSheetHeader}>
+            <Text style={styles.paymentSheetTitle}>{tr("Metodă standard", "Default method")}</Text>
+            <Pressable style={styles.paymentSheetClose} onPress={onClose} hitSlop={10}>
+              <X size={18} color={colors.muted} strokeWidth={2.5} />
+            </Pressable>
+          </View>
+          <View style={styles.paymentOptionGrid}>
+            {methods.map((method) => {
+              const isSelected = method === selectedMethod;
+
+              return (
+                <Pressable
+                  key={method}
+                  style={({ pressed }) => [
+                    styles.paymentOptionButton,
+                    isSelected && styles.paymentOptionButtonSelected,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => onSelect(method)}
+                >
+                  <View style={[styles.paymentOptionIcon, isSelected && styles.paymentOptionIconSelected]}>
+                    <PaymentMethodIcon method={method} selected={isSelected} />
+                  </View>
+                  <Text style={[styles.paymentOptionText, isSelected && styles.paymentOptionTextSelected]} numberOfLines={1}>
+                    {paymentMethodLabel(method, tr)}
+                  </Text>
+                  {isSelected ? <Check size={14} color={PROFILE_GREEN_DARK} strokeWidth={3} /> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function PaymentMethodIcon({ method, selected }: { method: PaymentMethod; selected: boolean }) {
+  const color = selected ? PROFILE_GREEN_DARK : colors.text;
+
+  if (method === "cash") return <Wallet size={17} color={color} strokeWidth={2.4} />;
+  if (method === "card") return <CreditCard size={17} color={color} strokeWidth={2.4} />;
+  if (method === "apple_pay") {
+    return <Text style={[styles.paymentOptionLogo, selected && styles.paymentOptionLogoSelected]}></Text>;
+  }
+  return <Text style={[styles.paymentOptionLogo, selected && styles.paymentOptionLogoSelected]}>G</Text>;
+}
+
 function Divider() {
   return <View style={styles.divider} />;
 }
@@ -351,13 +429,17 @@ function firstWord(value?: string) {
 }
 
 function paymentMethodLabel(method: PaymentMethod, tr: (ro: string, en: string) => string) {
-  const labels: Record<PaymentMethod, string> = {
-    cash: tr("Numerar", "Cash"),
-    card: "Card",
-    apple_pay: "Apple Pay",
-    google_pay: "Google Pay",
-  };
-  return labels[method];
+  if (method === "cash") return tr("Cash", "Cash");
+  if (method === "card") return tr("Card", "Card");
+  if (method === "apple_pay") return "Apple Pay";
+  return "Google Pay";
+}
+
+function availablePaymentMethods(): PaymentMethod[] {
+  const methods: PaymentMethod[] = ["cash", "card"];
+  if (Platform.OS === "ios") methods.push("apple_pay");
+  if (Platform.OS === "android") methods.push("google_pay");
+  return methods;
 }
 
 function formatLei(value: number) {
@@ -484,6 +566,108 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: "400",
     textAlign: "right",
+  },
+  paymentSheetRoot: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.58)",
+  },
+  paymentSheet: {
+    width: "100%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    backgroundColor: colors.card,
+    paddingTop: 9,
+    paddingHorizontal: 18,
+    shadowColor: "#000000",
+    shadowOpacity: 0.34,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -12 },
+    elevation: 20,
+  },
+  paymentSheetHandle: {
+    alignSelf: "center",
+    width: 38,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    marginBottom: 14,
+  },
+  paymentSheetHeader: {
+    minHeight: 32,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  paymentSheetTitle: {
+    color: colors.text,
+    fontSize: 18,
+    lineHeight: 23,
+    fontWeight: "700",
+  },
+  paymentSheetClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.07)",
+  },
+  paymentOptionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  paymentOptionButton: {
+    minHeight: 44,
+    minWidth: 108,
+    flexGrow: 1,
+    flexBasis: "47%",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  paymentOptionButtonSelected: {
+    borderColor: "rgba(34,197,94,0.55)",
+    backgroundColor: "rgba(34,197,94,0.12)",
+  },
+  paymentOptionIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  paymentOptionIconSelected: {
+    backgroundColor: "rgba(34,197,94,0.16)",
+  },
+  paymentOptionLogo: {
+    color: colors.text,
+    fontSize: 17,
+    lineHeight: 20,
+    fontWeight: "800",
+  },
+  paymentOptionLogoSelected: {
+    color: PROFILE_GREEN_DARK,
+  },
+  paymentOptionText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "600",
+  },
+  paymentOptionTextSelected: {
+    color: PROFILE_GREEN_DARK,
   },
   divider: {
     height: 1,

@@ -1,11 +1,11 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
-import { useStripe } from "@stripe/stripe-react-native";
+import { PlatformPay, useStripe } from "@stripe/stripe-react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { AxiosError } from "axios";
 import { AlertTriangle, ArrowLeft, Bike, ChevronRight, Clock3, CreditCard, MapPin, PlusCircle, ShoppingCart, Trash2, Wallet } from "lucide-react-native";
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Animated, Image, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme } from "react-native";
+import { Animated, Image, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { addressesApi } from "../api/addressesApi";
@@ -27,6 +27,8 @@ import {
 import { useAuthStore } from "../store/authStore";
 import { useCartStore } from "../store/cartStore";
 import { useOrdersStore } from "../store/ordersStore";
+import { usePaymentPreferencesStore } from "../store/paymentPreferencesStore";
+import { showAppAlert } from "../store/uiStore";
 import { colors } from "../theme/colors";
 import { Address, PaymentMethod, Product, Restaurant } from "../types/models";
 
@@ -109,6 +111,10 @@ function CartItemMedia({
 }
 
 function extractApiErrorMessage(error: unknown): string | null {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+
   if (!(error instanceof AxiosError)) return null;
 
   const data = error.response?.data;
@@ -123,9 +129,22 @@ function extractApiErrorMessage(error: unknown): string | null {
   return null;
 }
 
+function isCanceledPaymentError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : error instanceof AxiosError
+        ? typeof error.response?.data === "string"
+          ? error.response.data
+          : ""
+        : "";
+
+  return /canceled|cancelled/i.test(message);
+}
+
 export function CartScreen({ navigation }: Props) {
   const { tr } = useI18n();
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const { confirmPlatformPayPayment, initPaymentSheet, isPlatformPaySupported, presentPaymentSheet } = useStripe();
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === "dark";
   const insets = useSafeAreaInsets();
@@ -140,9 +159,11 @@ export function CartScreen({ navigation }: Props) {
   const deliveryFee = useCartStore((state) => state.calculateDeliveryFee());
   const discount = useCartStore((state) => state.calculateDiscount());
   const addOrder = useOrdersStore((state) => state.addOrder);
+  const preferredPaymentMethod = usePaymentPreferencesStore((state) => state.preferredPaymentMethod);
+  const setPreferredPaymentMethod = usePaymentPreferencesStore((state) => state.setPreferredPaymentMethod);
 
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(preferredPaymentMethod);
   const [note, setNote] = useState("");
   const [dropoffType, setDropoffType] = useState<"meet" | "leave" | "outside">("meet");
   const [fulfillmentType, setFulfillmentType] = useState<"delivery" | "pickup">("delivery");
@@ -150,6 +171,8 @@ export function CartScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [isSlidingConfirm, setIsSlidingConfirm] = useState(false);
   const [isCourierNoteFocused, setIsCourierNoteFocused] = useState(false);
+  const [applePaySupported, setApplePaySupported] = useState(false);
+  const [googlePaySupported, setGooglePaySupported] = useState(false);
   const courierNoteInputRef = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -180,6 +203,16 @@ export function CartScreen({ navigation }: Props) {
   );
   const canPlaceOrder = Boolean(items.length && restaurant);
   const isOnlinePayment = paymentMethod !== "cash";
+  const availablePaymentMethods = useMemo(() => {
+    const methods: PaymentMethod[] = ["cash", "card"];
+    if (Platform.OS === "ios") methods.push("apple_pay");
+    if (Platform.OS === "android") methods.push("google_pay");
+    return methods;
+  }, []);
+
+  useEffect(() => {
+    setPaymentMethod(preferredPaymentMethod);
+  }, [preferredPaymentMethod]);
 
   useEffect(() => {
     if (!supportsPickup && isPickupSelected) {
@@ -187,8 +220,68 @@ export function CartScreen({ navigation }: Props) {
     }
   }, [isPickupSelected, supportsPickup]);
 
+  useEffect(() => {
+    let active = true;
+
+    const loadPlatformPaySupport = async () => {
+      try {
+        if (Platform.OS === "ios") {
+          const supported = await isPlatformPaySupported();
+          if (!active) return;
+          setApplePaySupported(supported);
+          setGooglePaySupported(false);
+          return;
+        }
+
+        if (Platform.OS === "android") {
+          const supported = await isPlatformPaySupported({
+            googlePay: {
+              testEnv: __DEV__,
+            },
+          });
+          if (!active) return;
+          setGooglePaySupported(supported);
+          setApplePaySupported(false);
+          return;
+        }
+
+        if (!active) return;
+        setApplePaySupported(false);
+        setGooglePaySupported(false);
+      } catch {
+        if (!active) return;
+        setApplePaySupported(false);
+        setGooglePaySupported(false);
+      }
+    };
+
+    void loadPlatformPaySupport();
+    return () => {
+      active = false;
+    };
+  }, [isPlatformPaySupported]);
+
+  useEffect(() => {
+    if (paymentMethod === "apple_pay" && Platform.OS !== "ios") {
+      setPaymentMethod("card");
+      setPreferredPaymentMethod("card");
+    }
+    if (paymentMethod === "google_pay" && Platform.OS !== "android") {
+      setPaymentMethod("card");
+      setPreferredPaymentMethod("card");
+    }
+  }, [paymentMethod, setPreferredPaymentMethod]);
+
+  const selectPaymentMethod = useCallback(
+    (method: PaymentMethod) => {
+      setPaymentMethod(method);
+      setPreferredPaymentMethod(method);
+    },
+    [setPreferredPaymentMethod],
+  );
+
   const clearAll = () => {
-    Alert.alert(tr("Golești coșul?", "Clear cart?"), tr("Toate produsele vor fi șterse.", "All items will be removed."), [
+    showAppAlert(tr("Golești coșul?", "Clear cart?"), tr("Toate produsele vor fi șterse.", "All items will be removed."), [
       { text: tr("Anulează", "Cancel"), style: "cancel" },
       { text: tr("Șterge", "Delete"), style: "destructive", onPress: clearCart },
     ]);
@@ -232,7 +325,7 @@ export function CartScreen({ navigation }: Props) {
   };
 
   const openSignIn = () => {
-    Alert.alert(
+    showAppAlert(
       tr("Autentificare necesară", "Authentication required"),
       tr(
         "Intră în cont pentru a continua checkout-ul. Produsele din coș rămân salvate.",
@@ -242,6 +335,7 @@ export function CartScreen({ navigation }: Props) {
         { text: tr("Anulează", "Cancel"), style: "cancel" },
         { text: tr("Intră în cont", "Sign in"), onPress: logout },
       ],
+      { tone: "warning" },
     );
   };
 
@@ -260,13 +354,35 @@ export function CartScreen({ navigation }: Props) {
       return;
     }
 
+    if (paymentMethod === "apple_pay" && !applePaySupported) {
+      showAppAlert(
+        tr("Apple Pay indisponibil", "Apple Pay unavailable"),
+        tr("Apple Pay nu este disponibil pe acest dispozitiv sau în acest build.", "Apple Pay is not available on this device or in this build."),
+        undefined,
+        { tone: "error" },
+      );
+      return;
+    }
+
+    if (paymentMethod === "google_pay" && !googlePaySupported) {
+      showAppAlert(
+        tr("Google Pay indisponibil", "Google Pay unavailable"),
+        tr("Google Pay nu este disponibil pe acest dispozitiv sau în acest build.", "Google Pay is not available on this device or in this build."),
+        undefined,
+        { tone: "error" },
+      );
+      return;
+    }
+
     if (isOnlinePayment && !isStripeConfigured()) {
-      Alert.alert(
+      showAppAlert(
         tr("Plata online nu este configurată", "Online payment is not configured"),
         tr(
           "Completează cheia publică Stripe și identificatorii pentru Apple Pay / Google Pay înainte de a testa checkout-ul.",
           "Add the Stripe publishable key and the Apple Pay / Google Pay identifiers before testing checkout.",
         ),
+        undefined,
+        { tone: "warning" },
       );
       return;
     }
@@ -302,7 +418,12 @@ export function CartScreen({ navigation }: Props) {
         const order = await ordersApi.create(orderPayload);
         addOrder(order);
         clearCart();
-        Alert.alert(tr("Comandă plasată", "Order placed"), tr("Statusul comenzii este disponibil în tabul Orders.", "Order status is available in the Orders tab."));
+        showAppAlert(
+          tr("Comandă plasată", "Order placed"),
+          tr("Statusul comenzii este disponibil în tabul Orders.", "Order status is available in the Orders tab."),
+          undefined,
+          { tone: "success" },
+        );
         navigation.getParent()?.navigate("OrdersTab", { screen: "OrdersHome" });
         return;
       }
@@ -311,49 +432,105 @@ export function CartScreen({ navigation }: Props) {
       if (!checkout.payment_sheet) {
         throw new Error("Payment sheet was not returned for an online payment.");
       }
+      const checkoutOrderTotal = Number(checkout.order.total);
+      const payableAmount = Number.isFinite(checkoutOrderTotal) ? checkoutOrderTotal : total;
 
-      const initResult = await initPaymentSheet({
-        merchantDisplayName: checkout.payment_sheet.merchant_display_name || STRIPE_MERCHANT_DISPLAY_NAME,
-        paymentIntentClientSecret: checkout.payment_sheet.payment_intent_client_secret,
-        returnURL: STRIPE_RETURN_URL,
-        applePay: {
-          merchantCountryCode: checkout.payment_sheet.merchant_country_code || STRIPE_MERCHANT_COUNTRY_CODE,
-        },
-        googlePay: {
-          merchantCountryCode: checkout.payment_sheet.merchant_country_code || STRIPE_MERCHANT_COUNTRY_CODE,
-          testEnv: __DEV__,
-          currencyCode: checkout.payment_sheet.currency_code,
-        },
-        style: "alwaysDark",
-      });
-      if (initResult.error) {
-        throw new Error(initResult.error.message);
-      }
+      if (paymentMethod === "card") {
+        const initResult = await initPaymentSheet({
+          merchantDisplayName: checkout.payment_sheet.merchant_display_name || STRIPE_MERCHANT_DISPLAY_NAME,
+          paymentIntentClientSecret: checkout.payment_sheet.payment_intent_client_secret,
+          returnURL: STRIPE_RETURN_URL,
+          applePay: {
+            merchantCountryCode: checkout.payment_sheet.merchant_country_code || STRIPE_MERCHANT_COUNTRY_CODE,
+          },
+          googlePay: {
+            merchantCountryCode: checkout.payment_sheet.merchant_country_code || STRIPE_MERCHANT_COUNTRY_CODE,
+            testEnv: __DEV__,
+            currencyCode: checkout.payment_sheet.currency_code,
+          },
+          style: "alwaysDark",
+        });
+        if (initResult.error) {
+          throw new Error(initResult.error.message);
+        }
 
-      const presentResult = await presentPaymentSheet();
-      if (presentResult.error) {
-        throw new Error(presentResult.error.message);
+        const presentResult = await presentPaymentSheet();
+        if (presentResult.error) {
+          throw new Error(presentResult.error.message);
+        }
+      } else if (paymentMethod === "apple_pay") {
+        const result = await confirmPlatformPayPayment(checkout.payment_sheet.payment_intent_client_secret, {
+          applePay: {
+            merchantCountryCode: checkout.payment_sheet.merchant_country_code || STRIPE_MERCHANT_COUNTRY_CODE,
+            currencyCode: checkout.payment_sheet.currency_code,
+            cartItems: [
+              {
+                label: checkout.payment_sheet.merchant_display_name || STRIPE_MERCHANT_DISPLAY_NAME,
+                amount: payableAmount.toFixed(2),
+                paymentType: PlatformPay.PaymentType.Immediate,
+              },
+            ],
+          },
+        });
+        if (result.error) {
+          if (result.error.code === "Canceled") {
+            await ordersApi.cancel(checkout.order.id).catch(() => null);
+          }
+          throw new Error(result.error.message);
+        }
+      } else if (paymentMethod === "google_pay") {
+        const result = await confirmPlatformPayPayment(checkout.payment_sheet.payment_intent_client_secret, {
+          googlePay: {
+            merchantCountryCode: checkout.payment_sheet.merchant_country_code || STRIPE_MERCHANT_COUNTRY_CODE,
+            currencyCode: checkout.payment_sheet.currency_code,
+            testEnv: __DEV__,
+            merchantName: checkout.payment_sheet.merchant_display_name || STRIPE_MERCHANT_DISPLAY_NAME,
+          },
+        });
+        if (result.error) {
+          if (result.error.code === "Canceled") {
+            await ordersApi.cancel(checkout.order.id).catch(() => null);
+          }
+          throw new Error(result.error.message);
+        }
       }
 
       const order = checkout.order;
       addOrder(order);
       clearCart();
-      Alert.alert(
+      showAppAlert(
         tr("Plata a fost trimisă", "Payment submitted"),
         tr(
           "Comanda a fost creată și plata a fost trimisă către procesator. Statusul final se actualizează automat după confirmarea Stripe.",
           "The order was created and the payment was sent to the processor. The final status will update automatically after Stripe confirms it.",
         ),
+        undefined,
+        { tone: "success" },
       );
       navigation.getParent()?.navigate("OrdersTab", { screen: "OrdersHome" });
     } catch (error) {
-      Alert.alert(
+      if (isCanceledPaymentError(error)) {
+        showAppAlert(
+          tr("Plata a fost anulată", "Payment canceled"),
+          tr(
+            "Apple Pay sau Google Pay a fost închis înainte de confirmarea plății.",
+            "Apple Pay or Google Pay was closed before the payment was confirmed.",
+          ),
+          undefined,
+          { tone: "warning" },
+        );
+        return;
+      }
+
+      showAppAlert(
         tr("Comanda nu a fost plasată", "Order was not placed"),
         extractApiErrorMessage(error) ??
           tr(
             "Verifică adresa, restaurantul și conexiunea cu backend-ul, apoi încearcă din nou.",
             "Check address, restaurant, and backend connection, then try again.",
           ),
+        undefined,
+        { tone: "error" },
       );
     } finally {
       setLoading(false);
@@ -547,8 +724,8 @@ export function CartScreen({ navigation }: Props) {
                   </View>
 
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.methodGrid}>
-                    {(["cash", "card", "apple_pay", "google_pay"] as PaymentMethod[]).map((method) => (
-                      <PaymentMethodPill key={method} method={method} active={paymentMethod === method} onPress={() => setPaymentMethod(method)} tr={tr} />
+                    {availablePaymentMethods.map((method) => (
+                      <PaymentMethodPill key={method} method={method} active={paymentMethod === method} onPress={() => selectPaymentMethod(method)} tr={tr} />
                     ))}
                   </ScrollView>
                 </View>

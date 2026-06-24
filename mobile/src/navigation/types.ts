@@ -47,3 +47,8 @@ export type MainTabsParamList = {
   OrdersTab: NavigatorScreenParams<OrdersStackParamList>;
   ProfileTab: NavigatorScreenParams<ProfileStackParamList>;
 };
+
+export type RootStackParamList = {
+  Auth: undefined;
+  MainTabs: NavigatorScreenParams<MainTabsParamList>;
+};

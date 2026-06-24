@@ -12,13 +12,14 @@ from django.db import transaction
 from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from jwt import DecodeError, InvalidTokenError, PyJWKClient, PyJWKClientError, decode as jwt_decode
 
 from core.email import EmailDeliveryError, send_transactional_email
-from users.models import CustomerProfile, SocialAccount, User, UserRole
+from users.models import CustomerProfile, PushDevice, PushDevicePlatform, SocialAccount, User, UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,83 @@ class UserSerializer(serializers.ModelSerializer):
             "date_joined",
         )
         read_only_fields = ("id", "role", "is_active", "date_joined")
+
+
+def validate_expo_push_token(value):
+    token = value.strip()
+    if not token:
+        return token
+    if not (token.startswith("ExpoPushToken[") or token.startswith("ExponentPushToken[")):
+        raise serializers.ValidationError("Expo push token is invalid.")
+    return token
+
+
+class PushDeviceRegisterSerializer(serializers.ModelSerializer):
+    expo_push_token = serializers.CharField()
+    platform = serializers.ChoiceField(choices=PushDevicePlatform.choices, default=PushDevicePlatform.UNKNOWN)
+    device_id = serializers.CharField(required=False, allow_blank=True, max_length=128)
+    app_version = serializers.CharField(required=False, allow_blank=True, max_length=32)
+
+    class Meta:
+        model = PushDevice
+        fields = (
+            "id",
+            "expo_push_token",
+            "platform",
+            "device_id",
+            "app_version",
+            "is_active",
+            "last_registered_at",
+        )
+        read_only_fields = ("id", "is_active", "last_registered_at")
+
+    def validate_expo_push_token(self, value):
+        return validate_expo_push_token(value)
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        token = validated_data["expo_push_token"]
+        device_id = validated_data.get("device_id", "")
+
+        if device_id:
+            PushDevice.objects.filter(user=user, device_id=device_id).exclude(expo_push_token=token).update(
+                is_active=False,
+            )
+
+        device, _ = PushDevice.objects.update_or_create(
+            expo_push_token=token,
+            defaults={
+                "user": user,
+                "platform": validated_data.get("platform", PushDevicePlatform.UNKNOWN),
+                "device_id": device_id,
+                "app_version": validated_data.get("app_version", ""),
+                "is_active": True,
+                "last_registered_at": timezone.now(),
+            },
+        )
+        return device
+
+
+class PushDeviceUnregisterSerializer(serializers.Serializer):
+    expo_push_token = serializers.CharField(required=False, allow_blank=True)
+    device_id = serializers.CharField(required=False, allow_blank=True, max_length=128)
+
+    def validate_expo_push_token(self, value):
+        return validate_expo_push_token(value)
+
+    def validate(self, attrs):
+        if not attrs.get("expo_push_token") and not attrs.get("device_id"):
+            raise serializers.ValidationError("expo_push_token or device_id is required.")
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.context["request"].user
+        queryset = PushDevice.objects.filter(user=user, is_active=True)
+        if self.validated_data.get("expo_push_token"):
+            queryset = queryset.filter(expo_push_token=self.validated_data["expo_push_token"])
+        else:
+            queryset = queryset.filter(device_id=self.validated_data["device_id"])
+        return queryset.update(is_active=False)
 
 
 class RegisterSerializer(serializers.ModelSerializer):

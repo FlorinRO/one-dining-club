@@ -2,15 +2,17 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Globe, LogOut, Trash2, X } from "lucide-react-native";
 import { AxiosError } from "axios";
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { authApi } from "../api/authApi";
 import { FoodBackground } from "../components/FoodBackground";
 import { useI18n } from "../i18n/useI18n";
+import { unregisterCurrentPushDevice } from "../lib/notifications";
 import { ProfileStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { AppLanguage, usePreferencesStore } from "../store/preferencesStore";
+import { showAppAlert } from "../store/uiStore";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "ProfileSettings">;
@@ -41,7 +43,7 @@ export function ProfileSettingsScreen({ navigation }: Props) {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleLogout = () => {
-    Alert.alert(t("settings.logout.title"), t("settings.logout.message"), [
+    showAppAlert(t("settings.logout.title"), t("settings.logout.message"), [
       { text: t("settings.cancel"), style: "cancel" },
       {
         text: t("settings.logout"),
@@ -50,6 +52,7 @@ export function ProfileSettingsScreen({ navigation }: Props) {
           setLogoutLoading(true);
           try {
             if (refreshToken && !isGuest) {
+              await unregisterCurrentPushDevice();
               await authApi.logout(refreshToken);
             }
           } catch {
@@ -66,7 +69,7 @@ export function ProfileSettingsScreen({ navigation }: Props) {
   const chooseLanguage = (value: AppLanguage) => setLanguage(value);
 
   const openLanguagePicker = () => {
-    Alert.alert(t("settings.language.alert.title"), t("settings.language.alert.message"), [
+    showAppAlert(t("settings.language.alert.title"), t("settings.language.alert.message"), [
       { text: t("settings.language.ro"), onPress: () => chooseLanguage("ro") },
       { text: t("settings.language.en"), onPress: () => chooseLanguage("en") },
       { text: t("settings.cancel"), style: "cancel" },
@@ -74,7 +77,7 @@ export function ProfileSettingsScreen({ navigation }: Props) {
   };
 
   const requestDeleteAccount = () => {
-    Alert.alert(
+    showAppAlert(
       t("settings.delete.title"),
       t("settings.delete.message"),
       [
@@ -85,6 +88,7 @@ export function ProfileSettingsScreen({ navigation }: Props) {
           onPress: async () => {
             setDeleteLoading(true);
             try {
+              await unregisterCurrentPushDevice();
               await authApi.deleteMe();
               logout();
             } catch (error) {
@@ -94,9 +98,11 @@ export function ProfileSettingsScreen({ navigation }: Props) {
                 response: error instanceof AxiosError ? error.response?.data : undefined,
               });
               setDeleteLoading(false);
-              Alert.alert(
+              showAppAlert(
                 t("settings.delete.error.title"),
                 extractDeleteAccountError(error, t("settings.delete.error.message")),
+                undefined,
+                { tone: "error" },
               );
               return;
             }

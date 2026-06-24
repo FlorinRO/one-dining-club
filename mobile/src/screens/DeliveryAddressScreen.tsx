@@ -2,7 +2,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
 import { Check, Crosshair, MapPin, X } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 
@@ -12,6 +12,7 @@ import { useFloatingCartScrollDirection } from "../hooks/useFloatingCartScrollDi
 import { HomeStackParamList } from "../navigation/types";
 import { useI18n } from "../i18n/useI18n";
 import { useAuthStore } from "../store/authStore";
+import { showAppAlert } from "../store/uiStore";
 import { colors } from "../theme/colors";
 import { Address } from "../types/models";
 
@@ -120,7 +121,12 @@ export function DeliveryAddressScreen({ navigation }: Props) {
 
   const saveCurrentLocation = useCallback(async () => {
     if (!accessToken) {
-      Alert.alert(tr("Autentificare necesară", "Authentication required"), tr("Intră în cont ca să setezi locația curentă.", "Sign in to set current location."));
+      showAppAlert(
+        tr("Autentificare necesară", "Authentication required"),
+        tr("Intră în cont ca să setezi locația curentă.", "Sign in to set current location."),
+        undefined,
+        { tone: "warning" },
+      );
       return;
     }
 
@@ -129,7 +135,12 @@ export function DeliveryAddressScreen({ navigation }: Props) {
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (permission.status !== "granted") {
-        Alert.alert(tr("Permisiune necesară", "Permission required"), tr("Activează locația pentru a folosi locația curentă.", "Enable location to use current location."));
+        showAppAlert(
+          tr("Permisiune necesară", "Permission required"),
+          tr("Activează locația pentru a folosi locația curentă.", "Enable location to use current location."),
+          undefined,
+          { tone: "warning" },
+        );
         return;
       }
 

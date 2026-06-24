@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LocateFixed, Search, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import MapView, { Region } from "react-native-maps";
 import * as Location from "expo-location";
 import { AxiosError } from "axios";
@@ -11,6 +11,7 @@ import { addressesApi } from "../api/addressesApi";
 import { useI18n } from "../i18n/useI18n";
 import { HomeStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
+import { showAppAlert } from "../store/uiStore";
 import { colors } from "../theme/colors";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "DeliveryAddressMap">;
@@ -79,7 +80,12 @@ export function DeliveryAddressMapScreen({ navigation }: Props) {
   const centerOnCurrentLocation = useCallback(async () => {
     const permission = await Location.requestForegroundPermissionsAsync();
     if (permission.status !== "granted") {
-      Alert.alert(tr("Permisiune necesară", "Permission required"), tr("Activează locația pentru a alege adresa direct de pe hartă.", "Enable location to choose address directly on the map."));
+      showAppAlert(
+        tr("Permisiune necesară", "Permission required"),
+        tr("Activează locația pentru a alege adresa direct de pe hartă.", "Enable location to choose address directly on the map."),
+        undefined,
+        { tone: "warning" },
+      );
       return;
     }
     const current = await Location.getCurrentPositionAsync({
@@ -132,7 +138,12 @@ export function DeliveryAddressMapScreen({ navigation }: Props) {
 
   const saveAddress = async () => {
     if (!accessToken) {
-      Alert.alert(tr("Autentificare necesară", "Authentication required"), tr("Intră în cont ca să salvezi adresa.", "Sign in to save address."));
+      showAppAlert(
+        tr("Autentificare necesară", "Authentication required"),
+        tr("Intră în cont ca să salvezi adresa.", "Sign in to save address."),
+        undefined,
+        { tone: "warning" },
+      );
       return;
     }
 
@@ -186,7 +197,12 @@ export function DeliveryAddressMapScreen({ navigation }: Props) {
           : rawData
             ? String(rawData)
             : null;
-      Alert.alert(tr("Eroare", "Error"), details || tr("Nu am putut salva adresa de pe hartă.", "Could not save map address."));
+      showAppAlert(
+        tr("Eroare", "Error"),
+        details || tr("Nu am putut salva adresa de pe hartă.", "Could not save map address."),
+        undefined,
+        { tone: "error" },
+      );
     } finally {
       setSaving(false);
     }
