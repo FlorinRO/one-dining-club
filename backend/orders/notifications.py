@@ -50,8 +50,8 @@ def send_order_created_push(order_id):
     payload = _order_payload(order, "order_created")
     send_push_to_user(
         order.customer,
-        title="Comanda plasata",
-        body=f"Am primit comanda #{order.id} de la {order.restaurant.name}.",
+        title="Comanda plasata cu succes",
+        body=f"Comanda #{order.id} a fost plasata cu succes la {order.restaurant.name}.",
         data=payload,
     )
 

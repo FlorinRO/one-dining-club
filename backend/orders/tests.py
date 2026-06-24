@@ -145,6 +145,37 @@ class OrderCreateApiTests(TestCase):
         self.assertTrue(order_item["product_image"].endswith("/media/products/burger-test.jpg"))
         self.assertEqual(order_item["product_video_url"], "https://cdn.example.com/burger-test.mp4")
 
+    def test_order_create_push_notification_is_customer_facing(self):
+        with patch("orders.notifications.send_push_to_user") as mock_send:
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    "/api/orders/",
+                    {
+                        "restaurant_id": self.restaurant.id,
+                        "fulfillment_type": FulfillmentType.PICKUP,
+                        "payment_method": "cash",
+                        "items": [
+                            {
+                                "product_id": self.product.id,
+                                "quantity": 1,
+                            }
+                        ],
+                    },
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, 201)
+        order = Order.objects.order_by("-id").first()
+        customer_call = mock_send.call_args_list[0]
+        args, kwargs = customer_call
+        self.assertEqual(args[0], self.customer)
+        self.assertEqual(kwargs["title"], "Comanda plasata cu succes")
+        self.assertEqual(
+            kwargs["body"],
+            f"Comanda #{order.id} a fost plasata cu succes la {self.restaurant.name}.",
+        )
+        self.assertEqual(kwargs["data"]["order_id"], order.id)
+
     def test_restaurant_status_update_queues_customer_push_notification(self):
         order = Order.objects.create(
             customer=self.customer,
