@@ -24,6 +24,7 @@ import { RestaurantAvatarImage } from "../components/RestaurantAvatarImage";
 import { useI18n } from "../i18n/useI18n";
 import { money } from "../lib/format";
 import { resolveProductImageUri, resolveRestaurantImageUri } from "../lib/images";
+import { buildProductShareUrl } from "../lib/productLinks";
 import { HomeStackParamList } from "../navigation/types";
 import { useCartStore } from "../store/cartStore";
 import { useFavoritesStore } from "../store/favoritesStore";
@@ -274,9 +275,11 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   };
 
   const shareProduct = async () => {
+    const shareUrl = buildProductShareUrl(product.id);
     await Share.share({
       title: product.name,
-      message: `${product.name} · ${restaurant.name}\n${product.description}`,
+      message: `${product.name} · ${restaurant.name}\n${product.description}\n${shareUrl}`,
+      url: shareUrl,
     });
   };
 

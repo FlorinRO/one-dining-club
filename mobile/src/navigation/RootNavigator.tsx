@@ -1,11 +1,13 @@
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useEffect } from "react";
+import { Linking } from "react-native";
 
 import { AuthStack } from "./AuthStack";
-import { flushPendingNotificationNavigation, navigationRef } from "./navigationRef";
+import { flushPendingNotificationNavigation, navigationRef, openProductFromLink } from "./navigationRef";
 import { MainTabs } from "./MainTabs";
 import { RootStackParamList } from "./types";
+import { parseSharedProductId } from "../lib/productLinks";
 import { useAuthStore } from "../store/authStore";
 import { colors } from "../theme/colors";
 
@@ -28,10 +30,32 @@ export function RootNavigator() {
   const isGuest = useAuthStore((state) => state.isGuest);
 
   useEffect(() => {
-    if (accessToken) {
+    if (accessToken || isGuest) {
       flushPendingNotificationNavigation();
     }
-  }, [accessToken]);
+  }, [accessToken, isGuest]);
+
+  useEffect(() => {
+    const handleUrl = (url: string | null | undefined) => {
+      if (!url) return;
+      const productId = parseSharedProductId(url);
+      if (productId) {
+        void openProductFromLink(productId);
+      }
+    };
+
+    Linking.getInitialURL().then(handleUrl).catch(() => {
+      // Ignore malformed startup URLs and keep app boot resilient.
+    });
+
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      handleUrl(url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   return (
     <NavigationContainer ref={navigationRef} theme={theme} onReady={flushPendingNotificationNavigation}>

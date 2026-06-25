@@ -17,10 +17,18 @@
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "bundleIdentifier": "club.onedining.customer",
+      "associatedDomains": [
+        "applinks:api.yumzy.ro"
+      ],
       "merchantIdentifier": "merchant.com.onediningclub",
       "icon": "./assets/ios-icon-yumzy.png",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "YUMZY folosește locația pentru restaurante și livrare.",
+        "NSCameraUsageDescription": "YUMZY folosește camera pentru a face o fotografie pe care o poți atașa la comentariul sau review-ul unui produs.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "YUMZY folosește locația ta pentru a seta adresa de livrare, a localiza poziția curentă pe hartă și a afișa restaurantele disponibile în zona ta.",
+        "NSLocationAlwaysUsageDescription": "YUMZY folosește locația ta pentru a seta adresa de livrare, a localiza poziția curentă pe hartă și a afișa restaurantele disponibile în zona ta.",
+        "NSLocationWhenInUseUsageDescription": "YUMZY folosește locația ta cât timp folosești aplicația pentru a seta adresa de livrare, a localiza poziția curentă pe hartă și a afișa restaurantele disponibile în zona ta.",
+        "NSMicrophoneUsageDescription": "YUMZY poate reda conținut video cu sunet în feed-ul aplicației.",
+        "NSPhotoLibraryUsageDescription": "YUMZY folosește galeria foto pentru a alege imagini pe care le poți atașa la comentariul sau review-ul unui produs.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -45,7 +53,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "YUMZY folosește locația pentru restaurante și livrare."
+          "locationWhenInUsePermission": "YUMZY folosește locația ta cât timp folosești aplicația pentru a seta adresa de livrare, a localiza poziția curentă pe hartă și a afișa restaurantele disponibile în zona ta."
         }
       ]
     ],

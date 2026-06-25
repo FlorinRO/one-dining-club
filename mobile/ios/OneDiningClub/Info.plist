@@ -48,17 +48,17 @@
       <true/>
     </dict>
     <key>NSCameraUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your camera</string>
+    <string>YUMZY folosește camera pentru a face o fotografie pe care o poți atașa la comentariul sau review-ul unui produs.</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your location</string>
+    <string>YUMZY folosește locația ta pentru a seta adresa de livrare, a localiza poziția curentă pe hartă și a afișa restaurantele disponibile în zona ta.</string>
     <key>NSLocationAlwaysUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your location</string>
+    <string>YUMZY folosește locația ta pentru a seta adresa de livrare, a localiza poziția curentă pe hartă și a afișa restaurantele disponibile în zona ta.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>YUMZY folosește locația pentru restaurante și livrare.</string>
+    <string>YUMZY folosește locația ta cât timp folosești aplicația pentru a seta adresa de livrare, a localiza poziția curentă pe hartă și a afișa restaurantele disponibile în zona ta.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <string>YUMZY poate reda conținut video cu sunet în feed-ul aplicației.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your photos</string>
+    <string>YUMZY folosește galeria foto pentru a alege imagini pe care le poți atașa la comentariul sau review-ul unui produs.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
     <key>UILaunchStoryboardName</key>

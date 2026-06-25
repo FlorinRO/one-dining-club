@@ -585,48 +585,6 @@ class Command(BaseCommand):
                 }
             )
 
-        restaurants_payload.append(
-            {
-                "slug": "glow-market",
-                "name": "Glow Market",
-                "entity_type": Restaurant.EntityType.BRAND,
-                "is_sponsored": True,
-                "description": "Brand partener cu snack-uri proteice, băuturi funcționale și pachete promo cumpărabile direct din feed.",
-                "phone": "+40728999160",
-                "email": "hello@glow-market.test",
-                "address": "Calea Dorobanti 55",
-                "city": "Bucuresti",
-                "latitude": Decimal("44.451000"),
-                "longitude": Decimal("26.098000"),
-                "delivery_fee": Decimal("0.00"),
-                "minimum_order": Decimal("35.00"),
-                "estimated_delivery_time_min": 18,
-                "estimated_delivery_time_max": 30,
-                "rating": Decimal("4.99"),
-                "categories": ["Brand"],
-                "products": [
-                    (
-                        "Featured drops",
-                        "Protein Crunch Box",
-                        "Mix de batoane proteice, chipsuri high-protein si sosuri dulci-sarate pentru snack rapid.",
-                        Decimal("39.00"),
-                        Decimal("33.00"),
-                        8,
-                        "Arahide, soia",
-                    ),
-                    (
-                        "Featured drops",
-                        "Hydration Energy Pack",
-                        "Pachet promo cu apa vitaminizata, energy gummies si electroliti pentru antrenament sau office.",
-                        Decimal("31.00"),
-                        None,
-                        6,
-                        "Poate contine urme de fructe cu coaja",
-                    ),
-                ],
-            }
-        )
-
         demo_product_styles = ["Classic", "Spicy", "Smoky", "Crispy", "House", "Loaded", "Fresh", "Fire", "Signature", "Street"]
         demo_product_bases = [
             "Burger",

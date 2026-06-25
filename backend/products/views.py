@@ -1,5 +1,9 @@
+from django.conf import settings
 from django.db.models import Count, Exists, OuterRef
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, render
 from rest_framework import decorators, permissions, response, status, viewsets
+from rest_framework.views import APIView
 
 from core.permissions import IsRestaurantOwner
 from products.filters import ProductFilter
@@ -38,6 +42,71 @@ def with_comment_social_counts(queryset, request):
             )
         )
     return queryset
+
+
+def absolute_media_url(request, value):
+    if not value:
+        return ""
+    try:
+        url = value.url
+    except ValueError:
+        url = str(value)
+    return request.build_absolute_uri(url)
+
+
+class AppleAppSiteAssociationView(APIView):
+    authentication_classes = ()
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        return JsonResponse(
+            {
+                "applinks": {
+                    "apps": [],
+                    "details": [
+                        {
+                            "appIDs": settings.APPLE_ASSOCIATED_APP_IDS,
+                            "components": [
+                                {
+                                    "/": "/links/products/*",
+                                    "comment": "Open shared Yumzy product links in the iOS app.",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            }
+        )
+
+
+class ProductSharePageView(APIView):
+    authentication_classes = ()
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, product_id):
+        product = get_object_or_404(
+            Product.objects.select_related("restaurant"),
+            pk=product_id,
+            restaurant__is_active=True,
+        )
+        share_url = request.build_absolute_uri()
+        open_in_app_url = f"onediningclub://products/{product.id}"
+        image_url = absolute_media_url(request, product.image) or absolute_media_url(request, product.restaurant.cover_image)
+        effective_price = product.effective_price
+
+        return render(
+            request,
+            "products/share_product.html",
+            {
+                "product": product,
+                "restaurant": product.restaurant,
+                "share_url": share_url,
+                "open_in_app_url": open_in_app_url,
+                "image_url": image_url,
+                "price_display": f"{effective_price:.2f} RON",
+                "ios_app_store_url": settings.IOS_APP_STORE_URL,
+            },
+        )
 
 
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):

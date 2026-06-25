@@ -48,6 +48,7 @@ import { mockProducts } from "../data/mockData";
 import { useI18n } from "../i18n/useI18n";
 import { compactCount, productKey, statsFor } from "../lib/feedSocial";
 import { money } from "../lib/format";
+import { buildProductShareUrl } from "../lib/productLinks";
 import { buildSponsoredFeed, isExternalSponsoredPlacement, isSponsoredFeedPlacement } from "../lib/sponsoredFeed";
 import { HomeStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
@@ -308,9 +309,11 @@ export function HomeScreen({ navigation }: Props) {
   ).current;
 
   const shareProduct = useCallback(async (restaurant: Restaurant, product: Product) => {
+    const shareUrl = buildProductShareUrl(product.id);
     await Share.share({
       title: product.name,
-      message: `${product.name} de la ${restaurant.name} · ${money(product.effective_price ?? product.discount_price ?? product.price)}`,
+      message: `${product.name} de la ${restaurant.name} · ${money(product.effective_price ?? product.discount_price ?? product.price)}\n${shareUrl}`,
+      url: shareUrl,
     });
   }, []);
 

@@ -194,6 +194,8 @@ EMAIL_VERIFICATION_CONFIRM_URL = os.getenv(
     join_url(BACKEND_URL, "/verify-email/confirm/") + "?uid={uid}&token={token}",
 )
 EMAIL_VERIFICATION_APP_URL = os.getenv("EMAIL_VERIFICATION_APP_URL", "onediningclub://")
+IOS_APP_STORE_URL = os.getenv("IOS_APP_STORE_URL", "").strip()
+APPLE_DEVELOPER_TEAM_ID = os.getenv("APPLE_DEVELOPER_TEAM_ID", "").strip()
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
@@ -204,6 +206,9 @@ EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "20"))
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 SENDGRID_API_BASE_URL = os.getenv("SENDGRID_API_BASE_URL", "https://api.sendgrid.com").rstrip("/")
 APPLE_SIGN_IN_AUDIENCES = get_env_list("APPLE_SIGN_IN_AUDIENCES", "club.onedining.customer")
+APPLE_ASSOCIATED_APP_IDS = get_env_list("APPLE_ASSOCIATED_APP_IDS")
+if not APPLE_ASSOCIATED_APP_IDS and APPLE_DEVELOPER_TEAM_ID and APPLE_SIGN_IN_AUDIENCES:
+    APPLE_ASSOCIATED_APP_IDS = [f"{APPLE_DEVELOPER_TEAM_ID}.{APPLE_SIGN_IN_AUDIENCES[0]}"]
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "").strip()
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()

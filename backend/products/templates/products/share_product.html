@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ro">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ product.name }} · {{ restaurant.name }} · Yumzy</title>
+    <meta name="description" content="{{ product.description|default:restaurant.description|truncatechars:160 }}" />
+    <meta property="og:title" content="{{ product.name }} · {{ restaurant.name }}" />
+    <meta property="og:description" content="{{ product.description|default:restaurant.description|truncatechars:160 }}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="{{ share_url }}" />
+    {% if image_url %}<meta property="og:image" content="{{ image_url }}" />{% endif %}
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="{{ share_url }}" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0e0f12;
+        --panel: rgba(18, 20, 26, 0.88);
+        --panel-border: rgba(255, 255, 255, 0.08);
+        --text: #f8f8f8;
+        --muted: rgba(255, 255, 255, 0.72);
+        --accent: #ff5b4d;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top, rgba(255, 91, 77, 0.28), transparent 36%),
+          linear-gradient(180deg, #181920 0%, #0e0f12 100%);
+        color: var(--text);
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .card {
+        width: min(100%, 560px);
+        border-radius: 28px;
+        overflow: hidden;
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(14px);
+      }
+
+      .media {
+        aspect-ratio: 16 / 10;
+        background: linear-gradient(135deg, rgba(255, 91, 77, 0.35), rgba(255, 255, 255, 0.08));
+      }
+
+      .media img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .content {
+        padding: 28px;
+      }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        color: var(--muted);
+        font-size: 13px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(30px, 6vw, 42px);
+        line-height: 0.98;
+      }
+
+      .meta {
+        margin: 14px 0 0;
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      .price {
+        margin: 18px 0 0;
+        font-size: 22px;
+        font-weight: 700;
+      }
+
+      .description {
+        margin: 18px 0 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .actions {
+        display: grid;
+        gap: 12px;
+        margin-top: 26px;
+      }
+
+      .button {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 54px;
+        padding: 0 18px;
+        border-radius: 999px;
+        text-decoration: none;
+        font-weight: 700;
+      }
+
+      .button-primary {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .button-secondary {
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="media">
+        {% if image_url %}
+          <img src="{{ image_url }}" alt="{{ product.name }}" />
+        {% endif %}
+      </div>
+      <section class="content">
+        <p class="eyebrow">{{ restaurant.name }}</p>
+        <h1>{{ product.name }}</h1>
+        <p class="meta">{{ restaurant.city }}</p>
+        <p class="price">{{ price_display }}</p>
+        {% if product.description %}
+          <p class="description">{{ product.description }}</p>
+        {% elif restaurant.description %}
+          <p class="description">{{ restaurant.description }}</p>
+        {% endif %}
+        <div class="actions">
+          <a class="button button-primary" href="{{ open_in_app_url }}">Deschide în aplicație</a>
+          {% if ios_app_store_url %}
+            <a class="button button-secondary" href="{{ ios_app_store_url }}">Descarcă aplicația iOS</a>
+          {% endif %}
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

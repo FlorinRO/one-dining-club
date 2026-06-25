@@ -15,6 +15,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type ViewToken,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -38,6 +39,7 @@ type ProfileProductTileProps = {
   restaurant: Restaurant;
   index: number;
   tileSize: number;
+  shouldPlay: boolean;
   onPress: () => void;
 };
 
@@ -64,6 +66,14 @@ const compactCount = (value: number) => {
   if (value >= 1000) return `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)}K`;
   return String(value);
 };
+
+const buildRestaurantHandle = (name: string) =>
+  `@${name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")}`;
 
 const videoSourceForProduct = (product: Product): VideoSource | null =>
   product.video_url
@@ -110,12 +120,18 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
 
   const [restaurant, setRestaurant] = useState<Restaurant>(initialRestaurant);
   const [products, setProducts] = useState<Product[]>(() => getVisibleRestaurantProducts(initialProducts ?? [], initialRestaurant.id));
+  const [visibleProfileProductIds, setVisibleProfileProductIds] = useState<number[]>([]);
+  const [visibleSearchProductIds, setVisibleSearchProductIds] = useState<number[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const headerTitleProgress = useRef(new Animated.Value(0)).current;
   const searchOverlayProgress = useRef(new Animated.Value(0)).current;
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 65,
+    minimumViewTime: 120,
+  }).current;
 
   useEffect(() => {
     let isMounted = true;
@@ -149,9 +165,17 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
     );
   }, [profileProducts, searchQuery]);
 
+  useEffect(() => {
+    setVisibleProfileProductIds((current) => current.filter((id) => profileProducts.some((product) => product.id === id)));
+  }, [profileProducts]);
+
+  useEffect(() => {
+    setVisibleSearchProductIds((current) => current.filter((id) => filteredProducts.some((product) => product.id === id)));
+  }, [filteredProducts]);
+
   const tileSize = Math.floor((width - PROFILE_GAP * (PROFILE_COLUMNS - 1)) / PROFILE_COLUMNS);
   const likeCount = profileProducts.reduce((total, product) => total + productViews(restaurant, product), 0);
-  const restaurantHandle = `@${restaurant.slug || restaurant.name.toLowerCase().replace(/\s+/g, "")}`;
+  const restaurantHandle = buildRestaurantHandle(restaurant.name);
   const restaurantBackdropUri = resolveRestaurantImageUri(restaurant.logo || restaurant.cover_image, restaurant.id, restaurant);
   const isBrand = isBrandProfile(restaurant);
   const isSponsored = isSponsoredProfile(restaurant);
@@ -201,11 +225,42 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
         restaurant={restaurant}
         index={index}
         tileSize={tileSize}
+        shouldPlay={visibleProfileProductIds.includes(item.id)}
         onPress={() => navigation.navigate("ProductDetails", { restaurant, product: item })}
       />
     ),
-    [navigation, restaurant, tileSize],
+    [navigation, restaurant, tileSize, visibleProfileProductIds],
   );
+
+  const renderSearchProduct = useCallback(
+    ({ item, index }: { item: Product; index: number }) => (
+      <ProfileProductTile
+        product={item}
+        restaurant={restaurant}
+        index={index}
+        tileSize={tileSize}
+        shouldPlay={visibleSearchProductIds.includes(item.id)}
+        onPress={() => navigation.navigate("ProductDetails", { restaurant, product: item })}
+      />
+    ),
+    [navigation, restaurant, tileSize, visibleSearchProductIds],
+  );
+
+  const handleProfileViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: Array<ViewToken> }) => {
+      setVisibleProfileProductIds(
+        viewableItems.map((viewableItem) => Number(viewableItem.item?.id)).filter((id) => Number.isFinite(id)),
+      );
+    },
+  ).current;
+
+  const handleSearchViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: Array<ViewToken> }) => {
+      setVisibleSearchProductIds(
+        viewableItems.map((viewableItem) => Number(viewableItem.item?.id)).filter((id) => Number.isFinite(id)),
+      );
+    },
+  ).current;
 
   const listHeader = (
     <View style={[styles.profileHeader, { paddingTop: insets.top + 76 }]}>
@@ -225,7 +280,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
           <Text numberOfLines={1} style={styles.restaurantMeta}>
             {isBrand
               ? tr("Brand partner · produse promovate disponibile la comandă", "Partner brand · promoted products available to order")
-              : `${Number(restaurant.rating).toFixed(1)} ★ · ${restaurant.estimated_delivery_time_min}-${restaurant.estimated_delivery_time_max} min · ${money(restaurant.delivery_fee)} livrare`}
+              : `${restaurant.estimated_delivery_time_min}-${restaurant.estimated_delivery_time_max} min · ${money(restaurant.delivery_fee)} livrare`}
           </Text>
         </View>
       </View>
@@ -259,11 +314,16 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
         data={profileProducts}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderProduct}
+        initialNumToRender={9}
+        maxToRenderPerBatch={9}
+        windowSize={5}
         numColumns={PROFILE_COLUMNS}
         ListHeaderComponent={listHeader}
         contentContainerStyle={[styles.gridContent, { paddingBottom: insets.bottom + 104 }]}
         columnWrapperStyle={styles.gridRow}
         showsVerticalScrollIndicator={false}
+        viewabilityConfig={viewabilityConfig}
+        onViewableItemsChanged={handleProfileViewableItemsChanged}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: headerTitleProgress } } }],
           { useNativeDriver: true, listener: handleScroll },
@@ -367,7 +427,10 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
           <FlatList
             data={filteredProducts}
             keyExtractor={(item) => `search-${item.id}`}
-            renderItem={renderProduct}
+            renderItem={renderSearchProduct}
+            initialNumToRender={9}
+            maxToRenderPerBatch={9}
+            windowSize={5}
             numColumns={PROFILE_COLUMNS}
             ListHeaderComponent={(
               <View style={styles.searchResultHeader}>
@@ -381,6 +444,8 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
             keyboardDismissMode="interactive"
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            viewabilityConfig={viewabilityConfig}
+            onViewableItemsChanged={handleSearchViewableItemsChanged}
           />
         </Animated.View>
       ) : null}
@@ -437,8 +502,9 @@ function VideoSkeletonBuffer() {
   );
 }
 
-function ProfileProductTile({ product, restaurant, index, tileSize, onPress }: ProfileProductTileProps) {
-  const videoSource = useMemo(() => videoSourceForProduct(product), [product]);
+function ProfileProductTile({ product, restaurant, index, tileSize, shouldPlay, onPress }: ProfileProductTileProps) {
+  const hasVideo = Boolean(product.video_url);
+  const videoSource = useMemo(() => (shouldPlay ? videoSourceForProduct(product) : null), [product, shouldPlay]);
   const [hasRenderedFrame, setHasRenderedFrame] = useState(false);
   const price = product.effective_price ?? product.discount_price ?? product.price;
   const posterUri = useMemo(
@@ -478,21 +544,23 @@ function ProfileProductTile({ product, restaurant, index, tileSize, onPress }: P
 
   return (
     <Pressable onPress={onPress} style={[styles.tile, { width: tileSize, height: Math.round(tileSize * 1.38) }]}>
-      {videoSource ? (
+      {hasVideo ? (
         <>
-          <VideoView
-            player={player}
-            style={styles.tileVideo}
-            contentFit="cover"
-            nativeControls={false}
-            fullscreenOptions={{ enable: false }}
-            allowsPictureInPicture={false}
-            playsInline
-            pointerEvents="none"
-            surfaceType="textureView"
-            useExoShutter={false}
-            onFirstFrameRender={() => setHasRenderedFrame(true)}
-          />
+          {videoSource ? (
+            <VideoView
+              player={player}
+              style={styles.tileVideo}
+              contentFit="cover"
+              nativeControls={false}
+              fullscreenOptions={{ enable: false }}
+              allowsPictureInPicture={false}
+              playsInline
+              pointerEvents="none"
+              surfaceType="textureView"
+              useExoShutter={false}
+              onFirstFrameRender={() => setHasRenderedFrame(true)}
+            />
+          ) : null}
           {!hasRenderedFrame ? <VideoSkeletonBuffer /> : null}
         </>
       ) : (
