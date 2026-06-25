@@ -1071,6 +1071,7 @@ function renderHoursRows(hours) {
 
 function renderProductsView() {
   const productsWithVideo = state.products.filter((product) => product.video_url);
+  const productsWithoutVideo = state.products.filter((product) => !product.video_url);
   return `
     <section class="panel product-workbench">
       <div class="section-header">
@@ -1142,14 +1143,14 @@ function renderProductsView() {
     </section>
     <div class="section-header video-list-header">
       <div>
-        <h2>Video-uri existente</h2>
-        <small>Apar doar produsele cu video pentru restaurantul curent.</small>
+        <h2>Produse existente</h2>
+        <small>Produsele fără video rămân vizibile aici ca să le poți edita sau șterge.</small>
       </div>
-      <span class="status-chip pending">${productsWithVideo.length} video</span>
+      <span class="status-chip pending">${state.products.length} produse</span>
     </div>
     <section class="products-grid">
-      ${productsWithVideo.length
-        ? productsWithVideo
+      ${state.products.length
+        ? state.products
             .map(
               (product) => `
                 <article class="product-card">
@@ -1159,6 +1160,10 @@ function renderProductsView() {
                       <h3>${escapeHtml(product.name)}</h3>
                       <small>${escapeHtml(product.category_name || "Fără categorie")}</small>
                     </div>
+                    <span class="status-chip ${product.video_url ? "delivered" : "pending"}">
+                      <i class="${product.video_url ? "ri-video-on-line" : "ri-video-off-line"}" aria-hidden="true"></i>
+                      ${product.video_url ? "Are video" : "Fără video"}
+                    </span>
                   </div>
                   <div class="price-line">
                     ${product.discount_price ? `<span class="original-price">${product.price} RON</span>` : `${product.price} RON`}
@@ -1173,8 +1178,15 @@ function renderProductsView() {
               `,
             )
             .join("")
-        : `<article class="empty-card"><h3>Niciun video</h3><small>Adaugă un produs cu fișier video sau Video URL.</small></article>`}
+        : `<article class="empty-card"><h3>Niciun produs</h3><small>Adaugă un produs nou pentru restaurantul curent.</small></article>`}
     </section>
+    <div class="section-header video-list-header">
+      <div>
+        <h2>Rezumat video</h2>
+        <small>Separăm produsele complete de cele care mai au nevoie de video.</small>
+      </div>
+      <span class="status-chip pending">${productsWithVideo.length} cu video / ${productsWithoutVideo.length} fără video</span>
+    </div>
   `;
 }
 
