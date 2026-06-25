@@ -1608,7 +1608,28 @@ img {
   overflow: hidden;
   aspect-ratio: 16 / 10;
   border-radius: 22px;
-  background: var(--dash-surface-soft);
+  background:
+    linear-gradient(135deg, rgba(13, 27, 18, 0.88), rgba(33, 58, 42, 0.72)),
+    var(--dash-surface-soft);
+}
+
+.video-list-header {
+  margin: 18px 0 12px;
+  color: var(--dash-ink);
+}
+
+.product-media video,
+.product-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.product-media video {
+  background:
+    linear-gradient(135deg, rgba(13, 27, 18, 0.88), rgba(33, 58, 42, 0.72)),
+    var(--dash-surface-soft);
 }
 
 .play-badge {
@@ -1640,6 +1661,20 @@ img {
   letter-spacing: -0.03em;
 }
 
+.price-line .promo-price {
+  margin-left: 8px;
+  color: #d9342b;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.price-line .original-price {
+  color: var(--dash-ink);
+  text-decoration-line: line-through;
+  text-decoration-color: #d9342b;
+  text-decoration-thickness: 2px;
+}
+
 .status-chip {
   display: inline-flex;
   align-items: center;
@@ -1662,6 +1697,12 @@ img {
 .status-chip.delivered {
   color: #17652f;
   background: #dff8e4;
+}
+
+.dashboard-notice {
+  padding: 12px 18px;
+  font-size: 17px;
+  font-weight: 800;
 }
 
 .status-chip.cancelled,

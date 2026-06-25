@@ -580,7 +580,7 @@ function renderDashboard() {
           </div>
           <div class="top-actions">
             ${state.loading && !isInitialDashboardLoading ? `<span class="status-chip">Se încarcă...</span>` : ""}
-            ${state.notice ? `<span class="status-chip delivered">${escapeHtml(state.notice)}</span>` : ""}
+            ${state.notice ? `<span class="status-chip delivered dashboard-notice">${escapeHtml(state.notice)}</span>` : ""}
             ${state.error ? `<span class="status-chip cancelled">${escapeHtml(state.error)}</span>` : ""}
           </div>
         </div>
@@ -1070,6 +1070,7 @@ function renderHoursRows(hours) {
 }
 
 function renderProductsView() {
+  const productsWithVideo = state.products.filter((product) => product.video_url);
   return `
     <section class="panel product-workbench">
       <div class="section-header">
@@ -1126,21 +1127,11 @@ function renderProductsView() {
           </div>
           <div class="form-section-fields">
             <div class="split">
-              <label class="field"><span>Video URL</span><input type="url" name="video_url" placeholder="https://..." /></label>
+              <label class="field"><span>Video produs</span><input type="file" name="video_file" accept="video/mp4,video/quicktime,video/webm,video/x-m4v" /></label>
               <label class="field"><span>Audio URL</span><input type="url" name="audio_url" placeholder="https://..." /></label>
             </div>
+            <label class="field"><span>Video URL</span><input type="url" name="video_url" placeholder="https://..." /></label>
             <label class="field"><span>Imagine produs</span><input type="file" name="image" accept="image/*" /></label>
-          </div>
-        </div>
-        <div class="form-section is-compact">
-          <div class="form-section-title">
-            <strong>Status</strong>
-            <span>Controlează vizibilitatea produsului.</span>
-          </div>
-          <div class="check-card-grid">
-            <label class="checkbox-field"><input type="checkbox" name="is_available" checked /><span>Disponibil</span></label>
-            <label class="checkbox-field"><input type="checkbox" name="is_popular" /><span>Popular</span></label>
-            <label class="checkbox-field"><input type="checkbox" name="has_audio" checked /><span>Are audio</span></label>
           </div>
         </div>
         <div class="button-row">
@@ -1149,9 +1140,16 @@ function renderProductsView() {
         </div>
       </form>
     </section>
+    <div class="section-header video-list-header">
+      <div>
+        <h2>Video-uri existente</h2>
+        <small>Apar doar produsele cu video pentru restaurantul curent.</small>
+      </div>
+      <span class="status-chip pending">${productsWithVideo.length} video</span>
+    </div>
     <section class="products-grid">
-      ${state.products.length
-        ? state.products
+      ${productsWithVideo.length
+        ? productsWithVideo
             .map(
               (product) => `
                 <article class="product-card">
@@ -1161,15 +1159,12 @@ function renderProductsView() {
                       <h3>${escapeHtml(product.name)}</h3>
                       <small>${escapeHtml(product.category_name || "Fără categorie")}</small>
                     </div>
-                    <span class="status-chip ${product.is_available ? "delivered" : "cancelled"}">${product.is_available ? "Disponibil" : "Indisponibil"}</span>
                   </div>
-                  <div class="price-line">${product.price} RON ${product.discount_price ? `<small>promo ${product.discount_price} RON</small>` : ""}</div>
+                  <div class="price-line">
+                    ${product.discount_price ? `<span class="original-price">${product.price} RON</span>` : `${product.price} RON`}
+                    ${product.discount_price ? `<small class="promo-price">promo ${product.discount_price} RON</small>` : ""}
+                  </div>
                   <p>${escapeHtml(product.description || "Fără descriere.")}</p>
-                  <div class="pill-row">
-                    ${product.video_url ? `<a class="pill" href="${product.video_url}" target="_blank" rel="noreferrer">Video</a>` : ""}
-                    ${product.audio_url ? `<a class="pill" href="${product.audio_url}" target="_blank" rel="noreferrer">Audio</a>` : ""}
-                    ${product.is_popular ? `<span class="pill">Popular</span>` : ""}
-                  </div>
                   <div class="button-row">
                     <button class="outline-button" type="button" data-edit-product="${product.id}">Editează</button>
                     <button class="ghost-button" type="button" data-delete-product="${product.id}">Șterge</button>
@@ -1178,12 +1173,20 @@ function renderProductsView() {
               `,
             )
             .join("")
-        : `<article class="empty-card"><h3>Niciun produs</h3><small>Adaugă primul produs și atașează-i media.</small></article>`}
+        : `<article class="empty-card"><h3>Niciun video</h3><small>Adaugă un produs cu fișier video sau Video URL.</small></article>`}
     </section>
   `;
 }
 
 function renderProductMedia(product) {
+  if (product.video_url) {
+    return `
+      <div class="product-media">
+        <video src="${resolveMediaUrl(product.video_url)}" ${product.image ? `poster="${resolveMediaUrl(product.image)}"` : ""} controls muted playsinline preload="auto" data-video-preview></video>
+      </div>
+    `;
+  }
+
   if (product.image) {
     return `
       <div class="product-media">
@@ -1335,6 +1338,7 @@ function bindEvents() {
   bindPhoneInputs();
   bindOperationalControls();
   bindFallbackImages();
+  bindVideoPreviews();
 
   document.querySelector("#product-form")?.addEventListener("submit", handleProductSubmit);
   document.querySelector("#cancel-product-edit")?.addEventListener("click", resetProductEditing);
@@ -1407,6 +1411,21 @@ function bindFallbackImages() {
   });
 }
 
+function bindVideoPreviews() {
+  document.querySelectorAll("video[data-video-preview]").forEach((video) => {
+    const revealPreview = () => {
+      video.classList.add("has-preview");
+      if (video.readyState >= 2) return;
+      try {
+        video.currentTime = Math.min(0.1, video.duration || 0.1);
+      } catch {}
+    };
+    video.addEventListener("loadedmetadata", revealPreview, { once: true });
+    video.addEventListener("loadeddata", () => video.classList.add("has-preview"), { once: true });
+    video.load();
+  });
+}
+
 function hydrateEditingForms() {
   if (state.editingProductId) {
     const product = state.products.find((item) => item.id === state.editingProductId);
@@ -1424,9 +1443,7 @@ function hydrateEditingForms() {
         getField(form, "allergens").value = product.allergens || "";
         getField(form, "audio_url").value = product.audio_url || "";
         getField(form, "video_url").value = product.video_url || "";
-        getField(form, "is_available").checked = Boolean(product.is_available);
-        getField(form, "is_popular").checked = Boolean(product.is_popular);
-        getField(form, "has_audio").checked = Boolean(product.has_audio);
+        getField(form, "video_file").value = "";
       }
     }
   }
@@ -1600,31 +1617,64 @@ async function handleProductSubmit(event) {
   appendIfValue(formData, "allergens", getField(form, "allergens").value);
   appendIfValue(formData, "audio_url", getField(form, "audio_url").value);
   appendIfValue(formData, "video_url", getField(form, "video_url").value);
-  formData.append("is_available", String(getField(form, "is_available").checked));
-  formData.append("is_popular", String(getField(form, "is_popular").checked));
-  formData.append("has_audio", String(getField(form, "has_audio").checked));
+  const currentProduct = state.products.find((item) => item.id === state.editingProductId);
+  formData.append("is_available", String(currentProduct?.is_available ?? true));
+  formData.append("is_popular", String(currentProduct?.is_popular ?? false));
+  formData.append("has_audio", String(currentProduct?.has_audio ?? true));
   const imageField = getField(form, "image");
   if (imageField.files[0]) formData.append("image", imageField.files[0]);
+  const videoField = getField(form, "video_file");
+  const videoUrl = getField(form, "video_url").value.trim();
+  const hasUploadedVideo = Boolean(videoField.files[0]);
+  if (hasUploadedVideo) formData.append("video_file", videoField.files[0]);
+  if (!state.editingProductId && !hasUploadedVideo && !videoUrl) {
+    setError("Adaugă un fișier video sau un Video URL înainte să salvezi produsul.");
+    return;
+  }
 
   try {
-    if (state.editingProductId) {
-      await apiFetch(`restaurant-owner/products/${state.editingProductId}/`, {
+    const isEditingProduct = Boolean(state.editingProductId);
+    state.loading = true;
+    state.error = "";
+    state.notice = "";
+    render();
+
+    let savedProduct;
+    if (isEditingProduct) {
+      savedProduct = await apiFetch(`restaurant-owner/products/${state.editingProductId}/`, {
         method: "PATCH",
         body: formData,
         headers: {},
       });
     } else {
-      await apiFetch("restaurant-owner/products/", {
+      savedProduct = await apiFetch("restaurant-owner/products/", {
         method: "POST",
         body: formData,
         headers: {},
       });
     }
+    if (!savedProduct?.video_url) {
+      if (!isEditingProduct && savedProduct?.id) {
+        try {
+          await apiFetch(`restaurant-owner/products/${savedProduct.id}/`, { method: "DELETE" });
+        } catch {}
+      }
+      state.loading = false;
+      await reloadProducts();
+      render();
+      setError(
+        isEditingProduct
+          ? "Produsul a fost salvat, dar serverul nu a atașat video-ul. Verifică upload-ul sau adaugă un Video URL."
+          : "Produsul nu a fost adăugat. Serverul nu a atașat video-ul; reîncarcă dashboard-ul sau verifică backend-ul folosit.",
+      );
+      return;
+    }
     resetProductEditing(false);
     await reloadProducts();
     render();
-    setNotice("Produsul a fost salvat.");
+    setNotice(isEditingProduct ? "Produsul a fost salvat." : "Produsul a fost adăugat.");
   } catch (error) {
+    state.loading = false;
     setError(error.message);
   }
 }
@@ -1632,6 +1682,10 @@ async function handleProductSubmit(event) {
 function startProductEdit(productId) {
   state.editingProductId = productId;
   render();
+  requestAnimationFrame(() => {
+    document.querySelector(".shell-main")?.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
 }
 
 function resetProductEditing(shouldRender = true) {

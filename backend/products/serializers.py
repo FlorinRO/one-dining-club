@@ -1,3 +1,7 @@
+from pathlib import Path
+
+from django.core.files.storage import default_storage
+from django.utils.text import get_valid_filename
 from rest_framework import serializers
 
 from menus.models import ProductCategory
@@ -12,6 +16,12 @@ def display_name_for_user(user):
     if user.full_name:
         return user.full_name
     return user.email.split("@", 1)[0] if user.email else "user"
+
+
+def store_product_video(video_file):
+    safe_name = get_valid_filename(Path(video_file.name).name or "product-video")
+    stored_path = default_storage.save(f"products/videos/{safe_name}", video_file)
+    return default_storage.url(stored_path)
 
 
 class ProductOptionSerializer(serializers.ModelSerializer):
@@ -107,6 +117,7 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
     )
     restaurant_name = serializers.CharField(source="restaurant.name", read_only=True)
     category_name = serializers.CharField(source="category.name", read_only=True)
+    video_file = serializers.FileField(write_only=True, required=False, allow_empty_file=False)
     likes_count = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
 
@@ -126,6 +137,7 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
             "audio_url",
             "has_audio",
             "video_url",
+            "video_file",
             "price",
             "discount_price",
             "is_available",
@@ -151,6 +163,20 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
         self.fields["category_id"].queryset = ProductCategory.objects.filter(restaurant_id=primary_restaurant_id)
 
     def validate(self, attrs):
+        video_file = attrs.get("video_file")
+        if video_file:
+            content_type = getattr(video_file, "content_type", "") or ""
+            extension = Path(video_file.name).suffix.lower()
+            allowed_extensions = {".mp4", ".mov", ".m4v", ".webm"}
+            if content_type and not content_type.startswith("video/"):
+                raise serializers.ValidationError({"video_file": "Upload a valid video file."})
+            if extension not in allowed_extensions:
+                raise serializers.ValidationError({"video_file": "Supported video formats: MP4, MOV, M4V, WEBM."})
+        elif self.instance is None and not attrs.get("video_url"):
+            raise serializers.ValidationError(
+                {"video_file": "Adaugă un fișier video sau un Video URL pentru produse noi."}
+            )
+
         restaurant = attrs.get("restaurant") or getattr(self.instance, "restaurant", None)
         category = attrs.get("category")
 
@@ -163,6 +189,18 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
         if category and category.restaurant_id != attrs.get("restaurant", restaurant).id:
             raise serializers.ValidationError({"category_id": "Category must belong to the selected restaurant."})
         return attrs
+
+    def create(self, validated_data):
+        video_file = validated_data.pop("video_file", None)
+        if video_file:
+            validated_data["video_url"] = store_product_video(video_file)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        video_file = validated_data.pop("video_file", None)
+        if video_file:
+            validated_data["video_url"] = store_product_video(video_file)
+        return super().update(instance, validated_data)
 
     def get_likes_count(self, obj):
         annotated_count = getattr(obj, "likes_count", None)
