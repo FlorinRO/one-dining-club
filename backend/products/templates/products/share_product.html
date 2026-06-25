@@ -238,31 +238,40 @@
       }
 
       .actions {
-        display: grid;
+        display: flex;
+        justify-content: flex-start;
+        flex-wrap: wrap;
         gap: 12px;
         margin-top: 26px;
+        overflow: visible;
       }
 
       .button {
         display: inline-flex;
         justify-content: center;
         align-items: center;
-        min-height: 54px;
-        padding: 0 18px;
-        border-radius: 999px;
+        min-height: 58px;
+        min-width: 220px;
+        padding: 0 22px;
+        border: 1px solid transparent;
+        border-radius: 16px;
         text-decoration: none;
         font-weight: 600;
+        font-size: 1rem;
+        gap: 14px;
       }
 
       .button-primary {
-        border: 2px solid var(--accent);
-        background: transparent;
-        color: var(--accent);
+        color: #071007;
+        background: linear-gradient(135deg, var(--accent), #b8ffd0);
+        box-shadow: 0 20px 60px rgba(103, 212, 138, 0.25);
       }
 
-      .button-secondary {
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        color: var(--text);
+      .apple-logo {
+        width: 32px;
+        height: 32px;
+        fill: currentColor;
+        flex: 0 0 auto;
       }
 
       @media (min-width: 1024px) {
@@ -359,19 +368,49 @@
             <p class="description">{{ restaurant.description }}</p>
           {% endif %}
           <div class="actions">
-            <a class="button button-primary" href="{{ open_in_app_url }}">Deschide in aplicatia YUMZY</a>
-            {% if ios_app_store_url %}
-              <a class="button button-secondary" href="{{ ios_app_store_url }}">Descarcă aplicația iOS</a>
-            {% endif %}
+            <a class="button button-primary" href="{{ open_in_app_url }}" data-open-app-button>
+              <span>Deschide YUMZY</span>
+              <svg class="apple-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M16.365 12.43c.02 2.23 1.956 2.971 1.978 2.981-.016.052-.309 1.062-1.018 2.103-.613.9-1.25 1.798-2.252 1.817-.985.018-1.302-.584-2.43-.584-1.128 0-1.48.566-2.411.603-.965.037-1.7-.968-2.319-1.866-1.266-1.833-2.234-5.182-.935-7.437.644-1.119 1.794-1.827 3.041-1.846.948-.018 1.842.64 2.43.64.587 0 1.689-.792 2.846-.676.484.02 1.843.196 2.715 1.472-.07.044-1.622.948-1.645 2.793zM14.57 6.565c.514-.623.862-1.49.768-2.355-.741.03-1.638.494-2.17 1.117-.478.553-.897 1.435-.783 2.28.827.064 1.671-.42 2.185-1.042z"/>
+              </svg>
+            </a>
           </div>
         </section>
       </main>
     </div>
     <script>
       (() => {
+        const openAppButton = document.querySelector("[data-open-app-button]");
         const video = document.querySelector("[data-share-video]");
         const image = document.querySelector("[data-share-image]");
         const fallback = document.querySelector("[data-media-fallback]");
+        const appStoreUrl = "{{ ios_app_store_url|default:share_url|escapejs }}";
+        const openInAppUrl = "{{ open_in_app_url|escapejs }}";
+
+        if (openAppButton) {
+          openAppButton.addEventListener("click", (event) => {
+            event.preventDefault();
+
+            const start = Date.now();
+            const fallbackTimer = window.setTimeout(() => {
+              if (document.visibilityState === "visible" && Date.now() - start < 1800) {
+                window.location.href = appStoreUrl;
+              }
+            }, 1200);
+
+            const clearTimer = () => {
+              window.clearTimeout(fallbackTimer);
+              document.removeEventListener("visibilitychange", clearTimer);
+              window.removeEventListener("pagehide", clearTimer);
+              window.removeEventListener("blur", clearTimer);
+            };
+
+            document.addEventListener("visibilitychange", clearTimer, { once: true });
+            window.addEventListener("pagehide", clearTimer, { once: true });
+            window.addEventListener("blur", clearTimer, { once: true });
+            window.location.href = openInAppUrl;
+          });
+        }
 
         const showFallback = () => {
           if (fallback) fallback.classList.remove("is-hidden");
