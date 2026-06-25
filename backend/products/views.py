@@ -96,6 +96,7 @@ class ProductSharePageView(APIView):
         share_url = request.build_absolute_uri()
         open_in_app_url = f"onediningclub://products/{product.id}"
         image_url = absolute_media_url(request, product.image) or absolute_media_url(request, product.restaurant.cover_image)
+        restaurant_logo_url = absolute_media_url(request, product.restaurant.logo)
         video_url = product.video_url or ""
         effective_price = product.effective_price
         site_url = settings.SITE_URL.rstrip("/")
@@ -113,6 +114,7 @@ class ProductSharePageView(APIView):
                 "share_url": share_url,
                 "open_in_app_url": open_in_app_url,
                 "image_url": image_url,
+                "restaurant_logo_url": restaurant_logo_url,
                 "video_url": video_url,
                 "og_image_url": image_url or brand_og_image_url,
                 "brand_og_image_url": brand_og_image_url,

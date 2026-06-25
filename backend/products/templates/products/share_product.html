@@ -31,6 +31,7 @@
         --muted: rgba(255, 255, 255, 0.72);
         --accent: #22c55e;
         --surface-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+        --brand-green: #2ed573;
       }
 
       * {
@@ -63,8 +64,83 @@
         inset: 0;
         z-index: -1;
         background:
-          radial-gradient(circle at top, rgba(229, 57, 53, 0.24), transparent 34%),
+          radial-gradient(circle at top, rgba(46, 213, 115, 0.22), transparent 34%),
           linear-gradient(180deg, rgba(7, 8, 7, 0.62) 0%, rgba(7, 8, 7, 0.88) 100%);
+      }
+
+      .site-shell {
+        width: 100%;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .top-logo {
+        position: fixed;
+        top: 18px;
+        left: 18px;
+        z-index: 2;
+      }
+
+      .brand {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-start;
+        line-height: 1;
+        color: #fff;
+        text-decoration: none;
+      }
+
+      .logo-word {
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        color: #fff;
+      }
+
+      .brand-large .logo-word {
+        font-size: 42px;
+      }
+
+      .brand-large .logo-line i,
+      .brand-large .logo-line b {
+        height: 5px;
+      }
+
+      .brand-large .logo-line i {
+        width: 112px;
+      }
+
+      .brand-large .logo-line b {
+        width: 32px;
+      }
+
+      .logo-word span {
+        color: var(--brand-green);
+      }
+
+      .logo-line {
+        display: flex;
+        align-items: center;
+        margin-top: 2px;
+      }
+
+      .logo-line i,
+      .logo-line b {
+        display: block;
+        border-radius: 0;
+        height: 3px;
+      }
+
+      .logo-line i {
+        width: 86px;
+        background: var(--brand-green);
+      }
+
+      .logo-line b {
+        width: 27px;
+        background: #fff;
       }
 
       .card {
@@ -109,7 +185,7 @@
         position: absolute;
         inset: 0;
         background:
-          radial-gradient(circle at top, rgba(229, 57, 53, 0.32), transparent 34%),
+          radial-gradient(circle at top, rgba(46, 213, 115, 0.24), transparent 34%),
           linear-gradient(180deg, rgba(19, 23, 22, 0.68) 0%, rgba(8, 12, 10, 0.88) 100%);
       }
 
@@ -130,7 +206,7 @@
       }
 
       .eyebrow {
-        margin: 0 0 10px;
+        margin: 0 0 14px;
         color: var(--muted);
         font-size: 13px;
         letter-spacing: 0.12em;
@@ -179,13 +255,57 @@
       }
 
       .button-primary {
-        background: var(--accent);
-        color: #fff;
+        border: 2px solid var(--accent);
+        background: transparent;
+        color: var(--accent);
       }
 
       .button-secondary {
         border: 1px solid rgba(255, 255, 255, 0.16);
         color: var(--text);
+      }
+
+      @media (min-width: 1024px) {
+        html,
+        body {
+          height: 100%;
+          overflow: hidden;
+        }
+
+        .site-shell {
+          height: 100vh;
+          overflow: hidden;
+        }
+      }
+
+      @media (max-width: 1023px) {
+        .top-logo {
+          position: static;
+          justify-content: center;
+          margin-bottom: 18px;
+          text-align: center;
+        }
+
+        .brand-large,
+        .top-logo .brand {
+          align-items: center;
+        }
+
+        .brand-large .logo-word {
+          font-size: 36px;
+        }
+
+        .logo-word {
+          font-size: 22px;
+        }
+
+        .logo-line i {
+          width: 64px;
+        }
+
+        .logo-line b {
+          width: 21px;
+        }
       }
     </style>
   </head>
@@ -194,44 +314,51 @@
       <source src="{{ landing_background_video_url }}" type="video/mp4" />
     </video>
     <div class="bg-video-overlay" aria-hidden="true"></div>
-    <main class="card">
-      <div class="media">
-        <div class="media-fallback{% if image_url or video_url %} is-hidden{% endif %}" data-media-fallback></div>
-        {% if video_url %}
-          <video
-            src="{{ video_url }}"
-            poster="{{ image_url }}"
-            muted
-            autoplay
-            loop
-            playsinline
-            preload="auto"
-            class="is-hidden"
-            data-share-video
-          ></video>
-        {% endif %}
-        {% if image_url %}
-          <img src="{{ image_url }}" alt="" loading="eager" data-share-image{% if video_url %} class="is-hidden"{% endif %} />
-        {% endif %}
-      </div>
-      <section class="content">
-        <p class="eyebrow">{{ restaurant.name }}</p>
-        <h1>{{ product.name }}</h1>
-        <p class="meta">{{ restaurant.city }}</p>
-        <p class="price">{{ price_display }}</p>
-        {% if product.description %}
-          <p class="description">{{ product.description }}</p>
-        {% elif restaurant.description %}
-          <p class="description">{{ restaurant.description }}</p>
-        {% endif %}
-        <div class="actions">
-          <a class="button button-primary" href="{{ open_in_app_url }}">Deschide in aplicatia YUMZY</a>
-          {% if ios_app_store_url %}
-            <a class="button button-secondary" href="{{ ios_app_store_url }}">Descarcă aplicația iOS</a>
+    <div class="site-shell">
+      <header class="top-logo" aria-label="Logo YUMZY">
+        <a class="brand brand-large" href="{{ share_url }}" aria-label="YUMZY">
+          <span class="logo-word">YUMZ<span>Y</span></span>
+          <span class="logo-line" aria-hidden="true"><i></i><b></b></span>
+        </a>
+      </header>
+
+      <main class="card">
+        <div class="media">
+          <div class="media-fallback{% if image_url or video_url %} is-hidden{% endif %}" data-media-fallback></div>
+          {% if video_url %}
+            <video
+              src="{{ video_url }}"
+              {% if image_url %}poster="{{ image_url }}"{% endif %}
+              muted
+              autoplay
+              loop
+              playsinline
+              preload="auto"
+              class="is-hidden"
+              data-share-video
+            ></video>
+          {% elif image_url %}
+            <img src="{{ image_url }}" alt="" loading="eager" data-share-image />
           {% endif %}
         </div>
-      </section>
-    </main>
+        <section class="content">
+          <p class="eyebrow">{{ restaurant.name }}</p>
+          <h1>{{ product.name }}</h1>
+          <p class="price">{{ price_display }}</p>
+          {% if product.description %}
+            <p class="description">{{ product.description }}</p>
+          {% elif restaurant.description %}
+            <p class="description">{{ restaurant.description }}</p>
+          {% endif %}
+          <div class="actions">
+            <a class="button button-primary" href="{{ open_in_app_url }}">Deschide in aplicatia YUMZY</a>
+            {% if ios_app_store_url %}
+              <a class="button button-secondary" href="{{ ios_app_store_url }}">Descarcă aplicația iOS</a>
+            {% endif %}
+          </div>
+        </section>
+      </main>
+    </div>
     <script>
       (() => {
         const video = document.querySelector("[data-share-video]");
