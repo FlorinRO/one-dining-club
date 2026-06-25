@@ -115,7 +115,7 @@ class RestaurantOwnerProductViewSet(viewsets.ModelViewSet):
         queryset = Product.objects.select_related("restaurant", "category").filter(
             restaurant__owner=self.request.user,
             restaurant_id=primary_restaurant_id,
-        )
+        ).order_by("category__sort_order", "id")
         return with_product_social_counts(queryset, self.request)
 
 

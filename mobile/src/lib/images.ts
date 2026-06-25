@@ -12,6 +12,7 @@ type RestaurantImageContext = {
   name?: string;
   slug?: string;
   description?: string;
+  updated_at?: string;
   categories?: Array<{ name?: string }>;
 };
 
@@ -189,6 +190,11 @@ function hashText(value: string) {
   return [...value].reduce((total, char) => total + char.charCodeAt(0), 0);
 }
 
+function appendImageVersion(uri: string, version?: string) {
+  if (!version || uri.startsWith("data:")) return uri;
+  return `${uri}${uri.includes("?") ? "&" : "?"}v=${encodeURIComponent(version)}`;
+}
+
 function buildRestaurantContextText(context?: RestaurantImageContext) {
   return normalizeImageText(
     [
@@ -259,12 +265,11 @@ export function resolveImageUri(uri: string | null | undefined, fallback: string
 }
 
 export function resolveRestaurantImageUri(uri: string | null | undefined, restaurantId?: number, context?: RestaurantImageContext) {
-  const override = findRestaurantAvatarOverride({ ...context, id: context?.id ?? restaurantId });
-  if (override) return override;
-
   const fallback = buildRestaurantImageFallback({ ...context, id: context?.id ?? restaurantId });
-  if (uri) return resolveImageUri(uri, fallback);
-  return fallback;
+  if (uri) return appendImageVersion(resolveImageUri(uri, fallback), context?.updated_at);
+
+  const override = findRestaurantAvatarOverride({ ...context, id: context?.id ?? restaurantId });
+  return override ?? fallback;
 }
 
 export function resolveRestaurantAvatarFallbackUri(restaurant: RestaurantImageContext) {
@@ -275,8 +280,8 @@ export function resolveRestaurantAvatarFallbackUri(restaurant: RestaurantImageCo
 
 export function resolveRestaurantAvatarUri(restaurant: RestaurantImageContext & { logo?: string | null; cover_image?: string | null }) {
   const fallback = resolveRestaurantAvatarFallbackUri(restaurant);
-  if (restaurant.logo) return resolveImageUri(restaurant.logo, fallback);
-  if (restaurant.cover_image) return resolveImageUri(restaurant.cover_image, fallback);
+  if (restaurant.logo) return appendImageVersion(resolveImageUri(restaurant.logo, fallback), restaurant.updated_at);
+  if (restaurant.cover_image) return appendImageVersion(resolveImageUri(restaurant.cover_image, fallback), restaurant.updated_at);
   return fallback;
 }
 

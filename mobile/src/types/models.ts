@@ -43,6 +43,8 @@ export type Restaurant = {
   distance_km?: number;
   is_open: boolean;
   categories?: RestaurantCategory[];
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type ProductCategory = {

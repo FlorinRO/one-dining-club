@@ -1,4 +1,14 @@
-const DEFAULT_API_BASE = "https://api.yumzy.ro/api";
+const LOCAL_DASHBOARD_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+const FALLBACK_API_BASE = LOCAL_DASHBOARD_HOSTS.has(location.hostname)
+  ? "http://127.0.0.1:8000/api"
+  : "https://api.yumzy.ro/api";
+const QUERY_API_BASE = normalizeConfiguredApiBase(
+  new URLSearchParams(location.search).get("api") || new URLSearchParams(location.search).get("apiBase"),
+);
+if (QUERY_API_BASE) {
+  localStorage.setItem("yumzyDashboardApiBase", QUERY_API_BASE);
+}
+const DEFAULT_API_BASE = QUERY_API_BASE || localStorage.getItem("yumzyDashboardApiBase") || FALLBACK_API_BASE;
 const DAY_LABELS = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"];
 const ORDER_STATUS_LABELS = {
   pending: "Pending",
@@ -18,6 +28,18 @@ const OWNER_STATUS_OPTIONS = [
   "rejected",
   "cancelled",
 ];
+const FALLBACK_RESTAURANT_AVATAR =
+  "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?q=80&w=900&auto=format&fit=crop";
+const RESTAURANT_AVATAR_OVERRIDES = {
+  "luna-rossa-kitchen": "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=900&auto=format&fit=crop",
+  "pizzeria-napoli": "https://images.unsplash.com/photo-1571066811602-716837d681de?q=80&w=900&auto=format&fit=crop",
+  "wok-yard": "https://images.unsplash.com/photo-1526318896980-cf78c088247c?q=80&w=900&auto=format&fit=crop",
+  "burger-craft": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=900&auto=format&fit=crop",
+  "green-fork": "https://images.unsplash.com/photo-1543353071-10c8ba85a904?q=80&w=900&auto=format&fit=crop",
+};
+const RESTAURANT_AVATAR_NAME_OVERRIDES = {
+  "pizzeria napoli": "https://images.unsplash.com/photo-1571066811602-716837d681de?q=80&w=900&auto=format&fit=crop",
+};
 const AUTH_VIDEO_SOURCES = [
   {
     src: "../assets/login-videos/mixkit-a-couple-of-young-girls-savour-a-the-the-licious-51238-full-hd.mp4",
@@ -43,18 +65,24 @@ const DEFAULT_DASHBOARD_VIEW = "overview";
 const NAV_ITEMS = [
   { view: "overview", label: "Overview", icon: "ri-dashboard-2-line" },
   { view: "profile", label: "Profil restaurant", icon: "ri-store-2-line" },
-  { view: "categories", label: "Categorii meniu", icon: "ri-folder-2-line" },
   { view: "products", label: "Produse & video", icon: "ri-video-on-line" },
   { view: "orders", label: "Comenzi", icon: "ri-bill-line" },
   { view: "account", label: "Cont", icon: "ri-user-settings-line" },
 ];
+const REQUESTED_DASHBOARD_VIEW = location.hash.replace("#", "");
+const INITIAL_DASHBOARD_VIEW = NAV_ITEMS.some((item) => item.view === REQUESTED_DASHBOARD_VIEW)
+  ? REQUESTED_DASHBOARD_VIEW
+  : DEFAULT_DASHBOARD_VIEW;
+if (REQUESTED_DASHBOARD_VIEW && REQUESTED_DASHBOARD_VIEW !== INITIAL_DASHBOARD_VIEW) {
+  history.replaceState(null, "", `${location.pathname}${location.search}#${INITIAL_DASHBOARD_VIEW}`);
+}
 
 const state = {
   apiBase: DEFAULT_API_BASE,
   accessToken: localStorage.getItem("yumzyDashboardAccess") || "",
   refreshToken: localStorage.getItem("yumzyDashboardRefresh") || "",
   user: JSON.parse(localStorage.getItem("yumzyDashboardUser") || "null"),
-  currentView: location.hash.replace("#", "") || DEFAULT_DASHBOARD_VIEW,
+  currentView: INITIAL_DASHBOARD_VIEW,
   restaurants: [],
   overview: [],
   productCategories: [],
@@ -62,8 +90,8 @@ const state = {
   products: [],
   orders: [],
   selectedRestaurantId: null,
-  editingCategoryId: null,
   editingProductId: null,
+  avatarPreviewUrls: {},
   loading: false,
   error: "",
   notice: "",
@@ -251,10 +279,67 @@ function buildUrl(path, params) {
 
 function resolveMediaUrl(path) {
   if (!path) return "";
-  if (/^https?:\/\//i.test(path)) return path;
 
   const apiRoot = state.apiBase.replace(/\/api\/?$/, "");
+  if (/^https?:\/\//i.test(path)) {
+    try {
+      const url = new URL(path);
+      if (url.hostname === "testserver") {
+        return `${apiRoot}${url.pathname}${url.search}`;
+      }
+    } catch {
+      return path;
+    }
+    return path;
+  }
+
   return `${apiRoot}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+function normalizeConfiguredApiBase(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) return "";
+  if (rawValue === "local") return "http://127.0.0.1:8000/api";
+  if (rawValue === "prod" || rawValue === "production") return "https://api.yumzy.ro/api";
+
+  try {
+    const url = new URL(rawValue);
+    if (!["http:", "https:"].includes(url.protocol)) return "";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return "";
+  }
+}
+
+function appendCacheBust(url, value) {
+  if (!url || !value || url.startsWith("data:")) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(value)}`;
+}
+
+function normalizeImageText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function getRestaurantAvatarFallbackUrl(restaurant) {
+  const slug = normalizeImageText(restaurant.slug);
+  const name = normalizeImageText(restaurant.name);
+  const dashedName = name.replace(/\s+/g, "-");
+  return (
+    RESTAURANT_AVATAR_OVERRIDES[slug] ||
+    RESTAURANT_AVATAR_NAME_OVERRIDES[name] ||
+    RESTAURANT_AVATAR_OVERRIDES[dashedName] ||
+    FALLBACK_RESTAURANT_AVATAR
+  );
+}
+
+function resolveRestaurantAvatarUrl(restaurant) {
+  if (restaurant.logo) return appendCacheBust(resolveMediaUrl(restaurant.logo), restaurant.updated_at);
+  if (restaurant.cover_image) return appendCacheBust(resolveMediaUrl(restaurant.cover_image), restaurant.updated_at);
+  return getRestaurantAvatarFallbackUrl(restaurant);
 }
 
 async function apiFetch(path, options = {}, retry = true) {
@@ -518,11 +603,10 @@ function pageTitle(view) {
   return {
     overview: "Dashboard Restaurant",
     profile: "Profil Restaurant",
-    categories: "Categorii Meniu",
     products: "Produse & Video",
     orders: "Comenzi Live",
     account: "Cont",
-  }[view];
+  }[view] || "Dashboard Restaurant";
 }
 
 function pageSubtitle(view, restaurant) {
@@ -530,19 +614,16 @@ function pageSubtitle(view, restaurant) {
   return {
     overview: "",
     profile: `Date publice, contact și program pentru ${name}.`,
-    categories: `Organizează meniul și secțiunile interne pentru ${name}.`,
     products: `Actualizează produsele, prețurile și clipurile pentru ${name}.`,
     orders: `Monitorizează și actualizează starea comenzilor pentru ${name}.`,
     account: "Detalii despre sesiunea activă și contul owner.",
-  }[view];
+  }[view] || "";
 }
 
 function renderView(view, restaurant, overview) {
   switch (view) {
     case "profile":
       return renderProfileView(restaurant);
-    case "categories":
-      return renderCategoriesView();
     case "products":
       return renderProductsView();
     case "orders":
@@ -722,16 +803,20 @@ function renderProfileView(restaurant) {
   const completionPercent = profileCompletion.percent;
   const deliveryRange = `${restaurant.estimated_delivery_time_min || 25}-${restaurant.estimated_delivery_time_max || 45} min`;
   const pickupOnly = Boolean(restaurant.supports_pickup) && Number(restaurant.delivery_fee || 0) === 0;
+  const avatarUrl = state.avatarPreviewUrls[restaurant.id] || resolveRestaurantAvatarUrl(restaurant);
+  const fallbackAvatarUrl = getRestaurantAvatarFallbackUrl(restaurant);
 
   return `
     <section class="profile-hero panel">
       <div class="profile-logo-hero">
         <div class="profile-logo-preview">
-          ${
-            restaurant.logo
-              ? `<img src="${resolveMediaUrl(restaurant.logo)}" alt="Logo ${escapeHtml(restaurant.name || "restaurant")}" />`
-              : `<span>${escapeHtml((restaurant.name || "Y").slice(0, 1).toUpperCase())}</span>`
-          }
+          <span class="profile-logo-initials">${escapeHtml(getInitials(restaurant.name || "Y"))}</span>
+          <img
+            src="${escapeHtml(avatarUrl)}"
+            data-fallback-src="${escapeHtml(fallbackAvatarUrl)}"
+            alt=""
+            aria-label="Avatar ${escapeHtml(restaurant.name || "restaurant")}"
+          />
         </div>
         <form class="profile-avatar-upload" data-media-form="logo">
           <label class="profile-avatar-action" aria-label="Actualizează logo-ul restaurantului">
@@ -865,6 +950,8 @@ function renderProfileView(restaurant) {
           </div>
         </section>
 
+        ${renderRestaurantPublishPanel(restaurant)}
+
         ${
           profileCompletion.isComplete
             ? `
@@ -880,6 +967,28 @@ function renderProfileView(restaurant) {
         }
       </form>
     </div>
+  `;
+}
+
+function renderRestaurantPublishPanel(restaurant) {
+  if (restaurant.is_active) {
+    return `
+      <section class="profile-publish-panel is-live">
+        <div class="restaurant-live-state">
+          <i class="ri-checkbox-circle-line" aria-hidden="true"></i>
+          <span>Restaurant <strong class="restaurant-live-word">Live</strong> in aplicatie</span>
+        </div>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="profile-publish-panel">
+      <button class="publish-restaurant-button" type="button" data-publish-restaurant ${state.loading ? "disabled" : ""}>
+        <i class="ri-rocket-line" aria-hidden="true"></i>
+        <span>Adauga restaurantul in aplicatie</span>
+      </button>
+    </section>
   `;
 }
 
@@ -958,53 +1067,6 @@ function renderHoursRows(hours) {
       </div>
     `;
   }).join("");
-}
-
-function renderCategoriesView() {
-  return `
-    <section class="panel">
-      <div class="section-header">
-        <div>
-          <h2>Structură meniu</h2>
-          <small>Adaugă categorii interne pentru produse.</small>
-        </div>
-      </div>
-      <form id="category-form" class="category-form">
-        <div class="split">
-          <label class="field"><span>Nume categorie</span><input name="name" placeholder="Burgeri, Pizza, Desert..." required /></label>
-          <label class="field"><span>Ordine</span><input type="number" name="sort_order" value="0" /></label>
-        </div>
-        <label class="checkbox-field"><input type="checkbox" name="is_active" checked /><span>Categorie activă</span></label>
-        <div class="button-row">
-          <button class="button" type="submit">${state.editingCategoryId ? "Actualizează categoria" : "Adaugă categoria"}</button>
-          ${state.editingCategoryId ? `<button class="ghost-button" type="button" id="cancel-category-edit">Renunță</button>` : ""}
-        </div>
-      </form>
-    </section>
-    <section class="categories-grid">
-      ${state.productCategories.length
-        ? state.productCategories
-            .map(
-              (category) => `
-                <article class="table-card">
-                  <div class="section-header">
-                    <div>
-                      <h2>${escapeHtml(category.name)}</h2>
-                      <small>Sort order: ${category.sort_order}</small>
-                    </div>
-                    <span class="status-chip ${category.is_active ? "delivered" : "cancelled"}">${category.is_active ? "Activă" : "Inactivă"}</span>
-                  </div>
-                  <div class="button-row">
-                    <button class="outline-button" type="button" data-edit-category="${category.id}">Editează</button>
-                    <button class="ghost-button" type="button" data-delete-category="${category.id}">Șterge</button>
-                  </div>
-                </article>
-              `,
-            )
-            .join("")
-        : `<article class="empty-card"><h3>Nicio categorie</h3><small>Adaugă prima categorie a meniului.</small></article>`}
-    </section>
-  `;
 }
 
 function renderProductsView() {
@@ -1263,6 +1325,7 @@ function bindEvents() {
   });
 
   document.querySelector("#profile-form")?.addEventListener("submit", handleProfileSubmit);
+  document.querySelector("[data-publish-restaurant]")?.addEventListener("click", handlePublishRestaurant);
   document.querySelectorAll("[data-media-form]").forEach((form) => form.addEventListener("submit", handleMediaSubmit));
   document.querySelectorAll("[data-auto-submit-media]").forEach((input) => {
     input.addEventListener("change", () => {
@@ -1271,14 +1334,7 @@ function bindEvents() {
   });
   bindPhoneInputs();
   bindOperationalControls();
-  document.querySelector("#category-form")?.addEventListener("submit", handleCategorySubmit);
-  document.querySelector("#cancel-category-edit")?.addEventListener("click", resetCategoryEditing);
-  document.querySelectorAll("[data-edit-category]").forEach((button) => {
-    button.addEventListener("click", () => startCategoryEdit(Number(button.dataset.editCategory)));
-  });
-  document.querySelectorAll("[data-delete-category]").forEach((button) => {
-    button.addEventListener("click", () => deleteCategory(Number(button.dataset.deleteCategory)));
-  });
+  bindFallbackImages();
 
   document.querySelector("#product-form")?.addEventListener("submit", handleProductSubmit);
   document.querySelector("#cancel-product-edit")?.addEventListener("click", resetProductEditing);
@@ -1337,19 +1393,21 @@ function bindOperationalControls() {
   syncOperationalControls();
 }
 
-function hydrateEditingForms() {
-  if (state.editingCategoryId) {
-    const category = state.productCategories.find((item) => item.id === state.editingCategoryId);
-    if (category) {
-      const form = document.querySelector("#category-form");
-      if (form) {
-        getField(form, "name").value = category.name;
-        getField(form, "sort_order").value = category.sort_order;
-        getField(form, "is_active").checked = category.is_active;
+function bindFallbackImages() {
+  document.querySelectorAll("img[data-fallback-src]").forEach((image) => {
+    image.addEventListener("error", () => {
+      const fallbackSrc = image.dataset.fallbackSrc;
+      if (fallbackSrc && image.src !== fallbackSrc && image.dataset.fallbackApplied !== "true") {
+        image.dataset.fallbackApplied = "true";
+        image.src = fallbackSrc;
+        return;
       }
-    }
-  }
+      image.classList.add("is-hidden");
+    });
+  });
+}
 
+function hydrateEditingForms() {
   if (state.editingProductId) {
     const product = state.products.find((item) => item.id === state.editingProductId);
     if (product) {
@@ -1404,8 +1462,9 @@ function handleLogout() {
   state.products = [];
   state.orders = [];
   state.selectedRestaurantId = null;
-  state.editingCategoryId = null;
   state.editingProductId = null;
+  Object.values(state.avatarPreviewUrls).forEach((url) => URL.revokeObjectURL(url));
+  state.avatarPreviewUrls = {};
   setNotice("Sesiunea a fost închisă.");
 }
 
@@ -1456,6 +1515,30 @@ async function handleProfileSubmit(event) {
   }
 }
 
+async function handlePublishRestaurant(event) {
+  event.preventDefault();
+  const restaurant = getSelectedRestaurant();
+  if (!restaurant) return;
+
+  state.loading = true;
+  state.error = "";
+  state.notice = "";
+  render();
+
+  try {
+    const updated = await apiFetch(`restaurant-owner/restaurants/${restaurant.id}/`, {
+      method: "PATCH",
+      body: { is_active: true },
+    });
+    replaceRestaurant(updated);
+    await fetchOwnerData();
+    setNotice("Restaurant Live in aplicatie");
+  } catch (error) {
+    state.loading = false;
+    setError(error.message);
+  }
+}
+
 async function handleMediaSubmit(event) {
   event.preventDefault();
   const restaurant = getSelectedRestaurant();
@@ -1469,9 +1552,19 @@ async function handleMediaSubmit(event) {
   }
 
   const payload = new FormData();
-  payload.append(fieldName, input.files[0]);
+  const selectedFile = input.files[0];
+  payload.append(fieldName, selectedFile);
 
   try {
+    if (fieldName === "logo") {
+      if (state.avatarPreviewUrls[restaurant.id]) URL.revokeObjectURL(state.avatarPreviewUrls[restaurant.id]);
+      state.avatarPreviewUrls[restaurant.id] = URL.createObjectURL(selectedFile);
+    }
+    state.loading = true;
+    state.error = "";
+    state.notice = "";
+    render();
+
     const updated = await apiFetch(`restaurant-owner/restaurants/${restaurant.id}/`, {
       method: "PATCH",
       body: payload,
@@ -1479,57 +1572,10 @@ async function handleMediaSubmit(event) {
     });
     replaceRestaurant(updated);
     await fetchOwnerData();
+    if (input) input.value = "";
     setNotice("Imaginea a fost actualizată.");
   } catch (error) {
-    setError(error.message);
-  }
-}
-
-async function handleCategorySubmit(event) {
-  event.preventDefault();
-  const restaurant = getSelectedRestaurant();
-  if (!restaurant) return;
-  const form = new FormData(event.currentTarget);
-  const body = {
-    restaurant: restaurant.id,
-    name: form.get("name"),
-    sort_order: Number(form.get("sort_order") || 0),
-    is_active: form.get("is_active") === "on",
-  };
-
-  try {
-    if (state.editingCategoryId) {
-      await apiFetch(`restaurant-owner/categories/${state.editingCategoryId}/`, { method: "PATCH", body });
-    } else {
-      await apiFetch("restaurant-owner/categories/", { method: "POST", body });
-    }
-    resetCategoryEditing(false);
-    await reloadCategories();
-    render();
-    setNotice("Categoria a fost salvată.");
-  } catch (error) {
-    setError(error.message);
-  }
-}
-
-function startCategoryEdit(categoryId) {
-  state.editingCategoryId = categoryId;
-  render();
-}
-
-function resetCategoryEditing(shouldRender = true) {
-  state.editingCategoryId = null;
-  if (shouldRender) render();
-}
-
-async function deleteCategory(categoryId) {
-  try {
-    await apiFetch(`restaurant-owner/categories/${categoryId}/`, { method: "DELETE" });
-    if (state.editingCategoryId === categoryId) resetCategoryEditing(false);
-    await reloadCategories();
-    render();
-    setNotice("Categoria a fost ștearsă.");
-  } catch (error) {
+    state.loading = false;
     setError(error.message);
   }
 }
@@ -1640,6 +1686,7 @@ async function handleCreateRestaurant(event) {
         description: form.get("description"),
         delivery_fee: form.get("delivery_fee") || "0",
         minimum_order: form.get("minimum_order") || "0",
+        is_active: false,
       },
     });
     await fetchOwnerData();

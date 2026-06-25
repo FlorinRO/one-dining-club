@@ -127,6 +127,28 @@ class RestaurantOwnerDashboardApiTests(TestCase):
         self.assertEqual(overview["delivered_orders_count"], 1)
         self.assertEqual(overview["gross_revenue"], "42.00")
 
+    def test_owner_can_publish_restaurant_to_public_app(self):
+        self.restaurant.is_active = False
+        self.restaurant.save(update_fields=("is_active", "updated_at"))
+
+        hidden_response = self.client.get("/api/restaurants/")
+        hidden_ids = [item["id"] for item in hidden_response.json()["results"]]
+        self.assertNotIn(self.restaurant.id, hidden_ids)
+
+        response = self.client.patch(
+            f"/api/restaurant-owner/restaurants/{self.restaurant.id}/",
+            {"is_active": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.restaurant.refresh_from_db()
+        self.assertTrue(self.restaurant.is_active)
+
+        public_response = self.client.get("/api/restaurants/")
+        public_ids = [item["id"] for item in public_response.json()["results"]]
+        self.assertIn(self.restaurant.id, public_ids)
+
     def test_owner_dashboard_exposes_only_primary_restaurant(self):
         Restaurant.objects.create(
             owner=self.owner,

@@ -26,6 +26,10 @@ def get_env_list(name, default=""):
 def join_url(base_url, path):
     return f"{base_url.rstrip('/')}/{path.lstrip('/')}"
 
+
+def strip_url_scheme(value):
+    return value.replace("https://", "").replace("http://", "").rstrip("/")
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "development-only-secret-key-change-before-production")
 DEBUG = get_env_bool("DJANGO_DEBUG", default=True)
 
@@ -128,6 +132,51 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+MEDIA_STORAGE_PROVIDER = os.getenv("MEDIA_STORAGE_PROVIDER", "").strip().lower()
+R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID", "").strip()
+R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "").strip()
+R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "").strip()
+R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME", "").strip()
+R2_ENDPOINT_URL = os.getenv("R2_ENDPOINT_URL", "").strip() or (
+    f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com" if R2_ACCOUNT_ID else ""
+)
+R2_PUBLIC_URL = (os.getenv("R2_PUBLIC_URL") or os.getenv("R2_PUBLIC_BASE_URL") or "").strip().rstrip("/")
+R2_MEDIA_LOCATION = os.getenv("R2_MEDIA_LOCATION", "media").strip("/")
+USE_R2_MEDIA_STORAGE = MEDIA_STORAGE_PROVIDER in {"r2", "s3"} or all(
+    [R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_ENDPOINT_URL]
+)
+
+if USE_R2_MEDIA_STORAGE:
+    INSTALLED_APPS.append("storages")
+    s3_options = {
+        "access_key": R2_ACCESS_KEY_ID,
+        "secret_key": R2_SECRET_ACCESS_KEY,
+        "bucket_name": R2_BUCKET_NAME,
+        "endpoint_url": R2_ENDPOINT_URL,
+        "region_name": "auto",
+        "default_acl": None,
+        "querystring_auth": False,
+        "file_overwrite": False,
+        "location": R2_MEDIA_LOCATION,
+        "object_parameters": {
+            "CacheControl": "public, max-age=31536000, immutable",
+        },
+    }
+    if R2_PUBLIC_URL:
+        s3_options["custom_domain"] = strip_url_scheme(R2_PUBLIC_URL)
+        s3_options["url_protocol"] = "https:"
+        MEDIA_URL = f"{R2_PUBLIC_URL}/"
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": s3_options,
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",

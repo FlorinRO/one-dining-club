@@ -25,9 +25,36 @@ python manage.py runserver 0.0.0.0:8000
 Useful demo users after `seed_demo`:
 
 - Customer: `demo@yumzy.ro` / `password123`
-- Restaurant owner: `owner@yumzy.ro` / `password123`
+- Restaurant owner Pizzeria Napoli: `owner@yumzy.ro` / `password123`
+- Other restaurant owners: `owner+restaurant-slug@yumzy.ro` / `password123`
 
 The backend defaults to SQLite if `DATABASE_URL` is not set. For the intended MVP setup, set `DATABASE_URL` to PostgreSQL in `backend/.env`.
+
+### Media uploads / R2
+
+Local development uses `backend/media/`. Production should use Cloudflare R2 through the Railway-hosted backend:
+
+```bash
+MEDIA_STORAGE_PROVIDER=r2
+R2_ACCOUNT_ID=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET_NAME=...
+R2_PUBLIC_URL=https://media.yumzy.ro
+R2_MEDIA_LOCATION=media
+```
+
+Dashboard uploads should hit the same backend as the app. For the live backend, open the local dashboard with:
+
+```text
+http://127.0.0.1:5173/dashboard/?api=prod
+```
+
+or:
+
+```text
+http://127.0.0.1:5173/dashboard/?api=https://api.yumzy.ro/api
+```
 
 ## Mobile
 

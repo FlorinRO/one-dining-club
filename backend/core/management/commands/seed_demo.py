@@ -332,6 +332,31 @@ class Command(BaseCommand):
         owner.is_active = True
         owner.save()
 
+        def owner_email_for_restaurant(slug):
+            if slug == "luna-rossa-kitchen":
+                return "owner@yumzy.ro"
+            return f"owner+{slug}@yumzy.ro"
+
+        def get_or_create_restaurant_owner(slug, restaurant_name, phone):
+            email = owner_email_for_restaurant(slug)
+            restaurant_owner, _ = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    "first_name": restaurant_name,
+                    "last_name": "Owner",
+                    "phone": phone,
+                    "role": UserRole.RESTAURANT_OWNER,
+                },
+            )
+            restaurant_owner.first_name = restaurant_name
+            restaurant_owner.last_name = "Owner"
+            restaurant_owner.phone = phone
+            restaurant_owner.role = UserRole.RESTAURANT_OWNER
+            restaurant_owner.is_active = True
+            restaurant_owner.set_password("password123")
+            restaurant_owner.save()
+            return restaurant_owner
+
         Restaurant.objects.filter(
             slug__in=[
                 "bao-pop-studio",
@@ -364,6 +389,7 @@ class Command(BaseCommand):
             ("BBQ", "grill"),
             ("Brunch", "coffee"),
             ("Middle Eastern", "falafel"),
+            ("Brand", "store"),
         ]:
             category_map[name], _ = RestaurantCategory.objects.get_or_create(name=name, defaults={"icon": icon})
 
@@ -696,7 +722,7 @@ class Command(BaseCommand):
             restaurant, _ = Restaurant.objects.get_or_create(
                 slug=payload["slug"],
                 defaults={
-                    "owner": owner,
+                    "owner": get_or_create_restaurant_owner(payload["slug"], payload["name"], payload["phone"]),
                     "entity_type": payload.get("entity_type", Restaurant.EntityType.RESTAURANT),
                     "is_sponsored": payload.get("is_sponsored", False),
                     "supports_pickup": True,
@@ -705,7 +731,7 @@ class Command(BaseCommand):
                     **payload,
                 },
             )
-            restaurant.owner = owner
+            restaurant.owner = get_or_create_restaurant_owner(payload["slug"], payload["name"], payload["phone"])
             restaurant.entity_type = payload.get("entity_type", Restaurant.EntityType.RESTAURANT)
             restaurant.is_sponsored = payload.get("is_sponsored", False)
             restaurant.supports_pickup = True

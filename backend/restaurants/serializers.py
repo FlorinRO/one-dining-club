@@ -55,6 +55,8 @@ class RestaurantListSerializer(serializers.ModelSerializer):
             "distance_km",
             "is_open",
             "categories",
+            "created_at",
+            "updated_at",
         )
 
     def get_distance_km(self, obj):
