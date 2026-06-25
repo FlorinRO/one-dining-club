@@ -312,7 +312,7 @@ export function HomeScreen({ navigation }: Props) {
     const shareUrl = buildProductShareUrl(product.id);
     await Share.share({
       title: product.name,
-      message: `${product.name} de la ${restaurant.name} · ${money(product.effective_price ?? product.discount_price ?? product.price)}\n${shareUrl}`,
+      message: `${product.name} de la ${restaurant.name} · ${money(product.effective_price ?? product.discount_price ?? product.price)}`,
       url: shareUrl,
     });
   }, []);

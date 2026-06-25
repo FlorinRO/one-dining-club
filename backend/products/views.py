@@ -68,6 +68,10 @@ class AppleAppSiteAssociationView(APIView):
                             "appIDs": settings.APPLE_ASSOCIATED_APP_IDS,
                             "components": [
                                 {
+                                    "/": "/p/*",
+                                    "comment": "Open short Yumzy product links in the iOS app.",
+                                },
+                                {
                                     "/": "/links/products/*",
                                     "comment": "Open shared Yumzy product links in the iOS app.",
                                 }
@@ -94,6 +98,11 @@ class ProductSharePageView(APIView):
         image_url = absolute_media_url(request, product.image) or absolute_media_url(request, product.restaurant.cover_image)
         video_url = product.video_url or ""
         effective_price = product.effective_price
+        site_url = settings.SITE_URL.rstrip("/")
+        brand_og_image_url = f"{site_url}/assets/seo/og-yumzy.png"
+        favicon_url = f"{site_url}/assets/seo/favicon.png"
+        favicon_32_url = f"{site_url}/assets/seo/favicon-32.png"
+        apple_touch_icon_url = f"{site_url}/assets/seo/apple-touch-icon.png"
 
         return render(
             request,
@@ -105,6 +114,12 @@ class ProductSharePageView(APIView):
                 "open_in_app_url": open_in_app_url,
                 "image_url": image_url,
                 "video_url": video_url,
+                "og_image_url": image_url or brand_og_image_url,
+                "brand_og_image_url": brand_og_image_url,
+                "favicon_url": favicon_url,
+                "favicon_32_url": favicon_32_url,
+                "apple_touch_icon_url": apple_touch_icon_url,
+                "landing_background_video_url": f"{site_url}/assets/login-hero.mp4",
                 "price_display": f"{effective_price:.2f} RON",
                 "ios_app_store_url": settings.IOS_APP_STORE_URL,
             },

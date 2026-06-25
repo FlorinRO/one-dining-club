@@ -278,7 +278,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
     const shareUrl = buildProductShareUrl(product.id);
     await Share.share({
       title: product.name,
-      message: `${product.name} · ${restaurant.name}\n${product.description}\n${shareUrl}`,
+      message: `${product.name} · ${restaurant.name}\n${product.description}`,
       url: shareUrl,
     });
   };

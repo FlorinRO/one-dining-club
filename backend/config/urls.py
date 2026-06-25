@@ -72,6 +72,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path(".well-known/apple-app-site-association", AppleAppSiteAssociationView.as_view(), name="apple-app-site-association"),
     path("apple-app-site-association", AppleAppSiteAssociationView.as_view(), name="apple-app-site-association-root"),
+    path("p/<int:product_id>/", ProductSharePageView.as_view(), name="product-share-short-page"),
     path("links/products/<int:product_id>/", ProductSharePageView.as_view(), name="product-share-page"),
     path("verify-email/confirm/", EmailVerificationConfirmPageView.as_view(), name="email-verify-confirm-page"),
     path("reset-password/confirm/", PasswordResetConfirmPageView.as_view(), name="password-reset-confirm-page"),

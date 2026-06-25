@@ -178,13 +178,15 @@ class ProductSocialApiTests(TestCase):
         IOS_APP_STORE_URL="https://apps.apple.com/app/id123456789",
     )
     def test_product_share_page_renders_public_fallback(self):
-        response = self.client.get(f"/links/products/{self.product.id}/")
+        response = self.client.get(f"/p/{self.product.id}/")
 
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
         self.assertIn(self.product.name, content)
         self.assertIn("onediningclub://products/", content)
         self.assertIn("https://apps.apple.com/app/id123456789", content)
+        self.assertIn("/assets/seo/favicon.png", content)
+        self.assertIn("/assets/seo/og-yumzy.png", content)
 
     @override_settings(
         APPLE_ASSOCIATED_APP_IDS=["ABCD123456.club.onedining.customer"],
@@ -194,7 +196,7 @@ class ProductSocialApiTests(TestCase):
         self.product.video_url = "https://cdn.yumzy.ro/videos/focaccia.mp4"
         self.product.save(update_fields=["video_url"])
 
-        response = self.client.get(f"/links/products/{self.product.id}/")
+        response = self.client.get(f"/p/{self.product.id}/")
 
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
@@ -209,4 +211,5 @@ class ProductSocialApiTests(TestCase):
         self.assertEqual(response["Content-Type"], "application/json")
         payload = response.json()
         self.assertEqual(payload["applinks"]["details"][0]["appIDs"], ["ABCD123456.club.onedining.customer"])
-        self.assertEqual(payload["applinks"]["details"][0]["components"][0]["/"], "/links/products/*")
+        self.assertEqual(payload["applinks"]["details"][0]["components"][0]["/"], "/p/*")
+        self.assertEqual(payload["applinks"]["details"][0]["components"][1]["/"], "/links/products/*")

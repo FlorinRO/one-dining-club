@@ -1,6 +1,6 @@
 import { API_ORIGIN } from "../config/api";
 
-const PRODUCT_SHARE_PATH_PREFIX = "/links/products/";
+const PRODUCT_SHARE_PATH_PREFIX = "/p/";
 
 export function buildProductShareUrl(productId: number): string {
   return `${API_ORIGIN}${PRODUCT_SHARE_PATH_PREFIX}${productId}/`;
@@ -28,6 +28,10 @@ export function parseSharedProductId(url: string): number | null {
         : rawPathSegments;
 
     if (pathSegments.length >= 2 && pathSegments[0] === "products") {
+      return parseNumericSegment(pathSegments[1]);
+    }
+
+    if (pathSegments.length >= 2 && pathSegments[0] === "p") {
       return parseNumericSegment(pathSegments[1]);
     }
 
