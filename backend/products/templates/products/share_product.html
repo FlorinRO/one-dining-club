@@ -10,6 +10,7 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="{{ share_url }}" />
     {% if image_url %}<meta property="og:image" content="{{ image_url }}" />{% endif %}
+    {% if video_url %}<meta property="og:video" content="{{ video_url }}" />{% endif %}
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="canonical" href="{{ share_url }}" />
     <style>
@@ -20,7 +21,7 @@
         --panel-border: rgba(255, 255, 255, 0.08);
         --text: #f8f8f8;
         --muted: rgba(255, 255, 255, 0.72);
-        --accent: #ff5b4d;
+        --accent: #22c55e;
       }
 
       * {
@@ -56,10 +57,34 @@
       }
 
       .media img {
+        position: absolute;
+        inset: 0;
         width: 100%;
         height: 100%;
         object-fit: cover;
         display: block;
+      }
+
+      .media video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        background: #111;
+      }
+
+      .media-fallback {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at top left, rgba(255, 91, 77, 0.3), transparent 32%),
+          linear-gradient(135deg, rgba(255, 91, 77, 0.35), rgba(255, 255, 255, 0.08));
+      }
+
+      .is-hidden {
+        display: none;
       }
 
       .content {
@@ -112,7 +137,7 @@
         padding: 0 18px;
         border-radius: 999px;
         text-decoration: none;
-        font-weight: 700;
+        font-weight: 600;
       }
 
       .button-primary {
@@ -129,8 +154,21 @@
   <body>
     <main class="card">
       <div class="media">
+        <div class="media-fallback{% if image_url or video_url %} is-hidden{% endif %}" data-media-fallback></div>
+        {% if video_url %}
+          <video
+            src="{{ video_url }}"
+            poster="{{ image_url }}"
+            muted
+            autoplay
+            loop
+            playsinline
+            preload="auto"
+            data-share-video
+          ></video>
+        {% endif %}
         {% if image_url %}
-          <img src="{{ image_url }}" alt="{{ product.name }}" />
+          <img src="{{ image_url }}" alt="{{ product.name }}" loading="eager" data-share-image{% if video_url %} class="is-hidden"{% endif %} />
         {% endif %}
       </div>
       <section class="content">
@@ -144,12 +182,59 @@
           <p class="description">{{ restaurant.description }}</p>
         {% endif %}
         <div class="actions">
-          <a class="button button-primary" href="{{ open_in_app_url }}">Deschide în aplicație</a>
+          <a class="button button-primary" href="{{ open_in_app_url }}">Deschide in aplicatia YUMZY</a>
           {% if ios_app_store_url %}
             <a class="button button-secondary" href="{{ ios_app_store_url }}">Descarcă aplicația iOS</a>
           {% endif %}
         </div>
       </section>
     </main>
+    <script>
+      (() => {
+        const video = document.querySelector("[data-share-video]");
+        const image = document.querySelector("[data-share-image]");
+        const fallback = document.querySelector("[data-media-fallback]");
+
+        const showFallback = () => {
+          if (fallback) fallback.classList.remove("is-hidden");
+          if (video) video.classList.add("is-hidden");
+          if (image) image.classList.add("is-hidden");
+        };
+
+        const showImage = () => {
+          if (!image) {
+            showFallback();
+            return;
+          }
+          if (fallback) fallback.classList.add("is-hidden");
+          image.classList.remove("is-hidden");
+          if (video) video.classList.add("is-hidden");
+        };
+
+        if (image) {
+          image.addEventListener("error", () => {
+            if (!video) {
+              showFallback();
+            }
+          });
+        }
+
+        if (!video) {
+          if (!image) showFallback();
+          return;
+        }
+
+        video.addEventListener("error", showImage);
+        video.addEventListener("loadeddata", () => {
+          if (fallback) fallback.classList.add("is-hidden");
+          video.classList.remove("is-hidden");
+        });
+
+        video.play().catch(() => {
+          // Safari may defer autoplay in some contexts; keep poster visible instead.
+          showImage();
+        });
+      })();
+    </script>
   </body>
 </html>

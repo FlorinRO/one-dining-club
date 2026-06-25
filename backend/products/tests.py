@@ -186,6 +186,21 @@ class ProductSocialApiTests(TestCase):
         self.assertIn("onediningclub://products/", content)
         self.assertIn("https://apps.apple.com/app/id123456789", content)
 
+    @override_settings(
+        APPLE_ASSOCIATED_APP_IDS=["ABCD123456.club.onedining.customer"],
+        IOS_APP_STORE_URL="https://apps.apple.com/app/id123456789",
+    )
+    def test_product_share_page_renders_video_when_available(self):
+        self.product.video_url = "https://cdn.yumzy.ro/videos/focaccia.mp4"
+        self.product.save(update_fields=["video_url"])
+
+        response = self.client.get(f"/links/products/{self.product.id}/")
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("<video", content)
+        self.assertIn("https://cdn.yumzy.ro/videos/focaccia.mp4", content)
+
     @override_settings(APPLE_ASSOCIATED_APP_IDS=["ABCD123456.club.onedining.customer"])
     def test_apple_app_site_association_lists_product_path(self):
         response = self.client.get("/.well-known/apple-app-site-association")

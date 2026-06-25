@@ -92,6 +92,7 @@ class ProductSharePageView(APIView):
         share_url = request.build_absolute_uri()
         open_in_app_url = f"onediningclub://products/{product.id}"
         image_url = absolute_media_url(request, product.image) or absolute_media_url(request, product.restaurant.cover_image)
+        video_url = product.video_url or ""
         effective_price = product.effective_price
 
         return render(
@@ -103,6 +104,7 @@ class ProductSharePageView(APIView):
                 "share_url": share_url,
                 "open_in_app_url": open_in_app_url,
                 "image_url": image_url,
+                "video_url": video_url,
                 "price_display": f"{effective_price:.2f} RON",
                 "ios_app_store_url": settings.IOS_APP_STORE_URL,
             },
