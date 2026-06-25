@@ -23,12 +23,9 @@
       "merchantIdentifier": "merchant.com.onediningclub",
       "icon": "./assets/ios-icon-yumzy.png",
       "infoPlist": {
-        "NSCameraUsageDescription": "YUMZY folosește camera pentru a face o fotografie pe care o poți atașa la comentariul sau review-ul unui produs.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "YUMZY folosește locația ta pentru a seta adresa de livrare, a localiza poziția curentă pe hartă și a afișa restaurantele disponibile în zona ta.",
-        "NSLocationAlwaysUsageDescription": "YUMZY folosește locația ta pentru a seta adresa de livrare, a localiza poziția curentă pe hartă și a afișa restaurantele disponibile în zona ta.",
-        "NSLocationWhenInUseUsageDescription": "YUMZY folosește locația ta cât timp folosești aplicația pentru a seta adresa de livrare, a localiza poziția curentă pe hartă și a afișa restaurantele disponibile în zona ta.",
+        "NSLocationWhenInUseUsageDescription": "YUMZY uses your location only while you are using the app to help you fill in your delivery address faster, show your position on the map, and display restaurants that can deliver to your area. For example, when you choose your current location for delivery, the app uses that location to identify the address and show restaurants available for that area.",
         "NSMicrophoneUsageDescription": "YUMZY poate reda conținut video cu sunet în feed-ul aplicației.",
-        "NSPhotoLibraryUsageDescription": "YUMZY folosește galeria foto pentru a alege imagini pe care le poți atașa la comentariul sau review-ul unui produs.",
+        "NSPhotoLibraryUsageDescription": "YUMZY accesses your photo library only when you choose to select and attach an image to a comment or review about a product. For example, you can choose a photo of the meal you received and upload it in your review to show how your order arrived.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -53,7 +50,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "YUMZY folosește locația ta cât timp folosești aplicația pentru a seta adresa de livrare, a localiza poziția curentă pe hartă și a afișa restaurantele disponibile în zona ta."
+          "locationWhenInUsePermission": "YUMZY uses your location only while you are using the app to help you fill in your delivery address faster, show your position on the map, and display restaurants that can deliver to your area. For example, when you choose your current location for delivery, the app uses that location to identify the address and show restaurants available for that area."
         }
       ]
     ],
