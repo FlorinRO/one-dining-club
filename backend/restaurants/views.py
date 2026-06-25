@@ -74,7 +74,7 @@ class RestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             restaurant.products.select_related("category", "restaurant")
             .prefetch_related("option_groups__options")
             .filter(is_available=True)
-            .order_by("-updated_at", "-id")
+            .order_by("id")
         )
         products = with_product_social_counts(products, request)
         page = self.paginate_queryset(products)

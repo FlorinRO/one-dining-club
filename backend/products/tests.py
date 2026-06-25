@@ -3,7 +3,6 @@ from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
-from django.utils import timezone
 from rest_framework.test import APIClient
 
 from products.models import Product, ProductComment, ProductCommentLike, ProductLike
@@ -50,24 +49,6 @@ class ProductSocialApiTests(TestCase):
         self.assertEqual(items[0]["likes_count"], 1)
         self.assertEqual(items[0]["comments_count"], 1)
         self.assertFalse(items[0]["is_liked"])
-
-    def test_restaurant_products_return_recent_products_first(self):
-        newer_product = Product.objects.create(
-            restaurant=self.restaurant,
-            name="New Video Burger",
-            price="48.00",
-            is_available=True,
-            video_url="https://media.example/new-video.mp4",
-        )
-        Product.objects.filter(id=self.product.id).update(updated_at=timezone.now() - timezone.timedelta(days=1))
-        Product.objects.filter(id=newer_product.id).update(updated_at=timezone.now())
-
-        response = self.client.get(f"/api/restaurants/{self.restaurant.id}/products/")
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        items = payload["results"] if isinstance(payload, dict) else payload
-        self.assertEqual(items[0]["id"], newer_product.id)
 
     def test_customer_can_toggle_product_like(self):
         self.client.force_authenticate(user=self.customer)

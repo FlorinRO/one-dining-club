@@ -3,6 +3,7 @@ import { mockCategories, mockProducts, mockRestaurants } from "../data/mockData"
 import { Product, ProductCategory, Restaurant, RestaurantCategory } from "../types/models";
 
 type Paginated<T> = {
+  next?: string | null;
   results: T[];
 };
 
@@ -129,7 +130,21 @@ export const restaurantsApi = {
       const { data } = await apiClient.get<Product[] | Paginated<Product>>(`/restaurants/${id}/products/`, {
         params: { page_size: 100 },
       });
-      const items = unwrap(data);
+      if (Array.isArray(data)) return data;
+
+      const items = [...data.results];
+      let nextUrl = data.next;
+      while (nextUrl) {
+        const nextResponse = await apiClient.get<Product[] | Paginated<Product>>(nextUrl);
+        const nextData = nextResponse.data;
+        if (Array.isArray(nextData)) {
+          items.push(...nextData);
+          break;
+        }
+        items.push(...nextData.results);
+        nextUrl = nextData.next;
+      }
+
       if (__DEV__ && items.length === 0) {
         return mockProducts.filter((product) => product.restaurant === id);
       }

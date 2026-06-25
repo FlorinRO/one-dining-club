@@ -155,8 +155,7 @@ export function HomeScreen({ navigation }: Props) {
             : apiProducts.length > 0
               ? apiProducts
               : sponsoredMockProducts;
-        const limitedProducts = isSponsoredFeedPlacement(restaurant) ? products.slice(0, 1) : products.slice(0, 3);
-        return [restaurant.id, limitedProducts] as const;
+        return [restaurant.id, products] as const;
       }),
     );
 

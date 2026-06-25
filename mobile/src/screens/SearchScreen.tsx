@@ -60,7 +60,6 @@ type DiscoveryCategory = {
   iconBackground: string;
 };
 
-const FEED_PRODUCT_LIMIT = 3;
 const SCREEN_EDGE_GUTTER = 14;
 
 const dark = {
@@ -376,8 +375,7 @@ export function SearchScreen() {
         const productEntries = await Promise.all(
           visibleRestaurants.map(async (restaurant) => {
             const restaurantProducts = (await restaurantsApi.products(restaurant.id))
-              .filter((product) => Number(product.restaurant) === restaurant.id)
-              .slice(0, FEED_PRODUCT_LIMIT);
+              .filter((product) => Number(product.restaurant) === restaurant.id);
             return [
               restaurant,
               restaurantProducts.length ? restaurantProducts : [buildFallbackProduct(restaurant)],
@@ -511,9 +509,9 @@ export function SearchScreen() {
     const restaurantProducts = feedProductsByRestaurant.get(restaurant.id) ?? [];
     const matchingProducts = restaurantProducts.filter((product) => productMatchesSearchContext(product, queryText));
 
-    if (matchingProducts.length > 0) return matchingProducts.slice(0, FEED_PRODUCT_LIMIT);
+    if (matchingProducts.length > 0) return matchingProducts;
     if (activeCategories.length === 0 && restaurantMatchesSearchQuery(restaurant, queryText)) {
-      return restaurantProducts.slice(0, FEED_PRODUCT_LIMIT);
+      return restaurantProducts;
     }
     return [];
   };
