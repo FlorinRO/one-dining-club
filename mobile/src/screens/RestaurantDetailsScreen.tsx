@@ -43,14 +43,11 @@ type ProfileProductTileProps = {
 
 const PROFILE_COLUMNS = 3;
 const PROFILE_GAP = 2;
-const PROFILE_PRODUCT_LIMIT = 3;
 const isBrandProfile = (restaurant: Restaurant) => restaurant.entity_type === "brand";
 const isSponsoredProfile = (restaurant: Restaurant) => Boolean(restaurant.is_sponsored);
 
 const getVisibleRestaurantProducts = (products: Product[], restaurantId: number) =>
-  products
-    .filter((product) => Number(product.restaurant) === restaurantId)
-    .slice(0, PROFILE_PRODUCT_LIMIT);
+  products.filter((product) => Number(product.restaurant) === restaurantId);
 const dark = {
   background: "#050505",
   card: "#111111",
@@ -128,11 +125,10 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
     });
     if (initialProducts?.length) {
       setProducts(getVisibleRestaurantProducts(initialProducts, initialRestaurant.id));
-    } else {
-      restaurantsApi.products(initialRestaurant.id).then((nextProducts) => {
-        if (isMounted) setProducts(getVisibleRestaurantProducts(nextProducts, initialRestaurant.id));
-      });
     }
+    restaurantsApi.products(initialRestaurant.id).then((nextProducts) => {
+      if (isMounted) setProducts(getVisibleRestaurantProducts(nextProducts, initialRestaurant.id));
+    });
 
     return () => {
       isMounted = false;

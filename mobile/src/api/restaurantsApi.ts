@@ -126,7 +126,9 @@ export const restaurantsApi = {
 
   async products(id: number) {
     try {
-      const { data } = await apiClient.get<Product[] | Paginated<Product>>(`/restaurants/${id}/products/`);
+      const { data } = await apiClient.get<Product[] | Paginated<Product>>(`/restaurants/${id}/products/`, {
+        params: { page_size: 100 },
+      });
       const items = unwrap(data);
       if (__DEV__ && items.length === 0) {
         return mockProducts.filter((product) => product.restaurant === id);
