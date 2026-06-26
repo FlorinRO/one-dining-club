@@ -78,6 +78,8 @@ export type Product = {
   external_url?: string | null;
   category?: number | null;
   category_name?: string;
+  product_type?: string;
+  product_type_label?: string;
   name: string;
   description: string;
   image?: string | null;

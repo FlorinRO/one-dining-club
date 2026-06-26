@@ -40,6 +40,7 @@ class ProductOptionGroupSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
+    product_type_label = serializers.CharField(source="get_product_type_display", read_only=True)
     restaurant_name = serializers.CharField(source="restaurant.name", read_only=True)
     effective_price = serializers.DecimalField(max_digits=8, decimal_places=2, read_only=True)
     option_groups = ProductOptionGroupSerializer(many=True, read_only=True)
@@ -55,6 +56,8 @@ class ProductSerializer(serializers.ModelSerializer):
             "restaurant_name",
             "category",
             "category_name",
+            "product_type",
+            "product_type_label",
             "name",
             "description",
             "image",
@@ -117,6 +120,7 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
     )
     restaurant_name = serializers.CharField(source="restaurant.name", read_only=True)
     category_name = serializers.CharField(source="category.name", read_only=True)
+    product_type_label = serializers.CharField(source="get_product_type_display", read_only=True)
     video_file = serializers.FileField(write_only=True, required=False, allow_empty_file=False)
     likes_count = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
@@ -131,6 +135,8 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
             "category",
             "category_id",
             "category_name",
+            "product_type",
+            "product_type_label",
             "name",
             "description",
             "image",
@@ -151,7 +157,16 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "restaurant", "category", "likes_count", "comments_count", "created_at", "updated_at")
+        read_only_fields = (
+            "id",
+            "restaurant",
+            "category",
+            "product_type_label",
+            "likes_count",
+            "comments_count",
+            "created_at",
+            "updated_at",
+        )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

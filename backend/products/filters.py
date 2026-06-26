@@ -10,6 +10,7 @@ class ProductFilter(django_filters.FilterSet):
     max_price = django_filters.NumberFilter(method="filter_max_price")
     has_discount = django_filters.BooleanFilter(method="filter_has_discount")
     max_preparation_time = django_filters.NumberFilter(field_name="preparation_time", lookup_expr="lte")
+    product_type = django_filters.CharFilter(field_name="product_type", lookup_expr="exact")
     category_name = django_filters.CharFilter(field_name="category__name", lookup_expr="iexact")
     restaurant_city = django_filters.CharFilter(field_name="restaurant__city", lookup_expr="iexact")
     exclude_allergens = django_filters.CharFilter(method="filter_exclude_allergens")
@@ -25,6 +26,7 @@ class ProductFilter(django_filters.FilterSet):
             "max_price",
             "has_discount",
             "max_preparation_time",
+            "product_type",
             "category_name",
             "restaurant_city",
             "exclude_allergens",

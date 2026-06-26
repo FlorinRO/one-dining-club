@@ -467,21 +467,174 @@ img {
   border-color: transparent;
 }
 
-.error-banner,
-.success-banner {
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
+.flash-message-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: auto;
+  background: rgba(7, 11, 8, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: flash-overlay-in 180ms ease-out;
+}
+
+.flash-message {
+  width: min(100%, 560px);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 18px;
+  align-items: center;
+  padding: 24px 26px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28);
+  color: #102116;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(246, 252, 248, 0.92)),
+    rgba(255, 255, 255, 0.9);
+  animation: flash-message-in 240ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(7, 11, 8, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: flash-overlay-in 180ms ease-out;
+}
+
+.confirm-dialog {
+  width: min(100%, 520px);
+  display: grid;
+  gap: 18px;
+  padding: 26px;
+  border-radius: 30px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7faf6 100%);
+  color: var(--dash-ink);
+  border: 1px solid rgba(18, 32, 24, 0.08);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.26);
+  animation: flash-message-in 220ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.confirm-dialog-icon {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  font-size: 32px;
+}
+
+.confirm-dialog-icon-danger {
+  color: #b73e23;
+  background: linear-gradient(135deg, rgba(255, 127, 100, 0.24), rgba(255, 216, 207, 0.9));
+}
+
+.confirm-dialog-copy h2 {
+  margin: 0 0 8px;
+  font-size: clamp(24px, 3vw, 30px);
+  line-height: 1.05;
+}
+
+.confirm-dialog-copy p {
+  margin: 0;
+  color: var(--dash-muted);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.confirm-dialog-actions .ghost-button {
+  color: var(--dash-ink);
+  background: #eef3ec;
+  border: 1px solid rgba(18, 32, 24, 0.12);
+}
+
+.confirm-dialog-button-danger {
+  background: linear-gradient(135deg, #e65b3a 0%, #cf4527 100%);
+  border-color: transparent;
+  color: #fff;
+}
+
+.flash-message-success {
+  border-color: rgba(58, 181, 103, 0.24);
+}
+
+.flash-message-error {
+  border-color: rgba(255, 127, 100, 0.28);
+}
+
+.flash-message-icon {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  font-size: 30px;
+  flex-shrink: 0;
+}
+
+.flash-message-success .flash-message-icon {
+  color: #0e7a35;
+  background: linear-gradient(135deg, rgba(104, 216, 141, 0.28), rgba(46, 183, 99, 0.18));
+}
+
+.flash-message-error .flash-message-icon {
+  color: #b73e23;
+  background: linear-gradient(135deg, rgba(255, 127, 100, 0.26), rgba(255, 190, 168, 0.22));
+}
+
+.flash-message-copy {
+  min-width: 0;
+}
+
+.flash-message-copy strong {
+  display: block;
+  margin-bottom: 6px;
   font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.error-banner {
-  background: rgba(255, 127, 100, 0.16);
-  color: #ffd8cf;
+.flash-message-copy p {
+  margin: 0;
+  font-size: clamp(18px, 2.4vw, 24px);
+  line-height: 1.2;
+  font-weight: 700;
 }
 
-.success-banner {
-  background: rgba(104, 216, 141, 0.16);
-  color: #d8ffe7;
+@keyframes flash-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes flash-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .dashboard-shell {
@@ -1699,16 +1852,48 @@ img {
   background: #dff8e4;
 }
 
-.dashboard-notice {
-  padding: 12px 18px;
-  font-size: 17px;
-  font-weight: 800;
-}
-
 .status-chip.cancelled,
 .status-chip.rejected {
   color: #8c2e1b;
   background: #ffe3dc;
+}
+
+@media (max-width: 640px) {
+  .flash-message-overlay {
+    padding: 18px;
+  }
+
+  .flash-message {
+    grid-template-columns: 1fr;
+    justify-items: start;
+    gap: 14px;
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  .flash-message-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 26px;
+  }
+
+  .flash-message-copy p {
+    font-size: 18px;
+  }
+
+  .confirm-dialog {
+    padding: 22px;
+    border-radius: 24px;
+  }
+
+  .confirm-dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .confirm-dialog-actions .ghost-button,
+  .confirm-dialog-actions .button {
+    width: 100%;
+  }
 }
 
 .split {

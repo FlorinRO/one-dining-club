@@ -3,6 +3,8 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models
 
+from products.constants import PRODUCT_TYPE_CHOICES
+
 
 class Product(models.Model):
     restaurant = models.ForeignKey(
@@ -18,6 +20,7 @@ class Product(models.Model):
         related_name="products",
     )
     name = models.CharField(max_length=180)
+    product_type = models.CharField(max_length=32, choices=PRODUCT_TYPE_CHOICES, default="other")
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to="products/", blank=True, null=True)
     price = models.DecimalField(max_digits=8, decimal_places=2)

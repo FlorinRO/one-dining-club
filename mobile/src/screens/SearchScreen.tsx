@@ -93,74 +93,71 @@ const normalizeText = (value: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
-const genericProductTypeCatalog: Omit<DiscoveryCategory, "filterValue">[] = [
-  { label: "Pizza", icon: Pizza, iconColor: "#F97316", iconBackground: "rgba(249,115,22,0.16)" },
-  { label: "Burgeri", icon: Sandwich, iconColor: "#F59E0B", iconBackground: "rgba(245,158,11,0.16)" },
-  { label: "Supe", icon: Soup, iconColor: "#FB7185", iconBackground: "rgba(251,113,133,0.16)" },
-  { label: "Salate", icon: Salad, iconColor: "#22C55E", iconBackground: "rgba(34,197,94,0.16)" },
-  { label: "Desert", icon: IceCreamCone, iconColor: "#A855F7", iconBackground: "rgba(168,85,247,0.16)" },
-  { label: "Cafea", icon: Coffee, iconColor: "#C08457", iconBackground: "rgba(192,132,87,0.16)" },
-  { label: "Pui", icon: Drumstick, iconColor: "#EF4444", iconBackground: "rgba(239,68,68,0.16)" },
-  { label: "Pește", icon: Fish, iconColor: "#0EA5E9", iconBackground: "rgba(14,165,233,0.16)" },
-  { label: "Mic dejun", icon: Croissant, iconColor: "#F59E0B", iconBackground: "rgba(245,158,11,0.16)" },
-  { label: "Panificație", icon: Cookie, iconColor: "#D97706", iconBackground: "rgba(217,119,6,0.16)" },
-  { label: "Băuturi", icon: CupSoda, iconColor: "#06B6D4", iconBackground: "rgba(6,182,212,0.16)" },
+const PRODUCT_TYPE_CATALOG: DiscoveryCategory[] = [
+  { filterValue: "pizza", label: "Pizza", icon: Pizza, iconColor: "#F97316", iconBackground: "rgba(249,115,22,0.16)" },
+  { filterValue: "burger", label: "Burgeri", icon: Sandwich, iconColor: "#F59E0B", iconBackground: "rgba(245,158,11,0.16)" },
+  { filterValue: "asian", label: "Asiatic", icon: Drumstick, iconColor: "#EF4444", iconBackground: "rgba(239,68,68,0.16)" },
+  { filterValue: "sushi", label: "Sushi", icon: Fish, iconColor: "#0EA5E9", iconBackground: "rgba(14,165,233,0.16)" },
+  { filterValue: "pasta", label: "Paste", icon: Croissant, iconColor: "#F59E0B", iconBackground: "rgba(245,158,11,0.16)" },
+  { filterValue: "grill", label: "Grill", icon: Drumstick, iconColor: "#F97316", iconBackground: "rgba(249,115,22,0.16)" },
+  { filterValue: "salad", label: "Salate", icon: Salad, iconColor: "#22C55E", iconBackground: "rgba(34,197,94,0.16)" },
+  { filterValue: "soup", label: "Supe", icon: Soup, iconColor: "#FB7185", iconBackground: "rgba(251,113,133,0.16)" },
+  { filterValue: "breakfast", label: "Mic dejun", icon: Croissant, iconColor: "#FACC15", iconBackground: "rgba(250,204,21,0.16)" },
+  { filterValue: "dessert", label: "Desert", icon: IceCreamCone, iconColor: "#A855F7", iconBackground: "rgba(168,85,247,0.16)" },
+  { filterValue: "bakery", label: "Panificație", icon: Cookie, iconColor: "#D97706", iconBackground: "rgba(217,119,6,0.16)" },
+  { filterValue: "drinks", label: "Băuturi", icon: CupSoda, iconColor: "#06B6D4", iconBackground: "rgba(6,182,212,0.16)" },
+  { filterValue: "other", label: "Altele", icon: Coffee, iconColor: "#C08457", iconBackground: "rgba(192,132,87,0.16)" },
 ];
 
-const categoryVisualCatalog: Array<{ keywords: string[] } & Omit<DiscoveryCategory, "filterValue">> = [
-  { label: "Pizza", icon: Pizza, iconColor: "#F97316", iconBackground: "rgba(249,115,22,0.16)", keywords: ["pizza", "pinsa", "focaccia"] },
-  { label: "Burgeri", icon: Sandwich, iconColor: "#F59E0B", iconBackground: "rgba(245,158,11,0.16)", keywords: ["burger", "sandwich", "wrap", "shawarma", "kebab"] },
-  { label: "Supe", icon: Soup, iconColor: "#FB7185", iconBackground: "rgba(251,113,133,0.16)", keywords: ["soup", "supa", "ciorba", "ramen", "pho", "noodle"] },
-  { label: "Salate", icon: Salad, iconColor: "#22C55E", iconBackground: "rgba(34,197,94,0.16)", keywords: ["salad", "salata", "salate", "bowl", "poke", "healthy"] },
-  { label: "Desert", icon: IceCreamCone, iconColor: "#A855F7", iconBackground: "rgba(168,85,247,0.16)", keywords: ["dessert", "desert", "cake", "gelato", "ice cream", "donut", "sweet"] },
-  { label: "Cafea", icon: Coffee, iconColor: "#C08457", iconBackground: "rgba(192,132,87,0.16)", keywords: ["coffee", "cafea", "espresso", "latte", "cappuccino", "bakery"] },
-  { label: "Pui", icon: Drumstick, iconColor: "#EF4444", iconBackground: "rgba(239,68,68,0.16)", keywords: ["chicken", "pui", "wings", "crispy", "strips"] },
-  { label: "Pește", icon: Fish, iconColor: "#0EA5E9", iconBackground: "rgba(14,165,233,0.16)", keywords: ["fish", "peste", "pește", "seafood", "salmon", "tuna", "shrimp"] },
-  { label: "Mic dejun", icon: Croissant, iconColor: "#F59E0B", iconBackground: "rgba(245,158,11,0.16)", keywords: ["breakfast", "mic dejun", "brunch", "omelette", "pancake", "croissant"] },
-  { label: "Panificație", icon: Cookie, iconColor: "#D97706", iconBackground: "rgba(217,119,6,0.16)", keywords: ["bakery", "pastry", "cookie", "cofetarie", "patiserie", "muffin"] },
-  { label: "Băuturi", icon: CupSoda, iconColor: "#06B6D4", iconBackground: "rgba(6,182,212,0.16)", keywords: ["drink", "drinks", "bauturi", "băuturi", "juice", "smoothie", "soda", "cocktail"] },
-];
+const PRODUCT_TYPE_KEYWORDS: Record<string, string[]> = {
+  pizza: ["pizza", "pinsa", "calzone", "focaccia"],
+  burger: ["burger", "smash", "cheeseburger", "sandwich", "wrap", "shawarma", "kebab"],
+  asian: ["asian", "asiatic", "wok", "noodle", "ramen", "pho", "thai", "chinez", "bao", "dumpling"],
+  sushi: ["sushi", "maki", "nigiri", "sashimi", "uramaki"],
+  pasta: ["pasta", "paste", "spaghetti", "penne", "tagliatelle", "carbonara", "lasagna", "ravioli", "gnocchi"],
+  grill: ["grill", "bbq", "barbecue", "gratar", "grătar", "steak", "mici", "coaste"],
+  salad: ["salad", "salata", "salată", "salate", "bowl", "poke"],
+  soup: ["soup", "supa", "supă", "ciorba", "ciorbă"],
+  breakfast: ["breakfast", "mic dejun", "brunch", "omelette", "omleta", "omletă", "pancake", "croissant"],
+  dessert: ["dessert", "desert", "cake", "tiramisu", "gelato", "ice cream", "donut", "clatite", "clătite", "prajitura", "prăjitură"],
+  bakery: ["bakery", "panificatie", "panificație", "patiserie", "cofetarie", "cofetărie", "pastry", "bread", "bagel"],
+  drinks: ["drink", "drinks", "bauturi", "băuturi", "juice", "smoothie", "soda", "cocktail", "tea", "ceai", "cafea", "coffee", "espresso", "latte", "cappuccino", "cola", "water", "apa", "apă"],
+};
 
-function isGenericSelectionLabel(label: string) {
-  return /^(selectia|selectie|selection)\s+\d+$/i.test(normalizeText(label.trim()));
+function resolveProductTypeFilterValue(value?: string | null) {
+  const normalizedValue = normalizeText(String(value || "").trim());
+  if (!normalizedValue) return "";
+
+  const exactMatch = PRODUCT_TYPE_CATALOG.find(
+    (item) => item.filterValue === normalizedValue || normalizeText(item.label) === normalizedValue,
+  );
+  if (exactMatch) return exactMatch.filterValue;
+
+  const keywordMatch = Object.entries(PRODUCT_TYPE_KEYWORDS).find(([, keywords]) =>
+    keywords.some((keyword) => normalizedValue.includes(normalizeText(keyword))),
+  );
+  return keywordMatch?.[0] ?? "";
 }
 
-function resolveDiscoveryCategory(label: string, index = 0): DiscoveryCategory {
-  const cleanLabel = label.trim();
-  const normalizedLabel = normalizeText(cleanLabel);
-  const genericMatch = normalizedLabel.match(/^(selectia|selectie|selection)\s+(\d+)$/);
-  if (genericMatch) {
-    const fallbackIndex = Math.max(Number(genericMatch[2]) - 1, 0) % genericProductTypeCatalog.length;
-    return { ...genericProductTypeCatalog[fallbackIndex], filterValue: cleanLabel };
-  }
+function resolveDiscoveryCategory(value: string): DiscoveryCategory {
+  const filterValue = resolveProductTypeFilterValue(value) || "other";
+  return PRODUCT_TYPE_CATALOG.find((item) => item.filterValue === filterValue) ?? PRODUCT_TYPE_CATALOG[PRODUCT_TYPE_CATALOG.length - 1];
+}
 
-  const catalogMatch = categoryVisualCatalog.find(({ keywords }) => keywords.some((keyword) => normalizedLabel.includes(keyword)));
-  if (catalogMatch) {
-    return {
-      label: catalogMatch.label,
-      filterValue: cleanLabel,
-      icon: catalogMatch.icon,
-      iconColor: catalogMatch.iconColor,
-      iconBackground: catalogMatch.iconBackground,
-    };
-  }
-
-  const fallbackVisual = genericProductTypeCatalog[index % genericProductTypeCatalog.length];
+const buildFallbackProduct = (restaurant: Restaurant): Product => {
+  const productType =
+    resolveProductTypeFilterValue(
+      restaurant.categories?.map((category) => category.name).join(" ") || restaurant.description || restaurant.name,
+    ) || "other";
+  const productTypePresentation = resolveDiscoveryCategory(productType);
   return {
-    label: cleanLabel,
-    filterValue: cleanLabel,
-    icon: fallbackVisual.icon,
-    iconColor: fallbackVisual.iconColor,
-    iconBackground: fallbackVisual.iconBackground,
-  };
-}
-
-const buildFallbackProduct = (restaurant: Restaurant): Product => ({
   id: restaurant.id * 10000,
   restaurant: restaurant.id,
   restaurant_name: restaurant.name,
   category: null,
-  category_name: "Chef pick",
+  category_name: productTypePresentation.label,
+  product_type: productType,
+  product_type_label: productTypePresentation.label,
   name: `${restaurant.name} tasting plate`,
   description: restaurant.description || "Mock video dish prepared for the new swipe-first feed.",
   image: null,
@@ -172,7 +169,8 @@ const buildFallbackProduct = (restaurant: Restaurant): Product => ({
   preparation_time: restaurant.estimated_delivery_time_min || 20,
   allergens: "",
   option_groups: [],
-});
+  };
+};
 
 const compactCount = (value: number) => {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
@@ -194,37 +192,8 @@ const videoSourceForSearchProduct = (product: Product): VideoSource | null =>
       }
     : null;
 
-function buildDiscoveryCategories(restaurants: Restaurant[], products: Product[]) {
-  const byKey = new Map<string, { label: string; score: number }>();
-  const addCategory = (label: string | undefined, score: number) => {
-    const cleanLabel = label?.trim();
-    if (!cleanLabel) return;
-    const key = normalizeText(cleanLabel);
-    const current = byKey.get(key);
-    byKey.set(key, { label: current?.label ?? cleanLabel, score: (current?.score ?? 0) + score });
-  };
-
-
-  products.forEach((product) => addCategory(product.category_name, 3));
-  if (byKey.size === 0) {
-    restaurants.forEach((restaurant) => {
-      restaurant.categories?.forEach((category) => addCategory(category.name, 2));
-    });
-  }
-
-  const rankedCategories = [...byKey.values()]
-    .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
-    .slice(0, 24);
-
-  const hasOnlyGenericSelections = rankedCategories.length > 0 && rankedCategories.every((item) => isGenericSelectionLabel(item.label));
-  if (hasOnlyGenericSelections) {
-    return genericProductTypeCatalog.map((item) => ({
-      ...item,
-      filterValue: item.label,
-    }));
-  }
-
-  return rankedCategories.map((item, index) => resolveDiscoveryCategory(item.label, index));
+function buildDiscoveryCategories() {
+  return PRODUCT_TYPE_CATALOG;
 }
 
 export function SearchScreen() {
@@ -246,7 +215,10 @@ export function SearchScreen() {
   const [maximumDeliveryTime, setMaximumDeliveryTime] = useState<number | null>(null);
   const [maximumDistance, setMaximumDistance] = useState<number | null>(null);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [activeCategories, setActiveCategories] = useState<string[]>(route.params?.category ? [route.params.category] : []);
+  const [activeCategories, setActiveCategories] = useState<string[]>(() => {
+    const initialCategory = resolveProductTypeFilterValue(route.params?.category);
+    return initialCategory ? [initialCategory] : [];
+  });
   const [activeSheet, setActiveSheet] = useState<ActiveSheetKey | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isFocusedFromHome, setIsFocusedFromHome] = useState(false);
@@ -271,10 +243,7 @@ export function SearchScreen() {
     });
     return grouped;
   }, [feedProducts]);
-  const feedDiscoveryCategories = useMemo(
-    () => buildDiscoveryCategories(restaurants, feedProducts),
-    [feedProducts, restaurants],
-  );
+  const feedDiscoveryCategories = useMemo(() => buildDiscoveryCategories(), []);
   const discoveryCategoryByFilterValue = useMemo(
     () => new Map(feedDiscoveryCategories.map((item) => [item.filterValue, item])),
     [feedDiscoveryCategories],
@@ -290,7 +259,7 @@ export function SearchScreen() {
       if (key === "deliveryTime") return tr("Timp de livrare", "Delivery time");
       if (key === "pickup") return tr("Ridicare", "Pickup");
       if (key === "distance") return tr("Distanță", "Distance");
-      return tr("Categorii", "Categories");
+      return tr("Tip produs", "Product type");
     },
     [tr],
   );
@@ -355,7 +324,7 @@ export function SearchScreen() {
         ],
       },
       categories: {
-        title: tr("Categorii", "Categories"),
+        title: tr("Tip produs", "Product type"),
         type: "multi",
         options: feedDiscoveryCategories.map((item) => ({ label: item.label, value: item.filterValue })),
       },
@@ -401,7 +370,8 @@ export function SearchScreen() {
 
   useEffect(() => {
     if (route.params?.category) {
-      setActiveCategories([route.params.category]);
+      const category = resolveProductTypeFilterValue(route.params.category);
+      setActiveCategories(category ? [category] : []);
       setQuery("");
       navigation.setParams({ category: undefined });
     }
@@ -496,10 +466,12 @@ export function SearchScreen() {
   };
 
   const productMatchesSearchContext = (product: Product, queryText: string) => {
-    const productHaystack = normalizeText(`${product.name} ${product.description} ${product.restaurant_name ?? ""} ${product.category_name ?? ""}`);
+    const productTypeValue = resolveProductTypeFilterValue(product.product_type || product.product_type_label || product.category_name || "");
+    const productHaystack = normalizeText(
+      `${product.name} ${product.description} ${product.restaurant_name ?? ""} ${product.category_name ?? ""} ${product.product_type_label ?? ""}`,
+    );
     const matchesQuery = !queryText || productHaystack.includes(queryText);
-    const matchesCategory =
-      activeCategories.length === 0 || activeCategories.some((category) => productHaystack.includes(normalizeText(category)));
+    const matchesCategory = activeCategories.length === 0 || (productTypeValue ? activeCategories.includes(productTypeValue) : false);
 
     return matchesQuery && matchesCategory;
   };
@@ -1072,7 +1044,7 @@ export function SearchScreen() {
                 </View>
               </FilterSection>
 
-              <FilterSection title={tr("Categorii", "Categories")} icon={SlidersHorizontal}>
+              <FilterSection title={tr("Tip produs", "Product type")} icon={SlidersHorizontal}>
                 <View style={styles.categoryList}>
                   {feedDiscoveryCategories.map((item, index) => {
                     const selected = activeCategories.includes(item.filterValue);

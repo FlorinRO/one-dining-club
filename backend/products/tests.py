@@ -32,6 +32,7 @@ class ProductSocialApiTests(TestCase):
         self.product = Product.objects.create(
             restaurant=self.restaurant,
             name="Social Burger",
+            product_type="burger",
             price="42.00",
             is_available=True,
         )
@@ -49,6 +50,25 @@ class ProductSocialApiTests(TestCase):
         self.assertEqual(items[0]["likes_count"], 1)
         self.assertEqual(items[0]["comments_count"], 1)
         self.assertFalse(items[0]["is_liked"])
+        self.assertEqual(items[0]["product_type"], "burger")
+        self.assertEqual(items[0]["product_type_label"], "Burgeri")
+
+    def test_products_can_be_filtered_by_product_type(self):
+        Product.objects.create(
+            restaurant=self.restaurant,
+            name="Pizza Margherita",
+            product_type="pizza",
+            price="35.00",
+            is_available=True,
+        )
+
+        response = self.client.get("/api/products/", {"product_type": "pizza"})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        items = payload["results"] if isinstance(payload, dict) else payload
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["product_type"], "pizza")
 
     def test_customer_can_toggle_product_like(self):
         self.client.force_authenticate(user=self.customer)

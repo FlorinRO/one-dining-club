@@ -69,6 +69,21 @@ const NAV_ITEMS = [
   { view: "orders", label: "Comenzi", icon: "ri-bill-line" },
   { view: "account", label: "Cont", icon: "ri-user-settings-line" },
 ];
+const PRODUCT_TYPE_OPTIONS = [
+  { value: "pizza", label: "Pizza" },
+  { value: "burger", label: "Burgeri" },
+  { value: "asian", label: "Asiatic" },
+  { value: "sushi", label: "Sushi" },
+  { value: "pasta", label: "Paste" },
+  { value: "grill", label: "Grill" },
+  { value: "salad", label: "Salate" },
+  { value: "soup", label: "Supe" },
+  { value: "breakfast", label: "Mic dejun" },
+  { value: "dessert", label: "Desert" },
+  { value: "bakery", label: "Panificație" },
+  { value: "drinks", label: "Băuturi" },
+  { value: "other", label: "Altele" },
+];
 const REQUESTED_DASHBOARD_VIEW = location.hash.replace("#", "");
 const INITIAL_DASHBOARD_VIEW = NAV_ITEMS.some((item) => item.view === REQUESTED_DASHBOARD_VIEW)
   ? REQUESTED_DASHBOARD_VIEW
@@ -95,7 +110,12 @@ const state = {
   loading: false,
   error: "",
   notice: "",
+  confirmation: null,
 };
+
+const FLASH_MESSAGE_DURATION_MS = 4500;
+let flashMessageTimer = null;
+let pendingConfirmationAction = null;
 
 const app = document.querySelector("#app");
 
@@ -196,13 +216,58 @@ function clearAuth() {
 function setNotice(message) {
   state.notice = message;
   state.error = "";
+  scheduleFlashMessageClear();
   render();
 }
 
 function setError(message) {
   state.error = message;
   state.notice = "";
+  scheduleFlashMessageClear();
   render();
+}
+
+function clearFlashMessageTimer() {
+  if (!flashMessageTimer) return;
+  window.clearTimeout(flashMessageTimer);
+  flashMessageTimer = null;
+}
+
+function scheduleFlashMessageClear() {
+  clearFlashMessageTimer();
+  if (!state.notice && !state.error) return;
+  flashMessageTimer = window.setTimeout(() => {
+    state.notice = "";
+    state.error = "";
+    flashMessageTimer = null;
+    render();
+  }, FLASH_MESSAGE_DURATION_MS);
+}
+
+function openConfirmation(options) {
+  state.confirmation = {
+    title: options.title || "Confirmă acțiunea",
+    message: options.message || "",
+    confirmLabel: options.confirmLabel || "Confirmă",
+    confirmTone: options.confirmTone || "danger",
+  };
+  pendingConfirmationAction = typeof options.onConfirm === "function" ? options.onConfirm : null;
+  render();
+}
+
+function closeConfirmation() {
+  state.confirmation = null;
+  pendingConfirmationAction = null;
+  render();
+}
+
+async function handleConfirmationAccept() {
+  const action = pendingConfirmationAction;
+  state.confirmation = null;
+  pendingConfirmationAction = null;
+  render();
+  if (!action) return;
+  await action();
 }
 
 function setView(view) {
@@ -494,13 +559,14 @@ async function reloadCategories() {
 }
 
 function render() {
-  app.innerHTML = state.user ? renderDashboard() : renderLogin();
+  app.innerHTML = `${state.user ? renderDashboard() : renderLogin()}${renderConfirmationDialog()}`;
   bindEvents();
 }
 
 function renderLogin() {
   return `
     <div class="login-shell">
+      ${renderFlashMessage()}
       <div class="login-card">
         <section class="login-copy">
           <div>
@@ -519,8 +585,6 @@ function renderLogin() {
           </div>
           <h1>Conectare</h1>
           <p class="muted">Intră în contul restaurantului pentru a-ți administra prezența în aplicație.</p>
-          ${state.error ? `<div class="error-banner">${escapeHtml(state.error)}</div>` : ""}
-          ${state.notice ? `<div class="success-banner">${escapeHtml(state.notice)}</div>` : ""}
           <form class="login-form" id="login-form">
             <label class="field">
               <span>Email</span>
@@ -550,6 +614,7 @@ function renderDashboard() {
 
   return `
     <div class="dashboard-shell">
+      ${renderFlashMessage()}
       <aside class="shell-sidebar">
         <div class="sidebar-brand">
           <a class="brand brand-large" href="../index.html" aria-label="YUMZY home">
@@ -580,12 +645,55 @@ function renderDashboard() {
           </div>
           <div class="top-actions">
             ${state.loading && !isInitialDashboardLoading ? `<span class="status-chip">Se încarcă...</span>` : ""}
-            ${state.notice ? `<span class="status-chip delivered dashboard-notice">${escapeHtml(state.notice)}</span>` : ""}
-            ${state.error ? `<span class="status-chip cancelled">${escapeHtml(state.error)}</span>` : ""}
           </div>
         </div>
         ${dashboardContent}
       </main>
+    </div>
+  `;
+}
+
+function renderFlashMessage() {
+  const type = state.error ? "error" : state.notice ? "success" : "";
+  const message = state.error || state.notice;
+  if (!type || !message) return "";
+
+  const iconClass = type === "error" ? "ri-error-warning-fill" : "ri-checkbox-circle-fill";
+  const title = type === "error" ? "A apărut o problemă" : "Acțiune finalizată";
+  const liveRole = type === "error" ? "alert" : "status";
+
+  return `
+    <div class="flash-message-overlay" role="presentation">
+      <div class="flash-message flash-message-${type}" role="${liveRole}" aria-live="polite" aria-atomic="true">
+        <span class="flash-message-icon" aria-hidden="true"><i class="${iconClass}"></i></span>
+        <div class="flash-message-copy">
+          <strong>${escapeHtml(title)}</strong>
+          <p>${escapeHtml(message)}</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderConfirmationDialog() {
+  const confirmation = state.confirmation;
+  if (!confirmation) return "";
+
+  return `
+    <div class="confirm-dialog-overlay" role="presentation">
+      <div class="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-message">
+        <div class="confirm-dialog-icon confirm-dialog-icon-${confirmation.confirmTone}" aria-hidden="true">
+          <i class="${confirmation.confirmTone === "danger" ? "ri-delete-bin-5-fill" : "ri-error-warning-fill"}"></i>
+        </div>
+        <div class="confirm-dialog-copy">
+          <h2 id="confirm-dialog-title">${escapeHtml(confirmation.title)}</h2>
+          <p id="confirm-dialog-message">${escapeHtml(confirmation.message)}</p>
+        </div>
+        <div class="confirm-dialog-actions">
+          <button class="ghost-button" type="button" data-confirm-cancel>Renunță</button>
+          <button class="button confirm-dialog-button-${confirmation.confirmTone}" type="button" data-confirm-accept>${escapeHtml(confirmation.confirmLabel)}</button>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -1070,31 +1178,28 @@ function renderHoursRows(hours) {
 }
 
 function renderProductsView() {
-  const productsWithVideo = state.products.filter((product) => product.video_url);
-  const productsWithoutVideo = state.products.filter((product) => !product.video_url);
   return `
     <section class="panel product-workbench">
       <div class="section-header">
         <div>
           <h2>${state.editingProductId ? "Editează produs" : "Produs nou"}</h2>
-          <small>Completează întâi informațiile esențiale, apoi atașează imaginea și video-ul produsului.</small>
+          <small>Completează informațiile esențiale și adaugă video-ul produsului.</small>
         </div>
-        <span class="status-chip pending"><i class="ri-video-on-line" aria-hidden="true"></i> Video-ready</span>
       </div>
       <form id="product-form" class="form-grid">
         <div class="form-section">
           <div class="form-section-title">
             <strong>Informații de bază</strong>
-            <span>Nume, categorie, descriere și preț.</span>
+            <span>Nume, tip de produs, descriere și preț.</span>
           </div>
           <div class="form-section-fields">
             <div class="split">
               <label class="field"><span>Nume produs</span><input name="name" placeholder="Ex: Smash burger cu cheddar" required /></label>
               <label class="field">
-                <span>Categorie</span>
-                <select name="category_id">
-                  <option value="">Fără categorie</option>
-                  ${state.productCategories.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("")}
+                <span>Tip Produs</span>
+                <select name="product_type" required>
+                  <option value="">Alege tipul de produs</option>
+                  ${PRODUCT_TYPE_OPTIONS.map((item) => `<option value="${item.value}">${escapeHtml(item.label)}</option>`).join("")}
                 </select>
               </label>
             </div>
@@ -1127,12 +1232,8 @@ function renderProductsView() {
             <span>Video-ul este elementul principal în experiența YUMZY.</span>
           </div>
           <div class="form-section-fields">
-            <div class="split">
-              <label class="field"><span>Video produs</span><input type="file" name="video_file" accept="video/mp4,video/quicktime,video/webm,video/x-m4v" /></label>
-              <label class="field"><span>Audio URL</span><input type="url" name="audio_url" placeholder="https://..." /></label>
-            </div>
+            <label class="field"><span>Video produs</span><input type="file" name="video_file" accept="video/mp4,video/quicktime,video/webm,video/x-m4v" /></label>
             <label class="field"><span>Video URL</span><input type="url" name="video_url" placeholder="https://..." /></label>
-            <label class="field"><span>Imagine produs</span><input type="file" name="image" accept="image/*" /></label>
           </div>
         </div>
         <div class="button-row">
@@ -1158,7 +1259,7 @@ function renderProductsView() {
                   <div class="section-header">
                     <div>
                       <h3>${escapeHtml(product.name)}</h3>
-                      <small>${escapeHtml(product.category_name || "Fără categorie")}</small>
+                      <small>${escapeHtml(product.product_type_label || product.category_name || "Fără tip")}</small>
                     </div>
                     <span class="status-chip ${product.video_url ? "delivered" : "pending"}">
                       <i class="${product.video_url ? "ri-video-on-line" : "ri-video-off-line"}" aria-hidden="true"></i>
@@ -1180,13 +1281,6 @@ function renderProductsView() {
             .join("")
         : `<article class="empty-card"><h3>Niciun produs</h3><small>Adaugă un produs nou pentru restaurantul curent.</small></article>`}
     </section>
-    <div class="section-header video-list-header">
-      <div>
-        <h2>Rezumat video</h2>
-        <small>Separăm produsele complete de cele care mai au nevoie de video.</small>
-      </div>
-      <span class="status-chip pending">${productsWithVideo.length} cu video / ${productsWithoutVideo.length} fără video</span>
-    </div>
   `;
 }
 
@@ -1358,8 +1452,10 @@ function bindEvents() {
     button.addEventListener("click", () => startProductEdit(Number(button.dataset.editProduct)));
   });
   document.querySelectorAll("[data-delete-product]").forEach((button) => {
-    button.addEventListener("click", () => deleteProduct(Number(button.dataset.deleteProduct)));
+    button.addEventListener("click", () => requestProductDeletion(Number(button.dataset.deleteProduct)));
   });
+  document.querySelector("[data-confirm-cancel]")?.addEventListener("click", closeConfirmation);
+  document.querySelector("[data-confirm-accept]")?.addEventListener("click", handleConfirmationAccept);
 
   document.querySelectorAll("[data-order-form]").forEach((form) => {
     form.addEventListener("submit", handleOrderUpdate);
@@ -1445,7 +1541,7 @@ function hydrateEditingForms() {
       const form = document.querySelector("#product-form");
       if (form) {
         getField(form, "name").value = product.name || "";
-        getField(form, "category_id").value = product.category || "";
+        getField(form, "product_type").value = product.product_type || "other";
         getField(form, "description").value = product.description || "";
         getField(form, "price").value = product.price || "";
         getField(form, "discount_price").value = product.discount_price || "";
@@ -1453,7 +1549,6 @@ function hydrateEditingForms() {
         getField(form, "calories").value = product.calories || "";
         getField(form, "ingredients").value = product.ingredients || "";
         getField(form, "allergens").value = product.allergens || "";
-        getField(form, "audio_url").value = product.audio_url || "";
         getField(form, "video_url").value = product.video_url || "";
         getField(form, "video_file").value = "";
       }
@@ -1615,10 +1710,8 @@ async function handleProductSubmit(event) {
   if (!restaurant) return;
   const form = event.currentTarget;
   const formData = new FormData();
-  const categoryId = getField(form, "category_id").value;
-
   formData.append("restaurant_id", restaurant.id);
-  appendIfValue(formData, "category_id", categoryId);
+  appendIfValue(formData, "product_type", getField(form, "product_type").value);
   appendIfValue(formData, "name", getField(form, "name").value);
   appendIfValue(formData, "description", getField(form, "description").value);
   appendIfValue(formData, "price", getField(form, "price").value);
@@ -1627,14 +1720,11 @@ async function handleProductSubmit(event) {
   appendIfValue(formData, "calories", getField(form, "calories").value);
   appendIfValue(formData, "ingredients", getField(form, "ingredients").value);
   appendIfValue(formData, "allergens", getField(form, "allergens").value);
-  appendIfValue(formData, "audio_url", getField(form, "audio_url").value);
   appendIfValue(formData, "video_url", getField(form, "video_url").value);
   const currentProduct = state.products.find((item) => item.id === state.editingProductId);
   formData.append("is_available", String(currentProduct?.is_available ?? true));
   formData.append("is_popular", String(currentProduct?.is_popular ?? false));
   formData.append("has_audio", String(currentProduct?.has_audio ?? true));
-  const imageField = getField(form, "image");
-  if (imageField.files[0]) formData.append("image", imageField.files[0]);
   const videoField = getField(form, "video_file");
   const videoUrl = getField(form, "video_url").value.trim();
   const hasUploadedVideo = Boolean(videoField.files[0]);
@@ -1715,6 +1805,19 @@ async function deleteProduct(productId) {
   } catch (error) {
     setError(error.message);
   }
+}
+
+function requestProductDeletion(productId) {
+  const product = state.products.find((item) => item.id === productId);
+  if (!product) return;
+
+  openConfirmation({
+    title: "Ștergi acest produs?",
+    message: `Produsul „${product.name}” va fi eliminat din dashboard și din aplicație.`,
+    confirmLabel: "Șterge produsul",
+    confirmTone: "danger",
+    onConfirm: () => deleteProduct(productId),
+  });
 }
 
 async function handleOrderUpdate(event) {

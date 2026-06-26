@@ -31,6 +31,7 @@ const localFilterProducts = (
     max_price?: number;
     has_discount?: boolean;
     max_preparation_time?: number;
+    product_type?: string;
     category_name?: string;
     restaurant_city?: string;
     exclude_allergens?: string;
@@ -50,7 +51,7 @@ const localFilterProducts = (
   const filtered = products.filter((product) => {
     const effectivePrice = toNumber(product.effective_price ?? product.discount_price ?? product.price) ?? 0;
     const haystack = normalize(
-      [product.name, product.description, product.restaurant_name ?? "", product.allergens ?? "", product.category_name ?? ""].join(" "),
+      [product.name, product.description, product.restaurant_name ?? "", product.allergens ?? "", product.category_name ?? "", product.product_type_label ?? ""].join(" "),
     );
     const productAllergens = normalize(product.allergens ?? "");
 
@@ -68,6 +69,7 @@ const localFilterProducts = (
       return false;
     }
     if (params.max_preparation_time != null && product.preparation_time > params.max_preparation_time) return false;
+    if (params.product_type && normalize(product.product_type ?? "") !== normalize(params.product_type)) return false;
     if (categoryNames.length && !categoryNames.includes(normalize(product.category_name ?? ""))) return false;
     if (params.restaurant_city && restaurantCityById.get(product.restaurant) !== normalize(params.restaurant_city)) return false;
     if (excludedAllergens.length && excludedAllergens.some((item) => productAllergens.includes(item))) return false;
@@ -105,6 +107,7 @@ export const productsApi = {
     max_price?: number;
     has_discount?: boolean;
     max_preparation_time?: number;
+    product_type?: string;
     category_name?: string;
     restaurant_city?: string;
     exclude_allergens?: string;
