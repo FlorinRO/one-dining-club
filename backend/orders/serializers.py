@@ -280,9 +280,10 @@ class OrderCreateSerializer(serializers.Serializer):
 
         provider = payment_provider_for_method(payment_method)
         Payment.objects.create(order=order, provider=provider, amount=order.total, status=payment_status)
-        from orders.notifications import queue_order_created_push
+        if payment_method == PaymentMethod.CASH:
+            from orders.notifications import queue_order_created_push
 
-        queue_order_created_push(order)
+            queue_order_created_push(order)
         return order
 
     def to_representation(self, instance):

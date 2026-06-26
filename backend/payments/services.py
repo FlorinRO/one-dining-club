@@ -116,6 +116,8 @@ def sync_payment_from_intent(intent_object):
         "canceled": PaymentStatus.FAILED,
     }.get(stripe_status, PaymentStatus.PENDING)
 
+    previous_status = payment.status
+
     payment.status = next_status
     payment.provider_payment_id = payment_intent_id or payment.provider_payment_id
     payment.save(update_fields=("status", "provider_payment_id"))
@@ -132,6 +134,10 @@ def sync_payment_from_intent(intent_object):
         return payment
 
     order.save(update_fields=("payment_status", "updated_at"))
+    if next_status == PaymentStatus.PAID and previous_status != PaymentStatus.PAID:
+        from orders.notifications import queue_order_created_push
+
+        queue_order_created_push(order)
     if next_status == PaymentStatus.FAILED:
         from orders.notifications import queue_payment_status_push
 

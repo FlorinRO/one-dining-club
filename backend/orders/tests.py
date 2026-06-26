@@ -3,7 +3,9 @@ from rest_framework.test import APIClient
 from unittest.mock import patch
 
 from addresses.models import Address
-from orders.models import FulfillmentType, Order, OrderStatus
+from orders.models import FulfillmentType, Order, OrderStatus, PaymentMethod, PaymentStatus
+from payments.models import Payment
+from payments.services import sync_payment_from_intent
 from products.models import Product
 from restaurants.models import Restaurant
 from users.models import User, UserRole
@@ -175,6 +177,100 @@ class OrderCreateApiTests(TestCase):
             f"Comanda #{order.id} a fost plasata cu succes la {self.restaurant.name}.",
         )
         self.assertEqual(kwargs["data"]["order_id"], order.id)
+
+    def test_online_order_does_not_send_created_push_before_payment_confirmation(self):
+        with patch("orders.notifications.send_push_to_user") as mock_send:
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    "/api/orders/",
+                    {
+                        "restaurant_id": self.restaurant.id,
+                        "fulfillment_type": FulfillmentType.PICKUP,
+                        "payment_method": PaymentMethod.APPLE_PAY,
+                        "items": [
+                            {
+                                "product_id": self.product.id,
+                                "quantity": 1,
+                            }
+                        ],
+                    },
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, 201)
+        mock_send.assert_not_called()
+
+    def test_online_order_sends_created_push_after_payment_confirmation(self):
+        order = Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            address=self.address,
+            subtotal="35.00",
+            delivery_fee="12.00",
+            total="47.00",
+            payment_method=PaymentMethod.APPLE_PAY,
+            payment_status=PaymentStatus.PENDING,
+        )
+        payment = Payment.objects.create(
+            order=order,
+            provider="apple_pay",
+            amount=order.total,
+            status=PaymentStatus.PENDING,
+            provider_payment_id="pi_success_123",
+        )
+
+        with patch("orders.notifications.send_push_to_user") as mock_send:
+            with self.captureOnCommitCallbacks(execute=True):
+                sync_payment_from_intent(
+                    {
+                        "id": payment.provider_payment_id,
+                        "status": "succeeded",
+                        "metadata": {"payment_id": str(payment.id)},
+                    }
+                )
+
+        order.refresh_from_db()
+        payment.refresh_from_db()
+        self.assertEqual(order.payment_status, PaymentStatus.PAID)
+        self.assertEqual(payment.status, PaymentStatus.PAID)
+        customer_call = mock_send.call_args_list[0]
+        args, kwargs = customer_call
+        self.assertEqual(args[0], self.customer)
+        self.assertEqual(kwargs["title"], "Comanda plasata cu succes")
+        self.assertEqual(kwargs["data"]["order_id"], order.id)
+
+    def test_online_order_created_push_is_not_duplicated_for_repeated_success_webhooks(self):
+        order = Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            address=self.address,
+            subtotal="35.00",
+            delivery_fee="12.00",
+            total="47.00",
+            payment_method=PaymentMethod.APPLE_PAY,
+            payment_status=PaymentStatus.PENDING,
+        )
+        payment = Payment.objects.create(
+            order=order,
+            provider="apple_pay",
+            amount=order.total,
+            status=PaymentStatus.PENDING,
+            provider_payment_id="pi_success_repeat_123",
+        )
+
+        webhook_payload = {
+            "id": payment.provider_payment_id,
+            "status": "succeeded",
+            "metadata": {"payment_id": str(payment.id)},
+        }
+
+        with patch("orders.notifications.send_push_to_user") as mock_send:
+            with self.captureOnCommitCallbacks(execute=True):
+                sync_payment_from_intent(webhook_payload)
+            with self.captureOnCommitCallbacks(execute=True):
+                sync_payment_from_intent(webhook_payload)
+
+        self.assertEqual(mock_send.call_count, 2)
 
     def test_restaurant_status_update_queues_customer_push_notification(self):
         order = Order.objects.create(
