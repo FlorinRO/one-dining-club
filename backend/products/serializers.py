@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 from django.core.files.storage import default_storage
 from django.utils.text import get_valid_filename
@@ -24,6 +25,73 @@ def store_product_video(video_file):
     return default_storage.url(stored_path)
 
 
+def normalize_ingredient_details(value):
+    if value in (None, "", []):
+        return []
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return []
+        value = json.loads(value)
+    if not isinstance(value, list):
+        raise serializers.ValidationError("Ingredient details must be a list.")
+
+    normalized = []
+    for item in value:
+        if not isinstance(item, dict):
+            raise serializers.ValidationError("Each ingredient must be an object.")
+        name = str(item.get("name", "")).strip()
+        grams = item.get("grams")
+        calories = item.get("calories")
+        price_per_20g = next(
+            (
+                item.get(key)
+                for key in ("price_per_20g", "pricePer20g", "extra_price_per_20g", "extraPricePer20g")
+                if item.get(key) not in (None, "")
+            ),
+            None,
+        )
+        can_add_extra = next(
+            (
+                item.get(key)
+                for key in ("can_add_extra", "canAddExtra", "extra_available", "can_order_extra")
+                if key in item
+            ),
+            True,
+        )
+        if not name:
+            continue
+        normalized.append(
+            {
+                "name": name,
+                "grams": int(grams) if grams not in (None, "",) else None,
+                "calories": int(calories) if calories not in (None, "",) else None,
+                "price_per_20g": str(price_per_20g) if price_per_20g not in (None, "",) else None,
+                "can_add_extra": False if can_add_extra in (False, "false", "False", "0", 0) else True,
+            }
+        )
+    return normalized
+
+
+def normalize_ingredient_details_for_output(value):
+    try:
+        return normalize_ingredient_details(value)
+    except serializers.ValidationError:
+        return []
+
+
+def summarize_ingredient_details(items):
+    summary = []
+    for item in items:
+        details = []
+        if item.get("grams") is not None:
+            details.append(f"{item['grams']}g")
+        if item.get("calories") is not None:
+            details.append(f"{item['calories']} kcal")
+        summary.append(" ".join([item["name"], *details]).strip())
+    return ", ".join(part for part in summary if part)
+
+
 class ProductOptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductOption
@@ -44,6 +112,7 @@ class ProductSerializer(serializers.ModelSerializer):
     restaurant_name = serializers.CharField(source="restaurant.name", read_only=True)
     effective_price = serializers.DecimalField(max_digits=8, decimal_places=2, read_only=True)
     option_groups = ProductOptionGroupSerializer(many=True, read_only=True)
+    ingredient_details = serializers.JSONField(read_only=True)
     likes_count = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
@@ -72,6 +141,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "preparation_time",
             "allergens",
             "ingredients",
+            "ingredient_details",
             "calories",
             "option_groups",
             "likes_count",
@@ -103,6 +173,11 @@ class ProductSerializer(serializers.ModelSerializer):
             return False
         return obj.likes.filter(user=request.user).exists()
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["ingredient_details"] = normalize_ingredient_details_for_output(instance.ingredient_details)
+        return data
+
 
 class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
     restaurant_id = serializers.PrimaryKeyRelatedField(
@@ -122,6 +197,7 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
     product_type_label = serializers.CharField(source="get_product_type_display", read_only=True)
     video_file = serializers.FileField(write_only=True, required=False, allow_empty_file=False)
+    ingredient_details = serializers.JSONField(required=False)
     likes_count = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
 
@@ -151,6 +227,7 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
             "preparation_time",
             "allergens",
             "ingredients",
+            "ingredient_details",
             "calories",
             "likes_count",
             "comments_count",
@@ -203,6 +280,11 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
 
         if category and category.restaurant_id != attrs.get("restaurant", restaurant).id:
             raise serializers.ValidationError({"category_id": "Category must belong to the selected restaurant."})
+
+        if "ingredient_details" in attrs:
+            ingredient_details = normalize_ingredient_details(attrs.get("ingredient_details"))
+            attrs["ingredient_details"] = ingredient_details
+            attrs["ingredients"] = summarize_ingredient_details(ingredient_details)
         return attrs
 
     def create(self, validated_data):
@@ -228,6 +310,11 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
         if annotated_count is not None:
             return annotated_count
         return obj.comments.count()
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["ingredient_details"] = normalize_ingredient_details_for_output(instance.ingredient_details)
+        return data
 
 
 class ProductSocialSummarySerializer(serializers.ModelSerializer):

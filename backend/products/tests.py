@@ -70,6 +70,55 @@ class ProductSocialApiTests(TestCase):
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["product_type"], "pizza")
 
+    def test_new_product_types_expose_expected_labels(self):
+        seafood = Product.objects.create(
+            restaurant=self.restaurant,
+            name="Creveți în unt",
+            product_type="seafood",
+            price="58.00",
+            is_available=True,
+        )
+        fish = Product.objects.create(
+            restaurant=self.restaurant,
+            name="Somon la grătar",
+            product_type="fish",
+            price="64.00",
+            is_available=True,
+        )
+        shawarma = Product.objects.create(
+            restaurant=self.restaurant,
+            name="Shaorma de pui",
+            product_type="shawarma",
+            price="32.00",
+            is_available=True,
+        )
+
+        response = self.client.get("/api/products/", {"restaurant": self.restaurant.id})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        items = payload["results"] if isinstance(payload, dict) else payload
+        labels_by_id = {item["id"]: item["product_type_label"] for item in items}
+        self.assertEqual(labels_by_id[seafood.id], "Fructe de mare")
+        self.assertEqual(labels_by_id[fish.id], "Pește")
+        self.assertEqual(labels_by_id[shawarma.id], "Shaorma")
+
+    def test_products_expose_structured_ingredient_details(self):
+        self.product.ingredients = "Mozzarella 120g 280 kcal, Busuioc 10g 3 kcal"
+        self.product.ingredient_details = [
+            {"name": "Mozzarella", "grams": 120, "calories": 280, "price_per_20g": "4.50"},
+            {"name": "Busuioc", "grams": 10, "calories": 3, "price_per_20g": None},
+        ]
+        self.product.save(update_fields=["ingredients", "ingredient_details"])
+
+        response = self.client.get(f"/api/products/{self.product.id}/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["ingredient_details"][0]["name"], "Mozzarella")
+        self.assertEqual(payload["ingredient_details"][0]["grams"], 120)
+        self.assertEqual(payload["ingredient_details"][0]["price_per_20g"], "4.50")
+
     def test_customer_can_toggle_product_like(self):
         self.client.force_authenticate(user=self.customer)
 
@@ -139,6 +188,75 @@ class ProductSocialApiTests(TestCase):
         product = Product.objects.get(id=payload["id"])
         self.assertEqual(product.restaurant, self.restaurant)
         self.assertEqual(product.video_url, "https://media.example/products/videos/menu-video.mp4")
+
+    def test_owner_can_save_structured_ingredient_details_via_multipart(self):
+        self.client.force_authenticate(user=self.owner)
+        video_file = SimpleUploadedFile(
+            "ingredient-video.mp4",
+            b"fake-video-content",
+            content_type="video/mp4",
+        )
+
+        with patch(
+            "products.serializers.store_product_video",
+            return_value="https://media.example/products/videos/ingredient-video.mp4",
+        ):
+            response = self.client.post(
+                "/api/restaurant-owner/products/",
+                {
+                    "name": "Ingredient Burger",
+                    "description": "Produs cu ingrediente structurate.",
+                    "product_type": "burger",
+                    "price": "49.00",
+                    "video_file": video_file,
+                    "ingredient_details": '[{"name":"Cheddar","grams":40,"calories":120,"price_per_20g":"3.50","can_add_extra":true},{"name":"Ceapă caramelizată","grams":20,"calories":35,"price_per_20g":"1.50","can_add_extra":false}]',
+                },
+                format="multipart",
+            )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["ingredient_details"][0]["name"], "Cheddar")
+        self.assertEqual(payload["ingredient_details"][0]["price_per_20g"], "3.50")
+        self.assertTrue(payload["ingredient_details"][0]["can_add_extra"])
+        self.assertFalse(payload["ingredient_details"][1]["can_add_extra"])
+
+    def test_owner_can_update_structured_ingredient_details_via_multipart(self):
+        self.client.force_authenticate(user=self.owner)
+        self.product.video_url = "https://media.example/products/videos/existing.mp4"
+        self.product.save(update_fields=["video_url"])
+
+        response = self.client.patch(
+            f"/api/restaurant-owner/products/{self.product.id}/",
+            {
+                "ingredient_details": '[{"name":"Mozzarella","grams":60,"calories":150,"price_per_20g":"5.00","can_add_extra":true},{"name":"Busuioc","grams":8,"calories":2,"price_per_20g":"0.00","can_add_extra":false}]',
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["ingredient_details"][0]["price_per_20g"], "5.00")
+        self.assertTrue(payload["ingredient_details"][0]["can_add_extra"])
+        self.assertFalse(payload["ingredient_details"][1]["can_add_extra"])
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.ingredient_details[0]["price_per_20g"], "5.00")
+
+    def test_owner_product_list_normalizes_stringified_ingredient_details(self):
+        self.client.force_authenticate(user=self.owner)
+        self.product.video_url = "https://media.example/products/videos/existing.mp4"
+        self.product.ingredient_details = (
+            '[{"name":"Mozzarella","grams":60,"calories":150,"pricePer20g":"5.00","canAddExtra":false}]'
+        )
+        self.product.save(update_fields=["video_url", "ingredient_details"])
+
+        response = self.client.get("/api/restaurant-owner/products/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        items = payload["results"] if isinstance(payload, dict) else payload
+        self.assertEqual(items[0]["ingredient_details"][0]["price_per_20g"], "5.00")
+        self.assertFalse(items[0]["ingredient_details"][0]["can_add_extra"])
 
     def test_owner_can_create_product_with_video_file_using_storage(self):
         self.client.force_authenticate(user=self.owner)

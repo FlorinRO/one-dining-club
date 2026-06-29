@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
-import { ArrowLeft, Check, Clock3, Flame, Heart, MessageSquareText, Share2, ShoppingBag, Truck } from "lucide-react-native";
+import { ArrowLeft, Clock3, Flame, Heart, MessageSquareText, Share2, ShoppingBag, Truck } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   Image,
@@ -30,7 +30,7 @@ import { useCartStore } from "../store/cartStore";
 import { useFavoritesStore } from "../store/favoritesStore";
 import { showAppAlert } from "../store/uiStore";
 import { colors } from "../theme/colors";
-import { Product, ProductOption, ProductOptionGroup, Restaurant } from "../types/models";
+import { Product, Restaurant } from "../types/models";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "ProductDetails">;
 
@@ -47,27 +47,7 @@ const dark = {
   green: "#2ED573",
 };
 
-const INGREDIENT_GRAM_STEP = 10;
-
-const selectedCountForGroup = (selectedOptions: ProductOption[], group: ProductOptionGroup) => {
-  const optionIds = new Set(group.options.map((option) => option.id));
-  return selectedOptions.filter((option) => optionIds.has(option.id)).length;
-};
-
-const minimumRequiredForGroup = (group: ProductOptionGroup) =>
-  Math.max(group.min_select, group.is_required ? 1 : 0);
-
-const groupHint = (group: ProductOptionGroup, tr: (ro: string, en: string) => string) => {
-  const minimumRequired = minimumRequiredForGroup(group);
-  const maxSelect = Math.max(group.max_select || 1, 1);
-  if (minimumRequired > 0 && maxSelect > minimumRequired) {
-    return tr(`Necesar · alege ${minimumRequired}-${maxSelect}`, `Required · choose ${minimumRequired}-${maxSelect}`);
-  }
-  if (minimumRequired > 0) {
-    return tr(`Necesar · alege ${minimumRequired}`, `Required · choose ${minimumRequired}`);
-  }
-  return maxSelect > 1 ? tr(`Opțional · maxim ${maxSelect}`, `Optional · up to ${maxSelect}`) : tr("Opțional", "Optional");
-};
+const INGREDIENT_GRAM_STEP = 20;
 
 const videoSourceForProduct = (product: Product): VideoSource | null =>
   product.video_url
@@ -112,17 +92,87 @@ const capitalizeIngredient = (value: string) => {
   return `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}`;
 };
 
+type ParsedIngredientRow = {
+  id: string;
+  name: string;
+  baseGrams: number;
+  baseCalories: number | null;
+  pricePer20g: number;
+  canAddExtra: boolean;
+  hasStructuredValues: boolean;
+};
+
+type IngredientDetailsEntry = NonNullable<Product["ingredient_details"]>[number] & {
+  pricePer20g?: string | number | null;
+  extra_price_per_20g?: string | number | null;
+  extraPricePer20g?: string | number | null;
+  canAddExtra?: boolean;
+  extra_available?: boolean;
+  can_order_extra?: boolean;
+};
+
+const resolveIngredientPricePer20g = (item: IngredientDetailsEntry) => {
+  const rawValue =
+    item.price_per_20g ??
+    item.pricePer20g ??
+    item.extra_price_per_20g ??
+    item.extraPricePer20g ??
+    null;
+  return rawValue != null ? Number(rawValue) || 0 : 0;
+};
+
+const resolveIngredientCanAddExtra = (item: IngredientDetailsEntry) => {
+  if (item.can_add_extra === false) return false;
+  if (item.canAddExtra === false) return false;
+  if (item.extra_available === false) return false;
+  if (item.can_order_extra === false) return false;
+  return true;
+};
+
+const parseStructuredIngredientEntry = (value: string, index: number): ParsedIngredientRow | null => {
+  const entry = value.trim();
+  if (!entry) return null;
+
+  const match = entry.match(/^(.*?)(?:\s+(\d+)g)?(?:\s+(\d+)\s*kcal)?$/i);
+  if (!match) {
+    return {
+      id: `${index}-${entry.toLowerCase()}`,
+      name: capitalizeIngredient(entry),
+      baseGrams: 0,
+      baseCalories: null,
+      pricePer20g: 0,
+      canAddExtra: true,
+      hasStructuredValues: false,
+    };
+  }
+
+  const name = capitalizeIngredient((match[1] || "").trim());
+  const grams = match[2] ? Number(match[2]) : null;
+  const calories = match[3] ? Number(match[3]) : null;
+
+  return {
+    id: `${index}-${name.toLowerCase()}`,
+    name,
+    baseGrams: grams && Number.isFinite(grams) ? grams : 0,
+    baseCalories: calories && Number.isFinite(calories) ? calories : null,
+    pricePer20g: 0,
+    canAddExtra: true,
+    hasStructuredValues: Number.isFinite(grams) || Number.isFinite(calories),
+  };
+};
+
 export function ProductDetailsModal({ navigation, route }: Props) {
   const { tr } = useI18n();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const { product: initialProduct, restaurant } = route.params;
+  const [productDetails, setProductDetails] = useState<Product | null>(null);
   const [productSocial, setProductSocial] = useState<Partial<Pick<Product, "likes_count" | "comments_count" | "is_liked">>>({
     likes_count: initialProduct.likes_count,
     comments_count: initialProduct.comments_count,
     is_liked: initialProduct.is_liked,
   });
-  const product = useMemo<Product>(() => ({ ...initialProduct, ...productSocial }), [initialProduct, productSocial]);
+  const product = useMemo<Product>(() => ({ ...initialProduct, ...productDetails, ...productSocial }), [initialProduct, productDetails, productSocial]);
   const isBrand = restaurant.entity_type === "brand";
   const isSponsored = Boolean(restaurant.is_sponsored);
   const addItem = useCartStore((state) => state.addItem);
@@ -130,10 +180,8 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   const isLocalFavorite = useFavoritesStore((state) => state.isProductFavorite(initialProduct.id));
   const toggleProductFavorite = useFavoritesStore((state) => state.toggleProduct);
   const [quantity, setQuantity] = useState(1);
-  const [selectedOptions, setSelectedOptions] = useState<ProductOption[]>([]);
   const [ingredientGramOverrides, setIngredientGramOverrides] = useState<Record<string, number>>({});
   const [isCommentsSheetVisible, setIsCommentsSheetVisible] = useState(false);
-  const optionGroups = product.option_groups ?? [];
   const basePrice = product.effective_price ?? product.discount_price ?? product.price;
   const heroHeight = Math.max(470, Math.round(height * 0.67));
   const videoSource = useMemo(() => videoSourceForProduct(product), [product]);
@@ -144,8 +192,26 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   );
   const productNutrition = product as unknown as {
     ingredients?: string | string[];
+    ingredient_details?: Product["ingredient_details"];
     calories?: number | string;
   };
+  const structuredIngredientRows = useMemo(() => {
+    if (Array.isArray(productNutrition.ingredient_details) && productNutrition.ingredient_details.length) {
+      return productNutrition.ingredient_details
+        .map((item, index) => ({
+          id: `${index}-${String(item.name || "").toLowerCase()}`,
+          name: capitalizeIngredient(String(item.name || "")),
+          baseGrams: Number(item.grams ?? 0) || 0,
+          baseCalories: item.calories != null ? Number(item.calories) || 0 : null,
+          pricePer20g: resolveIngredientPricePer20g(item as IngredientDetailsEntry),
+          canAddExtra: resolveIngredientCanAddExtra(item as IngredientDetailsEntry),
+          hasStructuredValues: true,
+        }))
+        .filter((item) => item.name)
+        .slice(0, 8);
+    }
+    return [];
+  }, [productNutrition.ingredient_details]);
   const ingredientList = useMemo(() => {
     if (Array.isArray(productNutrition.ingredients)) {
       return productNutrition.ingredients
@@ -163,6 +229,32 @@ export function ProductDetailsModal({ navigation, route }: Props) {
     return [];
   }, [productNutrition.ingredients]);
   const ingredientRows = useMemo(() => {
+    if (structuredIngredientRows.length) {
+      return structuredIngredientRows.map((item, index) => ({
+        ...item,
+        baseGrams: Math.max(0, item.baseGrams),
+        sortIndex: index,
+      }));
+    }
+
+    const parsedRows = ingredientList
+      .map((entry, index) => parseStructuredIngredientEntry(entry, index))
+      .filter((item): item is ParsedIngredientRow => Boolean(item));
+    const hasStructuredRows = parsedRows.some((item) => item.hasStructuredValues);
+
+    if (hasStructuredRows) {
+      return parsedRows.map((item, index) => ({
+        id: item.id,
+        name: item.name,
+        baseCalories: item.baseCalories,
+        baseGrams: Math.max(0, item.baseGrams),
+        pricePer20g: item.pricePer20g,
+        canAddExtra: item.canAddExtra,
+        hasStructuredValues: true,
+        sortIndex: index,
+      }));
+    }
+
     const totalCalories = parseCaloriesValue(productNutrition.calories);
     const ingredientCount = ingredientList.length;
     const rankTotal = (ingredientCount * (ingredientCount + 1)) / 2;
@@ -176,22 +268,36 @@ export function ProductDetailsModal({ navigation, route }: Props) {
           ? Math.max(5, Math.round((totalCalories * (ingredientCount - index)) / rankTotal))
           : null,
       baseGrams: Math.max(10, Math.round((estimatedTotalGrams * (ingredientCount - index)) / rankTotal)),
+      pricePer20g: 0,
+      canAddExtra: true,
+      hasStructuredValues: false,
+      sortIndex: index,
     }));
-  }, [ingredientList, productNutrition.calories]);
+  }, [ingredientList, structuredIngredientRows, productNutrition.calories]);
   const adjustedIngredientRows = useMemo(
     () =>
       ingredientRows.map((ingredient) => {
-        const grams = ingredientGramOverrides[ingredient.id] ?? ingredient.baseGrams;
+        const baseGrams = ingredient.baseGrams;
+        const grams = ingredientGramOverrides[ingredient.id] ?? baseGrams;
+        const extraGrams = ingredient.canAddExtra ? Math.max(0, grams - baseGrams) : 0;
+        const priceAdjustment = ingredient.pricePer20g > 0 ? (extraGrams / INGREDIENT_GRAM_STEP) * ingredient.pricePer20g : 0;
         return {
           ...ingredient,
           grams,
+          priceAdjustment,
           calories:
-            ingredient.baseCalories != null
-              ? Math.round((ingredient.baseCalories * grams) / ingredient.baseGrams)
+            ingredient.baseCalories != null && baseGrams > 0
+              ? Math.round((ingredient.baseCalories * grams) / baseGrams)
+              : ingredient.baseCalories != null && baseGrams === 0
+                ? ingredient.baseCalories
               : null,
         };
       }),
     [ingredientGramOverrides, ingredientRows],
+  );
+  const ingredientPriceAdjustment = useMemo(
+    () => adjustedIngredientRows.reduce((sum, ingredient) => sum + (ingredient.priceAdjustment ?? 0), 0),
+    [adjustedIngredientRows],
   );
   const adjustedTotalGrams = useMemo(
     () => adjustedIngredientRows.reduce((sum, ingredient) => sum + ingredient.grams, 0),
@@ -199,11 +305,15 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   );
   const adjustedCaloriesText = useMemo(() => {
     const totalCalories = parseCaloriesValue(productNutrition.calories);
+    const structuredCalories = adjustedIngredientRows.reduce((sum, ingredient) => sum + (ingredient.calories ?? 0), 0);
+    const hasIngredientCalories = adjustedIngredientRows.some((ingredient) => ingredient.calories != null);
+    if (hasIngredientCalories) {
+      return `${Math.max(0, Math.round(structuredCalories))} kcal`;
+    }
     if (totalCalories == null) {
       return tr("Nedisponibil", "Unavailable");
     }
-    const calories = adjustedIngredientRows.reduce((sum, ingredient) => sum + (ingredient.calories ?? 0), 0);
-    return `${Math.max(0, Math.round(calories))} kcal`;
+    return `${Math.max(0, Math.round(totalCalories))} kcal`;
   }, [adjustedIngredientRows, productNutrition.calories, tr]);
   const player = useVideoPlayer(videoSource, (videoPlayer) => {
     videoPlayer.loop = true;
@@ -211,6 +321,20 @@ export function ProductDetailsModal({ navigation, route }: Props) {
     videoPlayer.volume = 0;
     videoPlayer.audioMixingMode = "mixWithOthers";
   });
+
+  useEffect(() => {
+    let isMounted = true;
+    productsApi
+      .detail(initialProduct.id)
+      .then((nextProduct) => {
+        if (isMounted) setProductDetails(nextProduct);
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [initialProduct.id]);
 
   useEffect(() => {
     if (!videoSource) {
@@ -234,45 +358,11 @@ export function ProductDetailsModal({ navigation, route }: Props) {
 
   const total = useMemo(() => {
     const base = Number(basePrice);
-    const extras = selectedOptions.reduce((sum, option) => sum + Number(option.extra_price), 0);
-    return (base + extras) * quantity;
-  }, [basePrice, quantity, selectedOptions]);
-
-  const missingRequiredGroup = useMemo(
-    () =>
-      optionGroups.find((group) => {
-        const minimumRequired = minimumRequiredForGroup(group);
-        return minimumRequired > 0 && selectedCountForGroup(selectedOptions, group) < minimumRequired;
-      }),
-    [optionGroups, selectedOptions],
-  );
+    return (base + ingredientPriceAdjustment) * quantity;
+  }, [basePrice, ingredientPriceAdjustment, quantity]);
 
   const isAvailable = product.is_available !== false;
-  const canSubmit = isAvailable && !missingRequiredGroup;
-
-  const toggleOption = (option: ProductOption, group: ProductOptionGroup) => {
-    if (!option.is_available) return;
-
-    setSelectedOptions((current) => {
-      const optionIds = new Set(group.options.map((item) => item.id));
-      const exists = current.some((item) => item.id === option.id);
-      if (exists) {
-        return current.filter((item) => item.id !== option.id);
-      }
-
-      const selectedInGroup = current.filter((item) => optionIds.has(item.id));
-      const selectedOutsideGroup = current.filter((item) => !optionIds.has(item.id));
-      const maxSelect = Math.max(group.max_select || 1, 1);
-
-      if (maxSelect === 1) {
-        return [...selectedOutsideGroup, option];
-      }
-      if (selectedInGroup.length >= maxSelect) {
-        return current;
-      }
-      return [...current, option];
-    });
-  };
+  const canSubmit = isAvailable;
 
   const shareProduct = async () => {
     const shareUrl = buildProductShareUrl(product.id);
@@ -326,8 +416,11 @@ export function ProductDetailsModal({ navigation, route }: Props) {
     if (!ingredient) return;
 
     setIngredientGramOverrides((current) => {
+      if (direction > 0 && !ingredient.canAddExtra) {
+        return current;
+      }
       const currentGrams = current[ingredientId] ?? ingredient.baseGrams;
-      const maxGrams = ingredient.baseGrams * 2;
+      const maxGrams = Math.max(ingredient.baseGrams * 2, ingredient.baseGrams || INGREDIENT_GRAM_STEP);
       const nextGrams = Math.min(maxGrams, Math.max(0, currentGrams + direction * INGREDIENT_GRAM_STEP));
 
       if (nextGrams === ingredient.baseGrams) {
@@ -343,12 +436,20 @@ export function ProductDetailsModal({ navigation, route }: Props) {
     const adjustedIngredients = adjustedIngredientRows.filter((ingredient) => ingredient.grams !== ingredient.baseGrams);
     const adjustedIngredientsNote = adjustedIngredients.length
       ? tr(
-          `Ingrediente ajustate: ${adjustedIngredients.map((ingredient) => `${ingredient.name} ${ingredient.grams}g`).join(", ")}`,
-          `Adjusted ingredients: ${adjustedIngredients.map((ingredient) => `${ingredient.name} ${ingredient.grams}g`).join(", ")}`,
+          `Ingrediente ajustate: ${adjustedIngredients.map((ingredient) => `${ingredient.name} ${ingredient.grams}g${ingredient.priceAdjustment ? ` (+${money(ingredient.priceAdjustment)})` : ""}`).join(", ")}`,
+          `Adjusted ingredients: ${adjustedIngredients.map((ingredient) => `${ingredient.name} ${ingredient.grams}g${ingredient.priceAdjustment ? ` (+${money(ingredient.priceAdjustment)})` : ""}`).join(", ")}`,
         )
       : undefined;
     const proceedToAdd = () => {
-      addItem({ product, restaurant, quantity, selectedOptions, notes: adjustedIngredientsNote, mediaVideoUrl: videoUri });
+      addItem({
+        product,
+        restaurant,
+        quantity,
+        selectedOptions: [],
+        ingredientPriceAdjustment,
+        notes: adjustedIngredientsNote,
+        mediaVideoUrl: videoUri,
+      });
       navigation.goBack();
     };
 
@@ -433,8 +534,8 @@ export function ProductDetailsModal({ navigation, route }: Props) {
                 <Text numberOfLines={1} style={styles.creatorName}>{restaurant.name}</Text>
                 <Text numberOfLines={1} style={styles.creatorMeta}>
                   {isBrand
-                    ? product.category_name || tr("Colecție promovată", "Promoted collection")
-                    : product.category_name || tr("Recomandarea bucătarului", "Chef pick")}
+                    ? product.product_type_label || product.category_name || tr("Colecție promovată", "Promoted collection")
+                    : product.product_type_label || product.category_name || tr("Recomandarea bucătarului", "Chef pick")}
                 </Text>
               </View>
               {isSponsored ? (
@@ -511,6 +612,9 @@ export function ProductDetailsModal({ navigation, route }: Props) {
                     <Text style={styles.ingredientCalories}>
                       {ingredient.calories != null ? `~${ingredient.calories} kcal` : tr("kcal n/a", "kcal n/a")}
                     </Text>
+                    {ingredient.pricePer20g > 0 ? (
+                      <Text style={styles.ingredientPriceHint}>{`+${money(ingredient.pricePer20g)}/20g`}</Text>
+                    ) : null}
                     <View style={styles.ingredientAdjustControls}>
                       <Pressable
                         disabled={ingredient.grams === 0}
@@ -526,14 +630,14 @@ export function ProductDetailsModal({ navigation, route }: Props) {
                         <Text style={[styles.ingredientAdjustText, styles.ingredientMinusText]}>-</Text>
                       </Pressable>
                       <Pressable
-                        disabled={ingredient.grams >= ingredient.baseGrams * 2}
+                        disabled={!ingredient.canAddExtra || ingredient.grams >= ingredient.baseGrams * 2}
                         onPress={() => adjustIngredientGrams(ingredient.id, 1)}
                         hitSlop={8}
                         style={({ pressed }) => [
                           styles.ingredientAdjustButton,
                           styles.ingredientPlusButton,
-                          ingredient.grams >= ingredient.baseGrams * 2 && styles.ingredientAdjustButtonDisabled,
-                          pressed && ingredient.grams < ingredient.baseGrams * 2 && styles.ingredientAdjustButtonPressed,
+                          (!ingredient.canAddExtra || ingredient.grams >= ingredient.baseGrams * 2) && styles.ingredientAdjustButtonDisabled,
+                          pressed && ingredient.canAddExtra && ingredient.grams < ingredient.baseGrams * 2 && styles.ingredientAdjustButtonPressed,
                         ]}
                       >
                         <Text style={[styles.ingredientAdjustText, styles.ingredientPlusText]}>+</Text>
@@ -558,51 +662,9 @@ export function ProductDetailsModal({ navigation, route }: Props) {
           </View>
         </View>
 
-        <View style={styles.details}>
-          {optionGroups.map((group) => (
-            <View key={group.id} style={styles.optionGroup}>
-              <View style={styles.sectionHeading}>
-                <Text style={styles.groupTitle}>{group.name}</Text>
-                <Text style={styles.groupHint}>{groupHint(group, tr)}</Text>
-              </View>
-              {group.options.map((option) => {
-                const active = selectedOptions.some((item) => item.id === option.id);
-                const unavailable = !option.is_available;
-                const optionPrice = Number(option.extra_price);
-                return (
-                  <Pressable
-                    key={option.id}
-                    disabled={unavailable}
-                    onPress={() => toggleOption(option, group)}
-                    style={({ pressed }) => [
-                      styles.option,
-                      active && styles.optionActive,
-                      pressed && !unavailable && styles.optionPressed,
-                      unavailable && styles.optionDisabled,
-                    ]}
-                  >
-                    <View style={[styles.optionCheck, active && styles.optionCheckActive]}>
-                      {active ? <Check size={14} stroke={dark.background} strokeWidth={3} /> : null}
-                    </View>
-                    <Text numberOfLines={2} style={[styles.optionName, active && styles.optionNameActive]}>
-                      {option.name}
-                    </Text>
-                    <Text style={[styles.optionPrice, active && styles.optionNameActive]}>
-                      {optionPrice > 0 ? `+${money(option.extra_price)}` : tr("Inclus", "Included")}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ))}
-
-        </View>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
-        {missingRequiredGroup ? (
-          <Text style={styles.footerHint}>{tr("Alege", "Choose")} {missingRequiredGroup.name}</Text>
-        ) : null}
         <View style={styles.footerRow}>
           <QuantityStepper
             value={quantity}
@@ -936,6 +998,14 @@ const styles = StyleSheet.create({
     color: "#111111",
     fontSize: 12,
     lineHeight: 16,
+    fontWeight: "700",
+    textAlign: "right",
+  },
+  ingredientPriceHint: {
+    width: 68,
+    color: "rgba(17,17,17,0.54)",
+    fontSize: 11,
+    lineHeight: 15,
     fontWeight: "700",
     textAlign: "right",
   },

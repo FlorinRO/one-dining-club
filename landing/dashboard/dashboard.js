@@ -6,6 +6,7 @@ const FALLBACK_API_BASE = LOCAL_DASHBOARD_HOSTS.has(location.hostname)
 const QUERY_API_BASE = normalizeConfiguredApiBase(
   new URLSearchParams(location.search).get("api") || new URLSearchParams(location.search).get("apiBase"),
 );
+const STORED_API_BASE = normalizeConfiguredApiBase(localStorage.getItem("yumzyDashboardApiBase"));
 const QUERY_GOOGLE_MAPS_API_KEY = normalizeConfiguredGoogleMapsApiKey(
   new URLSearchParams(location.search).get("googleMapsApiKey") ||
     new URLSearchParams(location.search).get("gmapsKey") ||
@@ -17,7 +18,9 @@ if (QUERY_API_BASE) {
 if (QUERY_GOOGLE_MAPS_API_KEY) {
   localStorage.setItem("yumzyDashboardGoogleMapsApiKey", QUERY_GOOGLE_MAPS_API_KEY);
 }
-const DEFAULT_API_BASE = QUERY_API_BASE || localStorage.getItem("yumzyDashboardApiBase") || FALLBACK_API_BASE;
+const DEFAULT_API_BASE =
+  QUERY_API_BASE ||
+  (LOCAL_DASHBOARD_HOSTS.has(location.hostname) ? FALLBACK_API_BASE : STORED_API_BASE || FALLBACK_API_BASE);
 const CONFIG_GOOGLE_MAPS_API_KEY = normalizeConfiguredGoogleMapsApiKey(DASHBOARD_CONFIG.googleMapsApiKey);
 const GOOGLE_MAPS_API_KEY =
   CONFIG_GOOGLE_MAPS_API_KEY ||
@@ -71,6 +74,7 @@ const NAV_ITEMS = [
 const PRODUCT_TYPE_OPTIONS = [
   { value: "pizza", label: "Pizza" },
   { value: "burger", label: "Burgeri" },
+  { value: "shawarma", label: "Shaorma" },
   { value: "asian", label: "Asiatic" },
   { value: "sushi", label: "Sushi" },
   { value: "pasta", label: "Paste" },
@@ -81,8 +85,449 @@ const PRODUCT_TYPE_OPTIONS = [
   { value: "dessert", label: "Desert" },
   { value: "bakery", label: "Panificație" },
   { value: "drinks", label: "Băuturi" },
+  { value: "seafood", label: "Fructe de mare" },
+  { value: "fish", label: "Pește" },
   { value: "other", label: "Altele" },
 ];
+const EMPTY_INGREDIENT_ROW = { name: "", grams: "", calories: "", price_per_20g: "", can_add_extra: "true" };
+const INGREDIENT_CATALOG_GROUPS = {
+  basics: [
+    "apă",
+    "apă minerală",
+    "sare",
+    "piper",
+    "piper alb",
+    "piper verde",
+    "zahăr",
+    "zahăr brun",
+    "zahăr pudră",
+    "miere",
+    "sirop de arțar",
+    "vanilie",
+    "esență de vanilie",
+    "cacao",
+    "ciocolată neagră",
+    "ciocolată cu lapte",
+    "ciocolată albă",
+    "cafea",
+    "espresso",
+    "ceai verde",
+  ],
+  bakery: [
+    "făină albă",
+    "făină integrală",
+    "făină de secară",
+    "făină de migdale",
+    "mălai",
+    "pesmet",
+    "drojdie",
+    "praf de copt",
+    "bicarbonat de sodiu",
+    "blat de pizza",
+    "aluat de pizza",
+    "aluat foietaj",
+    "lipie",
+    "lipie libaneză",
+    "chiflă",
+    "chiflă brioche",
+    "baghetă",
+    "pâine albă",
+    "pâine integrală",
+    "focaccia",
+    "toast",
+    "crutoane",
+    "foi de tortilla",
+    "wrap",
+    "foi de plăcintă",
+    "taco shell",
+    "nachos",
+  ],
+  dairyAndEggs: [
+    "ou",
+    "albuș de ou",
+    "gălbenuș de ou",
+    "lapte",
+    "lapte condensat",
+    "lapte de cocos",
+    "lapte de migdale",
+    "lapte de ovăz",
+    "smântână",
+    "smântână de gătit",
+    "iaurt",
+    "iaurt grecesc",
+    "unt",
+    "unt clarifiat",
+    "frișcă",
+    "parmezan",
+    "pecorino",
+    "grana padano",
+    "mozzarella",
+    "mozzarella fior di latte",
+    "burrata",
+    "ricotta",
+    "gorgonzola",
+    "brie",
+    "camembert",
+    "cașcaval",
+    "cașcaval afumat",
+    "telemea",
+    "halloumi",
+    "feta",
+    "cheddar",
+    "emmentaler",
+    "gouda",
+    "mascarpone",
+    "cremă de brânză",
+    "brânză de capră",
+  ],
+  oilsAndSauces: [
+    "ulei de floarea-soarelui",
+    "ulei de măsline",
+    "ulei de susan",
+    "ulei de trufe",
+    "ulei picant",
+    "oțet",
+    "oțet balsamic",
+    "oțet din vin roșu",
+    "sos de soia",
+    "sos teriyaki",
+    "sos Worcestershire",
+    "sos hoisin",
+    "sos de pește",
+    "sos ponzu",
+    "muștar",
+    "muștar Dijon",
+    "maioneză",
+    "ketchup",
+    "pastă de tomate",
+    "bulion",
+    "sos barbecue",
+    "sos sweet chilli",
+    "sos de usturoi",
+    "sos cocktail",
+    "sos chilli",
+    "sos tzatziki",
+    "sos ranch",
+    "sos Caesar",
+    "sos aioli",
+    "sos sriracha",
+    "sos tahini",
+    "sos pesto",
+    "sos marinara",
+    "sos Alfredo",
+    "sos de brânză",
+    "sos de ciuperci",
+    "sos de vin",
+    "glazură teriyaki",
+    "dressing de iaurt",
+    "dressing de lămâie",
+  ],
+  vegetables: [
+    "usturoi",
+    "ceapă",
+    "ceapă roșie",
+    "ceapă albă",
+    "ceapă verde",
+    "șalotă",
+    "praz",
+    "ghimbir",
+    "ardei gras",
+    "ardei kapia",
+    "ardei iute",
+    "ardei jalapeno",
+    "ardei copt",
+    "roșii",
+    "roșii cherry",
+    "roșii uscate",
+    "castravete",
+    "castravete murat",
+    "castraveți murați",
+    "morcov",
+    "țelină",
+    "rădăcină de pătrunjel",
+    "păstârnac",
+    "cartofi",
+    "cartofi noi",
+    "cartofi dulci",
+    "dovlecel",
+    "vânătă",
+    "broccoli",
+    "conopidă",
+    "spanac",
+    "baby spanac",
+    "varză albă",
+    "varză roșie",
+    "varză kale",
+    "salată verde",
+    "salată iceberg",
+    "salată romană",
+    "rucola",
+    "mix de salată",
+    "ciuperci champignon",
+    "ciuperci pleurotus",
+    "ciuperci shiitake",
+    "hribi",
+    "porumb",
+    "mazăre",
+    "fasole verde",
+    "fasole roșie",
+    "fasole neagră",
+    "năut",
+    "linte",
+    "edamame",
+    "sparanghel",
+    "ridichi",
+    "sfeclă roșie",
+    "dovleac",
+    "măsline",
+    "măsline verzi",
+    "capere",
+    "inimă de anghinare",
+    "murături",
+    "kimchi",
+    "varză murată",
+  ],
+  fruits: [
+    "avocado",
+    "lămâie",
+    "lime",
+    "portocală",
+    "grepfrut",
+    "măr",
+    "pară",
+    "ananas",
+    "rodie",
+    "mango",
+    "banană",
+    "căpșuni",
+    "afine",
+    "zmeură",
+    "merișoare",
+    "struguri",
+    "piersică",
+    "caise",
+    "kiwi",
+    "cireșe",
+    "vișine",
+    "curmale",
+    "stafide",
+    "smochine",
+    "coacăze",
+  ],
+  herbsAndSpices: [
+    "busuioc",
+    "pătrunjel",
+    "mărar",
+    "coriandru",
+    "mentă",
+    "oregano",
+    "cimbru",
+    "rozmarin",
+    "salvie",
+    "tarhon",
+    "boia dulce",
+    "boia afumată",
+    "curry",
+    "chimion",
+    "turmeric",
+    "scorțișoară",
+    "nucșoară",
+    "anason",
+    "cardamom",
+    "cuișoare",
+    "șofran",
+    "fulgi de chilli",
+    "fulgi de sare",
+    "sumac",
+    "za'atar",
+    "piper cayenne",
+    "garam masala",
+    "condiment taco",
+    "condiment cajun",
+    "ierburi de Provence",
+    "trufe",
+  ],
+  grainsAndPasta: [
+    "orez",
+    "orez jasmine",
+    "orez basmati",
+    "orez pentru sushi",
+    "orez sălbatic",
+    "paste",
+    "spaghete",
+    "penne",
+    "fusilli",
+    "rigatoni",
+    "tagliatelle",
+    "fettuccine",
+    "linguine",
+    "ravioli",
+    "tortellini",
+    "gnocchi",
+    "lasagna",
+    "cuscus",
+    "bulgur",
+    "quinoa",
+    "orz",
+    "ovăz",
+    "tăiței de orez",
+    "tăiței udon",
+    "tăiței soba",
+    "ramen",
+  ],
+  nutsAndSeeds: [
+    "semințe de susan",
+    "semințe de dovleac",
+    "semințe de floarea-soarelui",
+    "semințe de in",
+    "semințe de chia",
+    "migdale",
+    "migdale feliate",
+    "nuci",
+    "alune",
+    "fistic",
+    "caju",
+    "arahide",
+    "unt de arahide",
+    "unt de migdale",
+  ],
+  meats: [
+    "pui",
+    "piept de pui",
+    "pulpă de pui",
+    "aripioare de pui",
+    "curcan",
+    "piept de curcan",
+    "vită",
+    "antricot de vită",
+    "mușchi de vită",
+    "vrăbioară de vită",
+    "rasol de vită",
+    "carne tocată de vită",
+    "pastramă de vită",
+    "porc",
+    "ceafă de porc",
+    "cotlet de porc",
+    "mușchiuleț de porc",
+    "coaste de porc",
+    "bacon",
+    "prosciutto",
+    "șuncă",
+    "șuncă presată",
+    "salam",
+    "salam picant",
+    "chorizo",
+    "cârnați",
+    "pepperoni",
+    "pastramă",
+    "rață",
+    "piept de rață",
+    "miel",
+    "cotlet de miel",
+    "kebab de pui",
+    "kebab de vită",
+    "shaorma de pui",
+    "shaorma de vită",
+  ],
+  seafood: [
+    "somon",
+    "somon afumat",
+    "ton",
+    "ton roșu",
+    "cod",
+    "păstrăv",
+    "doradă",
+    "biban de mare",
+    "sardine",
+    "hamsii",
+    "macrou",
+    "hering",
+    "caracatiță",
+    "calamari",
+    "creveți",
+    "creveți black tiger",
+    "midii",
+    "scoici",
+    "crab",
+    "surimi",
+    "homar",
+    "langustine",
+    "icre",
+    "icre de somon",
+    "alge wakame",
+    "nori",
+  ],
+  preparedItems: [
+    "hummus",
+    "guacamole",
+    "pesto",
+    "pesto verde",
+    "pesto roșu",
+    "tapenade",
+    "pastă de măsline",
+    "pastă de ardei copți",
+    "pastă de trufe",
+    "dulceață de ceapă",
+    "ceapă caramelizată",
+    "castraveți murați feliați",
+    "jalapeno murat",
+    "ou poșat",
+    "ou fiert",
+    "ou ochi",
+    "omletă",
+    "piure de cartofi",
+    "orez prăjit",
+    "legume la grătar",
+    "legume sotate",
+    "crumble de biscuiți",
+    "biscuiți Oreo",
+    "bezea",
+  ],
+};
+const INGREDIENT_CATALOG = [...new Set(Object.values(INGREDIENT_CATALOG_GROUPS).flat())];
+const ALLERGEN_CATALOG = [
+  "gluten",
+  "grâu",
+  "secară",
+  "orz",
+  "ovăz",
+  "speltă",
+  "crustacee",
+  "ouă",
+  "pește",
+  "arahide",
+  "soia",
+  "lapte",
+  "lactoză",
+  "cazeină",
+  "fructe cu coajă lemnoasă",
+  "migdale",
+  "alune de pădure",
+  "nuci",
+  "caju",
+  "fistic",
+  "nuci pecan",
+  "nuci de Brazilia",
+  "nuci macadamia",
+  "țelină",
+  "muștar",
+  "semințe de susan",
+  "susan",
+  "dioxid de sulf",
+  "sulfiți",
+  "lupin",
+  "moluște",
+  "usturoi",
+  "ceapă",
+  "ciuperci",
+  "porumb",
+  "miere",
+  "coriandru",
+  "ardei iute",
+  "piper",
+  "ghimbir",
+];
+const MAX_INGREDIENT_SUGGESTIONS = 6;
 const REQUESTED_DASHBOARD_VIEW = location.hash.replace("#", "");
 const INITIAL_DASHBOARD_VIEW = NAV_ITEMS.some((item) => item.view === REQUESTED_DASHBOARD_VIEW)
   ? REQUESTED_DASHBOARD_VIEW
@@ -392,11 +837,27 @@ function extractError(payload) {
   if (!payload) return "A apărut o eroare neașteptată.";
   if (typeof payload === "string") return payload;
   if (payload.detail) return payload.detail;
-  for (const value of Object.values(payload)) {
-    if (typeof value === "string") return value;
-    if (Array.isArray(value) && value[0]) return value[0];
+  const flattenedMessages = flattenErrorMessages(payload);
+  if (flattenedMessages.length) {
+    return flattenedMessages.join(" ");
   }
   return "A apărut o eroare neașteptată.";
+}
+
+function flattenErrorMessages(payload, parentKey = "") {
+  if (payload === null || payload === undefined) return [];
+  if (typeof payload === "string" || typeof payload === "number" || typeof payload === "boolean") {
+    return [parentKey ? `${parentKey}: ${payload}` : String(payload)];
+  }
+  if (Array.isArray(payload)) {
+    return payload.flatMap((item) => flattenErrorMessages(item, parentKey));
+  }
+  if (typeof payload === "object") {
+    return Object.entries(payload).flatMap(([key, value]) =>
+      flattenErrorMessages(value, parentKey || key === "non_field_errors" ? parentKey : key),
+    );
+  }
+  return [];
 }
 
 async function refreshSession() {
@@ -1044,19 +1505,6 @@ function renderProfileView(restaurant) {
 
         ${renderRestaurantPublishPanel(restaurant)}
 
-        ${
-          profileCompletion.isComplete
-            ? `
-              <div class="profile-save-bar">
-                <div>
-                  <strong>Gata de publicat?</strong>
-                  <span>Salvarea actualizează profilul din aplicația YUMZY.</span>
-                </div>
-                <button class="button" type="submit"><i class="ri-save-3-line" aria-hidden="true"></i> Salvează profilul</button>
-              </div>
-            `
-            : ""
-        }
       </form>
     </div>
   `;
@@ -1215,9 +1663,29 @@ function renderProductsView() {
               <label class="field"><span>Timp preparare (minute)</span><input type="number" name="preparation_time" value="15" /></label>
               <label class="field"><span>Calorii</span><input type="number" name="calories" /></label>
             </div>
-            <div class="split">
-              <label class="field"><span>Ingrediente</span><input name="ingredients" placeholder="carne, cheddar, sos..." /></label>
-              <label class="field"><span>Alergeni</span><input name="allergens" placeholder="gluten, lactoză..." /></label>
+            <div class="field ingredient-builder">
+              <span>Ingrediente</span>
+              <div class="ingredient-builder-header">
+                <small>Adaugă ingredientele pe rând. Poți seta și prețul adăugat pentru fiecare +20g.</small>
+                <button class="ghost-button ingredient-add-button" type="button" data-add-ingredient>
+                  <i class="ri-add-line" aria-hidden="true"></i> Adaugă ingredient
+                </button>
+              </div>
+              <div class="ingredient-rows" data-ingredient-rows>
+                ${renderIngredientRows([EMPTY_INGREDIENT_ROW])}
+              </div>
+            </div>
+            <div class="field allergen-builder">
+              <span>Alergeni</span>
+              <div class="ingredient-builder-header">
+                <small>Adaugă alergenii pe rând și selectează forma recomandată din listă.</small>
+                <button class="ghost-button ingredient-add-button" type="button" data-add-allergen>
+                  <i class="ri-add-line" aria-hidden="true"></i> Adaugă alergen
+                </button>
+              </div>
+              <div class="allergen-rows" data-allergen-rows>
+                ${renderAllergenRows([""])}
+              </div>
             </div>
           </div>
         </div>
@@ -1256,10 +1724,6 @@ function renderProductsView() {
                       <h3>${escapeHtml(product.name)}</h3>
                       <small>${escapeHtml(product.product_type_label || product.category_name || "Fără tip")}</small>
                     </div>
-                    <span class="status-chip ${product.video_url ? "delivered" : "pending"}">
-                      <i class="${product.video_url ? "ri-video-on-line" : "ri-video-off-line"}" aria-hidden="true"></i>
-                      ${product.video_url ? "Are video" : "Fără video"}
-                    </span>
                   </div>
                   <div class="price-line">
                     ${product.discount_price ? `<span class="original-price">${product.price} RON</span>` : `${product.price} RON`}
@@ -1454,6 +1918,74 @@ function bindEvents() {
 
   document.querySelector("#product-form")?.addEventListener("submit", handleProductSubmit);
   document.querySelector("#cancel-product-edit")?.addEventListener("click", resetProductEditing);
+  document.querySelector("[data-add-ingredient]")?.addEventListener("click", () => appendIngredientRow());
+  document.querySelector("[data-ingredient-rows]")?.addEventListener("click", (event) => {
+    const suggestionButton = event.target.closest("[data-ingredient-suggestion]");
+    if (suggestionButton) {
+      const row = suggestionButton.closest("[data-ingredient-row]");
+      const input = row?.querySelector('[name="ingredient_name"]');
+      if (input) {
+        input.value = suggestionButton.dataset.ingredientSuggestion || "";
+        closeIngredientSuggestions(row);
+      }
+      return;
+    }
+    const button = event.target.closest("[data-remove-ingredient]");
+    if (!button) return;
+    removeIngredientRow(button.closest("[data-ingredient-row]"));
+  });
+  document.querySelector("[data-add-allergen]")?.addEventListener("click", () => appendAllergenRow());
+  document.querySelector("[data-allergen-rows]")?.addEventListener("click", (event) => {
+    const suggestionButton = event.target.closest("[data-allergen-suggestion]");
+    if (suggestionButton) {
+      const row = suggestionButton.closest("[data-allergen-row]");
+      const input = row?.querySelector('[name="allergen_name"]');
+      if (input) {
+        input.value = suggestionButton.dataset.allergenSuggestion || "";
+        closeAllergenSuggestions(row);
+      }
+      return;
+    }
+    const button = event.target.closest("[data-remove-allergen]");
+    if (!button) return;
+    removeAllergenRow(button.closest("[data-allergen-row]"));
+  });
+  document.querySelector("[data-ingredient-rows]")?.addEventListener("input", (event) => {
+    const input = event.target.closest('[name="ingredient_name"]');
+    if (!input) return;
+    renderIngredientSuggestions(input);
+  });
+  document.querySelector("[data-allergen-rows]")?.addEventListener("input", (event) => {
+    const input = event.target.closest('[name="allergen_name"]');
+    if (!input) return;
+    renderAllergenSuggestions(input);
+  });
+  document.querySelector("[data-ingredient-rows]")?.addEventListener("focusin", (event) => {
+    const input = event.target.closest('[name="ingredient_name"]');
+    if (!input) return;
+    renderIngredientSuggestions(input);
+  });
+  document.querySelector("[data-allergen-rows]")?.addEventListener("focusin", (event) => {
+    const input = event.target.closest('[name="allergen_name"]');
+    if (!input) return;
+    renderAllergenSuggestions(input);
+  });
+  document.querySelector("[data-ingredient-rows]")?.addEventListener("focusout", (event) => {
+    const input = event.target.closest('[name="ingredient_name"]');
+    if (!input) return;
+    window.setTimeout(() => {
+      canonicalizeIngredientInput(input);
+      closeIngredientSuggestions(input.closest("[data-ingredient-row]"));
+    }, 120);
+  });
+  document.querySelector("[data-allergen-rows]")?.addEventListener("focusout", (event) => {
+    const input = event.target.closest('[name="allergen_name"]');
+    if (!input) return;
+    window.setTimeout(() => {
+      canonicalizeAllergenInput(input);
+      closeAllergenSuggestions(input.closest("[data-allergen-row]"));
+    }, 120);
+  });
   document.querySelectorAll("[data-edit-product]").forEach((button) => {
     button.addEventListener("click", () => startProductEdit(Number(button.dataset.editProduct)));
   });
@@ -1582,6 +2114,12 @@ function inferCityFromPlace(place) {
   );
 }
 
+function formatCoordinate(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return "";
+  return numericValue.toFixed(6);
+}
+
 function loadGoogleMapsPlacesApi() {
   if (window.google?.maps?.places) return Promise.resolve(window.google.maps);
   if (!GOOGLE_MAPS_API_KEY) return Promise.resolve(null);
@@ -1660,8 +2198,8 @@ function bindGoogleAddressAutocomplete() {
 
           const latitude = place.geometry?.location?.lat?.();
           const longitude = place.geometry?.location?.lng?.();
-          if (latitudeInput && Number.isFinite(latitude)) latitudeInput.value = String(latitude);
-          if (longitudeInput && Number.isFinite(longitude)) longitudeInput.value = String(longitude);
+          if (latitudeInput && Number.isFinite(latitude)) latitudeInput.value = formatCoordinate(latitude);
+          if (longitudeInput && Number.isFinite(longitude)) longitudeInput.value = formatCoordinate(longitude);
         });
       });
     })
@@ -1723,25 +2261,29 @@ function bindVideoPreviews() {
 }
 
 function hydrateEditingForms() {
+  const form = document.querySelector("#product-form");
+  if (!form) return;
+
   if (state.editingProductId) {
     const product = state.products.find((item) => item.id === state.editingProductId);
     if (product) {
-      const form = document.querySelector("#product-form");
-      if (form) {
-        getField(form, "name").value = product.name || "";
-        getField(form, "product_type").value = product.product_type || "other";
-        getField(form, "description").value = product.description || "";
-        getField(form, "price").value = product.price || "";
-        getField(form, "discount_price").value = product.discount_price || "";
-        getField(form, "preparation_time").value = product.preparation_time || 15;
-        getField(form, "calories").value = product.calories || "";
-        getField(form, "ingredients").value = product.ingredients || "";
-        getField(form, "allergens").value = product.allergens || "";
-        getField(form, "video_url").value = product.video_url || "";
-        getField(form, "video_file").value = "";
-      }
+      getField(form, "name").value = product.name || "";
+      getField(form, "product_type").value = product.product_type || "other";
+      getField(form, "description").value = product.description || "";
+      getField(form, "price").value = product.price || "";
+      getField(form, "discount_price").value = product.discount_price || "";
+      getField(form, "preparation_time").value = product.preparation_time || 15;
+      getField(form, "calories").value = product.calories || "";
+      setIngredientRows(parseIngredientRows(product.ingredient_details || product.ingredients));
+      setAllergenRows(parseAllergenRows(product.allergens));
+      getField(form, "video_url").value = product.video_url || "";
+      getField(form, "video_file").value = "";
+      return;
     }
   }
+
+  setIngredientRows([EMPTY_INGREDIENT_ROW]);
+  setAllergenRows([""]);
 }
 
 async function handleLogin(event) {
@@ -1859,11 +2401,20 @@ async function handleProfileSubmit(event) {
   }
 
   const openingHours = DAY_LABELS.map((_, index) => {
-    const isClosed = form.get(`is_closed_${index}`) === "on";
+    const openingValue = String(form.get(`opening_time_${index}`) || "").trim();
+    const closingValue = String(form.get(`closing_time_${index}`) || "").trim();
+    const explicitlyClosed = form.get(`is_closed_${index}`) === "on";
+    const hasAnyHour = Boolean(openingValue || closingValue);
+
+    if (!explicitlyClosed && (openingValue || closingValue) && !(openingValue && closingValue)) {
+      throw new Error(`Completează ambele ore pentru ${DAY_LABELS[index]} sau marchează ziua ca închisă.`);
+    }
+
+    const isClosed = explicitlyClosed || !hasAnyHour;
     return {
       day_of_week: index,
-      opening_time: isClosed ? null : normalizeTime(form.get(`opening_time_${index}`)),
-      closing_time: isClosed ? null : normalizeTime(form.get(`closing_time_${index}`)),
+      opening_time: isClosed ? null : normalizeTime(openingValue),
+      closing_time: isClosed ? null : normalizeTime(closingValue),
       is_closed: isClosed,
     };
   });
@@ -1963,8 +2514,15 @@ async function handleProductSubmit(event) {
   appendIfValue(formData, "discount_price", getField(form, "discount_price").value);
   appendIfValue(formData, "preparation_time", getField(form, "preparation_time").value);
   appendIfValue(formData, "calories", getField(form, "calories").value);
-  appendIfValue(formData, "ingredients", getField(form, "ingredients").value);
-  appendIfValue(formData, "allergens", getField(form, "allergens").value);
+  const serializedIngredients = serializeIngredientRows(readIngredientRows());
+  if (serializedIngredients.error) {
+    setError(serializedIngredients.error);
+    return;
+  }
+  appendIfValue(formData, "ingredients", serializedIngredients.value);
+  formData.append("ingredient_details", JSON.stringify(serializedIngredients.details));
+  const serializedAllergens = serializeAllergenRows(readAllergenRows());
+  appendIfValue(formData, "allergens", serializedAllergens);
   appendIfValue(formData, "video_url", getField(form, "video_url").value);
   const currentProduct = state.products.find((item) => item.id === state.editingProductId);
   formData.append("is_available", String(currentProduct?.is_available ?? true));
@@ -2159,6 +2717,367 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function renderIngredientRows(rows) {
+  const safeRows = rows.length ? rows : [EMPTY_INGREDIENT_ROW];
+  return safeRows.map((row) => renderIngredientRow(row)).join("");
+}
+
+function renderIngredientRow(row = EMPTY_INGREDIENT_ROW) {
+  return `
+    <div class="ingredient-row" data-ingredient-row>
+      <div class="ingredient-name-field">
+        <input name="ingredient_name" placeholder="Nume ingredient" value="${escapeHtml(row.name || "")}" autocomplete="off" />
+        <div class="ingredient-suggestions" data-ingredient-suggestions></div>
+      </div>
+      <input name="ingredient_grams" type="number" min="0" step="1" placeholder="Gramaj (g)" value="${escapeHtml(row.grams || "")}" />
+      <input name="ingredient_calories" type="number" min="0" step="1" placeholder="Calorii" value="${escapeHtml(row.calories || "")}" />
+      <input name="ingredient_price_per_20g" type="number" min="0" step="0.01" placeholder="Preț / 20g" value="${escapeHtml(row.price_per_20g || "")}" />
+      <select name="ingredient_can_add_extra" aria-label="Disponibilitate extra">
+        <option value="true" ${String(row.can_add_extra ?? "true") === "true" ? "selected" : ""}>Se poate adăuga extra</option>
+        <option value="false" ${String(row.can_add_extra) === "false" ? "selected" : ""}>Nu se poate comanda extra</option>
+      </select>
+      <button class="ghost-button ingredient-remove-button" type="button" data-remove-ingredient aria-label="Șterge ingredient">
+        <i class="ri-close-line" aria-hidden="true"></i>
+      </button>
+    </div>
+  `;
+}
+
+function appendIngredientRow(row = EMPTY_INGREDIENT_ROW) {
+  const container = document.querySelector("[data-ingredient-rows]");
+  if (!container) return;
+  container.insertAdjacentHTML("beforeend", renderIngredientRow(row));
+}
+
+function setIngredientRows(rows) {
+  const container = document.querySelector("[data-ingredient-rows]");
+  if (!container) return;
+  container.innerHTML = renderIngredientRows(rows);
+}
+
+function removeIngredientRow(rowElement) {
+  const container = document.querySelector("[data-ingredient-rows]");
+  if (!container || !rowElement) return;
+  if (container.children.length <= 1) {
+    setIngredientRows([EMPTY_INGREDIENT_ROW]);
+    return;
+  }
+  rowElement.remove();
+}
+
+function readIngredientRows() {
+  return Array.from(document.querySelectorAll("[data-ingredient-row]")).map((row) => ({
+    name: canonicalizeIngredientName(row.querySelector('[name="ingredient_name"]')?.value?.trim() || ""),
+    grams: row.querySelector('[name="ingredient_grams"]')?.value?.trim() || "",
+    calories: row.querySelector('[name="ingredient_calories"]')?.value?.trim() || "",
+    price_per_20g: row.querySelector('[name="ingredient_price_per_20g"]')?.value?.trim() || "",
+    can_add_extra: row.querySelector('[name="ingredient_can_add_extra"]')?.value || "true",
+  }));
+}
+
+function serializeIngredientRows(rows) {
+  const normalizedRows = rows
+    .map((row) => ({
+      name: row.name.trim(),
+      grams: row.grams.trim(),
+      calories: row.calories.trim(),
+      price_per_20g: row.price_per_20g.trim(),
+      can_add_extra: String(row.can_add_extra || "true"),
+    }))
+    .filter((row) => row.name || row.grams || row.calories || row.price_per_20g);
+
+  for (const row of normalizedRows) {
+    if (!row.name) {
+      return { value: "", error: "Completează numele ingredientului sau șterge rândul gol." };
+    }
+  }
+
+  const details = normalizedRows.map((row) => ({
+    name: row.name,
+    grams: row.grams ? Number(row.grams) : null,
+    calories: row.calories ? Number(row.calories) : null,
+    price_per_20g: row.price_per_20g || null,
+    can_add_extra: row.can_add_extra !== "false",
+  }));
+
+  return {
+    value: details
+      .map((row) => {
+        const details = [];
+        if (row.grams) details.push(`${row.grams}g`);
+        if (row.calories) details.push(`${row.calories} kcal`);
+        return [row.name, ...details].join(" ");
+      })
+      .join(", "),
+    details,
+    error: "",
+  };
+}
+
+function parseIngredientRows(value) {
+  if (Array.isArray(value)) {
+    const rows = value
+      .map((item) => ({
+        name: String(item?.name || "").trim(),
+        grams: item?.grams != null ? String(item.grams) : "",
+        calories: item?.calories != null ? String(item.calories) : "",
+        price_per_20g:
+          item?.price_per_20g != null
+            ? String(item.price_per_20g)
+            : item?.pricePer20g != null
+              ? String(item.pricePer20g)
+              : item?.extra_price_per_20g != null
+                ? String(item.extra_price_per_20g)
+                : item?.extraPricePer20g != null
+                  ? String(item.extraPricePer20g)
+                  : "",
+        can_add_extra:
+          item?.can_add_extra === false ||
+          item?.canAddExtra === false ||
+          item?.extra_available === false ||
+          item?.can_order_extra === false
+            ? "false"
+            : "true",
+      }))
+      .filter((item) => item.name || item.grams || item.calories || item.price_per_20g);
+    return rows.length ? rows : [EMPTY_INGREDIENT_ROW];
+  }
+
+  const raw = String(value || "").trim();
+  if (!raw) return [EMPTY_INGREDIENT_ROW];
+  if (raw.startsWith("[")) {
+    try {
+      const parsedValue = JSON.parse(raw);
+      return parseIngredientRows(parsedValue);
+    } catch {}
+  }
+
+  const entries = raw
+    .split(/[\n,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const rows = entries.map((entry) => {
+    const match = entry.match(/^(.*?)(?:\s+(\d+)g)?(?:\s+(\d+)\s*kcal)?$/i);
+    if (!match) return { name: entry, grams: "", calories: "" };
+    return {
+      name: (match[1] || "").trim(),
+      grams: match[2] || "",
+      calories: match[3] || "",
+      price_per_20g: "",
+      can_add_extra: "true",
+    };
+  });
+
+  return rows.length ? rows : [EMPTY_INGREDIENT_ROW];
+}
+
+function normalizeIngredientText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function getCatalogSuggestions(query, catalog, limit = MAX_INGREDIENT_SUGGESTIONS) {
+  const normalizedQuery = normalizeIngredientText(query);
+  if (!normalizedQuery) return [];
+
+  return catalog
+    .map((item) => {
+      const normalizedItem = normalizeIngredientText(item);
+      let score = 999;
+      if (normalizedItem === normalizedQuery) score = 0;
+      else if (normalizedItem.startsWith(normalizedQuery)) score = 1;
+      else if (normalizedItem.includes(normalizedQuery)) score = 2;
+      else {
+        const distance = levenshteinDistance(normalizedQuery, normalizedItem);
+        if (distance <= Math.max(2, Math.floor(normalizedQuery.length / 3))) score = 10 + distance;
+      }
+      return { item, score };
+    })
+    .filter((item) => item.score < 999)
+    .sort((left, right) => left.score - right.score || left.item.localeCompare(right.item, "ro"))
+    .slice(0, limit)
+    .map((item) => item.item);
+}
+
+function levenshteinDistance(source, target) {
+  if (source === target) return 0;
+  if (!source.length) return target.length;
+  if (!target.length) return source.length;
+
+  const previous = Array.from({ length: target.length + 1 }, (_, index) => index);
+  const current = new Array(target.length + 1).fill(0);
+
+  for (let i = 0; i < source.length; i += 1) {
+    current[0] = i + 1;
+    for (let j = 0; j < target.length; j += 1) {
+      const insertion = current[j] + 1;
+      const deletion = previous[j + 1] + 1;
+      const substitution = previous[j] + (source[i] === target[j] ? 0 : 1);
+      current[j + 1] = Math.min(insertion, deletion, substitution);
+    }
+    for (let j = 0; j < previous.length; j += 1) previous[j] = current[j];
+  }
+
+  return previous[target.length];
+}
+
+function canonicalizeIngredientName(value) {
+  const normalizedValue = normalizeIngredientText(value);
+  if (!normalizedValue) return "";
+  const exactMatch = INGREDIENT_CATALOG.find((item) => normalizeIngredientText(item) === normalizedValue);
+  return exactMatch || value.trim();
+}
+
+function getIngredientSuggestions(query) {
+  return getCatalogSuggestions(query, INGREDIENT_CATALOG);
+}
+
+function renderIngredientSuggestions(input) {
+  const row = input.closest("[data-ingredient-row]");
+  const container = row?.querySelector("[data-ingredient-suggestions]");
+  if (!row || !container) return;
+
+  const suggestions = getIngredientSuggestions(input.value).filter((item) => item !== input.value.trim());
+  if (!suggestions.length) {
+    closeIngredientSuggestions(row);
+    return;
+  }
+
+  container.innerHTML = suggestions
+    .map(
+      (item) => `
+        <button type="button" class="ingredient-suggestion" data-ingredient-suggestion="${escapeHtml(item)}">
+          ${escapeHtml(item)}
+        </button>
+      `,
+    )
+    .join("");
+  container.classList.add("is-visible");
+}
+
+function closeIngredientSuggestions(rowElement) {
+  const container = rowElement?.querySelector("[data-ingredient-suggestions]");
+  if (!container) return;
+  container.innerHTML = "";
+  container.classList.remove("is-visible");
+}
+
+function canonicalizeIngredientInput(input) {
+  if (!input) return;
+  input.value = canonicalizeIngredientName(input.value);
+}
+
+function renderAllergenRows(rows) {
+  const safeRows = rows.length ? rows : [""];
+  return safeRows.map((row) => renderAllergenRow(row)).join("");
+}
+
+function renderAllergenRow(value = "") {
+  return `
+    <div class="allergen-row" data-allergen-row>
+      <div class="ingredient-name-field">
+        <input name="allergen_name" placeholder="Nume alergen" value="${escapeHtml(value || "")}" autocomplete="off" />
+        <div class="ingredient-suggestions" data-allergen-suggestions></div>
+      </div>
+      <button class="ghost-button ingredient-remove-button" type="button" data-remove-allergen aria-label="Șterge alergen">
+        <i class="ri-close-line" aria-hidden="true"></i>
+      </button>
+    </div>
+  `;
+}
+
+function appendAllergenRow(value = "") {
+  const container = document.querySelector("[data-allergen-rows]");
+  if (!container) return;
+  container.insertAdjacentHTML("beforeend", renderAllergenRow(value));
+}
+
+function setAllergenRows(rows) {
+  const container = document.querySelector("[data-allergen-rows]");
+  if (!container) return;
+  container.innerHTML = renderAllergenRows(rows);
+}
+
+function removeAllergenRow(rowElement) {
+  const container = document.querySelector("[data-allergen-rows]");
+  if (!container || !rowElement) return;
+  if (container.children.length <= 1) {
+    setAllergenRows([""]);
+    return;
+  }
+  rowElement.remove();
+}
+
+function readAllergenRows() {
+  return Array.from(document.querySelectorAll("[data-allergen-row]")).map((row) =>
+    canonicalizeAllergenName(row.querySelector('[name="allergen_name"]')?.value?.trim() || ""),
+  );
+}
+
+function serializeAllergenRows(rows) {
+  return rows.filter(Boolean).join(", ");
+}
+
+function parseAllergenRows(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return [""];
+  const rows = raw
+    .split(/[\n,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return rows.length ? rows : [""];
+}
+
+function canonicalizeAllergenName(value) {
+  const normalizedValue = normalizeIngredientText(value);
+  if (!normalizedValue) return "";
+  const exactMatch = ALLERGEN_CATALOG.find((item) => normalizeIngredientText(item) === normalizedValue);
+  return exactMatch || value.trim();
+}
+
+function getAllergenSuggestions(query) {
+  return getCatalogSuggestions(query, ALLERGEN_CATALOG);
+}
+
+function renderAllergenSuggestions(input) {
+  const row = input.closest("[data-allergen-row]");
+  const container = row?.querySelector("[data-allergen-suggestions]");
+  if (!row || !container) return;
+
+  const suggestions = getAllergenSuggestions(input.value).filter((item) => item !== input.value.trim());
+  if (!suggestions.length) {
+    closeAllergenSuggestions(row);
+    return;
+  }
+
+  container.innerHTML = suggestions
+    .map(
+      (item) => `
+        <button type="button" class="ingredient-suggestion" data-allergen-suggestion="${escapeHtml(item)}">
+          ${escapeHtml(item)}
+        </button>
+      `,
+    )
+    .join("");
+  container.classList.add("is-visible");
+}
+
+function closeAllergenSuggestions(rowElement) {
+  const container = rowElement?.querySelector("[data-allergen-suggestions]");
+  if (!container) return;
+  container.innerHTML = "";
+  container.classList.remove("is-visible");
+}
+
+function canonicalizeAllergenInput(input) {
+  if (!input) return;
+  input.value = canonicalizeAllergenName(input.value);
 }
 
 window.addEventListener("hashchange", () => {
