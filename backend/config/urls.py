@@ -4,6 +4,8 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
+from wagtail.admin import urls as wagtailadmin_urls
+from wagtail.documents import urls as wagtaildocs_urls
 
 from addresses.views import AddressViewSet
 from couriers.views import CourierOrderViewSet, CourierProfileView
@@ -69,7 +71,9 @@ router.register(
 router.register("courier/orders", CourierOrderViewSet, basename="courier-order")
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("django-admin/", admin.site.urls),
+    path("admin/", include(wagtailadmin_urls)),
+    path("admin/documents/", include(wagtaildocs_urls)),
     path(".well-known/apple-app-site-association", AppleAppSiteAssociationView.as_view(), name="apple-app-site-association"),
     path("apple-app-site-association", AppleAppSiteAssociationView.as_view(), name="apple-app-site-association-root"),
     path("p/<int:product_id>/", ProductSharePageView.as_view(), name="product-share-short-page"),

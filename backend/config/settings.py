@@ -59,6 +59,20 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
+    "wagtail.contrib.forms",
+    "wagtail.contrib.redirects",
+    "wagtail.embeds",
+    "wagtail.sites",
+    "wagtail.users",
+    "wagtail.snippets",
+    "wagtail.documents",
+    "wagtail.images",
+    "wagtail.search",
+    "wagtail.admin",
+    "wagtail",
+    "modelcluster",
+    "taggit",
     "corsheaders",
     "django_filters",
     "rest_framework",
@@ -85,6 +99,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "wagtail.contrib.redirects.middleware.RedirectMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -221,6 +236,9 @@ EXPO_PUSH_ACCESS_TOKEN = os.getenv("EXPO_PUSH_ACCESS_TOKEN", "").strip()
 EXPO_PUSH_TIMEOUT_SECONDS = float(os.getenv("EXPO_PUSH_TIMEOUT_SECONDS", "5"))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+SITE_ID = 1
+WAGTAIL_SITE_NAME = "Yumzy Backoffice"
+WAGTAILADMIN_BASE_URL = BACKEND_URL
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
