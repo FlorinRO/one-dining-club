@@ -25,7 +25,89 @@ def store_product_video(video_file):
     return default_storage.url(stored_path)
 
 
-def normalize_ingredient_details(value):
+def normalize_ingredient_name(value):
+    return (
+        str(value or "")
+        .strip()
+        .lower()
+        .replace("ă", "a")
+        .replace("â", "a")
+        .replace("î", "i")
+        .replace("ș", "s")
+        .replace("ş", "s")
+        .replace("ț", "t")
+        .replace("ţ", "t")
+    )
+
+
+def round_up_to_step(value, step=20):
+    if value <= 0:
+        return 0
+    return int(((int(value) + step - 1) // step) * step)
+
+
+def infer_ingredient_adjustment_rules(name, grams, product_type=None):
+    if grams in (None, "", 0):
+        return True, 0
+
+    normalized_name = normalize_ingredient_name(name)
+    product_type = str(product_type or "").strip().lower()
+    grams_value = int(grams)
+
+    pizza_base_keywords = ("blat", "aluat")
+    non_removable_keywords = (
+        "chifla",
+        "brioche",
+        "bun",
+        "lipie",
+        "tortilla",
+        "wrap",
+        "bagheta",
+        "paine",
+        "toast",
+        "focaccia",
+        "taco shell",
+        "nori",
+    )
+    reducible_base_keywords = (
+        "orez",
+        "paste",
+        "spaghete",
+        "penne",
+        "fusilli",
+        "rigatoni",
+        "tagliatelle",
+        "fettuccine",
+        "linguine",
+        "ravioli",
+        "tortellini",
+        "gnocchi",
+        "lasagna",
+        "cuscus",
+        "bulgur",
+        "quinoa",
+        "orz",
+        "ovaz",
+        "taitei",
+        "ramen",
+        "orez jasmine",
+        "orez basmati",
+        "orez pentru sushi",
+    )
+
+    if product_type == "pizza" and any(keyword in normalized_name for keyword in pizza_base_keywords):
+        return True, min(grams_value, max(round_up_to_step(grams_value * 0.5), 20))
+
+    if any(keyword in normalized_name for keyword in non_removable_keywords):
+        return False, grams_value
+
+    if any(keyword in normalized_name for keyword in reducible_base_keywords):
+        return True, min(grams_value, max(round_up_to_step(grams_value * 0.5), 20))
+
+    return True, 0
+
+
+def normalize_ingredient_details(value, product_type=None):
     if value in (None, "", []):
         return []
     if isinstance(value, str):
@@ -59,23 +141,58 @@ def normalize_ingredient_details(value):
             ),
             True,
         )
+        can_reduce = next(
+            (
+                item.get(key)
+                for key in ("can_reduce", "canReduce")
+                if key in item
+            ),
+            None,
+        )
+        min_grams = next(
+            (
+                item.get(key)
+                for key in ("min_grams", "minGrams")
+                if item.get(key) not in (None, "")
+            ),
+            None,
+        )
         if not name:
             continue
+        normalized_grams = int(grams) if grams not in (None, "",) else None
+        normalized_calories = int(calories) if calories not in (None, "",) else None
+        inferred_can_reduce, inferred_min_grams = infer_ingredient_adjustment_rules(name, normalized_grams, product_type)
+        resolved_can_reduce = (
+            inferred_can_reduce
+            if can_reduce is None
+            else False if can_reduce in (False, "false", "False", "0", 0) else True
+        )
+        resolved_min_grams = (
+            inferred_min_grams
+            if min_grams is None
+            else int(min_grams)
+        )
+        if normalized_grams is not None:
+            resolved_min_grams = max(0, min(int(resolved_min_grams), normalized_grams))
+            if not resolved_can_reduce:
+                resolved_min_grams = normalized_grams
         normalized.append(
             {
                 "name": name,
-                "grams": int(grams) if grams not in (None, "",) else None,
-                "calories": int(calories) if calories not in (None, "",) else None,
+                "grams": normalized_grams,
+                "calories": normalized_calories,
                 "price_per_20g": str(price_per_20g) if price_per_20g not in (None, "",) else None,
                 "can_add_extra": False if can_add_extra in (False, "false", "False", "0", 0) else True,
+                "can_reduce": resolved_can_reduce,
+                "min_grams": resolved_min_grams,
             }
         )
     return normalized
 
 
-def normalize_ingredient_details_for_output(value):
+def normalize_ingredient_details_for_output(value, product_type=None):
     try:
-        return normalize_ingredient_details(value)
+        return normalize_ingredient_details(value, product_type=product_type)
     except serializers.ValidationError:
         return []
 
@@ -175,7 +292,10 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["ingredient_details"] = normalize_ingredient_details_for_output(instance.ingredient_details)
+        data["ingredient_details"] = normalize_ingredient_details_for_output(
+            instance.ingredient_details,
+            product_type=instance.product_type,
+        )
         return data
 
 
@@ -282,7 +402,10 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"category_id": "Category must belong to the selected restaurant."})
 
         if "ingredient_details" in attrs:
-            ingredient_details = normalize_ingredient_details(attrs.get("ingredient_details"))
+            ingredient_details = normalize_ingredient_details(
+                attrs.get("ingredient_details"),
+                product_type=attrs.get("product_type") or getattr(self.instance, "product_type", None),
+            )
             attrs["ingredient_details"] = ingredient_details
             attrs["ingredients"] = summarize_ingredient_details(ingredient_details)
         return attrs
@@ -313,7 +436,10 @@ class RestaurantOwnerProductSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["ingredient_details"] = normalize_ingredient_details_for_output(instance.ingredient_details)
+        data["ingredient_details"] = normalize_ingredient_details_for_output(
+            instance.ingredient_details,
+            product_type=instance.product_type,
+        )
         return data
 
 

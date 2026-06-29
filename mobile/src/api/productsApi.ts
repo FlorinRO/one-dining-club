@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { ENABLE_DEV_MOCK_FALLBACK } from "../config/api";
 import { mockProducts, mockRestaurants } from "../data/mockData";
 import { Product, ProductComment, ProductCommentLikeSummary, ProductSocialSummary } from "../types/models";
 
@@ -116,11 +117,14 @@ export const productsApi = {
     try {
       const { data } = await apiClient.get<Product[] | Paginated<Product>>("/products/", { params });
       const items = Array.isArray(data) ? data : data.results;
-      if (__DEV__ && items.length <= 2) {
+      if (ENABLE_DEV_MOCK_FALLBACK && items.length <= 2) {
         return mergeById(items, localFilterProducts(mockProducts, params));
       }
       return items;
     } catch {
+      if (!ENABLE_DEV_MOCK_FALLBACK) {
+        throw new Error("Nu am putut încărca produsele.");
+      }
       return localFilterProducts(mockProducts, params);
     }
   },
@@ -130,6 +134,9 @@ export const productsApi = {
       const { data } = await apiClient.get<Product>(`/products/${id}/`);
       return data;
     } catch {
+      if (!ENABLE_DEV_MOCK_FALLBACK) {
+        throw new Error("Nu am putut încărca produsul.");
+      }
       return mockProducts.find((product) => product.id === id) ?? mockProducts[0];
     }
   },

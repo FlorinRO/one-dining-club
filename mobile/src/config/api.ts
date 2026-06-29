@@ -6,6 +6,7 @@ const PROD_API_URL = "https://api.yumzy.ro/api";
 type ExpoExtra = {
   apiUrl?: string;
   productionApiUrl?: string;
+  enableDevMockFallback?: boolean | string;
 };
 
 type ExpoConfigLike = {
@@ -71,5 +72,17 @@ export function resolveApiBaseUrl(): string {
   return process.env.EXPO_PUBLIC_PRODUCTION_API_URL ?? extra.productionApiUrl ?? PROD_API_URL;
 }
 
+function parseBooleanLike(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return ["1", "true", "yes", "on"].includes(normalized);
+  }
+  return false;
+}
+
 export const API_BASE_URL = resolveApiBaseUrl();
 export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+export const ENABLE_DEV_MOCK_FALLBACK =
+  __DEV__ &&
+  parseBooleanLike(process.env.EXPO_PUBLIC_ENABLE_DEV_MOCK_FALLBACK ?? readExpoExtra().enableDevMockFallback);

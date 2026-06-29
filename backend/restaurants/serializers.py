@@ -5,7 +5,7 @@ from django.db.models import Count, Q, Sum
 from rest_framework import serializers
 
 from menus.serializers import ProductCategorySerializer
-from orders.models import OrderStatus
+from orders.models import OrderStatus, PaymentMethod, PaymentStatus
 from restaurants.models import Restaurant, RestaurantCategory, RestaurantOpeningHours
 from restaurants.ownership import get_primary_restaurant_id_for_owner
 
@@ -343,13 +343,15 @@ class RestaurantOwnerOverviewSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def with_metrics(queryset):
+        visible_orders_filter = Q(orders__payment_method=PaymentMethod.CASH) | Q(orders__payment_status=PaymentStatus.PAID)
         return queryset.annotate(
             products_count=Count("products", distinct=True),
             active_products_count=Count("products", filter=Q(products__is_available=True), distinct=True),
-            orders_count=Count("orders", distinct=True),
+            orders_count=Count("orders", filter=visible_orders_filter, distinct=True),
             pending_orders_count=Count(
                 "orders",
-                filter=Q(
+                filter=visible_orders_filter
+                & Q(
                     orders__order_status__in=(
                         OrderStatus.PENDING,
                         OrderStatus.ACCEPTED,
@@ -361,8 +363,8 @@ class RestaurantOwnerOverviewSerializer(serializers.ModelSerializer):
             ),
             delivered_orders_count=Count(
                 "orders",
-                filter=Q(orders__order_status=OrderStatus.DELIVERED),
+                filter=visible_orders_filter & Q(orders__order_status=OrderStatus.DELIVERED),
                 distinct=True,
             ),
-            gross_revenue=Sum("orders__total", filter=Q(orders__order_status=OrderStatus.DELIVERED)),
+            gross_revenue=Sum("orders__total", filter=visible_orders_filter & Q(orders__order_status=OrderStatus.DELIVERED)),
         )

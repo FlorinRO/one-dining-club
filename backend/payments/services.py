@@ -125,10 +125,13 @@ def sync_payment_from_intent(intent_object):
     order = payment.order
     order.payment_status = next_status
     if next_status == PaymentStatus.FAILED and order.order_status == OrderStatus.PENDING:
+        previous_status = order.order_status
         order.order_status = OrderStatus.CANCELLED
         order.save(update_fields=("payment_status", "order_status", "updated_at"))
+        from orders.history import log_order_status_changed
         from orders.notifications import queue_order_status_push, queue_payment_status_push
 
+        log_order_status_changed(order, previous_status=previous_status, source="payment")
         queue_payment_status_push(order)
         queue_order_status_push(order, previous_status=OrderStatus.PENDING, source="payment")
         return payment

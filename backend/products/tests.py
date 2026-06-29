@@ -258,6 +258,30 @@ class ProductSocialApiTests(TestCase):
         self.assertEqual(items[0]["ingredient_details"][0]["price_per_20g"], "5.00")
         self.assertFalse(items[0]["ingredient_details"][0]["can_add_extra"])
 
+    def test_pizza_dough_gets_inferred_reduce_rules(self):
+        self.product.product_type = "pizza"
+        self.product.ingredient_details = [{"name": "Blat de pizza", "grams": 180, "calories": 380}]
+        self.product.save(update_fields=["product_type", "ingredient_details"])
+
+        response = self.client.get(f"/api/products/{self.product.id}/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ingredient_details"][0]["can_reduce"])
+        self.assertEqual(payload["ingredient_details"][0]["min_grams"], 100)
+
+    def test_burger_bun_cannot_be_reduced_below_base_grams(self):
+        self.product.product_type = "burger"
+        self.product.ingredient_details = [{"name": "Chiflă brioche", "grams": 80, "calories": 220}]
+        self.product.save(update_fields=["product_type", "ingredient_details"])
+
+        response = self.client.get(f"/api/products/{self.product.id}/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload["ingredient_details"][0]["can_reduce"])
+        self.assertEqual(payload["ingredient_details"][0]["min_grams"], 80)
+
     def test_owner_can_create_product_with_video_file_using_storage(self):
         self.client.force_authenticate(user=self.owner)
         video_file = SimpleUploadedFile(

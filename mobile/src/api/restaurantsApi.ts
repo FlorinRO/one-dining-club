@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { ENABLE_DEV_MOCK_FALLBACK } from "../config/api";
 import { mockCategories, mockProducts, mockRestaurants } from "../data/mockData";
 import { Product, ProductCategory, Restaurant, RestaurantCategory } from "../types/models";
 
@@ -107,11 +108,14 @@ export const restaurantsApi = {
     try {
       const { data } = await apiClient.get<Restaurant[] | Paginated<Restaurant>>("/restaurants/", { params });
       const items = unwrap(data);
-      if (__DEV__ && items.length <= 1) {
+      if (ENABLE_DEV_MOCK_FALLBACK && items.length <= 1) {
         return mergeById(items, localFilterRestaurants(mockRestaurants, params));
       }
       return items;
     } catch {
+      if (!ENABLE_DEV_MOCK_FALLBACK) {
+        throw new Error("Nu am putut încărca restaurantele.");
+      }
       return localFilterRestaurants(mockRestaurants, params);
     }
   },
@@ -121,6 +125,9 @@ export const restaurantsApi = {
       const { data } = await apiClient.get<Restaurant>(`/restaurants/${id}/`);
       return data;
     } catch {
+      if (!ENABLE_DEV_MOCK_FALLBACK) {
+        throw new Error("Nu am putut încărca restaurantul.");
+      }
       return mockRestaurants.find((restaurant) => restaurant.id === id) ?? mockRestaurants[0];
     }
   },
@@ -145,11 +152,14 @@ export const restaurantsApi = {
         nextUrl = nextData.next;
       }
 
-      if (__DEV__ && items.length === 0) {
+      if (ENABLE_DEV_MOCK_FALLBACK && items.length === 0) {
         return mockProducts.filter((product) => product.restaurant === id);
       }
       return items;
     } catch {
+      if (!ENABLE_DEV_MOCK_FALLBACK) {
+        throw new Error("Nu am putut încărca produsele restaurantului.");
+      }
       return mockProducts.filter((product) => product.restaurant === id);
     }
   },
@@ -159,6 +169,9 @@ export const restaurantsApi = {
       const { data } = await apiClient.get<ProductCategory[]>(`/restaurants/${id}/categories/`);
       return data;
     } catch {
+      if (!ENABLE_DEV_MOCK_FALLBACK) {
+        throw new Error("Nu am putut încărca categoriile restaurantului.");
+      }
       return mockCategories.filter((category) => category.restaurant === id);
     }
   },

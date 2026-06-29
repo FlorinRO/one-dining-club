@@ -92,6 +92,87 @@ const capitalizeIngredient = (value: string) => {
   return `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}`;
 };
 
+const normalizeIngredientName = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+const roundUpToIngredientStep = (value: number, step = INGREDIENT_GRAM_STEP) => {
+  if (value <= 0) return 0;
+  return Math.ceil(value / step) * step;
+};
+
+const inferIngredientAdjustmentRules = (name: string, grams: number, productType?: string | null) => {
+  if (!grams) {
+    return { canReduce: true, minGrams: 0 };
+  }
+
+  const normalizedName = normalizeIngredientName(name);
+  const normalizedProductType = String(productType ?? "").trim().toLowerCase();
+  const pizzaBaseKeywords = ["blat", "aluat"];
+  const nonRemovableKeywords = [
+    "chifla",
+    "brioche",
+    "bun",
+    "lipie",
+    "tortilla",
+    "wrap",
+    "bagheta",
+    "paine",
+    "toast",
+    "focaccia",
+    "taco shell",
+    "nori",
+  ];
+  const reducibleBaseKeywords = [
+    "orez",
+    "paste",
+    "spaghete",
+    "penne",
+    "fusilli",
+    "rigatoni",
+    "tagliatelle",
+    "fettuccine",
+    "linguine",
+    "ravioli",
+    "tortellini",
+    "gnocchi",
+    "lasagna",
+    "cuscus",
+    "bulgur",
+    "quinoa",
+    "orz",
+    "ovaz",
+    "taitei",
+    "ramen",
+    "orez jasmine",
+    "orez basmati",
+    "orez pentru sushi",
+  ];
+
+  if (normalizedProductType === "pizza" && pizzaBaseKeywords.some((keyword) => normalizedName.includes(keyword))) {
+    return {
+      canReduce: true,
+      minGrams: Math.min(grams, Math.max(roundUpToIngredientStep(grams * 0.5), INGREDIENT_GRAM_STEP)),
+    };
+  }
+
+  if (nonRemovableKeywords.some((keyword) => normalizedName.includes(keyword))) {
+    return { canReduce: false, minGrams: grams };
+  }
+
+  if (reducibleBaseKeywords.some((keyword) => normalizedName.includes(keyword))) {
+    return {
+      canReduce: true,
+      minGrams: Math.min(grams, Math.max(roundUpToIngredientStep(grams * 0.5), INGREDIENT_GRAM_STEP)),
+    };
+  }
+
+  return { canReduce: true, minGrams: 0 };
+};
+
 type ParsedIngredientRow = {
   id: string;
   name: string;
@@ -99,6 +180,8 @@ type ParsedIngredientRow = {
   baseCalories: number | null;
   pricePer20g: number;
   canAddExtra: boolean;
+  canReduce: boolean;
+  minGrams: number;
   hasStructuredValues: boolean;
 };
 
@@ -109,6 +192,8 @@ type IngredientDetailsEntry = NonNullable<Product["ingredient_details"]>[number]
   canAddExtra?: boolean;
   extra_available?: boolean;
   can_order_extra?: boolean;
+  canReduce?: boolean;
+  minGrams?: number | null;
 };
 
 const resolveIngredientPricePer20g = (item: IngredientDetailsEntry) => {
@@ -129,7 +214,22 @@ const resolveIngredientCanAddExtra = (item: IngredientDetailsEntry) => {
   return true;
 };
 
-const parseStructuredIngredientEntry = (value: string, index: number): ParsedIngredientRow | null => {
+const resolveIngredientCanReduce = (item: IngredientDetailsEntry, fallbackCanReduce: boolean) => {
+  if (item.can_reduce === false) return false;
+  if (item.canReduce === false) return false;
+  if (item.can_reduce === true || item.canReduce === true) return true;
+  return fallbackCanReduce;
+};
+
+const resolveIngredientMinGrams = (item: IngredientDetailsEntry, baseGrams: number, fallbackMinGrams: number) => {
+  const rawValue = item.min_grams ?? item.minGrams ?? null;
+  if (rawValue == null) return Math.max(0, Math.min(baseGrams, fallbackMinGrams));
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed)) return Math.max(0, Math.min(baseGrams, fallbackMinGrams));
+  return Math.max(0, Math.min(baseGrams, parsed));
+};
+
+const parseStructuredIngredientEntry = (value: string, index: number, productType?: string | null): ParsedIngredientRow | null => {
   const entry = value.trim();
   if (!entry) return null;
 
@@ -142,6 +242,7 @@ const parseStructuredIngredientEntry = (value: string, index: number): ParsedIng
       baseCalories: null,
       pricePer20g: 0,
       canAddExtra: true,
+      ...inferIngredientAdjustmentRules(entry, 0, productType),
       hasStructuredValues: false,
     };
   }
@@ -149,14 +250,18 @@ const parseStructuredIngredientEntry = (value: string, index: number): ParsedIng
   const name = capitalizeIngredient((match[1] || "").trim());
   const grams = match[2] ? Number(match[2]) : null;
   const calories = match[3] ? Number(match[3]) : null;
+  const baseGrams = grams && Number.isFinite(grams) ? grams : 0;
+  const adjustmentRules = inferIngredientAdjustmentRules(name, baseGrams, productType);
 
   return {
     id: `${index}-${name.toLowerCase()}`,
     name,
-    baseGrams: grams && Number.isFinite(grams) ? grams : 0,
+    baseGrams,
     baseCalories: calories && Number.isFinite(calories) ? calories : null,
     pricePer20g: 0,
     canAddExtra: true,
+    canReduce: adjustmentRules.canReduce,
+    minGrams: adjustmentRules.minGrams,
     hasStructuredValues: Number.isFinite(grams) || Number.isFinite(calories),
   };
 };
@@ -198,20 +303,27 @@ export function ProductDetailsModal({ navigation, route }: Props) {
   const structuredIngredientRows = useMemo(() => {
     if (Array.isArray(productNutrition.ingredient_details) && productNutrition.ingredient_details.length) {
       return productNutrition.ingredient_details
-        .map((item, index) => ({
-          id: `${index}-${String(item.name || "").toLowerCase()}`,
-          name: capitalizeIngredient(String(item.name || "")),
-          baseGrams: Number(item.grams ?? 0) || 0,
-          baseCalories: item.calories != null ? Number(item.calories) || 0 : null,
-          pricePer20g: resolveIngredientPricePer20g(item as IngredientDetailsEntry),
-          canAddExtra: resolveIngredientCanAddExtra(item as IngredientDetailsEntry),
-          hasStructuredValues: true,
-        }))
+        .map((item, index) => {
+          const name = capitalizeIngredient(String(item.name || ""));
+          const baseGrams = Number(item.grams ?? 0) || 0;
+          const inferredRules = inferIngredientAdjustmentRules(name, baseGrams, product.product_type);
+          return {
+            id: `${index}-${String(item.name || "").toLowerCase()}`,
+            name,
+            baseGrams,
+            baseCalories: item.calories != null ? Number(item.calories) || 0 : null,
+            pricePer20g: resolveIngredientPricePer20g(item as IngredientDetailsEntry),
+            canAddExtra: resolveIngredientCanAddExtra(item as IngredientDetailsEntry),
+            canReduce: resolveIngredientCanReduce(item as IngredientDetailsEntry, inferredRules.canReduce),
+            minGrams: resolveIngredientMinGrams(item as IngredientDetailsEntry, baseGrams, inferredRules.minGrams),
+            hasStructuredValues: true,
+          };
+        })
         .filter((item) => item.name)
         .slice(0, 8);
     }
     return [];
-  }, [productNutrition.ingredient_details]);
+  }, [product.product_type, productNutrition.ingredient_details]);
   const ingredientList = useMemo(() => {
     if (Array.isArray(productNutrition.ingredients)) {
       return productNutrition.ingredients
@@ -228,6 +340,16 @@ export function ProductDetailsModal({ navigation, route }: Props) {
     }
     return [];
   }, [productNutrition.ingredients]);
+  const allergenList = useMemo(() => {
+    if (typeof product.allergens !== "string") {
+      return [];
+    }
+    return product.allergens
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 12);
+  }, [product.allergens]);
   const ingredientRows = useMemo(() => {
     if (structuredIngredientRows.length) {
       return structuredIngredientRows.map((item, index) => ({
@@ -238,7 +360,7 @@ export function ProductDetailsModal({ navigation, route }: Props) {
     }
 
     const parsedRows = ingredientList
-      .map((entry, index) => parseStructuredIngredientEntry(entry, index))
+      .map((entry, index) => parseStructuredIngredientEntry(entry, index, product.product_type))
       .filter((item): item is ParsedIngredientRow => Boolean(item));
     const hasStructuredRows = parsedRows.some((item) => item.hasStructuredValues);
 
@@ -250,6 +372,8 @@ export function ProductDetailsModal({ navigation, route }: Props) {
         baseGrams: Math.max(0, item.baseGrams),
         pricePer20g: item.pricePer20g,
         canAddExtra: item.canAddExtra,
+        canReduce: item.canReduce,
+        minGrams: item.minGrams,
         hasStructuredValues: true,
         sortIndex: index,
       }));
@@ -270,10 +394,12 @@ export function ProductDetailsModal({ navigation, route }: Props) {
       baseGrams: Math.max(10, Math.round((estimatedTotalGrams * (ingredientCount - index)) / rankTotal)),
       pricePer20g: 0,
       canAddExtra: true,
+      canReduce: true,
+      minGrams: 0,
       hasStructuredValues: false,
       sortIndex: index,
     }));
-  }, [ingredientList, structuredIngredientRows, productNutrition.calories]);
+  }, [ingredientList, product.product_type, structuredIngredientRows, productNutrition.calories]);
   const adjustedIngredientRows = useMemo(
     () =>
       ingredientRows.map((ingredient) => {
@@ -416,12 +542,12 @@ export function ProductDetailsModal({ navigation, route }: Props) {
     if (!ingredient) return;
 
     setIngredientGramOverrides((current) => {
-      if (direction > 0 && !ingredient.canAddExtra) {
-        return current;
-      }
       const currentGrams = current[ingredientId] ?? ingredient.baseGrams;
-      const maxGrams = Math.max(ingredient.baseGrams * 2, ingredient.baseGrams || INGREDIENT_GRAM_STEP);
-      const nextGrams = Math.min(maxGrams, Math.max(0, currentGrams + direction * INGREDIENT_GRAM_STEP));
+      const maxGrams = ingredient.canAddExtra
+        ? Math.max(ingredient.baseGrams * 2, ingredient.baseGrams || INGREDIENT_GRAM_STEP)
+        : ingredient.baseGrams;
+      const minGrams = ingredient.canReduce ? ingredient.minGrams : ingredient.baseGrams;
+      const nextGrams = Math.min(maxGrams, Math.max(minGrams, currentGrams + direction * INGREDIENT_GRAM_STEP));
 
       if (nextGrams === ingredient.baseGrams) {
         const { [ingredientId]: _removed, ...rest } = current;
@@ -608,40 +734,61 @@ export function ProductDetailsModal({ navigation, route }: Props) {
                         {ingredient.name}
                       </Text>
                     </View>
-                    <Text style={styles.ingredientGrams}>{ingredient.grams}g</Text>
-                    <Text style={styles.ingredientCalories}>
-                      {ingredient.calories != null ? `~${ingredient.calories} kcal` : tr("kcal n/a", "kcal n/a")}
-                    </Text>
-                    {ingredient.pricePer20g > 0 ? (
-                      <Text style={styles.ingredientPriceHint}>{`+${money(ingredient.pricePer20g)}/20g`}</Text>
-                    ) : null}
-                    <View style={styles.ingredientAdjustControls}>
-                      <Pressable
-                        disabled={ingredient.grams === 0}
-                        onPress={() => adjustIngredientGrams(ingredient.id, -1)}
-                        hitSlop={8}
-                        style={({ pressed }) => [
-                          styles.ingredientAdjustButton,
-                          styles.ingredientMinusButton,
-                          ingredient.grams === 0 && styles.ingredientAdjustButtonDisabled,
-                          pressed && ingredient.grams > 0 && styles.ingredientAdjustButtonPressed,
-                        ]}
-                      >
-                        <Text style={[styles.ingredientAdjustText, styles.ingredientMinusText]}>-</Text>
-                      </Pressable>
-                      <Pressable
-                        disabled={!ingredient.canAddExtra || ingredient.grams >= ingredient.baseGrams * 2}
-                        onPress={() => adjustIngredientGrams(ingredient.id, 1)}
-                        hitSlop={8}
-                        style={({ pressed }) => [
-                          styles.ingredientAdjustButton,
-                          styles.ingredientPlusButton,
-                          (!ingredient.canAddExtra || ingredient.grams >= ingredient.baseGrams * 2) && styles.ingredientAdjustButtonDisabled,
-                          pressed && ingredient.canAddExtra && ingredient.grams < ingredient.baseGrams * 2 && styles.ingredientAdjustButtonPressed,
-                        ]}
-                      >
-                        <Text style={[styles.ingredientAdjustText, styles.ingredientPlusText]}>+</Text>
-                      </Pressable>
+                    <View style={styles.ingredientMetaRow}>
+                      <Text style={styles.ingredientGrams}>{ingredient.grams}g</Text>
+                      <Text style={styles.ingredientCalories}>
+                        {ingredient.calories != null ? `~${ingredient.calories} kcal` : tr("kcal n/a", "kcal n/a")}
+                      </Text>
+                      {ingredient.pricePer20g > 0 ? (
+                        <Text style={styles.ingredientPriceHint}>{`+${money(ingredient.pricePer20g)}/20g`}</Text>
+                      ) : (
+                        <Text style={styles.ingredientPriceHintPlaceholder}> </Text>
+                      )}
+                      <View style={styles.ingredientAdjustControls}>
+                        <Pressable
+                          disabled={ingredient.grams <= (ingredient.canReduce ? ingredient.minGrams : ingredient.baseGrams)}
+                          onPress={() => adjustIngredientGrams(ingredient.id, -1)}
+                          hitSlop={8}
+                          style={({ pressed }) => [
+                            styles.ingredientAdjustButton,
+                            styles.ingredientMinusButton,
+                            (ingredient.grams <= (ingredient.canReduce ? ingredient.minGrams : ingredient.baseGrams)) &&
+                              styles.ingredientAdjustButtonDisabled,
+                            pressed &&
+                              ingredient.grams > (ingredient.canReduce ? ingredient.minGrams : ingredient.baseGrams) &&
+                              styles.ingredientAdjustButtonPressed,
+                          ]}
+                        >
+                          <Text style={[styles.ingredientAdjustText, styles.ingredientMinusText]}>-</Text>
+                        </Pressable>
+                        <Pressable
+                          disabled={
+                            ingredient.grams >=
+                            (ingredient.canAddExtra
+                              ? Math.max(ingredient.baseGrams * 2, ingredient.baseGrams || INGREDIENT_GRAM_STEP)
+                              : ingredient.baseGrams)
+                          }
+                          onPress={() => adjustIngredientGrams(ingredient.id, 1)}
+                          hitSlop={8}
+                          style={({ pressed }) => [
+                            styles.ingredientAdjustButton,
+                            styles.ingredientPlusButton,
+                            (ingredient.grams >=
+                              (ingredient.canAddExtra
+                                ? Math.max(ingredient.baseGrams * 2, ingredient.baseGrams || INGREDIENT_GRAM_STEP)
+                                : ingredient.baseGrams)) &&
+                              styles.ingredientAdjustButtonDisabled,
+                            pressed &&
+                              ingredient.grams <
+                                (ingredient.canAddExtra
+                                  ? Math.max(ingredient.baseGrams * 2, ingredient.baseGrams || INGREDIENT_GRAM_STEP)
+                                  : ingredient.baseGrams) &&
+                              styles.ingredientAdjustButtonPressed,
+                          ]}
+                        >
+                          <Text style={[styles.ingredientAdjustText, styles.ingredientPlusText]}>+</Text>
+                        </Pressable>
+                      </View>
                     </View>
                   </View>
                 ))}
@@ -659,6 +806,19 @@ export function ProductDetailsModal({ navigation, route }: Props) {
                 {tr("Ingredientele vor fi afișate în curând.", "Ingredients will be listed soon.")}
               </Text>
             )}
+
+            {allergenList.length ? (
+              <View style={styles.allergenSection}>
+                <Text style={styles.allergenTitle}>{tr("Alergeni", "Allergens")}</Text>
+                <View style={styles.allergenChips}>
+                  {allergenList.map((allergen) => (
+                    <View key={allergen} style={styles.allergenChip}>
+                      <Text style={styles.allergenChipText}>{allergen}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -951,21 +1111,56 @@ const styles = StyleSheet.create({
     borderTopColor: "rgba(17,17,17,0.18)",
     gap: 6,
   },
-  ingredientRow: {
-    minHeight: 48,
-    flexDirection: "row",
-    alignItems: "center",
+  allergenSection: {
     gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(17,17,17,0.18)",
+    paddingTop: 12,
+  },
+  allergenTitle: {
+    color: "#111111",
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 0.9,
+  },
+  allergenChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  allergenChip: {
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.18)",
+    backgroundColor: "rgba(17,17,17,0.06)",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  allergenChipText: {
+    color: "#111111",
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "700",
+  },
+  ingredientRow: {
+    gap: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "rgba(17,17,17,0.22)",
-    paddingVertical: 7,
+    paddingVertical: 9,
   },
   ingredientNameWrap: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     minWidth: 0,
     gap: 8,
+  },
+  ingredientMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingLeft: 28,
   },
   ingredientIndex: {
     width: 20,
@@ -1002,12 +1197,15 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   ingredientPriceHint: {
-    width: 68,
+    width: 74,
     color: "rgba(17,17,17,0.54)",
     fontSize: 11,
     lineHeight: 15,
     fontWeight: "700",
     textAlign: "right",
+  },
+  ingredientPriceHintPlaceholder: {
+    width: 74,
   },
   ingredientAdjustControls: {
     width: 57,

@@ -38,9 +38,10 @@ class UserSerializer(serializers.ModelSerializer):
             "full_name",
             "role",
             "is_active",
+            "last_login",
             "date_joined",
         )
-        read_only_fields = ("id", "role", "is_active", "date_joined")
+        read_only_fields = ("id", "role", "is_active", "last_login", "date_joined")
 
 
 def validate_expo_push_token(value):
@@ -228,6 +229,39 @@ def render_transactional_email(template_name, context):
             **context,
         },
     )
+
+
+def send_password_reset_email(
+    user,
+    *,
+    subject="Resetare parola Yumzy",
+    headline="Resetează parola",
+    body="Apasă pe butonul de mai jos pentru a seta o parolă nouă pentru contul tău Yumzy.",
+    button_label="Setează parola nouă",
+    footnote="Dacă nu ai cerut resetarea parolei, poți ignora acest mesaj.",
+    intro_message="Ai cerut resetarea parolei pentru contul Yumzy.",
+):
+    reset = build_password_reset(user)
+    send_transactional_email(
+        subject=subject,
+        message=(
+            f"{intro_message}\n\n"
+            f"Deschide linkul pentru a seta o parola noua:\n{reset['url']}\n\n"
+            "Daca nu ai cerut asta, poti ignora mesajul."
+        ),
+        html_message=render_transactional_email(
+            "users/emails/password_reset.html",
+            {
+                "headline": headline,
+                "body": body,
+                "button_label": button_label,
+                "button_url": reset["url"],
+                "footnote": footnote,
+            },
+        ),
+        recipient_list=[user.email],
+    )
+    return reset
 
 
 def validate_password_reset_user(uid, token):
@@ -423,28 +457,8 @@ class PasswordResetRequestSerializer(serializers.Serializer):
         if not user:
             return None
 
-        reset = build_password_reset(user)
-
         try:
-            send_transactional_email(
-                subject="Resetare parola Yumzy",
-                message=(
-                    "Ai cerut resetarea parolei pentru contul Yumzy.\n\n"
-                    f"Deschide linkul pentru a seta o parola noua:\n{reset['url']}\n\n"
-                    "Daca nu ai cerut asta, poti ignora mesajul."
-                ),
-                html_message=render_transactional_email(
-                    "users/emails/password_reset.html",
-                    {
-                        "headline": "Resetează parola",
-                        "body": "Apasă pe butonul de mai jos pentru a seta o parolă nouă pentru contul tău Yumzy.",
-                        "button_label": "Setează parola nouă",
-                        "button_url": reset["url"],
-                        "footnote": "Dacă nu ai cerut resetarea parolei, poți ignora acest mesaj.",
-                    },
-                ),
-                recipient_list=[user.email],
-            )
+            reset = send_password_reset_email(user)
         except EmailDeliveryError:
             return None
         return reset if settings.DEBUG else None

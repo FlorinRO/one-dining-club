@@ -4,6 +4,7 @@ from rest_framework import decorators, response, status, views, viewsets
 from core.permissions import IsCourier
 from couriers.models import CourierProfile, Delivery, DeliveryStatus
 from couriers.serializers import CourierLocationSerializer, CourierProfileSerializer
+from orders.history import log_order_courier_assigned, log_order_status_changed
 from orders.models import Order, OrderStatus
 from orders.notifications import queue_order_status_push
 from orders.serializers import CourierOrderStatusSerializer, OrderSerializer
@@ -17,11 +18,11 @@ class CourierOrderViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return (
-            Order.objects.select_related("customer", "restaurant", "courier", "address")
-            .prefetch_related("items__options")
+            Order.objects.select_related("customer", "restaurant", "courier", "courier__courier_profile", "address", "delivery")
+            .prefetch_related("items__options", "events__actor", "events__courier")
             .filter(order_status=OrderStatus.READY_FOR_PICKUP, courier__isnull=True)
-            | Order.objects.select_related("customer", "restaurant", "courier", "address")
-            .prefetch_related("items__options")
+            | Order.objects.select_related("customer", "restaurant", "courier", "courier__courier_profile", "address", "delivery")
+            .prefetch_related("items__options", "events__actor", "events__courier")
             .filter(courier=self.request.user)
         )
 
@@ -37,6 +38,8 @@ class CourierOrderViewSet(viewsets.ReadOnlyModelViewSet):
         order.courier = request.user
         order.order_status = OrderStatus.PICKED_UP
         order.save(update_fields=("courier", "order_status", "updated_at"))
+        log_order_courier_assigned(order, courier=request.user, actor=request.user, source="courier")
+        log_order_status_changed(order, previous_status=previous_status, actor=request.user, source="courier")
         queue_order_status_push(order, previous_status=previous_status, source="courier")
         Delivery.objects.get_or_create(
             order=order,
@@ -46,6 +49,7 @@ class CourierOrderViewSet(viewsets.ReadOnlyModelViewSet):
                 "status": DeliveryStatus.PICKED_UP,
             },
         )
+        order.refresh_from_db()
         return response.Response(OrderSerializer(order, context={"request": request}).data)
 
     @decorators.action(detail=True, methods=["patch"])
@@ -59,6 +63,7 @@ class CourierOrderViewSet(viewsets.ReadOnlyModelViewSet):
         previous_status = order.order_status
         order.order_status = serializer.validated_data["order_status"]
         order.save(update_fields=("order_status", "updated_at"))
+        log_order_status_changed(order, previous_status=previous_status, actor=request.user, source="courier")
         queue_order_status_push(order, previous_status=previous_status, source="courier")
 
         delivery, _ = Delivery.objects.get_or_create(order=order, defaults={"courier": request.user})
@@ -74,6 +79,7 @@ class CourierOrderViewSet(viewsets.ReadOnlyModelViewSet):
         if order.order_status == OrderStatus.DELIVERED:
             delivery.delivered_time = timezone.now()
         delivery.save()
+        order.refresh_from_db()
         return response.Response(OrderSerializer(order, context={"request": request}).data)
 
 

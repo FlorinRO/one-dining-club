@@ -104,6 +104,7 @@ export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
       ...(config.extra ?? {}),
       apiUrl: env("EXPO_PUBLIC_API_URL", config.extra?.apiUrl),
       productionApiUrl: env("EXPO_PUBLIC_PRODUCTION_API_URL", config.extra?.productionApiUrl),
+      enableDevMockFallback: env("EXPO_PUBLIC_ENABLE_DEV_MOCK_FALLBACK", config.extra?.enableDevMockFallback),
       googleWebClientId: env("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID", config.extra?.googleWebClientId),
       googleIosClientId: env("EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID", config.extra?.googleIosClientId),
       googleAndroidClientId: env("EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID", config.extra?.googleAndroidClientId),

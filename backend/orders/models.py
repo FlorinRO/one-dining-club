@@ -74,6 +74,43 @@ class Order(models.Model):
         return self.order_status in {OrderStatus.PENDING, OrderStatus.ACCEPTED}
 
 
+class OrderEvent(models.Model):
+    class EventType(models.TextChoices):
+        CREATED = "created", "Created"
+        STATUS_CHANGED = "status_changed", "Status changed"
+        COURIER_ASSIGNED = "courier_assigned", "Courier assigned"
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="events")
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="order_events",
+    )
+    courier = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_order_events",
+    )
+    event_type = models.CharField(max_length=32, choices=EventType.choices)
+    source = models.CharField(max_length=32, blank=True)
+    previous_status = models.CharField(max_length=32, blank=True)
+    next_status = models.CharField(max_length=32, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at", "-id")
+        indexes = [
+            models.Index(fields=("order", "-created_at")),
+        ]
+
+    def __str__(self):
+        return f"{self.get_event_type_display()} for order #{self.order_id}"
+
+
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey("products.Product", on_delete=models.PROTECT, related_name="order_items")

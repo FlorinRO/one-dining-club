@@ -3,6 +3,7 @@ from rest_framework.test import APIClient
 from unittest.mock import patch
 
 from addresses.models import Address
+from couriers.models import CourierProfile
 from orders.models import FulfillmentType, Order, OrderStatus, PaymentMethod, PaymentStatus
 from payments.models import Payment
 from payments.services import sync_payment_from_intent
@@ -24,6 +25,13 @@ class OrderCreateApiTests(TestCase):
             password="StrongPass123!",
             role=UserRole.RESTAURANT_OWNER,
         )
+        self.courier = User.objects.create_user(
+            email="orders-courier@example.com",
+            password="StrongPass123!",
+            role=UserRole.COURIER,
+            first_name="Curier",
+            last_name="Rapid",
+        )
         self.restaurant = Restaurant.objects.create(
             owner=self.owner,
             name="Pickup Kitchen",
@@ -34,6 +42,8 @@ class OrderCreateApiTests(TestCase):
             minimum_order="0.00",
             is_open=True,
             is_active=True,
+            latitude="44.426800",
+            longitude="26.102500",
         )
         self.product = Product.objects.create(
             restaurant=self.restaurant,
@@ -50,6 +60,17 @@ class OrderCreateApiTests(TestCase):
             phone="0712345678",
             address_line_1="Strada Client 2",
             city="Bucuresti",
+            latitude="44.439663",
+            longitude="26.096306",
+        )
+        self.courier_profile = CourierProfile.objects.create(
+            user=self.courier,
+            phone="0722222222",
+            vehicle_type="scooter",
+            current_latitude="44.432000",
+            current_longitude="26.098000",
+            is_available=True,
+            is_verified=True,
         )
         self.client.force_authenticate(user=self.customer)
 
@@ -321,3 +342,122 @@ class OrderCreateApiTests(TestCase):
         self.assertEqual(args[0], self.customer)
         self.assertEqual(kwargs["title"], "Comanda a fost acceptata")
         self.assertEqual(kwargs["data"]["order_id"], order.id)
+
+    def test_restaurant_owner_order_list_includes_delivery_context(self):
+        self.restaurant.estimated_delivery_time_min = 30
+        self.restaurant.estimated_delivery_time_max = 50
+        self.restaurant.save(update_fields=("estimated_delivery_time_min", "estimated_delivery_time_max"))
+        self.address.address_line_2 = "Ap. 12"
+        self.address.postcode = "010101"
+        self.address.instructions = "Sună la interfon"
+        self.address.save(
+            update_fields=("address_line_2", "postcode", "instructions")
+        )
+        self.customer.first_name = "Florin"
+        self.customer.last_name = "Iftim"
+        self.customer.phone = "0700000000"
+        self.customer.save(update_fields=("first_name", "last_name", "phone"))
+        order = Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            address=self.address,
+            subtotal="35.00",
+            delivery_fee="12.00",
+            discount="5.00",
+            total="42.00",
+            fulfillment_type=FulfillmentType.DELIVERY,
+            payment_method=PaymentMethod.CARD,
+            payment_status=PaymentStatus.PAID,
+            customer_note="Fără ceapă",
+        )
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.get("/api/restaurant-owner/orders/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        orders = payload["results"] if isinstance(payload, dict) else payload
+        self.assertEqual(len(orders), 1)
+        order_data = orders[0]
+        self.assertEqual(order_data["id"], order.id)
+        self.assertEqual(order_data["customer_name"], "Client Pickup")
+        self.assertEqual(order_data["customer_phone"], "0712345678")
+        self.assertEqual(order_data["address_summary"], "Strada Client 2, Ap. 12, Bucuresti, 010101")
+        self.assertEqual(order_data["address_details"]["instructions"], "Sună la interfon")
+        self.assertEqual(order_data["fulfillment_type_label"], "Delivery")
+        self.assertEqual(order_data["payment_method_label"], "Card")
+        self.assertEqual(order_data["payment_status_label"], "Paid")
+        self.assertEqual(order_data["estimated_delivery_window_minutes"], {"min": 30, "max": 50})
+        self.assertGreater(order_data["estimated_distance_km"], 0)
+
+    def test_restaurant_owner_order_list_hides_unpaid_online_orders(self):
+        Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            address=self.address,
+            subtotal="35.00",
+            delivery_fee="12.00",
+            total="47.00",
+            fulfillment_type=FulfillmentType.DELIVERY,
+            payment_method=PaymentMethod.CARD,
+            payment_status=PaymentStatus.PENDING,
+        )
+        visible_order = Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            address=self.address,
+            subtotal="30.00",
+            delivery_fee="0.00",
+            total="30.00",
+            fulfillment_type=FulfillmentType.PICKUP,
+            payment_method=PaymentMethod.CASH,
+            payment_status=PaymentStatus.UNPAID,
+        )
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.get("/api/restaurant-owner/orders/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        orders = payload["results"] if isinstance(payload, dict) else payload
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0]["id"], visible_order.id)
+
+    def test_restaurant_owner_can_assign_courier_and_event_is_recorded(self):
+        order = Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            address=self.address,
+            subtotal="35.00",
+            delivery_fee="12.00",
+            total="47.00",
+            fulfillment_type=FulfillmentType.DELIVERY,
+            order_status=OrderStatus.ACCEPTED,
+        )
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.patch(
+            f"/api/restaurant-owner/orders/{order.id}/status/",
+            {"order_status": OrderStatus.PREPARING, "courier_id": self.courier.id},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        self.assertEqual(order.courier_id, self.courier.id)
+        payload = response.json()
+        self.assertEqual(payload["courier_name"], "Curier Rapid")
+        self.assertEqual(payload["courier_phone"], "0722222222")
+        self.assertEqual(payload["events"][0]["event_type"], "status_changed")
+        self.assertEqual(payload["events"][1]["event_type"], "courier_assigned")
+
+    def test_restaurant_owner_couriers_endpoint_returns_verified_couriers(self):
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.get("/api/restaurant-owner/orders/couriers/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["courier_id"], self.courier.id)
+        self.assertEqual(payload[0]["full_name"], "Curier Rapid")

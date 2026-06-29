@@ -115,6 +115,8 @@ export type Product = {
     calories?: number | null;
     price_per_20g?: string | number | null;
     can_add_extra?: boolean;
+    can_reduce?: boolean;
+    min_grams?: number | null;
   }>;
   calories?: number;
   option_groups?: ProductOptionGroup[];

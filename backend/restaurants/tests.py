@@ -1,10 +1,12 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
+from unittest.mock import patch
 
 from addresses.models import Address
 from menus.models import ProductCategory
-from orders.models import Order, OrderStatus, PaymentMethod
+from orders.models import Order, OrderStatus, PaymentMethod, PaymentStatus
 from products.models import Product
+from restaurants.forms import RestaurantAdminForm
 from restaurants.models import Restaurant, RestaurantCategory, RestaurantOpeningHours
 from users.models import User, UserRole
 
@@ -126,6 +128,26 @@ class RestaurantOwnerDashboardApiTests(TestCase):
         self.assertEqual(overview["pending_orders_count"], 1)
         self.assertEqual(overview["delivered_orders_count"], 1)
         self.assertEqual(overview["gross_revenue"], "42.00")
+
+    def test_owner_overview_ignores_unpaid_online_orders(self):
+        Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            address=self.address,
+            subtotal="99.00",
+            delivery_fee="0.00",
+            total="99.00",
+            payment_method=PaymentMethod.CARD,
+            payment_status=PaymentStatus.PENDING,
+            order_status=OrderStatus.PENDING,
+        )
+
+        response = self.client.get("/api/restaurant-owner/restaurants/overview/")
+
+        self.assertEqual(response.status_code, 200)
+        overview = response.json()[0]
+        self.assertEqual(overview["orders_count"], 2)
+        self.assertEqual(overview["pending_orders_count"], 1)
 
     def test_owner_can_publish_restaurant_to_public_app(self):
         self.restaurant.is_active = False
@@ -281,3 +303,100 @@ class RestaurantOwnerDashboardApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("estimated_delivery_time_max", response.json())
+
+
+class RestaurantPublicVisibilityTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.owner = User.objects.create_user(
+            email="visibility-owner@example.com",
+            password="StrongPass123!",
+            role=UserRole.RESTAURANT_OWNER,
+        )
+
+    def test_public_restaurant_list_hides_restaurants_without_available_products(self):
+        hidden_restaurant = Restaurant.objects.create(
+            owner=self.owner,
+            name="No Products Yet",
+            address="Strada Test 10",
+            city="Bucuresti",
+            is_active=True,
+        )
+        hidden_with_unavailable_product = Restaurant.objects.create(
+            owner=self.owner,
+            name="Unavailable Menu",
+            address="Strada Test 11",
+            city="Bucuresti",
+            is_active=True,
+        )
+        visible_restaurant = Restaurant.objects.create(
+            owner=self.owner,
+            name="Visible Menu",
+            address="Strada Test 12",
+            city="Bucuresti",
+            is_active=True,
+        )
+
+        Product.objects.create(
+            restaurant=hidden_with_unavailable_product,
+            name="Hidden Burger",
+            price="20.00",
+            is_available=False,
+        )
+        Product.objects.create(
+            restaurant=visible_restaurant,
+            name="Visible Burger",
+            price="22.00",
+            is_available=True,
+        )
+
+        response = self.client.get("/api/restaurants/")
+
+        self.assertEqual(response.status_code, 200)
+        ids = [item["id"] for item in response.json()["results"]]
+        self.assertNotIn(hidden_restaurant.id, ids)
+        self.assertNotIn(hidden_with_unavailable_product.id, ids)
+        self.assertIn(visible_restaurant.id, ids)
+
+
+class RestaurantAdminProvisioningTests(TestCase):
+    @patch("restaurants.forms.send_password_reset_email")
+    def test_admin_form_creates_restaurant_owner_from_email_and_sends_setup_email(self, mock_send_password_reset_email):
+        form = RestaurantAdminForm(
+            data={
+                "name": "Setup Kitchen",
+                "address": "Strada Setup 15",
+                "city": "Bucuresti",
+                "owner_email": "setup-owner@example.com",
+                "send_setup_email": "on",
+                "entity_type": "restaurant",
+                "sponsored_mode": "native",
+                "delivery_fee": "0.00",
+                "minimum_order": "0.00",
+                "estimated_delivery_time_min": 25,
+                "estimated_delivery_time_max": 45,
+                "rating": "0.00",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        restaurant = form.save()
+
+        owner = User.objects.get(email="setup-owner@example.com")
+        self.assertEqual(owner.role, UserRole.RESTAURANT_OWNER)
+        self.assertTrue(owner.is_active)
+        self.assertFalse(owner.has_usable_password())
+        self.assertEqual(restaurant.owner, owner)
+        self.assertEqual(restaurant.email, owner.email)
+        mock_send_password_reset_email.assert_called_once_with(
+            owner,
+            subject="Activează contul restaurantului în Yumzy",
+            headline="Activează contul restaurantului",
+            body=(
+                f"Contul pentru {restaurant.name} este pregătit. "
+                "Apasă pe butonul de mai jos pentru a seta parola și a intra în dashboard."
+            ),
+            button_label="Activează contul",
+            footnote="Dacă nu te așteptai la acest mesaj, contactează echipa Yumzy.",
+            intro_message=f"Contul restaurantului {restaurant.name} a fost creat în Yumzy.",
+        )

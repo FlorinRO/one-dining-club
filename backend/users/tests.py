@@ -2,6 +2,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.test import TestCase
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+from django.utils.dateparse import parse_datetime
 from jwt import PyJWKClientError
 from rest_framework.test import APIClient
 from unittest.mock import patch
@@ -182,6 +183,32 @@ class DeleteAccountFlowTests(TestCase):
         self.assertEqual(address.phone, "")
         self.assertEqual(address.address_line_1, "")
         self.assertEqual(address.city, "")
+
+
+class MeViewTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_me_returns_last_login_for_authenticated_user(self):
+        user = User.objects.create_user(
+            email="owner-dashboard@example.com",
+            password="StrongPass123!",
+            role=UserRole.RESTAURANT_OWNER,
+            first_name="Owner",
+            last_name="Dashboard",
+        )
+        user.last_login = user.date_joined
+        user.save(update_fields=("last_login",))
+        self.client.force_authenticate(user=user)
+
+        response = self.client.get("/api/auth/me/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["email"], "owner-dashboard@example.com")
+        self.assertEqual(payload["role"], UserRole.RESTAURANT_OWNER)
+        self.assertEqual(payload["full_name"], "Owner Dashboard")
+        self.assertEqual(parse_datetime(payload["last_login"]), user.last_login)
 
 
 class PushDeviceApiTests(TestCase):

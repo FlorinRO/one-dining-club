@@ -29,15 +29,15 @@ const GOOGLE_MAPS_API_KEY =
   "";
 const DAY_LABELS = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"];
 const ORDER_STATUS_LABELS = {
-  pending: "Pending",
-  accepted: "Accepted",
-  preparing: "Preparing",
-  ready_for_pickup: "Ready for pickup",
-  picked_up: "Picked up",
-  on_the_way: "On the way",
-  delivered: "Delivered",
-  cancelled: "Cancelled",
-  rejected: "Rejected",
+  pending: "În așteptare",
+  accepted: "Acceptată",
+  preparing: "În preparare",
+  ready_for_pickup: "Gata de ridicare",
+  picked_up: "Preluată",
+  on_the_way: "Pe drum",
+  delivered: "Livrată",
+  cancelled: "Anulată",
+  rejected: "Respinsă",
 };
 const OWNER_STATUS_OPTIONS = [
   "accepted",
@@ -46,6 +46,34 @@ const OWNER_STATUS_OPTIONS = [
   "rejected",
   "cancelled",
 ];
+const ORDER_FILTER_STATUS_OPTIONS = [
+  { value: "pending", label: "În așteptare" },
+  { value: "accepted", label: "Acceptate" },
+  { value: "preparing", label: "În preparare" },
+  { value: "ready_for_pickup", label: "Gata" },
+  { value: "picked_up", label: "Preluate" },
+  { value: "on_the_way", label: "Pe drum" },
+  { value: "delivered", label: "Livrate" },
+  { value: "rejected", label: "Respinse" },
+  { value: "cancelled", label: "Anulate" },
+];
+const FULFILLMENT_TYPE_LABELS = {
+  delivery: "Livrare",
+  pickup: "Ridicare",
+};
+const PAYMENT_METHOD_LABELS = {
+  cash: "Numerar",
+  card: "Card",
+  apple_pay: "Apple Pay",
+  google_pay: "Google Pay",
+};
+const PAYMENT_STATUS_LABELS = {
+  unpaid: "Neplătită",
+  pending: "În așteptare",
+  paid: "Plătită",
+  failed: "Eșuată",
+  refunded: "Rambursată",
+};
 const FALLBACK_RESTAURANT_AVATAR =
   "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?q=80&w=900&auto=format&fit=crop";
 const RESTAURANT_AVATAR_OVERRIDES = {
@@ -548,6 +576,7 @@ const state = {
   restaurantCategories: [],
   products: [],
   orders: [],
+  availableCouriers: [],
   selectedRestaurantId: null,
   editingProductId: null,
   avatarPreviewUrls: {},
@@ -556,6 +585,12 @@ const state = {
   notice: "",
   confirmation: null,
   profileFormDirty: false,
+  orderFilters: {
+    status: "pending",
+  },
+  unseenOrderIds: [],
+  hasLoadedOrdersOnce: false,
+  audioAlertEnabled: false,
   googleAutocompleteStatus: GOOGLE_MAPS_API_KEY ? "idle" : "missing-key",
   googleAutocompleteMessage: GOOGLE_MAPS_API_KEY
     ? ""
@@ -563,9 +598,21 @@ const state = {
 };
 
 const FLASH_MESSAGE_DURATION_MS = 4500;
+const ORDER_POLL_INTERVAL_MS = 15000;
+const ORDER_CLOCK_INTERVAL_MS = 30000;
+const ORDER_ALERT_REPEAT_INTERVAL_MS = 4500;
 let flashMessageTimer = null;
 let pendingConfirmationAction = null;
 let googleMapsPlacesApiPromise = null;
+let orderPollingTimer = null;
+let orderClockTimer = null;
+let orderAlertTimer = null;
+let ordersPollInFlight = false;
+let alertAudioContext = null;
+let audioUnlockBound = false;
+let alertAudioElement = null;
+let alertAudioUrl = "";
+let alertAudioSpeechFallbackMuted = false;
 
 const app = document.querySelector("#app");
 
@@ -618,6 +665,356 @@ function scheduleFlashMessageClear() {
   }, FLASH_MESSAGE_DURATION_MS);
 }
 
+function clearOrderRealtimeTimers() {
+  if (orderPollingTimer) {
+    window.clearInterval(orderPollingTimer);
+    orderPollingTimer = null;
+  }
+  if (orderClockTimer) {
+    window.clearInterval(orderClockTimer);
+    orderClockTimer = null;
+  }
+  stopPendingOrderAlertLoop();
+}
+
+function syncOrderRealtime() {
+  const shouldRun = Boolean(state.user && state.selectedRestaurantId);
+  if (!shouldRun) {
+    clearOrderRealtimeTimers();
+    return;
+  }
+
+  if (!orderPollingTimer) {
+    orderPollingTimer = window.setInterval(() => {
+      pollOrdersInBackground();
+    }, ORDER_POLL_INTERVAL_MS);
+  }
+
+  if (!orderClockTimer) {
+    orderClockTimer = window.setInterval(() => {
+      if (state.currentView === "orders" && !isEditingOrderForm()) render();
+    }, ORDER_CLOCK_INTERVAL_MS);
+  }
+}
+
+async function pollOrdersInBackground() {
+  if (ordersPollInFlight || !state.user || !state.selectedRestaurantId) return;
+  ordersPollInFlight = true;
+  try {
+    await Promise.all([reloadOrders({ shouldNotify: true }), reloadCouriers()]);
+    if (state.currentView === "orders" && !isEditingOrderForm()) render();
+  } catch {}
+  ordersPollInFlight = false;
+}
+
+function isEditingOrderForm() {
+  return Boolean(document.activeElement?.closest?.("[data-order-form]"));
+}
+
+function getAlertAudioContext() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  if (!alertAudioContext || alertAudioContext.state === "closed") {
+    alertAudioContext = new AudioContextClass();
+  }
+  return alertAudioContext;
+}
+
+function createWavDataUrl(samples, sampleRate = 44100) {
+  const bytesPerSample = 2;
+  const blockAlign = bytesPerSample;
+  const byteRate = sampleRate * blockAlign;
+  const dataSize = samples.length * bytesPerSample;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+  let offset = 0;
+
+  const writeString = (value) => {
+    for (let index = 0; index < value.length; index += 1) {
+      view.setUint8(offset, value.charCodeAt(index));
+      offset += 1;
+    }
+  };
+
+  writeString("RIFF");
+  view.setUint32(offset, 36 + dataSize, true);
+  offset += 4;
+  writeString("WAVE");
+  writeString("fmt ");
+  view.setUint32(offset, 16, true);
+  offset += 4;
+  view.setUint16(offset, 1, true);
+  offset += 2;
+  view.setUint16(offset, 1, true);
+  offset += 2;
+  view.setUint32(offset, sampleRate, true);
+  offset += 4;
+  view.setUint32(offset, byteRate, true);
+  offset += 4;
+  view.setUint16(offset, blockAlign, true);
+  offset += 2;
+  view.setUint16(offset, 16, true);
+  offset += 2;
+  writeString("data");
+  view.setUint32(offset, dataSize, true);
+  offset += 4;
+
+  samples.forEach((sample) => {
+    const clamped = Math.max(-1, Math.min(1, sample));
+    view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
+    offset += 2;
+  });
+
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return `data:audio/wav;base64,${btoa(binary)}`;
+}
+
+function getAlertAudioUrl() {
+  if (alertAudioUrl) return alertAudioUrl;
+
+  const sampleRate = 44100;
+  const totalDurationSeconds = 2.2;
+  const totalSamples = Math.floor(sampleRate * totalDurationSeconds);
+  const samples = new Float32Array(totalSamples);
+  const sirenBursts = [
+    { start: 0.0, duration: 0.42, fromFrequency: 760, toFrequency: 1320, volume: 1.0 },
+    { start: 0.54, duration: 0.42, fromFrequency: 1320, toFrequency: 760, volume: 1.0 },
+    { start: 1.14, duration: 0.42, fromFrequency: 760, toFrequency: 1380, volume: 1.0 },
+    { start: 1.68, duration: 0.42, fromFrequency: 1380, toFrequency: 820, volume: 1.0 },
+  ];
+
+  sirenBursts.forEach((burst) => {
+    const startSample = Math.floor(burst.start * sampleRate);
+    const endSample = Math.min(totalSamples, Math.floor((burst.start + burst.duration) * sampleRate));
+    for (let index = startSample; index < endSample; index += 1) {
+      const time = (index - startSample) / sampleRate;
+      const progress = (index - startSample) / Math.max(1, endSample - startSample);
+      const frequency = burst.fromFrequency + (burst.toFrequency - burst.fromFrequency) * progress;
+      const envelope =
+        Math.min(1, time / 0.01) *
+        Math.min(1, (burst.duration - time) / 0.035) *
+        (0.9 + 0.1 * Math.sin(2 * Math.PI * 7 * time));
+      const tone =
+        Math.sin(2 * Math.PI * frequency * time) * 0.52 +
+        Math.sign(Math.sin(2 * Math.PI * frequency * time)) * 0.33 +
+        Math.sin(2 * Math.PI * frequency * 0.5 * time) * 0.15;
+      samples[index] += tone * envelope * burst.volume;
+    }
+  });
+
+  alertAudioUrl = createWavDataUrl(samples, sampleRate);
+  return alertAudioUrl;
+}
+
+function getAlertAudioElement() {
+  if (!alertAudioElement) {
+    alertAudioElement = new Audio(getAlertAudioUrl());
+    alertAudioElement.preload = "auto";
+  }
+  return alertAudioElement;
+}
+
+function setAudioAlertEnabled(enabled) {
+  if (state.audioAlertEnabled === enabled) return;
+  state.audioAlertEnabled = enabled;
+  if (state.user) render();
+}
+
+async function unlockAlertAudio() {
+  const audioContext = getAlertAudioContext();
+  if (!audioContext) return true;
+  if (audioContext.state === "running") return true;
+
+  try {
+    await audioContext.resume();
+    if (audioContext.state !== "running") return false;
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    gain.gain.setValueAtTime(0.00001, audioContext.currentTime);
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.01);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function primeAlertAudioElement() {
+  try {
+    const audioElement = getAlertAudioElement();
+    audioElement.muted = true;
+    audioElement.currentTime = 0;
+    await audioElement.play();
+    audioElement.pause();
+    audioElement.currentTime = 0;
+    audioElement.muted = false;
+    setAudioAlertEnabled(true);
+    return true;
+  } catch {
+    const audioElement = getAlertAudioElement();
+    audioElement.muted = false;
+    audioElement.currentTime = 0;
+    return false;
+  }
+}
+
+async function ensureAlertAudioReady() {
+  const unlocked = await unlockAlertAudio();
+  const primed = await primeAlertAudioElement();
+  const ready = Boolean(unlocked || primed);
+  if (ready) setAudioAlertEnabled(true);
+  return ready;
+}
+
+function hasPendingUnseenOrders() {
+  return state.unseenOrderIds.some((id) => {
+    const order = state.orders.find((item) => item.id === id);
+    return order?.order_status === "pending";
+  });
+}
+
+function stopPendingOrderAlertLoop() {
+  if (!orderAlertTimer) return;
+  window.clearInterval(orderAlertTimer);
+  orderAlertTimer = null;
+}
+
+function syncPendingOrderAlertLoop() {
+  const shouldRepeat = hasPendingUnseenOrders() && Boolean(state.user && state.selectedRestaurantId);
+  if (!shouldRepeat) {
+    stopPendingOrderAlertLoop();
+    return;
+  }
+  if (orderAlertTimer) return;
+  orderAlertTimer = window.setInterval(() => {
+    if (!hasPendingUnseenOrders()) {
+      stopPendingOrderAlertLoop();
+      return;
+    }
+    playNewOrderAlert();
+  }, ORDER_ALERT_REPEAT_INTERVAL_MS);
+}
+
+function bindAudioUnlock() {
+  if (audioUnlockBound) return;
+  audioUnlockBound = true;
+
+  const unlockOnce = async () => {
+    const ready = await ensureAlertAudioReady();
+    if (!ready) return;
+
+    ["pointerdown", "touchstart", "keydown"].forEach((eventName) => {
+      window.removeEventListener(eventName, unlockOnce, true);
+    });
+  };
+
+  ["pointerdown", "touchstart", "keydown"].forEach((eventName) => {
+    window.addEventListener(eventName, unlockOnce, true);
+  });
+}
+
+async function playAlertAudioElement() {
+  const audioElement = getAlertAudioElement();
+  audioElement.pause();
+  audioElement.currentTime = 0;
+  audioElement.volume = 1;
+  try {
+    await audioElement.play();
+    setAudioAlertEnabled(true);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function playSpeechOrderFallback() {
+  if (alertAudioSpeechFallbackMuted || typeof window.speechSynthesis === "undefined" || typeof window.SpeechSynthesisUtterance === "undefined") {
+    return false;
+  }
+  try {
+    const utterance = new SpeechSynthesisUtterance("Comandă nouă. Verifică dashboardul acum.");
+    utterance.lang = "ro-RO";
+    utterance.volume = 1;
+    utterance.rate = 1.12;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function playNewOrderAlert() {
+  try {
+    let elementPlayed = await playAlertAudioElement();
+    const audioContext = getAlertAudioContext();
+    let webAudioPlayed = false;
+    if (audioContext && audioContext.state !== "running") {
+      const unlocked = await ensureAlertAudioReady();
+      if (!unlocked) {
+        if (!elementPlayed) {
+          const speechPlayed = playSpeechOrderFallback();
+          return speechPlayed;
+        }
+        return true;
+      }
+    }
+
+    if (audioContext?.state === "running") {
+      const masterGain = audioContext.createGain();
+      masterGain.gain.setValueAtTime(1, audioContext.currentTime);
+      masterGain.connect(audioContext.destination);
+
+      const sirenBursts = [
+        { start: 0.0, duration: 0.42, fromFrequency: 760, toFrequency: 1320, type: "sawtooth", volume: 0.34 },
+        { start: 0.54, duration: 0.42, fromFrequency: 1320, toFrequency: 760, type: "sawtooth", volume: 0.34 },
+        { start: 1.14, duration: 0.42, fromFrequency: 760, toFrequency: 1380, type: "square", volume: 0.36 },
+        { start: 1.68, duration: 0.42, fromFrequency: 1380, toFrequency: 820, type: "square", volume: 0.36 },
+      ];
+
+      sirenBursts.forEach((burst) => {
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        const startAt = audioContext.currentTime + burst.start;
+        const peakAt = startAt + 0.02;
+        const stopAt = startAt + burst.duration;
+
+        oscillator.type = burst.type;
+        oscillator.frequency.setValueAtTime(burst.fromFrequency, startAt);
+        oscillator.frequency.exponentialRampToValueAtTime(burst.toFrequency, stopAt);
+
+        gain.gain.setValueAtTime(0.0001, startAt);
+        gain.gain.exponentialRampToValueAtTime(burst.volume, peakAt);
+        gain.gain.exponentialRampToValueAtTime(0.0001, stopAt);
+
+        oscillator.connect(gain);
+        gain.connect(masterGain);
+        oscillator.start(startAt);
+        oscillator.stop(stopAt);
+      });
+      webAudioPlayed = true;
+    }
+
+    if (!elementPlayed) {
+      elementPlayed = await playAlertAudioElement();
+    }
+
+    if (!elementPlayed && !webAudioPlayed) {
+      return playSpeechOrderFallback();
+    }
+
+    return true;
+  } catch {}
+  return false;
+}
+
 function openConfirmation(options) {
   state.confirmation = {
     title: options.title || "Confirmă acțiunea",
@@ -652,6 +1049,8 @@ function setView(view) {
 
 function setSelectedRestaurant(restaurantId) {
   state.selectedRestaurantId = restaurantId ? Number(restaurantId) : null;
+  state.hasLoadedOrdersOnce = false;
+  state.unseenOrderIds = [];
   persistSelectedRestaurant();
   if (state.selectedRestaurantId && !state.currentView) {
     state.currentView = DEFAULT_DASHBOARD_VIEW;
@@ -696,11 +1095,18 @@ function persistSelectedRestaurant() {
 function syncSelectedRestaurant() {
   if (!state.restaurants.length) {
     state.selectedRestaurantId = null;
+    state.hasLoadedOrdersOnce = false;
+    state.unseenOrderIds = [];
     persistSelectedRestaurant();
     return;
   }
 
-  state.selectedRestaurantId = state.restaurants[0].id;
+  const nextRestaurantId = state.restaurants[0].id;
+  if (state.selectedRestaurantId !== nextRestaurantId) {
+    state.hasLoadedOrdersOnce = false;
+    state.unseenOrderIds = [];
+  }
+  state.selectedRestaurantId = nextRestaurantId;
   persistSelectedRestaurant();
 }
 
@@ -930,11 +1336,14 @@ async function fetchOwnerData() {
     syncSelectedRestaurant();
 
     if (state.selectedRestaurantId) {
-      await Promise.all([reloadProducts(), reloadOrders(), reloadCategories()]);
+      await Promise.all([reloadProducts(), reloadOrders({ shouldNotify: false }), reloadCategories(), reloadCouriers()]);
     } else {
       state.productCategories = [];
       state.products = [];
       state.orders = [];
+      state.availableCouriers = [];
+      state.hasLoadedOrdersOnce = false;
+      state.unseenOrderIds = [];
     }
 
     state.loading = false;
@@ -954,9 +1363,42 @@ async function reloadProducts() {
   state.products = payload.results || payload;
 }
 
-async function reloadOrders() {
+async function reloadOrders(options = {}) {
+  const { shouldNotify = false } = options;
   const payload = await apiFetch("restaurant-owner/orders/", { params: selectedRestaurantParams() });
-  state.orders = payload.results || payload;
+  const nextOrders = payload.results || payload;
+  const previousIds = new Set(state.orders.map((order) => order.id));
+  const nextIds = new Set(nextOrders.map((order) => order.id));
+  const newOrders = state.hasLoadedOrdersOnce ? nextOrders.filter((order) => !previousIds.has(order.id)) : [];
+
+  state.orders = nextOrders;
+  state.hasLoadedOrdersOnce = true;
+  state.unseenOrderIds = [
+    ...new Set([
+      ...state.unseenOrderIds.filter((id) => nextIds.has(id)),
+      ...newOrders.map((order) => order.id),
+    ]),
+  ].filter((id) => {
+    const order = nextOrders.find((item) => item.id === id);
+    return order && order.order_status === "pending";
+  });
+  syncPendingOrderAlertLoop();
+
+  if (newOrders.length && shouldNotify) {
+    playNewOrderAlert();
+    const message = `${newOrders.length} comandă${newOrders.length > 1 ? "i noi au" : " nouă a"} intrat în dashboard.`;
+    if (isEditingOrderForm()) {
+      state.notice = message;
+      state.error = "";
+      scheduleFlashMessageClear();
+    } else {
+      setNotice(message);
+    }
+  }
+}
+
+async function reloadCouriers() {
+  state.availableCouriers = await apiFetch("restaurant-owner/orders/couriers/");
 }
 
 async function reloadCategories() {
@@ -967,6 +1409,7 @@ async function reloadCategories() {
 function render() {
   app.innerHTML = `${state.user ? renderDashboard() : renderLogin()}${renderConfirmationDialog()}`;
   bindEvents();
+  syncOrderRealtime();
 }
 
 function renderLogin() {
@@ -1050,6 +1493,10 @@ function renderDashboard() {
             ${subtitle ? `<p class="page-subtitle">${escapeHtml(subtitle)}</p>` : ""}
           </div>
           <div class="top-actions">
+            <button class="ghost-button ${state.audioAlertEnabled ? "is-audio-ready" : "is-audio-pending"}" id="audio-alert-button" type="button">
+              <i class="${state.audioAlertEnabled ? "ri-volume-up-line" : "ri-volume-mute-line"}" aria-hidden="true"></i>
+              ${state.audioAlertEnabled ? "Testează sunetul" : "Activează sunetul"}
+            </button>
             ${state.loading && !isInitialDashboardLoading ? `<span class="status-chip">Se încarcă...</span>` : ""}
           </div>
         </div>
@@ -1771,71 +2218,256 @@ function renderProductMedia(product) {
 }
 
 function renderOrdersView() {
+  const visibleOrders = getVisibleOrders();
   return `
+    <section class="orders-toolbar">
+      ${ORDER_FILTER_STATUS_OPTIONS.map((option) => {
+        const count = state.orders.filter((order) => order.order_status === option.value).length;
+        return `
+          <button
+            class="order-filter-button ${state.orderFilters.status === option.value ? "is-active" : ""}"
+            type="button"
+            data-order-status-filter="${option.value}"
+          >
+            <span>${escapeHtml(option.label)}</span>
+            <strong>${count}</strong>
+          </button>
+        `;
+      }).join("")}
+    </section>
     <section class="orders-grid">
-      ${state.orders.length
-        ? state.orders
+      ${visibleOrders.length
+        ? visibleOrders
             .map(
               (order) => `
-                <article class="order-card">
-                  <div class="section-header">
-                    <div>
-                      <h3>Comanda #${order.id}</h3>
-                      <small>${escapeHtml(order.customer_email || "")}</small>
-                    </div>
-                    <span class="status-chip ${order.order_status}">${escapeHtml(ORDER_STATUS_LABELS[order.order_status] || order.order_status)}</span>
-                  </div>
-                  <div class="order-total">${order.total} RON</div>
-                  <div class="order-meta">${new Date(order.created_at).toLocaleString("ro-RO")}</div>
-                  <div class="table-scroller">
-                    <table>
-                      <thead>
-                        <tr><th>Produs</th><th>Cant.</th><th>Total</th></tr>
-                      </thead>
-                      <tbody>
+                <article class="order-card ${isPendingPriorityOrder(order) ? "is-pending-priority" : ""} ${state.unseenOrderIds.includes(order.id) ? "is-unseen" : ""}">
+                  <div class="order-card-shell">
+                    <div class="order-card-primary">
+                      <div class="order-list-header">
+                        <div class="order-list-title">
+                          <h3>Comanda #${order.id}</h3>
+                          <small>${escapeHtml(order.customer_name || order.customer_email || "")}</small>
+                        </div>
+                        <div class="order-list-header-meta">
+                          <span class="status-chip ${order.order_status}">${escapeHtml(ORDER_STATUS_LABELS[order.order_status] || order.order_status)}</span>
+                          <strong class="order-list-total">${escapeHtml(formatMoney(order.total))}</strong>
+                        </div>
+                      </div>
+                      <div class="order-sla-bar">
+                        <strong>${escapeHtml(formatElapsedSince(order.created_at))}</strong>
+                        <span class="order-sla-chip ${getOrderSlaInfo(order).tone}">${escapeHtml(getOrderSlaInfo(order).label)}</span>
+                      </div>
+                      <div class="order-inline-facts">
+                        <span><i class="ri-time-line" aria-hidden="true"></i>${escapeHtml(formatOrderDate(order.created_at))}</span>
+                        <span><i class="ri-bike-line" aria-hidden="true"></i>${escapeHtml(formatFulfillmentTypeLabel(order))}</span>
+                        <span><i class="ri-bank-card-line" aria-hidden="true"></i>${escapeHtml(formatPaymentMethodLabel(order))} / ${escapeHtml(formatPaymentStatusLabel(order))}</span>
+                        <span><i class="ri-timer-line" aria-hidden="true"></i>${escapeHtml(formatDeliveryWindow(order.estimated_delivery_window_minutes))}</span>
+                        ${order.estimated_distance_km != null ? `<span><i class="ri-route-line" aria-hidden="true"></i>${escapeHtml(formatDistanceKm(order.estimated_distance_km))}</span>` : ""}
+                        ${order.estimated_arrival_minutes != null ? `<span><i class="ri-navigation-line" aria-hidden="true"></i>${escapeHtml(`Ajunge în ${order.estimated_arrival_minutes} min`)}</span>` : ""}
+                      </div>
+                      <div class="order-contact-stack">
+                        ${order.customer_phone ? `<div class="order-contact-line"><i class="ri-phone-line" aria-hidden="true"></i><span>${escapeHtml(order.customer_phone)}</span></div>` : ""}
+                        ${order.customer_email ? `<div class="order-contact-line"><i class="ri-mail-line" aria-hidden="true"></i><span>${escapeHtml(order.customer_email)}</span></div>` : ""}
+                        ${
+                          order.fulfillment_type === "delivery" && order.address_summary
+                            ? `<div class="order-contact-line"><i class="ri-map-pin-line" aria-hidden="true"></i><span>${escapeHtml(order.address_summary)}</span></div>`
+                            : `<div class="order-contact-line"><i class="ri-store-2-line" aria-hidden="true"></i><span>Ridicare din restaurant</span></div>`
+                        }
+                        ${order.address_details?.instructions ? `<div class="order-contact-line"><i class="ri-information-line" aria-hidden="true"></i><span>${escapeHtml(order.address_details.instructions)}</span></div>` : ""}
+                      </div>
+                      <div class="order-items-list">
                         ${(order.items || [])
                           .map(
                             (item) => `
-                              <tr>
-                                <td>${escapeHtml(item.product_name)}</td>
-                                <td>${item.quantity}</td>
-                                <td>${item.total_price} RON</td>
-                              </tr>
+                              <div class="order-item-row">
+                                <div class="order-item-main">
+                                  <div class="order-item-name">${escapeHtml(item.product_name)}</div>
+                                  ${
+                                    item.options?.length
+                                      ? `<div class="order-item-detail">${escapeHtml(
+                                          item.options.map((option) => `${option.option_name}${Number(option.extra_price || 0) > 0 ? ` (+${formatMoney(option.extra_price)})` : ""}`).join(", "),
+                                        )}</div>`
+                                      : ""
+                                  }
+                                  ${item.notes ? `<div class="order-item-detail">${escapeHtml(item.notes)}</div>` : ""}
+                                </div>
+                                <div class="order-item-meta">
+                                  <span class="order-item-qty">${item.quantity}x</span>
+                                  <strong>${escapeHtml(formatMoney(item.total_price))}</strong>
+                                </div>
+                              </div>
                             `,
                           )
                           .join("")}
-                      </tbody>
-                    </table>
+                      </div>
+                      <div class="order-totals order-totals-compact">
+                        <div><span><i class="ri-receipt-line" aria-hidden="true"></i>Subtotal</span><strong>${escapeHtml(formatMoney(order.subtotal))}</strong></div>
+                        <div><span><i class="ri-bike-line" aria-hidden="true"></i>Livrare</span><strong>${escapeHtml(formatMoney(order.delivery_fee))}</strong></div>
+                        <div><span><i class="ri-price-tag-3-line" aria-hidden="true"></i>Discount</span><strong>${escapeHtml(formatMoney(order.discount))}</strong></div>
+                        <div><span><i class="ri-wallet-3-line" aria-hidden="true"></i>Total</span><strong>${escapeHtml(formatMoney(order.total))}</strong></div>
+                      </div>
+                      ${
+                        order.customer_note
+                          ? `<div class="order-detail-panel">
+                              <div class="order-detail-title"><i class="ri-chat-1-line" aria-hidden="true"></i> Nota clientului</div>
+                              <div class="order-detail-body">
+                                ${formatCustomerNote(order.customer_note)}
+                              </div>
+                            </div>`
+                          : ""
+                      }
+                    </div>
+                    <div class="order-card-sidebar">
+                      <div class="order-actions">
+                        ${order.customer_phone ? `<a class="ghost-button" href="tel:${escapeHtml(order.customer_phone)}"><i class="ri-phone-fill" aria-hidden="true"></i> Sună clientul</a>` : ""}
+                        ${order.address_summary ? `<button class="ghost-button" type="button" data-copy-address="${order.id}"><i class="ri-file-copy-line" aria-hidden="true"></i> Copiază adresa</button>` : ""}
+                    ${order.address_summary ? `<a class="ghost-button" href="${escapeHtml(buildOrderMapUrl(order))}" target="_blank" rel="noreferrer"><i class="ri-map-pin-2-line" aria-hidden="true"></i> Deschide harta</a>` : ""}
+                      </div>
+                      <form class="toolbar order-toolbar" data-order-form="${order.id}">
+                        <div class="order-toolbar-panel">
+                          <label class="order-toolbar-field">
+                            <span><i class="ri-flag-line" aria-hidden="true"></i>Status comandă</span>
+                            <select name="order_status">
+                              ${OWNER_STATUS_OPTIONS.map((status) => `<option value="${status}" ${status === order.order_status ? "selected" : ""}>${ORDER_STATUS_LABELS[status]}</option>`).join("")}
+                            </select>
+                          </label>
+                          ${
+                            order.fulfillment_type === "delivery"
+                              ? `<label class="order-toolbar-field">
+                                  <span><i class="ri-user-star-line" aria-hidden="true"></i>Curier</span>
+                                  <select name="courier_id">
+                                    <option value="">${order.courier_id ? "Fără reasignare" : "Asignează curier"}</option>
+                                    ${state.availableCouriers.map((courier) => `<option value="${courier.courier_id}" ${Number(courier.courier_id) === Number(order.courier) ? "selected" : ""}>${escapeHtml(`${courier.full_name} · ${formatVehicleTypeLabel(courier.vehicle_type)}${courier.is_available ? "" : " · indisponibil"}`)}</option>`).join("")}
+                                  </select>
+                                </label>`
+                              : ""
+                          }
+                          <label class="order-toolbar-field">
+                            <span><i class="ri-sticky-note-line" aria-hidden="true"></i>Notă internă</span>
+                            <input name="restaurant_note" value="${escapeHtml(order.restaurant_note || "")}" placeholder="Adaugă context pentru echipă" />
+                          </label>
+                        </div>
+                        <button class="button order-toolbar-submit" type="submit"><i class="ri-save-line" aria-hidden="true"></i>Actualizează</button>
+                      </form>
+                      <div class="order-timeline">
+                        <div class="order-detail-title"><i class="ri-history-line" aria-hidden="true"></i> Istoric operațional</div>
+                        <div class="order-timeline-list">
+                          ${(order.events || [])
+                            .slice(0, 6)
+                            .map(
+                              (event) => `
+                                <div class="order-timeline-item">
+                                  <strong>${escapeHtml(formatOrderEventLabel(event))}</strong>
+                                  <span>${escapeHtml(formatOrderEventMeta(event))}</span>
+                                </div>
+                              `,
+                            )
+                            .join("") || `<div class="order-timeline-item"><strong>Fără istoric încă</strong><span>Evenimentele noi vor apărea aici.</span></div>`}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <form class="toolbar" data-order-form="${order.id}">
-                    <select name="order_status">
-                      ${OWNER_STATUS_OPTIONS.map((status) => `<option value="${status}" ${status === order.order_status ? "selected" : ""}>${ORDER_STATUS_LABELS[status]}</option>`).join("")}
-                    </select>
-                    <input name="restaurant_note" value="${escapeHtml(order.restaurant_note || "")}" placeholder="Notă internă" />
-                    <button class="button" type="submit">Actualizează</button>
-                  </form>
                 </article>
               `,
             )
             .join("")
-        : `<article class="empty-card"><h3>Nu există comenzi</h3><small>Comenzile noi vor apărea aici.</small></article>`}
+        : `<article class="empty-card empty-orders-card">
+            <div class="empty-orders-icon" aria-hidden="true"><i class="ri-inbox-archive-line"></i></div>
+            <h3>Nicio comandă în acest status</h3>
+          </article>`}
     </section>
   `;
 }
 
 function renderAccountView() {
+  const restaurant = getSelectedRestaurant();
+  const user = state.user || {};
+  const userName = user.full_name || [user.first_name, user.last_name].filter(Boolean).join(" ") || "Owner";
+  const joinedAt = formatAccountDate(user.date_joined);
+  const lastLogin = formatAccountDate(user.last_login);
+  const accountStatus = getAccountStatusMeta(user);
+  const verificationStatus = getVerificationStatusMeta(user);
+  const avatarUrl = restaurant ? state.avatarPreviewUrls[restaurant.id] || resolveRestaurantAvatarUrl(restaurant) : "";
+  const fallbackAvatarUrl = restaurant ? getRestaurantAvatarFallbackUrl(restaurant) : "";
+  const avatarLabel = restaurant?.name || userName || user.email || "Owner";
+
   return `
-    <section class="panel">
-      <div class="section-header">
-        <div>
-          <h2>Cont owner</h2>
-          <small>Config și informații despre sesiunea activă.</small>
+    <section class="account-layout">
+      <article class="panel account-hero-card">
+        <div class="account-hero-copy">
+          <div class="account-avatar">
+            ${
+              restaurant
+                ? `
+                  <img
+                    src="${escapeHtml(avatarUrl)}"
+                    data-fallback-src="${escapeHtml(fallbackAvatarUrl)}"
+                    alt=""
+                    aria-label="Avatar ${escapeHtml(avatarLabel)}"
+                  />
+                `
+                : `${escapeHtml(getInitials(userName || user.email || "Owner"))}`
+            }
+          </div>
+          <div>
+            <p class="eyebrow">Cont owner</p>
+            <h2>${escapeHtml(userName)}</h2>
+            <p class="account-hero-lead">Datele de profil, starea contului și detaliile sesiunii active sunt centralizate aici.</p>
+          </div>
         </div>
-      </div>
-      <div class="account-grid">
-        <div><strong>Email</strong><div class="muted">${escapeHtml(state.user?.email || "")}</div></div>
-        <div><strong>Rol</strong><div class="muted">${escapeHtml(state.user?.role || "")}</div></div>
-      </div>
+      </article>
+      <article class="panel">
+        <div class="section-header">
+          <div>
+            <h2>Profil cont</h2>
+            <small>Informații de identificare și asocierea cu restaurantul din dashboard.</small>
+          </div>
+        </div>
+        <div class="account-grid account-grid-rich">
+          ${renderAccountItem("Nume owner", userName)}
+          ${renderAccountItem("Email", user.email || "-")}
+          ${renderAccountItem("Telefon", user.phone || "-")}
+          ${renderAccountItem("Rol", formatUserRole(user.role || ""))}
+          ${renderAccountItem("Restaurant asociat", restaurant?.name || "Neasociat încă")}
+          ${renderAccountItem("Oraș restaurant", restaurant?.city || "-")}
+          ${renderAccountItem("Creat la", joinedAt)}
+          ${renderAccountItem("Ultima autentificare", lastLogin)}
+        </div>
+      </article>
+      <article class="panel">
+        <div class="section-header">
+          <div>
+            <h2>Securitate și sesiune</h2>
+            <small>Starea contului și acțiuni rapide pentru acces și parolă.</small>
+          </div>
+        </div>
+        <div class="account-grid account-grid-rich">
+          ${renderAccountItem("Status cont", accountStatus.label, accountStatus.helper)}
+          ${renderAccountItem("Status email", verificationStatus.label, verificationStatus.helper)}
+          ${renderAccountItem("Dispozitiv curent", getCurrentDeviceLabel())}
+          ${renderAccountItem("Browser", getCurrentBrowserLabel())}
+          ${renderAccountItem("Restaurant selectat", restaurant?.name || "-")}
+          ${renderAccountItem("Asistență", SUPPORT_EMAIL)}
+        </div>
+        <div class="button-row account-action-row">
+          <button class="ghost-button" id="account-password-reset-button" type="button">
+            <i class="ri-lock-password-line" aria-hidden="true"></i>
+            Trimite email resetare parolă
+          </button>
+          ${
+            user.is_active
+              ? ""
+              : `<button class="ghost-button" id="account-resend-verification-button" type="button">
+                  <i class="ri-mail-send-line" aria-hidden="true"></i>
+                  Retrimite verificarea emailului
+                </button>`
+          }
+          <a class="ghost-button" href="mailto:${escapeHtml(SUPPORT_EMAIL)}">
+            <i class="ri-customer-service-2-line" aria-hidden="true"></i>
+            Contact suport
+          </a>
+        </div>
+      </article>
     </section>
   `;
 }
@@ -1896,8 +2528,12 @@ function renderDashboardLoadingState() {
 }
 
 function bindEvents() {
+  bindAudioUnlock();
   document.querySelector("#login-form")?.addEventListener("submit", handleLogin);
   document.querySelector("#logout-button")?.addEventListener("click", handleLogout);
+  document.querySelector("#audio-alert-button")?.addEventListener("click", handleAudioAlertButton);
+  document.querySelector("#account-password-reset-button")?.addEventListener("click", handlePasswordResetRequest);
+  document.querySelector("#account-resend-verification-button")?.addEventListener("click", handleVerificationResend);
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => setView(button.dataset.view));
   });
@@ -1997,6 +2633,12 @@ function bindEvents() {
 
   document.querySelectorAll("[data-order-form]").forEach((form) => {
     form.addEventListener("submit", handleOrderUpdate);
+  });
+  document.querySelectorAll("[data-order-status-filter]").forEach((button) => {
+    button.addEventListener("click", handleOrderStatusFilterChange);
+  });
+  document.querySelectorAll("[data-copy-address]").forEach((button) => {
+    button.addEventListener("click", handleCopyOrderAddress);
   });
 
   document.querySelector("#create-restaurant-form")?.addEventListener("submit", handleCreateRestaurant);
@@ -2307,7 +2949,16 @@ async function handleLogin(event) {
   }
 }
 
-function handleLogout() {
+async function handleLogout() {
+  try {
+    if (state.refreshToken) {
+      await apiFetch("auth/logout/", {
+        method: "POST",
+        body: { refresh: state.refreshToken },
+      });
+    }
+  } catch {}
+
   clearAuth();
   state.restaurants = [];
   state.overview = [];
@@ -2320,6 +2971,50 @@ function handleLogout() {
   Object.values(state.avatarPreviewUrls).forEach((url) => URL.revokeObjectURL(url));
   state.avatarPreviewUrls = {};
   setNotice("Sesiunea a fost închisă.");
+}
+
+async function handlePasswordResetRequest() {
+  if (!state.user?.email) {
+    setError("Lipsește emailul contului pentru resetarea parolei.");
+    return;
+  }
+
+  try {
+    await apiFetch("auth/password-reset/", {
+      method: "POST",
+      body: { email: state.user.email },
+    });
+    setNotice("Am trimis instrucțiunile pentru resetarea parolei pe email.");
+  } catch (error) {
+    setError(error.message);
+  }
+}
+
+async function handleAudioAlertButton() {
+  const ready = await ensureAlertAudioReady();
+  const played = await playNewOrderAlert();
+  if (ready && played) {
+    setNotice("Sunetul pentru comenzi este activ.");
+    return;
+  }
+  setError("Browserul a blocat alerta audio. Lasă dashboard-ul în prim-plan și apasă din nou pe «Activează sunetul».");
+}
+
+async function handleVerificationResend() {
+  if (!state.user?.email) {
+    setError("Lipsește emailul contului pentru retrimiterea verificării.");
+    return;
+  }
+
+  try {
+    await apiFetch("auth/verify-email/resend/", {
+      method: "POST",
+      body: { email: state.user.email },
+    });
+    setNotice("Am retrimis emailul de confirmare.");
+  } catch (error) {
+    setError(error.message);
+  }
 }
 
 async function handleProfileSubmit(event) {
@@ -2623,22 +3318,63 @@ function requestProductDeletion(productId) {
   });
 }
 
+function handleOrderStatusFilterChange(event) {
+  const status = event.currentTarget.dataset.orderStatusFilter;
+  if (!status) return;
+  state.orderFilters.status = status;
+  render();
+}
+
+async function handleCopyOrderAddress(event) {
+  const orderId = Number(event.currentTarget.dataset.copyAddress);
+  const order = state.orders.find((item) => item.id === orderId);
+  if (!order?.address_summary) return;
+  try {
+    await navigator.clipboard.writeText(order.address_summary);
+    setNotice(`Adresa comenzii #${orderId} a fost copiată.`);
+  } catch {
+    setError("Nu am putut copia adresa.");
+  }
+}
+
 async function handleOrderUpdate(event) {
   event.preventDefault();
-  const orderId = Number(event.currentTarget.dataset.orderForm);
-  const form = new FormData(event.currentTarget);
+  const formElement = event.currentTarget;
+  if (formElement.dataset.submitting === "true") return;
+
+  formElement.dataset.submitting = "true";
+  const submitButton = formElement.querySelector('.order-toolbar-submit, button[type="submit"]');
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.dataset.originalLabel = submitButton.innerHTML;
+    submitButton.innerHTML = '<i class="ri-loader-4-line" aria-hidden="true"></i>Se actualizează...';
+  }
+
+  const orderId = Number(formElement.dataset.orderForm);
+  const form = new FormData(formElement);
   try {
+    const courierRawValue = String(form.get("courier_id") || "").trim();
+    const payload = {
+      order_status: form.get("order_status"),
+      restaurant_note: form.get("restaurant_note"),
+    };
+    if (event.currentTarget.querySelector('[name="courier_id"]')) {
+      payload.courier_id = courierRawValue ? Number(courierRawValue) : null;
+    }
     await apiFetch(`restaurant-owner/orders/${orderId}/status/`, {
       method: "PATCH",
-      body: {
-        order_status: form.get("order_status"),
-        restaurant_note: form.get("restaurant_note"),
-      },
+      body: payload,
     });
-    await reloadOrders();
+    state.unseenOrderIds = state.unseenOrderIds.filter((id) => id !== orderId);
+    await Promise.all([reloadOrders({ shouldNotify: false }), reloadCouriers()]);
     render();
     setNotice(`Comanda #${orderId} a fost actualizată.`);
   } catch (error) {
+    formElement.dataset.submitting = "false";
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.innerHTML = submitButton.dataset.originalLabel || "Actualizează";
+    }
     setError(error.message);
   }
 }
@@ -2719,6 +3455,239 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function formatMoney(value) {
+  const amount = Number(value || 0);
+  return `${amount.toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RON`;
+}
+
+function formatOrderDate(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("ro-RO");
+}
+
+function formatAccountDate(value) {
+  if (!value) return "Nu există încă";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Nu există încă";
+  return date.toLocaleString("ro-RO", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatUserRole(value) {
+  return {
+    restaurant_owner: "Owner restaurant",
+    admin: "Administrator",
+    courier: "Curier",
+    customer: "Client",
+  }[value] || value || "-";
+}
+
+function renderAccountItem(label, value, helper = "") {
+  return `
+    <div class="account-item">
+      <strong>${escapeHtml(label)}</strong>
+      <div>${escapeHtml(value || "-")}</div>
+      ${helper ? `<small>${escapeHtml(helper)}</small>` : ""}
+    </div>
+  `;
+}
+
+function getAccountStatusMeta(user) {
+  if (user?.is_active) {
+    return {
+      label: "Cont activ",
+      helper: "Contul poate accesa dashboard-ul și operațiile restaurantului.",
+      toneClass: "",
+    };
+  }
+  return {
+    label: "Cont inactiv",
+    helper: "Accesul este blocat până la activare sau confirmarea emailului.",
+    toneClass: "is-muted",
+  };
+}
+
+function getVerificationStatusMeta(user) {
+  if (user?.is_active) {
+    return {
+      label: "Email confirmat",
+      helper: "Adresa de email este activă pentru autentificare și notificări.",
+      toneClass: "",
+    };
+  }
+  return {
+    label: "Email neconfirmat",
+    helper: "Retrimite linkul de verificare dacă nu ai finalizat confirmarea.",
+    toneClass: "is-muted",
+  };
+}
+
+function getCurrentBrowserLabel() {
+  const userAgent = navigator.userAgent || "";
+  if (/Edg\//.test(userAgent)) return "Microsoft Edge";
+  if (/OPR\//.test(userAgent) || /Opera/.test(userAgent)) return "Opera";
+  if (/Chrome\//.test(userAgent) && !/Edg\//.test(userAgent)) return "Google Chrome";
+  if (/Firefox\//.test(userAgent)) return "Mozilla Firefox";
+  if (/Safari\//.test(userAgent) && !/Chrome\//.test(userAgent)) return "Safari";
+  return "Browser necunoscut";
+}
+
+function getCurrentDeviceLabel() {
+  const userAgent = navigator.userAgent || "";
+  if (/iPhone|iPad|iPod/.test(userAgent)) return "iPhone / iPad";
+  if (/Android/.test(userAgent)) return "Telefon Android";
+  if (/Mac OS X/.test(userAgent)) return "Mac";
+  if (/Windows/.test(userAgent)) return "Windows PC";
+  if (/Linux/.test(userAgent)) return "Linux";
+  return "Dispozitiv necunoscut";
+}
+
+function formatDistanceKm(value) {
+  const distance = Number(value);
+  if (!Number.isFinite(distance)) return "-";
+  return `${distance.toLocaleString("ro-RO", { minimumFractionDigits: distance < 10 ? 1 : 0, maximumFractionDigits: 1 })} km`;
+}
+
+function formatDeliveryWindow(windowValue) {
+  const min = Number(windowValue?.min);
+  const max = Number(windowValue?.max);
+  if (Number.isFinite(min) && Number.isFinite(max)) {
+    return `${min}-${max} min`;
+  }
+  if (Number.isFinite(min)) return `${min} min`;
+  if (Number.isFinite(max)) return `${max} min`;
+  return "-";
+}
+
+function formatFulfillmentTypeLabel(order) {
+  return FULFILLMENT_TYPE_LABELS[order.fulfillment_type] || order.fulfillment_type_label || order.fulfillment_type || "Comandă";
+}
+
+function formatPaymentMethodLabel(order) {
+  return PAYMENT_METHOD_LABELS[order.payment_method] || order.payment_method_label || order.payment_method || "-";
+}
+
+function formatPaymentStatusLabel(order) {
+  return PAYMENT_STATUS_LABELS[order.payment_status] || order.payment_status_label || order.payment_status || "-";
+}
+
+function formatVehicleTypeLabel(value) {
+  return {
+    bike: "Bicicletă",
+    scooter: "Scuter",
+    car: "Mașină",
+    walk: "Pe jos",
+  }[value] || value || "-";
+}
+
+function formatCustomerNote(value) {
+  const parts = String(value || "")
+    .split(" • ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (!parts.length) return "";
+  const [lead, ...details] = parts;
+  return `
+    <span>${escapeHtml(lead)}</span>
+    ${details.map((detail) => `<span class="order-note-detail">${escapeHtml(detail)}</span>`).join("")}
+  `;
+}
+
+function getVisibleOrders() {
+  const filteredOrders = state.orders.filter((order) => order.order_status === state.orderFilters.status);
+
+  return filteredOrders.sort((left, right) => {
+    const leftTime = new Date(left.created_at).getTime();
+    const rightTime = new Date(right.created_at).getTime();
+    const leftPriority = isPendingPriorityOrder(left) ? 1 : 0;
+    const rightPriority = isPendingPriorityOrder(right) ? 1 : 0;
+    if (leftPriority !== rightPriority) return rightPriority - leftPriority;
+    const leftUnseen = state.unseenOrderIds.includes(left.id) ? 1 : 0;
+    const rightUnseen = state.unseenOrderIds.includes(right.id) ? 1 : 0;
+    if (leftUnseen !== rightUnseen) return rightUnseen - leftUnseen;
+    return rightTime - leftTime;
+  });
+}
+
+function isPendingPriorityOrder(order) {
+  if (order.order_status !== "pending") return false;
+  return !(order.events || []).some((event) => event.event_type === "status_changed" || event.event_type === "courier_assigned");
+}
+
+function getElapsedMinutes(value) {
+  if (!value) return 0;
+  const createdAt = new Date(value).getTime();
+  if (Number.isNaN(createdAt)) return 0;
+  return Math.max(0, Math.floor((Date.now() - createdAt) / 60000));
+}
+
+function formatElapsedSince(value) {
+  const elapsedMinutes = getElapsedMinutes(value);
+  if (elapsedMinutes < 1) return "Acum";
+  if (elapsedMinutes < 60) return `${elapsedMinutes}m de la plasare`;
+  const hours = Math.floor(elapsedMinutes / 60);
+  const minutes = elapsedMinutes % 60;
+  return `${hours}h ${minutes}m de la plasare`;
+}
+
+function getOrderSlaInfo(order) {
+  const elapsedMinutes = getElapsedMinutes(order.created_at);
+  const deliveryMin = Number(order.estimated_delivery_window_minutes?.min || 25);
+  const targets = {
+    pending: { label: "Confirmă în max. 2 min", overdueLabel: "Întârzie confirmarea", targetMinutes: 2 },
+    accepted: { label: "Confirmată", overdueLabel: "Întârzie pregătirea", targetMinutes: 2 },
+    preparing: { label: "Pregătește comanda", overdueLabel: "Întârzie prepararea", targetMinutes: Math.max(12, Math.round(deliveryMin * 0.6)) },
+    ready_for_pickup: { label: "Pregătită pentru ridicare", overdueLabel: "Întârzie ridicarea", targetMinutes: deliveryMin },
+    picked_up: { label: "Comanda a fost preluată", overdueLabel: "Întârzie plecarea către client", targetMinutes: deliveryMin + 10 },
+    on_the_way: { label: "Curier pe drum", overdueLabel: "Întârzie livrarea", targetMinutes: deliveryMin + 20 },
+  };
+  const defaultInfo = targets[order.order_status];
+  if (!defaultInfo) {
+    return { label: "Istoric închis", tone: "success" };
+  }
+  if (elapsedMinutes <= defaultInfo.targetMinutes) {
+    return { label: defaultInfo.label, tone: "success" };
+  }
+  return { label: `${defaultInfo.overdueLabel} · +${elapsedMinutes - defaultInfo.targetMinutes}m`, tone: "warning" };
+}
+
+function buildOrderMapUrl(order) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.address_summary || "")}`;
+}
+
+function formatOrderEventLabel(event) {
+  if (event.event_type === "courier_assigned") {
+    return `Curier asignat: ${event.courier_name || event.courier_email || "necunoscut"}`;
+  }
+  if (event.event_type === "created") {
+    return "Comandă plasată";
+  }
+  const nextStatusLabel = ORDER_STATUS_LABELS[event.next_status] || event.next_status || "Actualizare";
+  return `Status schimbat în ${nextStatusLabel}`;
+}
+
+function formatOrderEventMeta(event) {
+  const actor = event.actor_name || event.actor_email || sourceLabelForEvent(event.source);
+  return `${actor} · ${formatOrderDate(event.created_at)}`;
+}
+
+function sourceLabelForEvent(source) {
+  return {
+    restaurant: "Restaurant",
+    courier: "Curier",
+    payment: "Plată",
+    customer_create: "Client",
+    customer_cancel: "Client",
+  }[source] || "Sistem";
+}
+
 function renderIngredientRows(rows) {
   const safeRows = rows.length ? rows : [EMPTY_INGREDIENT_ROW];
   return safeRows.map((row) => renderIngredientRow(row)).join("");
@@ -2731,16 +3700,30 @@ function renderIngredientRow(row = EMPTY_INGREDIENT_ROW) {
         <input name="ingredient_name" placeholder="Nume ingredient" value="${escapeHtml(row.name || "")}" autocomplete="off" />
         <div class="ingredient-suggestions" data-ingredient-suggestions></div>
       </div>
-      <input name="ingredient_grams" type="number" min="0" step="1" placeholder="Gramaj (g)" value="${escapeHtml(row.grams || "")}" />
-      <input name="ingredient_calories" type="number" min="0" step="1" placeholder="Calorii" value="${escapeHtml(row.calories || "")}" />
-      <input name="ingredient_price_per_20g" type="number" min="0" step="0.01" placeholder="Preț / 20g" value="${escapeHtml(row.price_per_20g || "")}" />
-      <select name="ingredient_can_add_extra" aria-label="Disponibilitate extra">
-        <option value="true" ${String(row.can_add_extra ?? "true") === "true" ? "selected" : ""}>Se poate adăuga extra</option>
-        <option value="false" ${String(row.can_add_extra) === "false" ? "selected" : ""}>Nu se poate comanda extra</option>
-      </select>
-      <button class="ghost-button ingredient-remove-button" type="button" data-remove-ingredient aria-label="Șterge ingredient">
-        <i class="ri-close-line" aria-hidden="true"></i>
-      </button>
+      <div class="ingredient-detail-grid">
+        <label class="ingredient-detail-field">
+          <span>Gramaj (g)</span>
+          <input name="ingredient_grams" type="number" min="0" step="1" placeholder="Gramaj (g)" value="${escapeHtml(row.grams || "")}" />
+        </label>
+        <label class="ingredient-detail-field">
+          <span>Calorii</span>
+          <input name="ingredient_calories" type="number" min="0" step="1" placeholder="Calorii" value="${escapeHtml(row.calories || "")}" />
+        </label>
+        <label class="ingredient-detail-field">
+          <span>Preț extra / 20g</span>
+          <input name="ingredient_price_per_20g" type="number" min="0" step="0.01" placeholder="Preț / 20g" value="${escapeHtml(row.price_per_20g || "")}" />
+        </label>
+        <label class="ingredient-detail-field">
+          <span>Disponibilitate extra</span>
+          <select name="ingredient_can_add_extra" aria-label="Disponibilitate extra">
+            <option value="true" ${String(row.can_add_extra ?? "true") === "true" ? "selected" : ""}>Se poate adăuga extra</option>
+            <option value="false" ${String(row.can_add_extra) === "false" ? "selected" : ""}>Nu se poate comanda extra</option>
+          </select>
+        </label>
+        <button class="ghost-button ingredient-remove-button" type="button" data-remove-ingredient aria-label="Șterge ingredient">
+          <i class="ri-close-line" aria-hidden="true"></i>
+        </button>
+      </div>
     </div>
   `;
 }

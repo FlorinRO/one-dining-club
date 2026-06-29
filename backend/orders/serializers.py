@@ -5,8 +5,9 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
+from addresses.serializers import AddressSerializer
 from addresses.models import Address
-from orders.models import FulfillmentType, Order, OrderItem, OrderItemOption, OrderStatus, PaymentMethod, PaymentStatus
+from orders.models import FulfillmentType, Order, OrderEvent, OrderItem, OrderItemOption, OrderStatus, PaymentMethod, PaymentStatus
 from payments.models import Payment
 from payments.services import payment_provider_for_method
 from products.models import Product, ProductOption
@@ -42,35 +43,203 @@ class OrderItemSerializer(serializers.ModelSerializer):
         )
 
 
+class OrderEventSerializer(serializers.ModelSerializer):
+    actor_email = serializers.EmailField(source="actor.email", read_only=True)
+    actor_name = serializers.SerializerMethodField()
+    courier_email = serializers.EmailField(source="courier.email", read_only=True)
+    courier_name = serializers.SerializerMethodField()
+
+    def get_actor_name(self, obj):
+        if not obj.actor:
+            return ""
+        return obj.actor.full_name or obj.actor.email
+
+    def get_courier_name(self, obj):
+        if not obj.courier:
+            return ""
+        return obj.courier.full_name or obj.courier.email
+
+    class Meta:
+        model = OrderEvent
+        fields = (
+            "id",
+            "event_type",
+            "source",
+            "previous_status",
+            "next_status",
+            "actor_email",
+            "actor_name",
+            "courier_email",
+            "courier_name",
+            "created_at",
+        )
+        read_only_fields = fields
+
+
 class OrderSerializer(serializers.ModelSerializer):
     restaurant_name = serializers.CharField(source="restaurant.name", read_only=True)
     customer_email = serializers.EmailField(source="customer.email", read_only=True)
     courier_email = serializers.EmailField(source="courier.email", read_only=True)
+    courier_name = serializers.SerializerMethodField()
+    courier_phone = serializers.SerializerMethodField()
+    courier_vehicle_type = serializers.SerializerMethodField()
+    address_details = AddressSerializer(source="address", read_only=True)
+    customer_name = serializers.SerializerMethodField()
+    customer_phone = serializers.SerializerMethodField()
+    fulfillment_type_label = serializers.CharField(source="get_fulfillment_type_display", read_only=True)
+    payment_method_label = serializers.CharField(source="get_payment_method_display", read_only=True)
+    payment_status_label = serializers.CharField(source="get_payment_status_display", read_only=True)
+    order_status_label = serializers.CharField(source="get_order_status_display", read_only=True)
+    address_summary = serializers.SerializerMethodField()
+    estimated_delivery_window_minutes = serializers.SerializerMethodField()
+    estimated_distance_km = serializers.SerializerMethodField()
+    estimated_arrival_minutes = serializers.SerializerMethodField()
+    delivery_status = serializers.SerializerMethodField()
+    pickup_time = serializers.SerializerMethodField()
     items = OrderItemSerializer(many=True, read_only=True)
+    events = OrderEventSerializer(many=True, read_only=True)
     review = ReviewSerializer(read_only=True)
+
+    def get_customer_name(self, obj):
+        return obj.address.full_name if obj.address and obj.address.full_name else obj.customer.full_name or ""
+
+    def get_customer_phone(self, obj):
+        return obj.address.phone if obj.address and obj.address.phone else obj.customer.phone or ""
+
+    def get_address_summary(self, obj):
+        if not obj.address:
+            return ""
+        parts = [obj.address.address_line_1]
+        if obj.address.address_line_2:
+            parts.append(obj.address.address_line_2)
+        parts.append(obj.address.city)
+        if obj.address.postcode:
+            parts.append(obj.address.postcode)
+        return ", ".join(part for part in parts if part)
+
+    def get_estimated_delivery_window_minutes(self, obj):
+        return {
+            "min": obj.restaurant.estimated_delivery_time_min,
+            "max": obj.restaurant.estimated_delivery_time_max,
+        }
+
+    def get_estimated_distance_km(self, obj):
+        if obj.fulfillment_type != FulfillmentType.DELIVERY or not obj.address:
+            return None
+        restaurant_latitude = obj.restaurant.latitude
+        restaurant_longitude = obj.restaurant.longitude
+        address_latitude = obj.address.latitude
+        address_longitude = obj.address.longitude
+        return self._distance_km_between_points(
+            restaurant_latitude,
+            restaurant_longitude,
+            address_latitude,
+            address_longitude,
+        )
+
+    def get_courier_name(self, obj):
+        if not obj.courier:
+            return ""
+        return obj.courier.full_name or obj.courier.email
+
+    def get_courier_phone(self, obj):
+        if not obj.courier:
+            return ""
+        return getattr(getattr(obj.courier, "courier_profile", None), "phone", "") or obj.courier.phone or ""
+
+    def get_courier_vehicle_type(self, obj):
+        if not obj.courier:
+            return ""
+        return getattr(getattr(obj.courier, "courier_profile", None), "vehicle_type", "")
+
+    def get_delivery_status(self, obj):
+        delivery = getattr(obj, "delivery", None)
+        return getattr(delivery, "status", "")
+
+    def get_pickup_time(self, obj):
+        delivery = getattr(obj, "delivery", None)
+        return getattr(delivery, "pickup_time", None)
+
+    def get_estimated_arrival_minutes(self, obj):
+        if obj.fulfillment_type != FulfillmentType.DELIVERY or obj.order_status not in {OrderStatus.PICKED_UP, OrderStatus.ON_THE_WAY}:
+            return None
+        courier_profile = getattr(getattr(obj, "courier", None), "courier_profile", None)
+        if not courier_profile or not obj.address:
+            return None
+
+        distance_km = self._distance_km_between_points(
+            courier_profile.current_latitude,
+            courier_profile.current_longitude,
+            obj.address.latitude,
+            obj.address.longitude,
+        )
+        if distance_km is None:
+            return None
+
+        speed_kmh = {
+            "bike": 18,
+            "walk": 5,
+            "scooter": 28,
+            "car": 24,
+        }.get(courier_profile.vehicle_type, 22)
+        minutes = max(3, round(distance_km / speed_kmh * 60))
+        return minutes
+
+    def _distance_km_between_points(self, start_latitude, start_longitude, end_latitude, end_longitude):
+        if None in (start_latitude, start_longitude, end_latitude, end_longitude):
+            return None
+
+        from math import asin, cos, radians, sin, sqrt
+
+        start_lat = radians(float(start_latitude))
+        start_lng = radians(float(start_longitude))
+        end_lat = radians(float(end_latitude))
+        end_lng = radians(float(end_longitude))
+        delta_lat = end_lat - start_lat
+        delta_lng = end_lng - start_lng
+        haversine = sin(delta_lat / 2) ** 2 + cos(start_lat) * cos(end_lat) * sin(delta_lng / 2) ** 2
+        distance_km = 6371 * 2 * asin(sqrt(haversine))
+        return round(distance_km, 1)
 
     class Meta:
         model = Order
         fields = (
             "id",
             "customer",
+            "customer_name",
+            "customer_phone",
             "customer_email",
             "restaurant",
             "restaurant_name",
             "courier",
             "courier_email",
+            "courier_name",
+            "courier_phone",
+            "courier_vehicle_type",
             "address",
+            "address_details",
+            "address_summary",
             "subtotal",
             "delivery_fee",
             "discount",
             "total",
             "fulfillment_type",
+            "fulfillment_type_label",
             "payment_method",
+            "payment_method_label",
             "payment_status",
+            "payment_status_label",
             "order_status",
+            "order_status_label",
             "customer_note",
             "restaurant_note",
+            "estimated_delivery_window_minutes",
+            "estimated_distance_km",
+            "estimated_arrival_minutes",
+            "delivery_status",
+            "pickup_time",
             "items",
+            "events",
             "review",
             "created_at",
             "updated_at",
@@ -283,6 +452,9 @@ class OrderCreateSerializer(serializers.Serializer):
 
         provider = payment_provider_for_method(payment_method)
         Payment.objects.create(order=order, provider=provider, amount=order.total, status=payment_status)
+        from orders.history import log_order_created
+
+        log_order_created(order, actor=self.context["request"].user)
         if payment_method == PaymentMethod.CASH:
             from orders.notifications import queue_order_created_push
 
@@ -304,6 +476,7 @@ class RestaurantOwnerOrderStatusSerializer(serializers.Serializer):
         )
     )
     restaurant_note = serializers.CharField(required=False, allow_blank=True)
+    courier_id = serializers.IntegerField(required=False, allow_null=True)
 
 
 class CourierOrderStatusSerializer(serializers.Serializer):

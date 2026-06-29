@@ -1,7 +1,11 @@
+from django.db.models import Q
 from rest_framework import decorators, permissions, response, status, viewsets
 
 from core.permissions import IsCustomer, IsRestaurantOwner
-from orders.models import Order, OrderStatus
+from couriers.models import CourierProfile, Delivery, DeliveryStatus
+from couriers.serializers import RestaurantOwnerCourierSerializer
+from orders.history import log_order_courier_assigned, log_order_status_changed
+from orders.models import Order, OrderStatus, PaymentMethod, PaymentStatus
 from orders.notifications import queue_order_status_push
 from orders.serializers import (
     OrderCreateSerializer,
@@ -13,14 +17,17 @@ from reviews.models import update_restaurant_rating
 from reviews.serializers import ReviewCreateSerializer, ReviewSerializer
 
 
+RESTAURANT_VISIBLE_ORDER_FILTER = Q(payment_method=PaymentMethod.CASH) | Q(payment_status=PaymentStatus.PAID)
+
+
 class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = (permissions.IsAuthenticated,)
     http_method_names = ("get", "post", "patch", "head", "options")
 
     def get_queryset(self):
         return (
-            Order.objects.select_related("customer", "restaurant", "courier", "address")
-            .prefetch_related("items__product", "items__options")
+            Order.objects.select_related("customer", "restaurant", "courier", "courier__courier_profile", "address", "delivery")
+            .prefetch_related("items__product", "items__options", "events__actor", "events__courier")
             .filter(customer=self.request.user)
         )
 
@@ -45,7 +52,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         previous_status = order.order_status
         order.order_status = OrderStatus.CANCELLED
         order.save(update_fields=("order_status", "updated_at"))
+        log_order_status_changed(order, previous_status=previous_status, actor=request.user, source="customer_cancel")
         queue_order_status_push(order, previous_status=previous_status, source="customer_cancel")
+        order.refresh_from_db()
         serializer = self.get_serializer(order)
         return response.Response(serializer.data)
 
@@ -95,10 +104,19 @@ class RestaurantOwnerOrderViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         primary_restaurant_id = get_primary_restaurant_id_for_owner(self.request.user)
         return (
-            Order.objects.select_related("customer", "restaurant", "courier", "address")
-            .prefetch_related("items__product", "items__options")
-            .filter(restaurant__owner=self.request.user, restaurant_id=primary_restaurant_id)
+            Order.objects.select_related("customer", "restaurant", "courier", "courier__courier_profile", "address", "delivery")
+            .prefetch_related("items__product", "items__options", "events__actor", "events__courier")
+            .filter(RESTAURANT_VISIBLE_ORDER_FILTER, restaurant__owner=self.request.user, restaurant_id=primary_restaurant_id)
         )
+
+    @decorators.action(detail=False, methods=["get"])
+    def couriers(self, request):
+        profiles = CourierProfile.objects.select_related("user").filter(
+            user__is_active=True,
+            is_verified=True,
+        ).order_by("-is_available", "-updated_at", "user__email")
+        serializer = RestaurantOwnerCourierSerializer(profiles, many=True)
+        return response.Response(serializer.data)
 
     @decorators.action(detail=True, methods=["patch"])
     def status(self, request, pk=None):
@@ -106,9 +124,44 @@ class RestaurantOwnerOrderViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = RestaurantOwnerOrderStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         previous_status = order.order_status
+        previous_courier_id = order.courier_id
         order.order_status = serializer.validated_data["order_status"]
         if "restaurant_note" in serializer.validated_data:
             order.restaurant_note = serializer.validated_data["restaurant_note"]
-        order.save(update_fields=("order_status", "restaurant_note", "updated_at"))
-        queue_order_status_push(order, previous_status=previous_status, source="restaurant")
+        update_fields = ["order_status", "restaurant_note", "updated_at"]
+        courier_id = serializer.validated_data.get("courier_id", None)
+        if "courier_id" in serializer.validated_data:
+            if order.fulfillment_type != "delivery":
+                return response.Response({"detail": "Courier assignment is available only for delivery orders."}, status=status.HTTP_400_BAD_REQUEST)
+            if courier_id is None:
+                if order.order_status in {OrderStatus.PICKED_UP, OrderStatus.ON_THE_WAY, OrderStatus.DELIVERED}:
+                    return response.Response({"detail": "Courier cannot be removed after pickup."}, status=status.HTTP_400_BAD_REQUEST)
+                order.courier = None
+            else:
+                courier_profile = CourierProfile.objects.select_related("user").filter(
+                    user_id=courier_id,
+                    user__is_active=True,
+                    is_verified=True,
+                ).first()
+                if not courier_profile:
+                    return response.Response({"detail": "Courier not found."}, status=status.HTTP_400_BAD_REQUEST)
+                order.courier = courier_profile.user
+            update_fields.append("courier")
+        order.save(update_fields=tuple(update_fields))
+        if previous_courier_id != order.courier_id and order.courier_id:
+            delivery, _ = Delivery.objects.get_or_create(
+                order=order,
+                defaults={"courier": order.courier, "status": DeliveryStatus.ASSIGNED},
+            )
+            delivery.courier = order.courier
+            if not delivery.status:
+                delivery.status = DeliveryStatus.ASSIGNED
+            delivery.save()
+            log_order_courier_assigned(order, courier=order.courier, actor=request.user, source="restaurant")
+        elif previous_courier_id and order.courier_id is None:
+            Delivery.objects.filter(order=order).delete()
+        if previous_status != order.order_status:
+            log_order_status_changed(order, previous_status=previous_status, actor=request.user, source="restaurant")
+            queue_order_status_push(order, previous_status=previous_status, source="restaurant")
+        order.refresh_from_db()
         return response.Response(OrderSerializer(order, context={"request": request}).data)

@@ -43,6 +43,7 @@ import { productsApi } from "../api/productsApi";
 import { restaurantsApi } from "../api/restaurantsApi";
 import { ProductCommentsSheet } from "../components/ProductCommentsSheet";
 import { RestaurantAvatarImage } from "../components/RestaurantAvatarImage";
+import { ENABLE_DEV_MOCK_FALLBACK } from "../config/api";
 import { getDemoProductAudioSource } from "../data/demoAudio";
 import { mockProducts } from "../data/mockData";
 import { useI18n } from "../i18n/useI18n";
@@ -133,6 +134,7 @@ export function HomeScreen({ navigation }: Props) {
   const [isFeedAudioMutedByUser, setIsFeedAudioMutedByUser] = useState(false);
   const [feedHeight, setFeedHeight] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [feedError, setFeedError] = useState("");
   const [hasPreparedInitialVideo, setHasPreparedInitialVideo] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [locationLabel, setLocationLabel] = useState<string>("");
@@ -141,6 +143,7 @@ export function HomeScreen({ navigation }: Props) {
   const pageHeight = feedHeight || screenHeight;
 
   const fetchFeed = useCallback(async () => {
+    setFeedError("");
     const restaurantItems = await restaurantsApi.list({ ordering: "-rating" });
     const openRestaurants = restaurantItems.filter((item) => item.is_open !== false);
     const visibleRestaurants = buildSponsoredFeed(openRestaurants, 12);
@@ -148,8 +151,10 @@ export function HomeScreen({ navigation }: Props) {
 
     const productEntries = await Promise.all(
       visibleRestaurants.map(async (restaurant) => {
-        const apiProducts = await restaurantsApi.products(restaurant.id);
-        const sponsoredMockProducts = mockProducts.filter((product) => Number(product.restaurant) === restaurant.id);
+        const apiProducts = await restaurantsApi.products(restaurant.id).catch(() => [] as Product[]);
+        const sponsoredMockProducts = ENABLE_DEV_MOCK_FALLBACK
+          ? mockProducts.filter((product) => Number(product.restaurant) === restaurant.id)
+          : [];
         const products =
           isSponsoredFeedPlacement(restaurant) && sponsoredMockProducts.length > 0
             ? sponsoredMockProducts
@@ -168,7 +173,11 @@ export function HomeScreen({ navigation }: Props) {
     let isMounted = true;
 
     fetchFeed()
-      .catch(() => undefined)
+      .catch((error: unknown) => {
+        if (isMounted) {
+          setFeedError(error instanceof Error ? error.message : tr("Feed indisponibil momentan.", "Feed unavailable right now."));
+        }
+      })
       .finally(() => {
         if (isMounted) setIsLoading(false);
       });
@@ -444,6 +453,25 @@ export function HomeScreen({ navigation }: Props) {
             <View style={styles.loadingLogoUnderlineGreen} />
             <View style={styles.loadingLogoUnderlineWhite} />
           </View>
+        </View>
+      </View>
+    );
+  }
+
+  if (!isLoading && !feedData.length) {
+    return (
+      <View style={styles.loadingScreen}>
+        <View style={styles.loadingLogoWrap}>
+          <Text style={styles.loadingLogoText}>
+            Yumz<Text style={styles.loadingLogoTextAccent}>Y</Text>
+          </Text>
+          <View style={styles.loadingLogoUnderlineRow}>
+            <View style={styles.loadingLogoUnderlineGreen} />
+            <View style={styles.loadingLogoUnderlineWhite} />
+          </View>
+          <Text style={styles.feedEmptyText}>
+            {feedError || tr("Feed-ul nu a putut fi încărcat.", "The feed could not be loaded.")}
+          </Text>
         </View>
       </View>
     );
@@ -1585,6 +1613,16 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: "#FFFFFF",
     marginLeft: 0,
+  },
+  feedEmptyText: {
+    marginTop: 18,
+    maxWidth: 320,
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600",
+    textAlign: "center",
+    alignSelf: "center",
   },
   page: {
     backgroundColor: "#050505",

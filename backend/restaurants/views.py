@@ -52,6 +52,10 @@ class RestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             is_available=True,
             discount_price__isnull=False,
         )
+        listed_products = Product.objects.filter(
+            restaurant=OuterRef("pk"),
+            is_available=True,
+        )
         return (
             Restaurant.objects.select_related("owner")
             .prefetch_related("categories", "opening_hours", "product_categories")
@@ -59,7 +63,9 @@ class RestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             .annotate(
                 reviews_count=Count("reviews", distinct=True),
                 has_offer=Exists(offer_products),
+                has_products=Exists(listed_products),
             )
+            .filter(has_products=True)
         )
 
     def get_serializer_class(self):
