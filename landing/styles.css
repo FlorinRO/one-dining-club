@@ -362,6 +362,14 @@ h1 {
   line-height: 1.52;
 }
 
+.hero-lead-light {
+  color: var(--text);
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: -0.06em;
+}
+
 .hero-actions {
   display: flex;
   justify-content: flex-start;

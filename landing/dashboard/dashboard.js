@@ -110,6 +110,7 @@ const state = {
   error: "",
   notice: "",
   confirmation: null,
+  profileFormDirty: false,
   googleAutocompleteStatus: GOOGLE_MAPS_API_KEY ? "idle" : "missing-key",
   googleAutocompleteMessage: GOOGLE_MAPS_API_KEY
     ? ""
@@ -453,6 +454,7 @@ async function fetchCurrentUser() {
 async function fetchOwnerData() {
   if (!state.user) return;
   state.loading = true;
+  state.profileFormDirty = false;
   render();
   try {
     const [restaurants, overview, restaurantCategories] = await Promise.all([
@@ -1061,6 +1063,17 @@ function renderProfileView(restaurant) {
 }
 
 function renderRestaurantPublishPanel(restaurant) {
+  if (state.profileFormDirty) {
+    return `
+      <section class="profile-publish-panel">
+        <button class="publish-restaurant-button" type="submit" form="profile-form" ${state.loading ? "disabled" : ""}>
+          <i class="ri-save-3-line" aria-hidden="true"></i>
+          <span>Salveaza editarile</span>
+        </button>
+      </section>
+    `;
+  }
+
   if (restaurant.is_active) {
     return `
       <section class="profile-publish-panel is-live">
@@ -1433,6 +1446,7 @@ function bindEvents() {
       if (input.files?.[0]) input.form?.requestSubmit();
     });
   });
+  bindProfileDirtyState();
   bindPhoneInputs();
   bindOperationalControls();
   bindFallbackImages();
@@ -1457,6 +1471,68 @@ function bindEvents() {
   bindHoursToggles();
   hydrateEditingForms();
   bindGoogleAddressAutocomplete();
+}
+
+function bindProfileDirtyState() {
+  const form = document.querySelector("#profile-form");
+  const restaurant = getSelectedRestaurant();
+  if (!form || !restaurant) return;
+
+  const identityDetailsLocked = restaurant.identity_details_locked !== false;
+  const computeDirty = () => {
+    const current = new FormData(form);
+    const valuesDiffer = (left, right) => String(left ?? "").trim() !== String(right ?? "").trim();
+    const pickupOnly = current.get("pickup_only") === "on";
+    const savedPickupOnly = Boolean(restaurant.supports_pickup) && Number(restaurant.delivery_fee || 0) === 0;
+    const dirty =
+      (!identityDetailsLocked &&
+        (valuesDiffer(current.get("name"), restaurant.name) || valuesDiffer(current.get("city"), restaurant.city))) ||
+      valuesDiffer(current.get("address"), restaurant.address) ||
+      valuesDiffer(current.get("description"), restaurant.description) ||
+      valuesDiffer(current.get("email"), restaurant.email) ||
+      valuesDiffer(current.get("phone"), restaurant.phone) ||
+      valuesDiffer(current.get("website_url"), restaurant.website_url) ||
+      valuesDiffer(current.get("promo_video_url"), restaurant.promo_video_url) ||
+      valuesDiffer(current.get("instagram_url"), restaurant.instagram_url) ||
+      valuesDiffer(current.get("tiktok_url"), restaurant.tiktok_url) ||
+      valuesDiffer(current.get("delivery_fee"), restaurant.delivery_fee ?? 0) ||
+      valuesDiffer(current.get("minimum_order"), restaurant.minimum_order ?? 0) ||
+      valuesDiffer(current.get("estimated_delivery_time_min"), restaurant.estimated_delivery_time_min ?? 25) ||
+      valuesDiffer(current.get("estimated_delivery_time_max"), restaurant.estimated_delivery_time_max ?? 45) ||
+      (current.get("supports_pickup") === "on") !== Boolean(restaurant.supports_pickup) ||
+      pickupOnly !== savedPickupOnly ||
+      (current.get("is_open") === "on") !== Boolean(restaurant.is_open) ||
+      DAY_LABELS.some((_, index) => {
+        const entry = (restaurant.opening_hours || []).find((item) => Number(item.day_of_week) === index) || {};
+        return (
+          (current.get(`is_closed_${index}`) === "on") !== Boolean(entry.is_closed) ||
+          (current.get(`opening_time_${index}`) || "") !== String(entry.opening_time || "").slice(0, 5) ||
+          (current.get(`closing_time_${index}`) || "") !== String(entry.closing_time || "").slice(0, 5)
+        );
+      });
+
+    if (dirty !== state.profileFormDirty) {
+      state.profileFormDirty = dirty;
+      syncProfilePublishPanel(restaurant);
+    }
+  };
+
+  form.addEventListener("input", computeDirty);
+  form.addEventListener("change", computeDirty);
+  syncProfilePublishPanel(restaurant);
+}
+
+function syncProfilePublishPanel(restaurant) {
+  const currentPanel = document.querySelector(".profile-publish-panel");
+  if (!currentPanel || !restaurant) return;
+
+  const template = document.createElement("template");
+  template.innerHTML = renderRestaurantPublishPanel(restaurant).trim();
+  const nextPanel = template.content.firstElementChild;
+  if (!nextPanel) return;
+
+  currentPanel.replaceWith(nextPanel);
+  nextPanel.querySelector("[data-publish-restaurant]")?.addEventListener("click", handlePublishRestaurant);
 }
 
 function bindHoursToggles() {
