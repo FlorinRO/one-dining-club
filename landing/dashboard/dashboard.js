@@ -1,4 +1,5 @@
 const LOCAL_DASHBOARD_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+const DASHBOARD_CONFIG = window.YUMZY_DASHBOARD_CONFIG || {};
 const FALLBACK_API_BASE = LOCAL_DASHBOARD_HOSTS.has(location.hostname)
   ? "http://127.0.0.1:8000/api"
   : "https://api.yumzy.ro/api";
@@ -17,7 +18,12 @@ if (QUERY_GOOGLE_MAPS_API_KEY) {
   localStorage.setItem("yumzyDashboardGoogleMapsApiKey", QUERY_GOOGLE_MAPS_API_KEY);
 }
 const DEFAULT_API_BASE = QUERY_API_BASE || localStorage.getItem("yumzyDashboardApiBase") || FALLBACK_API_BASE;
-const GOOGLE_MAPS_API_KEY = QUERY_GOOGLE_MAPS_API_KEY || localStorage.getItem("yumzyDashboardGoogleMapsApiKey") || "";
+const CONFIG_GOOGLE_MAPS_API_KEY = normalizeConfiguredGoogleMapsApiKey(DASHBOARD_CONFIG.googleMapsApiKey);
+const GOOGLE_MAPS_API_KEY =
+  CONFIG_GOOGLE_MAPS_API_KEY ||
+  QUERY_GOOGLE_MAPS_API_KEY ||
+  localStorage.getItem("yumzyDashboardGoogleMapsApiKey") ||
+  "";
 const DAY_LABELS = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"];
 const ORDER_STATUS_LABELS = {
   pending: "Pending",

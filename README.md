@@ -62,6 +62,16 @@ For Google address autocomplete in the dashboard, append a Maps JavaScript API k
 http://127.0.0.1:5173/dashboard/?api=prod&googleMapsApiKey=YOUR_KEY
 ```
 
+For a permanent setup for all dashboard users, set the key in [landing/dashboard/config.js](/Users/florin/Desktop/one-dining-club/landing/dashboard/config.js):
+
+```js
+window.YUMZY_DASHBOARD_CONFIG = {
+  googleMapsApiKey: "YOUR_KEY",
+};
+```
+
+Then deploy the updated `landing/` site to Railway. The dashboard will load the key automatically without passing it in the URL.
+
 ## Mobile
 
 ```bash
