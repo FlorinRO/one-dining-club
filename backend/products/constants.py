@@ -4,6 +4,7 @@ import unicodedata
 PRODUCT_TYPE_CHOICES = (
     ("pizza", "Pizza"),
     ("burger", "Burgeri"),
+    ("shawarma", "Shaorma"),
     ("asian", "Asiatic"),
     ("sushi", "Sushi"),
     ("pasta", "Paste"),
@@ -14,6 +15,8 @@ PRODUCT_TYPE_CHOICES = (
     ("dessert", "Desert"),
     ("bakery", "Panificație"),
     ("drinks", "Băuturi"),
+    ("seafood", "Fructe de mare"),
+    ("fish", "Pește"),
     ("other", "Altele"),
 )
 
@@ -21,7 +24,8 @@ PRODUCT_TYPE_LABELS = dict(PRODUCT_TYPE_CHOICES)
 
 PRODUCT_TYPE_KEYWORDS = {
     "pizza": ("pizza", "pinsa", "calzone", "focaccia"),
-    "burger": ("burger", "smash", "cheeseburger", "sandwich", "wrap", "shawarma", "kebab"),
+    "burger": ("burger", "smash", "cheeseburger", "sandwich", "wrap"),
+    "shawarma": ("shawarma", "shaorma", "kebab", "doner", "doner kebab", "doner box", "dürüm", "durum"),
     "asian": ("asian", "asiatic", "wok", "noodle", "ramen", "pho", "thai", "chinez", "bao", "dumpling"),
     "sushi": ("sushi", "maki", "nigiri", "sashimi", "uramaki"),
     "pasta": ("pasta", "paste", "spaghetti", "penne", "tagliatelle", "carbonara", "lasagna", "ravioli", "gnocchi"),
@@ -32,6 +36,8 @@ PRODUCT_TYPE_KEYWORDS = {
     "dessert": ("dessert", "desert", "cake", "tiramisu", "gelato", "ice cream", "donut", "clatite", "clătite", "prajitura", "prăjitură"),
     "bakery": ("bakery", "panificatie", "panificație", "patiserie", "cofetarie", "cofetărie", "pastry", "bread", "bagel"),
     "drinks": ("drink", "drinks", "bauturi", "băuturi", "juice", "smoothie", "soda", "cocktail", "tea", "ceai", "cafea", "coffee", "espresso", "latte", "cappuccino", "cola", "water", "apa", "apă"),
+    "seafood": ("seafood", "fructe de mare", "shrimp", "creveti", "creveți", "prawns", "calamari", "squid", "mussels", "midii", "clams", "scoici", "octopus", "caracatita", "caracatiță", "lobster", "homar", "crab"),
+    "fish": ("fish", "peste", "pește", "salmon", "somon", "tuna", "ton", "cod", "dorada", "sea bass", "biban", "pastrav", "păstrăv", "trout"),
 }
 
 

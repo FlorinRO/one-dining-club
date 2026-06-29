@@ -17,6 +17,15 @@ export type RestaurantCategory = {
   icon?: string;
 };
 
+export type RestaurantOpeningHours = {
+  id?: number;
+  day_of_week: number;
+  day_name?: string;
+  opening_time?: string | null;
+  closing_time?: string | null;
+  is_closed: boolean;
+};
+
 export type Restaurant = {
   id: number;
   name: string;
@@ -25,9 +34,14 @@ export type Restaurant = {
   is_sponsored?: boolean;
   sponsored_mode?: "native" | "external";
   website_url?: string | null;
+  promo_video_url?: string | null;
+  instagram_url?: string | null;
+  tiktok_url?: string | null;
   description: string;
   logo?: string | null;
   cover_image?: string | null;
+  phone?: string | null;
+  email?: string | null;
   city: string;
   address?: string;
   latitude?: string | number | null;
@@ -43,6 +57,7 @@ export type Restaurant = {
   distance_km?: number;
   is_open: boolean;
   categories?: RestaurantCategory[];
+  opening_hours?: RestaurantOpeningHours[];
   created_at?: string;
   updated_at?: string;
 };
@@ -94,6 +109,13 @@ export type Product = {
   preparation_time: number;
   allergens?: string;
   ingredients?: string;
+  ingredient_details?: Array<{
+    name: string;
+    grams?: number | null;
+    calories?: number | null;
+    price_per_20g?: string | number | null;
+    can_add_extra?: boolean;
+  }>;
   calories?: number;
   option_groups?: ProductOptionGroup[];
   likes_count?: number;

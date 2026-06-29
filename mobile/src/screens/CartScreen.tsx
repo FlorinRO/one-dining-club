@@ -411,6 +411,7 @@ export function CartScreen({ navigation }: Props) {
           product_id: item.product.id,
           quantity: item.quantity,
           notes: item.notes,
+          ingredient_price_adjustment: item.ingredientPriceAdjustment ?? 0,
           option_ids: item.selectedOptions.map((option) => option.id),
         })),
       };

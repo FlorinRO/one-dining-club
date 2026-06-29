@@ -1,5 +1,5 @@
 import math
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django.db.models import Count, Q, Sum
 from rest_framework import serializers
@@ -14,6 +14,7 @@ MAX_MINIMUM_ORDER = Decimal("300.00")
 MIN_DELIVERY_TIME_MINUTES = 10
 MAX_DELIVERY_TIME_MINUTES = 180
 IDENTITY_LOCKED_ERROR = "Numele și orașul pot fi completate o singură dată. Pentru modificări, contactează support@yumzy.ro."
+COORDINATE_PRECISION = Decimal("0.000001")
 
 
 class RestaurantCategorySerializer(serializers.ModelSerializer):
@@ -219,6 +220,22 @@ class RestaurantOwnerSerializer(serializers.ModelSerializer):
                 f"Timpul maxim de livrare trebuie să fie între {MIN_DELIVERY_TIME_MINUTES} și {MAX_DELIVERY_TIME_MINUTES} minute."
             )
         return value
+
+    def validate_latitude(self, value):
+        if value in (None, ""):
+            return None
+        normalized = Decimal(value).quantize(COORDINATE_PRECISION, rounding=ROUND_HALF_UP)
+        if normalized < Decimal("-90") or normalized > Decimal("90"):
+            raise serializers.ValidationError("Latitudinea trebuie să fie între -90 și 90.")
+        return normalized
+
+    def validate_longitude(self, value):
+        if value in (None, ""):
+            return None
+        normalized = Decimal(value).quantize(COORDINATE_PRECISION, rounding=ROUND_HALF_UP)
+        if normalized < Decimal("-180") or normalized > Decimal("180"):
+            raise serializers.ValidationError("Longitudinea trebuie să fie între -180 și 180.")
+        return normalized
 
     def validate(self, attrs):
         attrs = super().validate(attrs)

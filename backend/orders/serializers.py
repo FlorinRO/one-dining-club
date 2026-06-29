@@ -82,6 +82,7 @@ class OrderCreateItemSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
     quantity = serializers.IntegerField(min_value=1)
     notes = serializers.CharField(required=False, allow_blank=True)
+    ingredient_price_adjustment = serializers.DecimalField(max_digits=8, decimal_places=2, required=False, min_value=Decimal("0.00"))
     option_ids = serializers.ListField(
         child=serializers.IntegerField(),
         required=False,
@@ -149,7 +150,8 @@ class OrderCreateSerializer(serializers.Serializer):
 
             selected_options = self._validate_options(product, item.get("option_ids", []))
             option_total = sum((option.extra_price for option in selected_options), Decimal("0.00"))
-            unit_price = product.effective_price
+            ingredient_price_adjustment = item.get("ingredient_price_adjustment") or Decimal("0.00")
+            unit_price = product.effective_price + ingredient_price_adjustment
             line_total = (unit_price + option_total) * item["quantity"]
             subtotal += line_total
             calculated_items.append(
@@ -159,6 +161,7 @@ class OrderCreateSerializer(serializers.Serializer):
                     "notes": item.get("notes", ""),
                     "unit_price": unit_price,
                     "line_total": line_total,
+                    "ingredient_price_adjustment": ingredient_price_adjustment,
                     "options": selected_options,
                 }
             )

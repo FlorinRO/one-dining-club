@@ -52,10 +52,11 @@ export function OrdersScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const safeOrders = useMemo(() => sanitizeOrders(storeOrders), [storeOrders]);
   const orderRows = useMemo(() => buildOrderRows(safeOrders, products), [products, safeOrders]);
-  const isInitialLoading = loading && orderRows.length === 0;
+  const isInitialLoading = loading && !hasLoadedOnce && orderRows.length === 0;
 
   const loadOrders = useCallback(
     async (mode: "initial" | "refresh", shouldCommit: () => boolean) => {
@@ -71,6 +72,7 @@ export function OrdersScreen({ navigation }: Props) {
         if (!accessToken) {
           setOrders([]);
           setProducts([]);
+          setHasLoadedOnce(true);
           return;
         }
 
@@ -91,9 +93,11 @@ export function OrdersScreen({ navigation }: Props) {
         } else {
           setProducts([]);
         }
+        setHasLoadedOnce(true);
       } catch {
         if (!shouldCommit()) return;
         setErrorMessage(tr("Nu am putut încărca comenzile. Încearcă din nou.", "Could not load your orders. Please try again."));
+        setHasLoadedOnce(true);
       } finally {
         if (!shouldCommit()) return;
         setLoading(false);
@@ -133,11 +137,11 @@ export function OrdersScreen({ navigation }: Props) {
             orderRows.length === 0 ? styles.emptyListContent : null,
           ]}
           ListHeaderComponent={
-            isInitialLoading ? null : (
+            orderRows.length > 0 ? (
               <View style={styles.titleBlock}>
                 <Text style={styles.title}>{tr("Comenzile mele", "My Orders")}</Text>
               </View>
-            )
+            ) : null
           }
           renderItem={({ item }) => (
             <OrderListRow
@@ -156,7 +160,7 @@ export function OrdersScreen({ navigation }: Props) {
                 <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <View style={styles.emptyIconWrap}>
-                  <ListOrdered size={24} color={colors.red} strokeWidth={2.2} />
+                  <ListOrdered size={24} color={colors.green} strokeWidth={2.2} />
                 </View>
               )}
               <Text style={styles.emptyTitle}>{isInitialLoading ? tr("Încărcăm comenzile...", "Loading orders...") : tr("Nu ai comenzi încă", "No orders yet")}</Text>
@@ -564,7 +568,7 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 12,
     paddingHorizontal: 16,
-    backgroundColor: colors.red,
+    backgroundColor: colors.green,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

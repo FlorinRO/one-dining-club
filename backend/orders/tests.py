@@ -119,6 +119,30 @@ class OrderCreateApiTests(TestCase):
         self.assertEqual(order.address_id, self.address.id)
         self.assertEqual(str(order.delivery_fee), "12.00")
 
+    def test_order_can_include_ingredient_price_adjustment(self):
+        response = self.client.post(
+            "/api/orders/",
+            {
+                "restaurant_id": self.restaurant.id,
+                "fulfillment_type": FulfillmentType.PICKUP,
+                "payment_method": "cash",
+                "items": [
+                    {
+                        "product_id": self.product.id,
+                        "quantity": 2,
+                        "ingredient_price_adjustment": "4.50",
+                    }
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        order = Order.objects.order_by("-id").first()
+        self.assertEqual(str(order.subtotal), "79.00")
+        self.assertEqual(str(order.total), "79.00")
+        self.assertEqual(str(order.items.first().unit_price), "39.50")
+
     def test_order_list_includes_ordered_product_media(self):
         self.client.post(
             "/api/orders/",

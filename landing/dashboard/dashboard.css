@@ -1916,6 +1916,99 @@ img {
   gap: 16px;
 }
 
+.ingredient-builder {
+  align-content: start;
+}
+
+.ingredient-builder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ingredient-builder-header small {
+  color: var(--dash-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ingredient-add-button,
+.ingredient-remove-button {
+  flex-shrink: 0;
+}
+
+.ingredient-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.allergen-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.ingredient-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(110px, 0.55fr) minmax(110px, 0.55fr) minmax(120px, 0.65fr) minmax(180px, 0.95fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.allergen-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.ingredient-name-field {
+  position: relative;
+}
+
+.ingredient-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: none;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--dash-line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(9, 20, 13, 0.12);
+}
+
+.ingredient-suggestions.is-visible {
+  display: grid;
+}
+
+.ingredient-suggestion {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(46, 183, 99, 0.08);
+  color: var(--dash-ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ingredient-suggestion:hover {
+  background: rgba(46, 183, 99, 0.14);
+}
+
+.ingredient-remove-button {
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: 0;
+}
+
 .check-card-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2018,6 +2111,18 @@ img {
   border-radius: 16px;
   background: #fff;
   border: 1px solid var(--dash-line);
+}
+
+.dashboard-shell .ingredient-row input {
+  min-width: 0;
+  color: var(--dash-ink);
+  background: #fff;
+  border-color: var(--dash-line);
+}
+
+.dashboard-shell .ingredient-row input:focus {
+  border-color: rgba(46, 183, 99, 0.58);
+  box-shadow: 0 0 0 4px rgba(46, 183, 99, 0.11);
 }
 
 .dashboard-shell .ops-toggle-card {
@@ -2182,7 +2287,8 @@ td {
   }
 
   .hour-row,
-  .split {
+  .split,
+  .ingredient-row {
     grid-template-columns: 1fr;
   }
 

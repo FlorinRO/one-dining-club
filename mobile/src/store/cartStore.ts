@@ -8,6 +8,7 @@ export type CartItem = {
   restaurant: Restaurant;
   quantity: number;
   selectedOptions: ProductOption[];
+  ingredientPriceAdjustment?: number;
   notes?: string;
   mediaVideoUrl?: string | null;
 };
@@ -23,6 +24,7 @@ type CartState = {
     restaurant: Restaurant;
     quantity?: number;
     selectedOptions?: ProductOption[];
+    ingredientPriceAdjustment?: number;
     notes?: string;
     mediaVideoUrl?: string | null;
   }) => void;
@@ -38,10 +40,11 @@ type CartState = {
 
 const price = (value: string | number | null | undefined) => Number(value ?? 0);
 
-const itemKey = (product: Product, selectedOptions: ProductOption[], notes?: string) =>
+const itemKey = (product: Product, selectedOptions: ProductOption[], ingredientPriceAdjustment = 0, notes?: string) =>
   [
     product.id,
     ...selectedOptions.map((option) => option.id).sort((a, b) => a - b),
+    ingredientPriceAdjustment ? `ingredientPrice=${ingredientPriceAdjustment.toFixed(2)}` : "",
     notes?.trim() ? `notes=${notes.trim()}` : "",
   ]
     .filter(Boolean)
@@ -50,7 +53,8 @@ const itemKey = (product: Product, selectedOptions: ProductOption[], notes?: str
 const lineTotal = (item: CartItem) => {
   const unit = price(item.product.effective_price ?? item.product.discount_price ?? item.product.price);
   const options = item.selectedOptions.reduce((sum, option) => sum + price(option.extra_price), 0);
-  return (unit + options) * item.quantity;
+  const ingredientPriceAdjustment = price(item.ingredientPriceAdjustment);
+  return (unit + options + ingredientPriceAdjustment) * item.quantity;
 };
 
 export const useCartStore = create<CartState>((set, get) => ({
@@ -59,8 +63,8 @@ export const useCartStore = create<CartState>((set, get) => ({
   promoCode: "",
   setPromoCode: (promoCode) => set({ promoCode }),
   replaceCart: ({ restaurant, items, promoCode = "" }) => set({ restaurant, items, promoCode }),
-  addItem: ({ product, restaurant, quantity = 1, selectedOptions = [], notes, mediaVideoUrl }) => {
-    const id = itemKey(product, selectedOptions, notes);
+  addItem: ({ product, restaurant, quantity = 1, selectedOptions = [], ingredientPriceAdjustment = 0, notes, mediaVideoUrl }) => {
+    const id = itemKey(product, selectedOptions, ingredientPriceAdjustment, notes);
     const currentRestaurant = get().restaurant;
     const currentItems = currentRestaurant?.id === restaurant.id ? get().items : [];
     const existing = currentItems.find((item) => item.id === id);
@@ -69,7 +73,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       set({
         restaurant,
         items: currentItems.map((item) =>
-          item.id === id ? { ...item, quantity: item.quantity + quantity, notes, mediaVideoUrl } : item,
+          item.id === id ? { ...item, quantity: item.quantity + quantity, ingredientPriceAdjustment, notes, mediaVideoUrl } : item,
         ),
       });
       return;
@@ -77,7 +81,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     set({
       restaurant,
-      items: [...currentItems, { id, product, restaurant, quantity, selectedOptions, notes, mediaVideoUrl }],
+      items: [...currentItems, { id, product, restaurant, quantity, selectedOptions, ingredientPriceAdjustment, notes, mediaVideoUrl }],
     });
   },
   removeItem: (id) => {

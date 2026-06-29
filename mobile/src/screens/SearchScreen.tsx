@@ -96,6 +96,7 @@ const normalizeText = (value: string) =>
 const PRODUCT_TYPE_CATALOG: DiscoveryCategory[] = [
   { filterValue: "pizza", label: "Pizza", icon: Pizza, iconColor: "#F97316", iconBackground: "rgba(249,115,22,0.16)" },
   { filterValue: "burger", label: "Burgeri", icon: Sandwich, iconColor: "#F59E0B", iconBackground: "rgba(245,158,11,0.16)" },
+  { filterValue: "shawarma", label: "Shaorma", icon: Sandwich, iconColor: "#F97316", iconBackground: "rgba(249,115,22,0.16)" },
   { filterValue: "asian", label: "Asiatic", icon: Drumstick, iconColor: "#EF4444", iconBackground: "rgba(239,68,68,0.16)" },
   { filterValue: "sushi", label: "Sushi", icon: Fish, iconColor: "#0EA5E9", iconBackground: "rgba(14,165,233,0.16)" },
   { filterValue: "pasta", label: "Paste", icon: Croissant, iconColor: "#F59E0B", iconBackground: "rgba(245,158,11,0.16)" },
@@ -106,12 +107,15 @@ const PRODUCT_TYPE_CATALOG: DiscoveryCategory[] = [
   { filterValue: "dessert", label: "Desert", icon: IceCreamCone, iconColor: "#A855F7", iconBackground: "rgba(168,85,247,0.16)" },
   { filterValue: "bakery", label: "Panificație", icon: Cookie, iconColor: "#D97706", iconBackground: "rgba(217,119,6,0.16)" },
   { filterValue: "drinks", label: "Băuturi", icon: CupSoda, iconColor: "#06B6D4", iconBackground: "rgba(6,182,212,0.16)" },
+  { filterValue: "seafood", label: "Fructe de mare", icon: Fish, iconColor: "#14B8A6", iconBackground: "rgba(20,184,166,0.16)" },
+  { filterValue: "fish", label: "Pește", icon: Fish, iconColor: "#3B82F6", iconBackground: "rgba(59,130,246,0.16)" },
   { filterValue: "other", label: "Altele", icon: Coffee, iconColor: "#C08457", iconBackground: "rgba(192,132,87,0.16)" },
 ];
 
 const PRODUCT_TYPE_KEYWORDS: Record<string, string[]> = {
   pizza: ["pizza", "pinsa", "calzone", "focaccia"],
-  burger: ["burger", "smash", "cheeseburger", "sandwich", "wrap", "shawarma", "kebab"],
+  burger: ["burger", "smash", "cheeseburger", "sandwich", "wrap"],
+  shawarma: ["shawarma", "shaorma", "kebab", "doner", "doner kebab", "doner box", "dürüm", "durum"],
   asian: ["asian", "asiatic", "wok", "noodle", "ramen", "pho", "thai", "chinez", "bao", "dumpling"],
   sushi: ["sushi", "maki", "nigiri", "sashimi", "uramaki"],
   pasta: ["pasta", "paste", "spaghetti", "penne", "tagliatelle", "carbonara", "lasagna", "ravioli", "gnocchi"],
@@ -122,6 +126,8 @@ const PRODUCT_TYPE_KEYWORDS: Record<string, string[]> = {
   dessert: ["dessert", "desert", "cake", "tiramisu", "gelato", "ice cream", "donut", "clatite", "clătite", "prajitura", "prăjitură"],
   bakery: ["bakery", "panificatie", "panificație", "patiserie", "cofetarie", "cofetărie", "pastry", "bread", "bagel"],
   drinks: ["drink", "drinks", "bauturi", "băuturi", "juice", "smoothie", "soda", "cocktail", "tea", "ceai", "cafea", "coffee", "espresso", "latte", "cappuccino", "cola", "water", "apa", "apă"],
+  seafood: ["seafood", "fructe de mare", "shrimp", "creveti", "creveți", "prawns", "calamari", "squid", "mussels", "midii", "clams", "scoici", "octopus", "caracatita", "caracatiță", "lobster", "homar", "crab"],
+  fish: ["fish", "peste", "pește", "salmon", "somon", "tuna", "ton", "cod", "dorada", "sea bass", "biban", "pastrav", "păstrăv", "trout"],
 };
 
 function resolveProductTypeFilterValue(value?: string | null) {

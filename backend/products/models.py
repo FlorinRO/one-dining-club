@@ -30,6 +30,7 @@ class Product(models.Model):
     preparation_time = models.PositiveIntegerField(default=15)
     allergens = models.TextField(blank=True)
     ingredients = models.TextField(blank=True)
+    ingredient_details = models.JSONField(default=list, blank=True)
     calories = models.PositiveIntegerField(null=True, blank=True)
     audio_url = models.URLField(max_length=500, blank=True, null=True)
     has_audio = models.BooleanField(default=True)

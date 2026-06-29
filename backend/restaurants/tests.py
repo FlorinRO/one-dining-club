@@ -231,8 +231,8 @@ class RestaurantOwnerDashboardApiTests(TestCase):
             f"/api/restaurant-owner/restaurants/{self.restaurant.id}/",
             {
                 "address": "Altă adresă 99",
-                "latitude": "44.447923",
-                "longitude": "26.097879",
+                "latitude": "44.4479231234",
+                "longitude": "26.0978799876",
             },
             format="json",
         )
@@ -240,6 +240,8 @@ class RestaurantOwnerDashboardApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.restaurant.refresh_from_db()
         self.assertEqual(self.restaurant.address, "Altă adresă 99")
+        self.assertEqual(str(self.restaurant.latitude), "44.447923")
+        self.assertEqual(str(self.restaurant.longitude), "26.097880")
 
     def test_owner_restaurant_payload_exposes_identity_lock_state(self):
         response = self.client.get("/api/restaurant-owner/restaurants/")

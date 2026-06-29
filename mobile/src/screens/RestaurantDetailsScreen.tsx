@@ -1,13 +1,15 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import { useVideoPlayer, VideoView, type VideoSource } from "expo-video";
-import { ArrowLeft, Heart, Play, Search, Share2, X } from "lucide-react-native";
+import { ArrowLeft, Clock3, Globe, Heart, Info, Instagram, Mail, MapPin, Phone, Play, Search, Share2, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   FlatList,
   Image,
   Keyboard,
+  Linking,
+  Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
@@ -123,6 +125,7 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
   const [visibleProfileProductIds, setVisibleProfileProductIds] = useState<number[]>([]);
   const [visibleSearchProductIds, setVisibleSearchProductIds] = useState<number[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isInfoSheetVisible, setIsInfoSheetVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
@@ -179,6 +182,37 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
   const restaurantBackdropUri = resolveRestaurantImageUri(restaurant.logo || restaurant.cover_image, restaurant.id, restaurant);
   const isBrand = isBrandProfile(restaurant);
   const isSponsored = isSponsoredProfile(restaurant);
+  const isRestaurantClosed = restaurant.is_open === false;
+  const formattedOpeningHours = useMemo(
+    () =>
+      (restaurant.opening_hours ?? [])
+        .slice()
+        .sort((left, right) => left.day_of_week - right.day_of_week)
+        .map((entry) => ({
+          key: String(entry.day_of_week),
+          label:
+            entry.day_name ||
+            [tr("Luni", "Monday"), tr("Marți", "Tuesday"), tr("Miercuri", "Wednesday"), tr("Joi", "Thursday"), tr("Vineri", "Friday"), tr("Sâmbătă", "Saturday"), tr("Duminică", "Sunday")][entry.day_of_week] ||
+              "",
+          value:
+            entry.is_closed || !entry.opening_time || !entry.closing_time
+              ? tr("Închis", "Closed")
+              : `${String(entry.opening_time).slice(0, 5)} - ${String(entry.closing_time).slice(0, 5)}`,
+        })),
+    [restaurant.opening_hours, tr],
+  );
+  const publicInfoRows = useMemo(
+    () =>
+      [
+        restaurant.address ? { key: "address", icon: MapPin, label: tr("Adresă", "Address"), value: restaurant.address } : null,
+        restaurant.phone ? { key: "phone", icon: Phone, label: tr("Telefon", "Phone"), value: restaurant.phone, href: `tel:${restaurant.phone}` } : null,
+        restaurant.email ? { key: "email", icon: Mail, label: "Email", value: restaurant.email, href: `mailto:${restaurant.email}` } : null,
+        restaurant.website_url ? { key: "website", icon: Globe, label: tr("Website", "Website"), value: restaurant.website_url, href: restaurant.website_url } : null,
+        restaurant.instagram_url ? { key: "instagram", icon: Instagram, label: "Instagram", value: restaurant.instagram_url, href: restaurant.instagram_url } : null,
+        restaurant.tiktok_url ? { key: "tiktok", icon: Info, label: "TikTok", value: restaurant.tiktok_url, href: restaurant.tiktok_url } : null,
+      ].filter(Boolean) as Array<{ key: string; icon: typeof MapPin; label: string; value: string; href?: string }>,
+    [restaurant.address, restaurant.email, restaurant.instagram_url, restaurant.phone, restaurant.tiktok_url, restaurant.website_url, tr],
+  );
 
   const shareRestaurant = useCallback(async () => {
     await Share.share({
@@ -210,6 +244,12 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
       setIsSearchFocused(false);
     });
   }, [searchOverlayProgress]);
+
+  const openExternalLink = useCallback(async (url: string) => {
+    const supported = await Linking.canOpenURL(url);
+    if (!supported) return;
+    await Linking.openURL(url);
+  }, []);
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -284,6 +324,13 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
           </Text>
         </View>
       </View>
+
+      {isRestaurantClosed ? (
+        <View style={styles.closedBanner}>
+          <Clock3 size={14} color="#FFD66B" />
+          <Text style={styles.closedBannerText}>{tr("Restaurant închis momentan", "Restaurant currently closed")}</Text>
+        </View>
+      ) : null}
 
       <View style={styles.statsRow}>
         <ProfileStat value={String(profileProducts.length)} label={tr(isBrand ? "Drop-uri" : "Produse", isBrand ? "Drops" : "Products")} />
@@ -374,6 +421,9 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
           {restaurant.name}
         </Animated.Text>
         <View style={styles.topRightControls}>
+          <Pressable onPress={() => setIsInfoSheetVisible(true)} style={styles.iconButton}>
+            <Info stroke={dark.text} size={20} />
+          </Pressable>
           <Pressable onPress={shareRestaurant} style={styles.iconButton}>
             <Share2 stroke={dark.text} size={20} />
           </Pressable>
@@ -449,6 +499,67 @@ export function RestaurantDetailsScreen({ navigation, route }: Props) {
           />
         </Animated.View>
       ) : null}
+
+      <Modal transparent visible={isInfoSheetVisible} animationType="fade" statusBarTranslucent onRequestClose={() => setIsInfoSheetVisible(false)}>
+        <View style={styles.infoSheetRoot}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsInfoSheetVisible(false)} />
+          <View style={[styles.infoSheet, { paddingBottom: Math.max(insets.bottom, 18) }]}>
+            <View style={styles.infoSheetHandle} />
+            <View style={styles.infoSheetHeader}>
+              <View style={styles.infoSheetTitleWrap}>
+                <Text style={styles.infoSheetTitle}>{tr("Informații publice", "Public info")}</Text>
+                <Text style={styles.infoSheetSubtitle}>
+                  {isRestaurantClosed ? tr("Restaurant închis momentan", "Restaurant currently closed") : tr("Restaurant deschis pentru comenzi", "Restaurant open for orders")}
+                </Text>
+              </View>
+              <Pressable onPress={() => setIsInfoSheetVisible(false)} style={styles.infoSheetCloseButton}>
+                <X stroke={dark.text} size={18} />
+              </Pressable>
+            </View>
+
+            <View style={styles.infoSection}>
+              <Text style={styles.infoSectionTitle}>{tr("Contact și locație", "Contact and location")}</Text>
+              {publicInfoRows.length ? (
+                publicInfoRows.map((row) => {
+                  const Icon = row.icon;
+                  const content = (
+                    <View style={styles.infoRow}>
+                      <View style={styles.infoRowIcon}>
+                        <Icon size={16} color={dark.text} />
+                      </View>
+                      <View style={styles.infoRowCopy}>
+                        <Text style={styles.infoRowLabel}>{row.label}</Text>
+                        <Text style={styles.infoRowValue}>{row.value}</Text>
+                      </View>
+                    </View>
+                  );
+                  return row.href ? (
+                    <Pressable key={row.key} onPress={() => openExternalLink(row.href!)}>{content}</Pressable>
+                  ) : (
+                    <View key={row.key}>{content}</View>
+                  );
+                })
+              ) : (
+                <Text style={styles.infoFallbackText}>{tr("Restaurantul nu a publicat încă date de contact.", "This restaurant has not published contact details yet.")}</Text>
+              )}
+            </View>
+
+            <View style={styles.infoSection}>
+              <Text style={styles.infoSectionTitle}>{tr("Program", "Opening hours")}</Text>
+              {formattedOpeningHours.length ? (
+                formattedOpeningHours.map((entry) => (
+                  <View key={entry.key} style={styles.hoursRow}>
+                    <Text style={styles.hoursDay}>{entry.label}</Text>
+                    <Text style={[styles.hoursValue, entry.value === tr("Închis", "Closed") && styles.hoursValueClosed]}>{entry.value}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.infoFallbackText}>{tr("Programul nu este disponibil momentan.", "Opening hours are not available right now.")}</Text>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -659,6 +770,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
+  closedBanner: {
+    marginTop: 18,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,214,107,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(255,214,107,0.28)",
+  },
+  closedBannerText: {
+    color: "#FFE8A3",
+    fontSize: 12,
+    fontWeight: "700",
+  },
   statsRow: {
     marginTop: 20,
     flexDirection: "row",
@@ -682,7 +811,7 @@ const styles = StyleSheet.create({
   },
   bioText: {
     marginTop: 18,
-    marginBottom: 36,
+    marginBottom: 14,
     color: dark.text,
     fontSize: 14,
     lineHeight: 20,
@@ -728,7 +857,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    width: 144,
+    width: 192,
     justifyContent: "flex-end",
   },
   iconButton: {
@@ -738,6 +867,119 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  infoSheetRoot: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  infoSheet: {
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    backgroundColor: "#0E0E10",
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    gap: 18,
+  },
+  infoSheetHandle: {
+    alignSelf: "center",
+    width: 52,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  infoSheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
+  },
+  infoSheetTitleWrap: {
+    flex: 1,
+  },
+  infoSheetTitle: {
+    color: dark.text,
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  infoSheetSubtitle: {
+    marginTop: 4,
+    color: dark.muted,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  infoSheetCloseButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  infoSection: {
+    gap: 12,
+  },
+  infoSectionTitle: {
+    color: dark.text,
+    fontSize: 13,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    paddingVertical: 6,
+  },
+  infoRowIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  infoRowCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  infoRowLabel: {
+    color: dark.faint,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  infoRowValue: {
+    color: dark.text,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600",
+  },
+  hoursRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 4,
+  },
+  hoursDay: {
+    color: dark.text,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  hoursValue: {
+    color: dark.muted,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  hoursValueClosed: {
+    color: "#FFD66B",
+  },
+  infoFallbackText: {
+    color: dark.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600",
   },
   tile: {
     overflow: "hidden",
