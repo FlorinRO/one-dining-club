@@ -9,6 +9,12 @@ from orders.models import OrderStatus
 from restaurants.models import Restaurant, RestaurantCategory, RestaurantOpeningHours
 from restaurants.ownership import get_primary_restaurant_id_for_owner
 
+MAX_DELIVERY_FEE = Decimal("50.00")
+MAX_MINIMUM_ORDER = Decimal("300.00")
+MIN_DELIVERY_TIME_MINUTES = 10
+MAX_DELIVERY_TIME_MINUTES = 180
+IDENTITY_LOCKED_ERROR = "Numele și orașul pot fi completate o singură dată. Pentru modificări, contactează support@yumzy.ro."
+
 
 class RestaurantCategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -131,6 +137,7 @@ class RestaurantOwnerOpeningHoursSerializer(serializers.ModelSerializer):
 
 
 class RestaurantOwnerSerializer(serializers.ModelSerializer):
+    identity_details_locked = serializers.SerializerMethodField(read_only=True)
     categories = serializers.PrimaryKeyRelatedField(
         queryset=RestaurantCategory.objects.filter(is_active=True),
         many=True,
@@ -162,6 +169,7 @@ class RestaurantOwnerSerializer(serializers.ModelSerializer):
             "city",
             "latitude",
             "longitude",
+            "identity_details_locked",
             "delivery_fee",
             "minimum_order",
             "estimated_delivery_time_min",
@@ -177,6 +185,60 @@ class RestaurantOwnerSerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = ("id", "owner", "slug", "rating", "created_at", "updated_at")
+
+    def get_identity_details_locked(self, obj):
+        return self._identity_details_locked(obj)
+
+    def _identity_details_locked(self, restaurant):
+        return bool(restaurant.pk and restaurant.name and restaurant.city and restaurant.address)
+
+    def validate_delivery_fee(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Taxa de livrare nu poate fi negativă.")
+        if value > MAX_DELIVERY_FEE:
+            raise serializers.ValidationError(f"Taxa de livrare nu poate depăși {MAX_DELIVERY_FEE} RON.")
+        return value
+
+    def validate_minimum_order(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Comanda minimă nu poate fi negativă.")
+        if value > MAX_MINIMUM_ORDER:
+            raise serializers.ValidationError(f"Comanda minimă nu poate depăși {MAX_MINIMUM_ORDER} RON.")
+        return value
+
+    def validate_estimated_delivery_time_min(self, value):
+        if value < MIN_DELIVERY_TIME_MINUTES or value > MAX_DELIVERY_TIME_MINUTES:
+            raise serializers.ValidationError(
+                f"Timpul minim de livrare trebuie să fie între {MIN_DELIVERY_TIME_MINUTES} și {MAX_DELIVERY_TIME_MINUTES} minute."
+            )
+        return value
+
+    def validate_estimated_delivery_time_max(self, value):
+        if value < MIN_DELIVERY_TIME_MINUTES or value > MAX_DELIVERY_TIME_MINUTES:
+            raise serializers.ValidationError(
+                f"Timpul maxim de livrare trebuie să fie între {MIN_DELIVERY_TIME_MINUTES} și {MAX_DELIVERY_TIME_MINUTES} minute."
+            )
+        return value
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if self.instance and self._identity_details_locked(self.instance):
+            identity_errors = {}
+            for field in ("name", "city"):
+                if field not in attrs:
+                    continue
+                if attrs[field] != getattr(self.instance, field):
+                    identity_errors[field] = IDENTITY_LOCKED_ERROR
+            if identity_errors:
+                raise serializers.ValidationError(identity_errors)
+
+        min_time = attrs.get("estimated_delivery_time_min", getattr(self.instance, "estimated_delivery_time_min", None))
+        max_time = attrs.get("estimated_delivery_time_max", getattr(self.instance, "estimated_delivery_time_max", None))
+        if min_time is not None and max_time is not None and min_time > max_time:
+            raise serializers.ValidationError(
+                {"estimated_delivery_time_max": "Timpul maxim de livrare trebuie să fie mai mare sau egal cu timpul minim."}
+            )
+        return attrs
 
     def create(self, validated_data):
         owner = self.context["request"].user

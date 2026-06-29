@@ -56,6 +56,12 @@ or:
 http://127.0.0.1:5173/dashboard/?api=https://api.yumzy.ro/api
 ```
 
+For Google address autocomplete in the dashboard, append a Maps JavaScript API key once and it will be stored in localStorage:
+
+```text
+http://127.0.0.1:5173/dashboard/?api=prod&googleMapsApiKey=YOUR_KEY
+```
+
 ## Mobile
 
 ```bash

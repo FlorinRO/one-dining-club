@@ -5,10 +5,19 @@ const FALLBACK_API_BASE = LOCAL_DASHBOARD_HOSTS.has(location.hostname)
 const QUERY_API_BASE = normalizeConfiguredApiBase(
   new URLSearchParams(location.search).get("api") || new URLSearchParams(location.search).get("apiBase"),
 );
+const QUERY_GOOGLE_MAPS_API_KEY = normalizeConfiguredGoogleMapsApiKey(
+  new URLSearchParams(location.search).get("googleMapsApiKey") ||
+    new URLSearchParams(location.search).get("gmapsKey") ||
+    new URLSearchParams(location.search).get("googlePlacesApiKey"),
+);
 if (QUERY_API_BASE) {
   localStorage.setItem("yumzyDashboardApiBase", QUERY_API_BASE);
 }
+if (QUERY_GOOGLE_MAPS_API_KEY) {
+  localStorage.setItem("yumzyDashboardGoogleMapsApiKey", QUERY_GOOGLE_MAPS_API_KEY);
+}
 const DEFAULT_API_BASE = QUERY_API_BASE || localStorage.getItem("yumzyDashboardApiBase") || FALLBACK_API_BASE;
+const GOOGLE_MAPS_API_KEY = QUERY_GOOGLE_MAPS_API_KEY || localStorage.getItem("yumzyDashboardGoogleMapsApiKey") || "";
 const DAY_LABELS = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"];
 const ORDER_STATUS_LABELS = {
   pending: "Pending",
@@ -40,27 +49,11 @@ const RESTAURANT_AVATAR_OVERRIDES = {
 const RESTAURANT_AVATAR_NAME_OVERRIDES = {
   "pizzeria napoli": "https://images.unsplash.com/photo-1571066811602-716837d681de?q=80&w=900&auto=format&fit=crop",
 };
-const AUTH_VIDEO_SOURCES = [
-  {
-    src: "../assets/login-videos/mixkit-a-couple-of-young-girls-savour-a-the-the-licious-51238-full-hd.mp4",
-    poster: "../assets/login-videos/mixkit-a-couple-of-young-girls-savour-a-the-the-licious-51238-poster.jpg",
-  },
-  {
-    src: "../assets/login-videos/mixkit-a-young-woman-poses-to-the-mobile-camera-for-a-51236-full-hd.mp4",
-    poster: "../assets/login-videos/mixkit-a-young-woman-poses-to-the-mobile-camera-for-a-51236-poster.jpg",
-  },
-  {
-    src: "../assets/login-videos/mixkit-man-eating-a-hamburger-372-hd-ready.mp4",
-    poster: "../assets/login-videos/mixkit-man-eating-a-hamburger-372-poster.jpg",
-  },
-  {
-    src: "../assets/login-videos/mixkit-woman-eating-noodles-41350-full-hd.mp4",
-    poster: "../assets/login-videos/mixkit-woman-eating-noodles-41350-poster.jpg",
-  },
-];
-const AUTH_VIDEO_VISIBLE_MS = 4000;
-const AUTH_VIDEO_CROSSFADE_MS = 1000;
-const AUTH_VIDEO_TRANSITION_DELAY_MS = AUTH_VIDEO_VISIBLE_MS - AUTH_VIDEO_CROSSFADE_MS;
+const MAX_DELIVERY_FEE = 50;
+const MAX_MINIMUM_ORDER = 300;
+const MIN_DELIVERY_TIME_MINUTES = 10;
+const MAX_DELIVERY_TIME_MINUTES = 180;
+const SUPPORT_EMAIL = "support@yumzy.ro";
 const DEFAULT_DASHBOARD_VIEW = "overview";
 const NAV_ITEMS = [
   { view: "overview", label: "Overview", icon: "ri-dashboard-2-line" },
@@ -111,89 +104,18 @@ const state = {
   error: "",
   notice: "",
   confirmation: null,
+  googleAutocompleteStatus: GOOGLE_MAPS_API_KEY ? "idle" : "missing-key",
+  googleAutocompleteMessage: GOOGLE_MAPS_API_KEY
+    ? ""
+    : "Autocomplete-ul pentru adresă este oprit: lipsește cheia Google Maps.",
 };
 
 const FLASH_MESSAGE_DURATION_MS = 4500;
 let flashMessageTimer = null;
 let pendingConfirmationAction = null;
+let googleMapsPlacesApiPromise = null;
 
 const app = document.querySelector("#app");
-
-function playAuthVideo(video) {
-  if (!video) return;
-  video.muted = true;
-  video.loop = true;
-  video.setAttribute("playsinline", "");
-  video.setAttribute("webkit-playsinline", "");
-  const playAttempt = video.play();
-  if (playAttempt?.catch) {
-    playAttempt.catch(() => {});
-  }
-}
-
-function primeAuthVideo(video, source) {
-  if (!video || !source) return;
-  video.muted = true;
-  video.loop = true;
-  video.src = source.src;
-  video.poster = source.poster;
-  video.currentTime = 0;
-  video.addEventListener("loadeddata", () => playAuthVideo(video), { once: true });
-  video.addEventListener("canplay", () => playAuthVideo(video), { once: true });
-  video.load();
-  playAuthVideo(video);
-}
-
-function bootAuthVideos() {
-  const layers = Array.from(document.querySelectorAll(".auth-video-layer"));
-  const videos = layers.map((layer) => layer.querySelector(".auth-video"));
-  if (layers.length !== 2 || videos.length !== 2 || AUTH_VIDEO_SOURCES.length < 2) return;
-
-  let activeLayerIndex = 0;
-  let nextVideoIndex = 2 % AUTH_VIDEO_SOURCES.length;
-  let transitionLocked = false;
-
-  primeAuthVideo(videos[0], AUTH_VIDEO_SOURCES[0]);
-  primeAuthVideo(videos[1], AUTH_VIDEO_SOURCES[1]);
-
-  const scheduleTransition = () => {
-    window.setTimeout(() => {
-      if (transitionLocked) return;
-
-      const hiddenLayerIndex = activeLayerIndex === 0 ? 1 : 0;
-      const activeLayer = layers[activeLayerIndex];
-      const hiddenLayer = layers[hiddenLayerIndex];
-      const hiddenVideo = videos[hiddenLayerIndex];
-
-      if (!hiddenLayer || !hiddenVideo || hiddenVideo.readyState < 2) {
-        scheduleTransition();
-        return;
-      }
-
-      transitionLocked = true;
-      playAuthVideo(hiddenVideo);
-      hiddenLayer.classList.add("is-active");
-      activeLayer.classList.remove("is-active");
-
-      window.setTimeout(() => {
-        activeLayerIndex = hiddenLayerIndex;
-        const recycledIndex = activeLayerIndex === 0 ? 1 : 0;
-        primeAuthVideo(videos[recycledIndex], AUTH_VIDEO_SOURCES[nextVideoIndex]);
-        nextVideoIndex = (nextVideoIndex + 1) % AUTH_VIDEO_SOURCES.length;
-        transitionLocked = false;
-        scheduleTransition();
-      }, AUTH_VIDEO_CROSSFADE_MS + 140);
-    }, AUTH_VIDEO_TRANSITION_DELAY_MS);
-  };
-
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) {
-      videos.forEach(playAuthVideo);
-    }
-  });
-  window.addEventListener("focus", () => videos.forEach(playAuthVideo));
-  scheduleTransition();
-}
 
 function saveAuth(session) {
   state.accessToken = session.access;
@@ -374,6 +296,21 @@ function normalizeConfiguredApiBase(value) {
   } catch {
     return "";
   }
+}
+
+function normalizeConfiguredGoogleMapsApiKey(value) {
+  return String(value || "").trim();
+}
+
+function getAddressAutocompleteHelpText(defaultText) {
+  if (state.googleAutocompleteStatus === "ready") return defaultText;
+  if (state.googleAutocompleteStatus === "missing-key") {
+    return "Autocomplete-ul pentru adresă este oprit. Deschide dashboard-ul cu `&googleMapsApiKey=YOUR_KEY`.";
+  }
+  if (state.googleAutocompleteStatus === "load-error") {
+    return state.googleAutocompleteMessage || "Google Places nu s-a încărcat. Verifică cheia și API-urile activate.";
+  }
+  return defaultText;
 }
 
 function appendCacheBust(url, value) {
@@ -911,6 +848,7 @@ function renderProfileView(restaurant) {
   const completionPercent = profileCompletion.percent;
   const deliveryRange = `${restaurant.estimated_delivery_time_min || 25}-${restaurant.estimated_delivery_time_max || 45} min`;
   const pickupOnly = Boolean(restaurant.supports_pickup) && Number(restaurant.delivery_fee || 0) === 0;
+  const identityDetailsLocked = restaurant.identity_details_locked !== false;
   const avatarUrl = state.avatarPreviewUrls[restaurant.id] || resolveRestaurantAvatarUrl(restaurant);
   const fallbackAvatarUrl = getRestaurantAvatarFallbackUrl(restaurant);
 
@@ -956,19 +894,57 @@ function renderProfileView(restaurant) {
         <section class="panel profile-form-card">
           <div class="form-section-title">
             <strong>Informații esențiale</strong>
-            <span>Completează întâi numele, orașul, adresa și descrierea. Acestea influențează direct conversia.</span>
+            <span>${
+              identityDetailsLocked
+                ? `Numele și orașul definesc identitatea locației și pot fi modificate doar prin ${SUPPORT_EMAIL}. Adresa rămâne editabilă pentru test, iar descrierea poate fi actualizată oricând.`
+                : `Numele și orașul pot fi completate o singură dată. După salvare, modificările se fac doar prin ${SUPPORT_EMAIL}.`
+            }</span>
           </div>
           <div class="profile-card-fields">
+            <div class="profile-locked-note">
+              <i class="${identityDetailsLocked ? "ri-lock-line" : "ri-map-pin-user-line"}" aria-hidden="true"></i>
+              <span>${
+                identityDetailsLocked
+                  ? `Pentru schimbări de nume sau oraș, scrie la <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a>. Adresa este lăsată editabilă temporar pentru test.`
+                  : "Completează atent aceste câmpuri. După prima salvare, ele se blochează."
+              }</span>
+            </div>
             <div class="split">
-              <label class="field"><span>Nume restaurant</span><input name="name" value="${escapeHtml(restaurant.name || "")}" placeholder="Ex: Yumzy Kitchen" required /></label>
-              <label class="field">
+              <label class="field ${identityDetailsLocked ? "field-locked" : ""}">
+                <span>Nume restaurant</span>
+                <input name="name" value="${escapeHtml(restaurant.name || "")}" ${identityDetailsLocked ? 'readonly aria-readonly="true"' : 'placeholder="Ex: Yumzy Kitchen" required'} />
+                <small>${
+                  identityDetailsLocked
+                    ? "Blocat pentru a păstra consistența brandului și a profilului public."
+                    : "Poate fi setat o singură dată pentru profilul public."
+                }</small>
+              </label>
+              <label class="field ${identityDetailsLocked ? "field-locked" : ""}">
                 <span>Oraș</span>
-                <select name="city" required>
+                <select name="city" ${identityDetailsLocked ? 'disabled aria-disabled="true"' : 'required data-city-select'}>
                   ${renderRomaniaCityOptions(restaurant.city || "")}
                 </select>
+                <small>${
+                  identityDetailsLocked
+                    ? "Schimbarea orașului afectează aria de operare și logistica."
+                    : "Selectează orașul corect; după prima salvare nu mai poate fi schimbat din dashboard."
+                }</small>
               </label>
             </div>
-            <label class="field"><span>Adresă</span><input name="address" value="${escapeHtml(restaurant.address || "")}" placeholder="Stradă, număr, zonă" required /></label>
+            <label class="field">
+              <span>Adresă</span>
+              <input
+                name="address"
+                value="${escapeHtml(restaurant.address || "")}"
+                required
+                autocomplete="street-address"
+                data-google-address-input
+                placeholder="Începe să scrii adresa locației"
+              />
+              <small>${getAddressAutocompleteHelpText("Folosește adresa sugerată de Google pentru o localizare corectă.")}</small>
+            </label>
+            <input type="hidden" name="latitude" value="${escapeHtml(restaurant.latitude || "")}" />
+            <input type="hidden" name="longitude" value="${escapeHtml(restaurant.longitude || "")}" />
             <label class="field"><span>Descriere</span><textarea name="description" placeholder="Descrie specificul, preparatele populare și motivul pentru care clientul ar comanda.">${escapeHtml(restaurant.description || "")}</textarea></label>
           </div>
         </section>
@@ -1003,23 +979,23 @@ function renderProfileView(restaurant) {
             <div class="ops-metric-grid">
               <label class="field ops-metric-card">
                 <span>Taxă livrare</span>
-                <input type="number" step="0.01" name="delivery_fee" value="${restaurant.delivery_fee || 0}" ${pickupOnly ? "disabled" : ""} data-delivery-fee />
-                <small>Setează costul standard pentru livrare.</small>
+                <input type="number" step="0.01" min="0" max="${MAX_DELIVERY_FEE}" name="delivery_fee" value="${restaurant.delivery_fee || 0}" ${pickupOnly ? "disabled" : ""} data-delivery-fee />
+                <small>Setează costul standard pentru livrare, între 0 și ${MAX_DELIVERY_FEE} RON.</small>
               </label>
               <label class="field ops-metric-card">
                 <span>Comandă minimă</span>
-                <input type="number" step="0.01" name="minimum_order" value="${restaurant.minimum_order || 0}" />
-                <small>Pragul minim pentru plasarea comenzii.</small>
+                <input type="number" step="0.01" min="0" max="${MAX_MINIMUM_ORDER}" name="minimum_order" value="${restaurant.minimum_order || 0}" />
+                <small>Pragul minim pentru plasarea comenzii, între 0 și ${MAX_MINIMUM_ORDER} RON.</small>
               </label>
               <label class="field ops-metric-card">
                 <span>Timp livrare minim</span>
-                <input type="number" name="estimated_delivery_time_min" value="${restaurant.estimated_delivery_time_min || 25}" />
-                <small>Estimarea optimistă afișată în aplicație.</small>
+                <input type="number" min="${MIN_DELIVERY_TIME_MINUTES}" max="${MAX_DELIVERY_TIME_MINUTES}" name="estimated_delivery_time_min" value="${restaurant.estimated_delivery_time_min || 25}" />
+                <small>Estimarea optimistă afișată în aplicație, între ${MIN_DELIVERY_TIME_MINUTES} și ${MAX_DELIVERY_TIME_MINUTES} minute.</small>
               </label>
               <label class="field ops-metric-card">
                 <span>Timp livrare maxim</span>
-                <input type="number" name="estimated_delivery_time_max" value="${restaurant.estimated_delivery_time_max || 45}" />
-                <small>Estimarea conservatoare pentru client.</small>
+                <input type="number" min="${MIN_DELIVERY_TIME_MINUTES}" max="${MAX_DELIVERY_TIME_MINUTES}" name="estimated_delivery_time_max" value="${restaurant.estimated_delivery_time_max || 45}" />
+                <small>Estimarea conservatoare pentru client, între ${MIN_DELIVERY_TIME_MINUTES} și ${MAX_DELIVERY_TIME_MINUTES} minute.</small>
               </label>
             </div>
             <div class="check-card-grid profile-toggle-grid ops-toggle-grid">
@@ -1391,16 +1367,26 @@ function renderEmptyRestaurantState() {
         </div>
       </div>
       <form id="create-restaurant-form" class="form-grid">
+        <div class="profile-locked-note">
+          <i class="ri-edit-box-line" aria-hidden="true"></i>
+          <span>Identitatea restaurantului se completează o singură dată. După creare, schimbările de nume, oraș sau adresă se fac doar prin <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a>.</span>
+        </div>
         <div class="split">
           <label class="field"><span>Nume restaurant</span><input name="name" required /></label>
           <label class="field">
             <span>Oraș</span>
-            <select name="city" required>
+            <select name="city" required data-city-select>
               ${renderRomaniaCityOptions("")}
             </select>
           </label>
         </div>
-        <label class="field"><span>Adresă</span><input name="address" required /></label>
+        <label class="field">
+          <span>Adresă</span>
+          <input name="address" required autocomplete="street-address" data-google-address-input placeholder="Începe să scrii adresa locației" />
+          <small>${getAddressAutocompleteHelpText("Alege adresa din sugestiile Google pentru o localizare corectă.")}</small>
+        </label>
+        <input type="hidden" name="latitude" value="" />
+        <input type="hidden" name="longitude" value="" />
         <div class="split">
           <label class="field"><span>Email public</span><input type="email" name="email" /></label>
           <label class="field"><span>Telefon</span><input name="phone" inputmode="tel" pattern="[0-9+()]*" data-phone-input /></label>
@@ -1464,6 +1450,7 @@ function bindEvents() {
   document.querySelector("#create-restaurant-form")?.addEventListener("submit", handleCreateRestaurant);
   bindHoursToggles();
   hydrateEditingForms();
+  bindGoogleAddressAutocomplete();
 }
 
 function bindHoursToggles() {
@@ -1485,6 +1472,125 @@ function bindPhoneInputs() {
       input.value = (input.value || "").replace(/[^0-9+()]/g, "");
     });
   });
+}
+
+function ensureSelectHasOption(select, value) {
+  if (!select || !value) return;
+  const normalizedValue = String(value).trim();
+  if (!normalizedValue) return;
+  if (Array.from(select.options).some((option) => option.value === normalizedValue)) return;
+  const option = document.createElement("option");
+  option.value = normalizedValue;
+  option.textContent = normalizedValue;
+  select.append(option);
+}
+
+function readGoogleAddressComponent(place, acceptedTypes) {
+  const components = Array.isArray(place?.address_components) ? place.address_components : [];
+  const component = components.find((entry) => entry.types?.some((type) => acceptedTypes.includes(type)));
+  return component?.long_name || "";
+}
+
+function inferCityFromPlace(place) {
+  return (
+    readGoogleAddressComponent(place, ["locality"]) ||
+    readGoogleAddressComponent(place, ["postal_town"]) ||
+    readGoogleAddressComponent(place, ["administrative_area_level_2"]) ||
+    readGoogleAddressComponent(place, ["administrative_area_level_1"])
+  );
+}
+
+function loadGoogleMapsPlacesApi() {
+  if (window.google?.maps?.places) return Promise.resolve(window.google.maps);
+  if (!GOOGLE_MAPS_API_KEY) return Promise.resolve(null);
+  if (googleMapsPlacesApiPromise) return googleMapsPlacesApiPromise;
+
+  googleMapsPlacesApiPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleMapsPlaces = "true";
+    script.addEventListener("load", () => {
+      if (window.google?.maps?.places) {
+        resolve(window.google.maps);
+        return;
+      }
+      reject(new Error("Google Maps Places API nu a fost încărcat."));
+    });
+    script.addEventListener("error", () => reject(new Error("Google Maps Places API nu a putut fi încărcat.")));
+    document.head.append(script);
+  }).catch((error) => {
+    googleMapsPlacesApiPromise = null;
+    throw error;
+  });
+
+  return googleMapsPlacesApiPromise;
+}
+
+function bindGoogleAddressAutocomplete() {
+  const addressInputs = Array.from(document.querySelectorAll("[data-google-address-input]"));
+  if (!addressInputs.length) return;
+  if (!GOOGLE_MAPS_API_KEY) {
+    if (state.googleAutocompleteStatus !== "missing-key") {
+      state.googleAutocompleteStatus = "missing-key";
+      state.googleAutocompleteMessage = "Autocomplete-ul pentru adresă este oprit: lipsește cheia Google Maps.";
+      render();
+    }
+    return;
+  }
+
+  loadGoogleMapsPlacesApi()
+    .then(() => {
+      if (state.googleAutocompleteStatus !== "ready") {
+        state.googleAutocompleteStatus = "ready";
+        state.googleAutocompleteMessage = "";
+        render();
+        return;
+      }
+      addressInputs.forEach((input) => {
+        if (input.dataset.googleAutocompleteBound === "true") return;
+        input.dataset.googleAutocompleteBound = "true";
+
+        const form = input.closest("form");
+        const citySelect = form?.querySelector("[data-city-select]");
+        const latitudeInput = form?.querySelector('[name="latitude"]');
+        const longitudeInput = form?.querySelector('[name="longitude"]');
+        const autocomplete = new window.google.maps.places.Autocomplete(input, {
+          fields: ["formatted_address", "address_components", "geometry"],
+          types: ["address"],
+          componentRestrictions: { country: "ro" },
+        });
+
+        autocomplete.addListener("place_changed", () => {
+          const place = autocomplete.getPlace();
+          if (!place) return;
+
+          if (place.formatted_address) {
+            input.value = place.formatted_address;
+          }
+
+          const city = inferCityFromPlace(place);
+          if (citySelect && city) {
+            ensureSelectHasOption(citySelect, city);
+            citySelect.value = city;
+          }
+
+          const latitude = place.geometry?.location?.lat?.();
+          const longitude = place.geometry?.location?.lng?.();
+          if (latitudeInput && Number.isFinite(latitude)) latitudeInput.value = String(latitude);
+          if (longitudeInput && Number.isFinite(longitude)) longitudeInput.value = String(longitude);
+        });
+      });
+    })
+    .catch((error) => {
+      if (state.googleAutocompleteStatus !== "load-error" || state.googleAutocompleteMessage !== error.message) {
+        state.googleAutocompleteStatus = "load-error";
+        state.googleAutocompleteMessage = error.message;
+        render();
+      }
+      console.warn(error.message);
+    });
 }
 
 function bindOperationalControls() {
@@ -1597,7 +1703,79 @@ async function handleProfileSubmit(event) {
   const restaurant = getSelectedRestaurant();
   if (!restaurant) return;
   const form = new FormData(event.currentTarget);
+  const identityDetailsLocked = restaurant.identity_details_locked !== false;
   const pickupOnly = form.get("pickup_only") === "on";
+  const deliveryFee = pickupOnly ? 0 : Number(form.get("delivery_fee") || 0);
+  const minimumOrder = Number(form.get("minimum_order") || 0);
+  const estimatedDeliveryTimeMin = Number(form.get("estimated_delivery_time_min") || 25);
+  const estimatedDeliveryTimeMax = Number(form.get("estimated_delivery_time_max") || 45);
+  const payload = {
+    email: form.get("email"),
+    phone: form.get("phone"),
+    description: form.get("description"),
+    website_url: form.get("website_url"),
+    promo_video_url: form.get("promo_video_url"),
+    instagram_url: form.get("instagram_url"),
+    tiktok_url: form.get("tiktok_url"),
+    delivery_fee: pickupOnly ? "0" : String(deliveryFee),
+    minimum_order: String(minimumOrder),
+    estimated_delivery_time_min: estimatedDeliveryTimeMin,
+    estimated_delivery_time_max: estimatedDeliveryTimeMax,
+    supports_pickup: pickupOnly || form.get("supports_pickup") === "on",
+    is_open: form.get("is_open") === "on",
+  };
+
+  if (!identityDetailsLocked) {
+    payload.name = String(form.get("name") || "").trim();
+    payload.city = String(form.get("city") || "").trim();
+    if (!payload.name || !payload.city) {
+      setError("Completează numele și orașul înainte de prima salvare.");
+      return;
+    }
+  }
+  payload.address = String(form.get("address") || "").trim();
+  const latitude = String(form.get("latitude") || "").trim();
+  const longitude = String(form.get("longitude") || "").trim();
+  if (!payload.address) {
+    setError("Completează adresa restaurantului.");
+    return;
+  }
+  payload.latitude = latitude || null;
+  payload.longitude = longitude || null;
+
+  if (Number.isNaN(deliveryFee) || deliveryFee < 0 || deliveryFee > MAX_DELIVERY_FEE) {
+    setError(`Taxa de livrare trebuie să fie între 0 și ${MAX_DELIVERY_FEE} RON.`);
+    return;
+  }
+  if (Number.isNaN(minimumOrder) || minimumOrder < 0 || minimumOrder > MAX_MINIMUM_ORDER) {
+    setError(`Comanda minimă trebuie să fie între 0 și ${MAX_MINIMUM_ORDER} RON.`);
+    return;
+  }
+  if (
+    Number.isNaN(estimatedDeliveryTimeMin) ||
+    estimatedDeliveryTimeMin < MIN_DELIVERY_TIME_MINUTES ||
+    estimatedDeliveryTimeMin > MAX_DELIVERY_TIME_MINUTES
+  ) {
+    setError(
+      `Timpul minim de livrare trebuie să fie între ${MIN_DELIVERY_TIME_MINUTES} și ${MAX_DELIVERY_TIME_MINUTES} minute.`,
+    );
+    return;
+  }
+  if (
+    Number.isNaN(estimatedDeliveryTimeMax) ||
+    estimatedDeliveryTimeMax < MIN_DELIVERY_TIME_MINUTES ||
+    estimatedDeliveryTimeMax > MAX_DELIVERY_TIME_MINUTES
+  ) {
+    setError(
+      `Timpul maxim de livrare trebuie să fie între ${MIN_DELIVERY_TIME_MINUTES} și ${MAX_DELIVERY_TIME_MINUTES} minute.`,
+    );
+    return;
+  }
+  if (estimatedDeliveryTimeMin > estimatedDeliveryTimeMax) {
+    setError("Timpul maxim de livrare trebuie să fie mai mare sau egal cu timpul minim.");
+    return;
+  }
+
   const openingHours = DAY_LABELS.map((_, index) => {
     const isClosed = form.get(`is_closed_${index}`) === "on";
     return {
@@ -1612,22 +1790,7 @@ async function handleProfileSubmit(event) {
     const updated = await apiFetch(`restaurant-owner/restaurants/${restaurant.id}/`, {
       method: "PATCH",
       body: {
-        name: form.get("name"),
-        city: form.get("city"),
-        address: form.get("address"),
-        email: form.get("email"),
-        phone: form.get("phone"),
-        description: form.get("description"),
-        website_url: form.get("website_url"),
-        promo_video_url: form.get("promo_video_url"),
-        instagram_url: form.get("instagram_url"),
-        tiktok_url: form.get("tiktok_url"),
-        delivery_fee: pickupOnly ? "0" : form.get("delivery_fee") || "0",
-        minimum_order: form.get("minimum_order") || "0",
-        estimated_delivery_time_min: Number(form.get("estimated_delivery_time_min") || 25),
-        estimated_delivery_time_max: Number(form.get("estimated_delivery_time_max") || 45),
-        supports_pickup: pickupOnly || form.get("supports_pickup") === "on",
-        is_open: form.get("is_open") === "on",
+        ...payload,
         opening_hours: openingHours,
       },
     });
@@ -1843,18 +2006,31 @@ async function handleOrderUpdate(event) {
 async function handleCreateRestaurant(event) {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
+  const name = String(form.get("name") || "").trim();
+  const city = String(form.get("city") || "").trim();
+  const address = String(form.get("address") || "").trim();
+  const latitude = String(form.get("latitude") || "").trim();
+  const longitude = String(form.get("longitude") || "").trim();
+
+  if (!name || !city || !address) {
+    setError("Completează numele, orașul și adresa înainte să creezi restaurantul.");
+    return;
+  }
+
   try {
     await apiFetch("restaurant-owner/restaurants/", {
       method: "POST",
       body: {
-        name: form.get("name"),
-        city: form.get("city"),
-        address: form.get("address"),
+        name,
+        city,
+        address,
         email: form.get("email"),
         phone: form.get("phone"),
         description: form.get("description"),
         delivery_fee: form.get("delivery_fee") || "0",
         minimum_order: form.get("minimum_order") || "0",
+        latitude: latitude || undefined,
+        longitude: longitude || undefined,
         is_active: false,
       },
     });
@@ -1908,5 +2084,4 @@ window.addEventListener("hashchange", () => {
   render();
 });
 
-bootAuthVideos();
 bootstrap();

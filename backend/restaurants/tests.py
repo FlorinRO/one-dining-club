@@ -210,3 +210,72 @@ class RestaurantOwnerDashboardApiTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 404)
+
+    def test_owner_cannot_change_name_and_city_after_creation(self):
+        response = self.client.patch(
+            f"/api/restaurant-owner/restaurants/{self.restaurant.id}/",
+            {
+                "name": "Alt nume",
+                "city": "Cluj",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertIn("name", payload)
+        self.assertIn("city", payload)
+
+    def test_owner_can_change_address_for_testing(self):
+        response = self.client.patch(
+            f"/api/restaurant-owner/restaurants/{self.restaurant.id}/",
+            {
+                "address": "Altă adresă 99",
+                "latitude": "44.447923",
+                "longitude": "26.097879",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.restaurant.refresh_from_db()
+        self.assertEqual(self.restaurant.address, "Altă adresă 99")
+
+    def test_owner_restaurant_payload_exposes_identity_lock_state(self):
+        response = self.client.get("/api/restaurant-owner/restaurants/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["results"][0]["identity_details_locked"])
+
+    def test_owner_cannot_set_extreme_operational_values(self):
+        response = self.client.patch(
+            f"/api/restaurant-owner/restaurants/{self.restaurant.id}/",
+            {
+                "delivery_fee": "99.00",
+                "minimum_order": "1000.00",
+                "estimated_delivery_time_min": 5,
+                "estimated_delivery_time_max": 240,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertIn("delivery_fee", payload)
+        self.assertIn("minimum_order", payload)
+        self.assertIn("estimated_delivery_time_min", payload)
+        self.assertIn("estimated_delivery_time_max", payload)
+
+    def test_owner_cannot_set_delivery_max_below_min(self):
+        response = self.client.patch(
+            f"/api/restaurant-owner/restaurants/{self.restaurant.id}/",
+            {
+                "estimated_delivery_time_min": 45,
+                "estimated_delivery_time_max": 20,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("estimated_delivery_time_max", response.json())
