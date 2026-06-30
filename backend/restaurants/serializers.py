@@ -68,6 +68,8 @@ class RestaurantApplicationCreateSerializer(serializers.ModelSerializer):
                     f"Cuisine: {application.cuisine_summary or '-'}\n"
                     f"Descriere: {application.description or '-'}\n"
                 ),
+                from_email=self.context["support_email"],
+                provider="django",
                 recipient_list=[self.context["support_email"]],
             )
         except EmailDeliveryError:

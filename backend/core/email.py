@@ -52,10 +52,11 @@ def _send_via_sendgrid(*, subject, message, recipient_list, html_message, from_e
         return response.status
 
 
-def send_transactional_email(*, subject, message, recipient_list, html_message=None, from_email=None):
+def send_transactional_email(*, subject, message, recipient_list, html_message=None, from_email=None, provider=None):
     sender = from_email or settings.DEFAULT_FROM_EMAIL
+    delivery_provider = (provider or settings.EMAIL_DELIVERY_PROVIDER).strip().lower()
     try:
-        if settings.EMAIL_DELIVERY_PROVIDER == "sendgrid":
+        if delivery_provider == "sendgrid":
             if not settings.SENDGRID_API_KEY:
                 raise EmailDeliveryError("SENDGRID_API_KEY is not configured.")
             return _send_via_sendgrid(
@@ -80,7 +81,7 @@ def send_transactional_email(*, subject, message, recipient_list, html_message=N
         logger.exception(
             "Transactional email delivery failed with provider response.",
             extra={
-                "provider": settings.EMAIL_DELIVERY_PROVIDER,
+                "provider": delivery_provider,
                 "status_code": exc.code,
                 "subject": subject,
                 "recipient_list": recipient_list,
@@ -92,7 +93,7 @@ def send_transactional_email(*, subject, message, recipient_list, html_message=N
         logger.exception(
             "Transactional email delivery failed.",
             extra={
-                "provider": settings.EMAIL_DELIVERY_PROVIDER,
+                "provider": delivery_provider,
                 "subject": subject,
                 "recipient_list": recipient_list,
                 "from_email": sender,
