@@ -91,6 +91,23 @@ const MAX_MINIMUM_ORDER = 300;
 const MIN_DELIVERY_TIME_MINUTES = 10;
 const MAX_DELIVERY_TIME_MINUTES = 180;
 const SUPPORT_EMAIL = "support@yumzy.ro";
+const FOOTER_MODAL_CONTENT = {
+  terms: {
+    title: "Termeni și condiții",
+    paragraphs: [
+      "Prin folosirea YUMZY, ești de acord să utilizezi aplicația responsabil și doar pentru comenzi, descoperirea restaurantelor și interacțiuni legitime cu serviciul.",
+      "Informațiile despre restaurante, produse, prețuri și disponibilitate pot fi actualizate periodic. Comenzile, plățile și livrările sunt procesate conform condițiilor afișate în aplicație la momentul folosirii.",
+      "Ne rezervăm dreptul de a actualiza acești termeni pentru a reflecta schimbări ale serviciului, cerințe legale sau îmbunătățiri operaționale.",
+    ],
+  },
+  contact: {
+    title: "Contact",
+    paragraphs: [
+      "Pentru întrebări despre cont, comenzi, plăți, restaurante sau suport tehnic, ne poți scrie la support@yumzy.ro.",
+      "Revenim cât mai rapid cu un răspuns și detalii despre pașii următori.",
+    ],
+  },
+};
 const DEFAULT_DASHBOARD_VIEW = "overview";
 const NAV_ITEMS = [
   { view: "overview", label: "Overview", icon: "ri-dashboard-2-line" },
@@ -1415,6 +1432,10 @@ function render() {
 function renderLogin() {
   return `
     <div class="login-shell">
+      <video class="login-bg-video" autoplay muted loop playsinline webkit-playsinline preload="auto" aria-hidden="true">
+        <source src="../assets/login-hero.mp4" type="video/mp4" />
+      </video>
+      <div class="login-bg-overlay" aria-hidden="true"></div>
       ${renderFlashMessage()}
       <div class="login-card">
         <section class="login-copy">
@@ -1448,6 +1469,49 @@ function renderLogin() {
             </div>
           </form>
         </section>
+      </div>
+      <div class="login-footer">
+        <footer class="site-footer" aria-label="Linkuri legale și contact">
+          <div class="footer-mobile-spacer footer-desktop">
+            <nav class="footer-links" aria-label="Footer">
+              <a href="/">Acasă</a>
+              <a href="/dashboard/">Restaurant dashboard</a>
+              <a href="/restaurant-partners/">Înscrie restaurant</a>
+              <button type="button" data-modal-topic="terms">Termeni și condiții</button>
+              <a href="/privacy-policy/">Privacy Policy</a>
+              <button type="button" data-modal-topic="contact">Contact</button>
+            </nav>
+          </div>
+          <div class="footer-bootstrap-mobile" aria-label="Footer mobil">
+            <div class="container-fluid px-3 py-4">
+              <div class="d-flex align-items-start justify-content-between gap-4 pb-4 border-bottom border-light border-opacity-10">
+                <div class="footer-bootstrap-links">
+                  <div class="footer-bootstrap-link-stack">
+                    <a href="/">Acasă</a>
+                    <a href="/dashboard/">Restaurant dashboard</a>
+                    <a href="/restaurant-partners/">Înscrie restaurant</a>
+                    <button type="button" data-modal-topic="terms">Termeni și condiții</button>
+                    <a href="/privacy-policy/">Privacy Policy</a>
+                    <button type="button" data-modal-topic="contact">Contact</button>
+                  </div>
+                </div>
+                <a class="footer-bootstrap-icon" href="/" aria-label="YUMZY home">
+                  <img src="../assets/ios-icon-yumzy.png" alt="YUMZY icon" />
+                </a>
+              </div>
+              <div class="pt-3">
+                <p class="footer-bootstrap-legal mb-0">© 2026 YUMZY. Toate drepturile rezervate.</p>
+              </div>
+            </div>
+          </div>
+        </footer>
+        <dialog class="info-modal" id="login-info-modal" aria-labelledby="login-modal-title">
+          <div class="modal-panel">
+            <button class="modal-close" type="button" aria-label="Închide modalul">×</button>
+            <h2 id="login-modal-title"></h2>
+            <div class="modal-body" id="login-modal-body"></div>
+          </div>
+        </dialog>
       </div>
     </div>
   `;
@@ -2529,6 +2593,7 @@ function renderDashboardLoadingState() {
 
 function bindEvents() {
   bindAudioUnlock();
+  bindLoginFooterModal();
   document.querySelector("#login-form")?.addEventListener("submit", handleLogin);
   document.querySelector("#logout-button")?.addEventListener("click", handleLogout);
   document.querySelector("#audio-alert-button")?.addEventListener("click", handleAudioAlertButton);
@@ -2645,6 +2710,37 @@ function bindEvents() {
   bindHoursToggles();
   hydrateEditingForms();
   bindGoogleAddressAutocomplete();
+}
+
+function bindLoginFooterModal() {
+  const infoModal = document.querySelector("#login-info-modal");
+  const modalTitle = document.querySelector("#login-modal-title");
+  const modalBody = document.querySelector("#login-modal-body");
+  const modalClose = infoModal?.querySelector(".modal-close");
+  const modalButtons = document.querySelectorAll("[data-modal-topic]");
+  if (!infoModal || !modalTitle || !modalBody || !modalButtons.length) return;
+
+  const openInfoModal = (topic) => {
+    const content = FOOTER_MODAL_CONTENT[topic];
+    if (!content) return;
+    modalTitle.textContent = content.title;
+    modalBody.replaceChildren();
+    content.paragraphs.forEach((text) => {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = text;
+      modalBody.append(paragraph);
+    });
+    infoModal.showModal();
+  };
+
+  modalButtons.forEach((button) => {
+    button.addEventListener("click", () => openInfoModal(button.dataset.modalTopic));
+  });
+
+  modalClose?.addEventListener("click", () => infoModal.close());
+  infoModal.addEventListener("click", (event) => {
+    if (event.target === infoModal) infoModal.close();
+  });
 }
 
 function bindProfileDirtyState() {
