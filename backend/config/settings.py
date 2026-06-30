@@ -30,6 +30,15 @@ def join_url(base_url, path):
 def strip_url_scheme(value):
     return value.replace("https://", "").replace("http://", "").rstrip("/")
 
+
+def get_url_origin(value):
+    value = (value or "").strip().rstrip("/")
+    if not value:
+        return value
+    if value.startswith(("http://", "https://")):
+        return value
+    return f"https://{value}"
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "development-only-secret-key-change-before-production")
 DEBUG = get_env_bool("DJANGO_DEBUG", default=True)
 
@@ -275,7 +284,10 @@ SIMPLE_JWT = {
 
 CSRF_TRUSTED_ORIGINS = get_env_list(
     "CSRF_TRUSTED_ORIGINS",
-    f"https://{PRIMARY_DOMAIN},https://{WWW_DOMAIN},http://localhost:8000,http://127.0.0.1:8000",
+    (
+        f"https://{PRIMARY_DOMAIN},https://{WWW_DOMAIN},{get_url_origin(BACKEND_URL)},"
+        "http://localhost:8000,http://127.0.0.1:8000"
+    ),
 )
 
 CORS_ALLOWED_ORIGINS = get_env_list(
