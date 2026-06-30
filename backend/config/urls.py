@@ -19,7 +19,12 @@ from products.views import (
     ProductViewSet,
     RestaurantOwnerProductViewSet,
 )
-from restaurants.views import RestaurantCategoryViewSet, RestaurantOwnerRestaurantViewSet, RestaurantViewSet
+from restaurants.views import (
+    RestaurantApplicationCreateView,
+    RestaurantCategoryViewSet,
+    RestaurantOwnerRestaurantViewSet,
+    RestaurantViewSet,
+)
 from users.views import (
     EmailTemplatePreviewView,
     EmailVerificationConfirmView,
@@ -95,6 +100,7 @@ urlpatterns = [
         name="auth-password-reset-confirm",
     ),
     path("api/courier/location/", CourierProfileView.as_view(), name="courier-location"),
+    path("api/restaurant-applications/", RestaurantApplicationCreateView.as_view(), name="restaurant-application-create"),
     path("api/push/devices/", PushDeviceView.as_view(), name="push-devices"),
     path("api/payments/checkout/", CheckoutView.as_view(), name="payments-checkout"),
     path("api/payments/stripe/webhook/", StripeWebhookView.as_view(), name="payments-stripe-webhook"),

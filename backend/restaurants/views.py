@@ -1,5 +1,6 @@
 from django.db.models import Count, Exists, OuterRef
-from rest_framework import decorators, permissions, response, viewsets
+from django.conf import settings
+from rest_framework import decorators, generics, permissions, response, status, viewsets
 
 from core.permissions import IsRestaurantOwner
 from menus.serializers import ProductCategorySerializer
@@ -10,6 +11,7 @@ from restaurants.filters import RestaurantFilter
 from restaurants.models import Restaurant, RestaurantCategory
 from restaurants.ownership import get_primary_restaurant_id_for_owner
 from restaurants.serializers import (
+    RestaurantApplicationCreateSerializer,
     RestaurantCategorySerializer,
     RestaurantDetailSerializer,
     RestaurantListSerializer,
@@ -132,3 +134,27 @@ class RestaurantOwnerRestaurantViewSet(viewsets.ModelViewSet):
         queryset = RestaurantOwnerOverviewSerializer.with_metrics(self.get_queryset())
         serializer = RestaurantOwnerOverviewSerializer(queryset, many=True, context={"request": request})
         return response.Response(serializer.data)
+
+
+class RestaurantApplicationCreateView(generics.CreateAPIView):
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = RestaurantApplicationCreateSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["support_email"] = settings.SUPPORT_EMAIL
+        return context
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        application = serializer.save()
+        return response.Response(
+            {
+                "id": application.id,
+                "detail": (
+                    "Cererea a fost trimisă. Ți-am confirmat primirea pe email, iar după aprobare vei primi linkul de activare."
+                ),
+            },
+            status=status.HTTP_201_CREATED,
+        )

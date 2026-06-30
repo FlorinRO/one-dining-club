@@ -273,6 +273,7 @@ CORS_ALLOWED_ORIGINS = get_env_list(
         f"{SITE_URL},https://{WWW_DOMAIN},https://dashboard.yumzy.ro,"
         "http://localhost:19006,http://localhost:8081,"
         "http://localhost:5173,http://127.0.0.1:5173,"
-        "http://localhost:5174,http://127.0.0.1:5174"
+        "http://localhost:5174,http://127.0.0.1:5174,"
+        "http://localhost:8012,http://127.0.0.1:8012"
     ),
 )

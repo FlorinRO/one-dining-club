@@ -7,7 +7,7 @@ from menus.models import ProductCategory
 from orders.models import Order, OrderStatus, PaymentMethod, PaymentStatus
 from products.models import Product
 from restaurants.forms import RestaurantAdminForm
-from restaurants.models import Restaurant, RestaurantCategory, RestaurantOpeningHours
+from restaurants.models import Restaurant, RestaurantApplication, RestaurantCategory, RestaurantOpeningHours
 from users.models import User, UserRole
 
 
@@ -400,3 +400,70 @@ class RestaurantAdminProvisioningTests(TestCase):
             footnote="Dacă nu te așteptai la acest mesaj, contactează echipa Yumzy.",
             intro_message=f"Contul restaurantului {restaurant.name} a fost creat în Yumzy.",
         )
+
+
+class RestaurantApplicationFlowTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    @patch("restaurants.serializers.send_transactional_email")
+    def test_public_application_creates_record_and_sends_emails(self, mock_send_transactional_email):
+        response = self.client.post(
+            "/api/restaurant-applications/",
+            {
+                "contact_name": "Ana Popescu",
+                "contact_email": "ana@bistro.test",
+                "contact_phone": "0712345678",
+                "restaurant_name": "Bistro Verde",
+                "city": "Bucuresti",
+                "address": "Strada Test 5",
+                "latitude": "44.437801",
+                "longitude": "26.096928",
+                "description": "Bistro urban",
+                "cuisine_summary": "salate, brunch",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        application = RestaurantApplication.objects.get(contact_email="ana@bistro.test")
+        self.assertEqual(application.status, RestaurantApplication.Status.PENDING)
+        self.assertEqual(application.restaurant_name, "Bistro Verde")
+        self.assertEqual(mock_send_transactional_email.call_count, 2)
+
+    @patch("users.serializers.send_transactional_email")
+    def test_approving_application_creates_prefilled_restaurant_and_owner(self, mock_send_transactional_email):
+        application = RestaurantApplication.objects.create(
+            contact_name="Mihai Ionescu",
+            contact_email="owner@pizza.test",
+            contact_phone="0722222222",
+            restaurant_name="Pizza Nord",
+            city="Cluj",
+            address="Strada Nord 10",
+            latitude="46.770439",
+            longitude="23.591423",
+            description="Pizza artizanală",
+            website_url="https://pizzanord.test",
+            instagram_url="https://instagram.com/pizzanord",
+            tiktok_url="https://tiktok.com/@pizzanord",
+            cuisine_summary="pizza, italian",
+        )
+
+        application.status = RestaurantApplication.Status.APPROVED
+        application.save()
+        application.refresh_from_db()
+
+        self.assertIsNotNone(application.created_owner)
+        self.assertIsNotNone(application.created_restaurant)
+        self.assertEqual(application.created_owner.role, UserRole.RESTAURANT_OWNER)
+        self.assertTrue(application.created_owner.is_active)
+        self.assertFalse(application.created_owner.has_usable_password())
+        self.assertEqual(application.created_restaurant.name, "Pizza Nord")
+        self.assertEqual(application.created_restaurant.city, "Cluj")
+        self.assertEqual(application.created_restaurant.address, "Strada Nord 10")
+        self.assertEqual(str(application.created_restaurant.latitude), "46.770439")
+        self.assertEqual(str(application.created_restaurant.longitude), "23.591423")
+        self.assertEqual(application.created_restaurant.description, "Pizza artizanală")
+        self.assertEqual(application.created_restaurant.website_url, "https://pizzanord.test")
+        self.assertFalse(application.created_restaurant.is_active)
+        mock_send_transactional_email.assert_called_once()

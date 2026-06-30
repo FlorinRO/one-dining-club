@@ -4,9 +4,10 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from django.db.models import Count, Q, Sum
 from rest_framework import serializers
 
+from core.email import EmailDeliveryError, send_transactional_email
 from menus.serializers import ProductCategorySerializer
 from orders.models import OrderStatus, PaymentMethod, PaymentStatus
-from restaurants.models import Restaurant, RestaurantCategory, RestaurantOpeningHours
+from restaurants.models import Restaurant, RestaurantApplication, RestaurantCategory, RestaurantOpeningHours
 from restaurants.ownership import get_primary_restaurant_id_for_owner
 
 MAX_DELIVERY_FEE = Decimal("50.00")
@@ -21,6 +22,72 @@ class RestaurantCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = RestaurantCategory
         fields = ("id", "name", "icon", "is_active")
+
+
+class RestaurantApplicationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RestaurantApplication
+        fields = (
+            "id",
+            "contact_name",
+            "contact_email",
+            "contact_phone",
+            "restaurant_name",
+            "city",
+            "address",
+            "latitude",
+            "longitude",
+            "description",
+            "cuisine_summary",
+        )
+        read_only_fields = ("id",)
+
+    def validate_contact_email(self, value):
+        return value.strip().lower()
+
+    def create(self, validated_data):
+        application = super().create(validated_data)
+        self._notify_support(application)
+        self._notify_applicant(application)
+        return application
+
+    def _notify_support(self, application):
+        try:
+            send_transactional_email(
+                subject=f"Cerere nouă restaurant Yumzy: {application.restaurant_name}",
+                message=(
+                    "A fost trimisă o nouă cerere de onboarding restaurant.\n\n"
+                    f"Restaurant: {application.restaurant_name}\n"
+                    f"Contact: {application.contact_name}\n"
+                    f"Email: {application.contact_email}\n"
+                    f"Telefon: {application.contact_phone}\n"
+                    f"Oraș: {application.city}\n"
+                    f"Adresă: {application.address}\n"
+                    f"Latitudine: {application.latitude or '-'}\n"
+                    f"Longitudine: {application.longitude or '-'}\n"
+                    f"Cuisine: {application.cuisine_summary or '-'}\n"
+                    f"Descriere: {application.description or '-'}\n"
+                ),
+                recipient_list=[self.context["support_email"]],
+            )
+        except EmailDeliveryError:
+            pass
+
+    def _notify_applicant(self, application):
+        try:
+            send_transactional_email(
+                subject="Am primit cererea restaurantului tău pe Yumzy",
+                message=(
+                    f"Salut {application.contact_name},\n\n"
+                    f"Am primit cererea pentru {application.restaurant_name}.\n"
+                    "Echipa Yumzy o va verifica și te va contacta dacă avem nevoie de clarificări.\n\n"
+                    "După aprobare, vei primi un email separat cu linkul de activare al contului de restaurant.\n\n"
+                    "Mulțumim,\nYumzy"
+                ),
+                recipient_list=[application.contact_email],
+            )
+        except EmailDeliveryError:
+            pass
 
 
 class RestaurantOpeningHoursSerializer(serializers.ModelSerializer):
