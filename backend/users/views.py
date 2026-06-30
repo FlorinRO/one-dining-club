@@ -78,13 +78,14 @@ def build_password_reset_result_context(success, detail):
     }
 
 
-def build_password_reset_form_context(*, uid, token, password_error=""):
+def build_password_reset_form_context(*, uid, token, password_error="", confirm_password_error=""):
     return {
         "title": "Setează parola nouă",
         "message": "Alege o parolă nouă pentru contul tău Yumzy.",
         "uid": uid,
         "token": token,
         "password_error": password_error,
+        "confirm_password_error": confirm_password_error,
     }
 
 
@@ -202,7 +203,8 @@ class PasswordResetConfirmPageView(APIView):
             context = build_password_reset_form_context(
                 uid=request.data.get("uid", ""),
                 token=request.data.get("token", ""),
-                password_error=extract_error_message(detail),
+                password_error=extract_error_message(detail.get("new_password", "")),
+                confirm_password_error=extract_error_message(detail.get("confirm_password", "")),
             )
             return render(request, "users/password_reset_form.html", context, status=status.HTTP_400_BAD_REQUEST)
 

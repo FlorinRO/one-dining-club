@@ -80,6 +80,7 @@ class PasswordResetFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Setează parola nouă")
         self.assertContains(response, "Actualizează parola")
+        self.assertContains(response, "Confirmă parola")
 
     def test_public_reset_page_handles_invalid_link(self):
         response = self.client.get("/reset-password/confirm/", {"uid": self.uid, "token": "invalid-token"})
@@ -90,7 +91,12 @@ class PasswordResetFlowTests(TestCase):
     def test_public_reset_post_changes_password_and_renders_success(self):
         response = self.client.post(
             "/reset-password/confirm/",
-            {"uid": self.uid, "token": self.token, "new_password": "NewStrongPass123!"},
+            {
+                "uid": self.uid,
+                "token": self.token,
+                "new_password": "NewStrongPass123!",
+                "confirm_password": "NewStrongPass123!",
+            },
         )
 
         self.assertEqual(response.status_code, 200)
@@ -108,7 +114,12 @@ class PasswordResetFlowTests(TestCase):
     def test_api_reset_post_returns_json_and_changes_password(self):
         response = self.client.post(
             "/api/auth/password-reset/confirm/",
-            {"uid": self.uid, "token": self.token, "new_password": "NewStrongPass123!"},
+            {
+                "uid": self.uid,
+                "token": self.token,
+                "new_password": "NewStrongPass123!",
+                "confirm_password": "NewStrongPass123!",
+            },
             content_type="application/json",
         )
 
@@ -117,6 +128,20 @@ class PasswordResetFlowTests(TestCase):
 
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("NewStrongPass123!"))
+
+    def test_public_reset_post_rejects_mismatched_confirmation(self):
+        response = self.client.post(
+            "/reset-password/confirm/",
+            {
+                "uid": self.uid,
+                "token": self.token,
+                "new_password": "NewStrongPass123!",
+                "confirm_password": "DifferentPass123!",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, "Parolele nu coincid.", status_code=400)
 
 
 class DeleteAccountFlowTests(TestCase):

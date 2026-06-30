@@ -518,9 +518,12 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     uid = serializers.CharField()
     token = serializers.CharField()
     new_password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, min_length=8)
 
     def validate(self, attrs):
         user = validate_password_reset_user(attrs["uid"], attrs["token"])
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError({"confirm_password": "Parolele nu coincid."})
         validate_password(attrs["new_password"], user)
         attrs["user"] = user
         return attrs
