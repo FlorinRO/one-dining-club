@@ -2,6 +2,7 @@ import logging
 import math
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
+from django.conf import settings
 from django.db.models import Count, Q, Sum
 from rest_framework import serializers
 
@@ -10,6 +11,7 @@ from menus.serializers import ProductCategorySerializer
 from orders.models import OrderStatus, PaymentMethod, PaymentStatus
 from restaurants.models import Restaurant, RestaurantApplication, RestaurantCategory, RestaurantOpeningHours
 from restaurants.ownership import get_primary_restaurant_id_for_owner
+from users.serializers import render_transactional_email
 
 MAX_DELIVERY_FEE = Decimal("50.00")
 MAX_MINIMUM_ORDER = Decimal("300.00")
@@ -101,6 +103,22 @@ class RestaurantApplicationCreateSerializer(serializers.ModelSerializer):
                     "Echipa Yumzy o va verifica și te va contacta dacă avem nevoie de clarificări.\n\n"
                     "După aprobare, vei primi un email separat cu linkul de activare al contului de restaurant.\n\n"
                     "Mulțumim,\nYumzy"
+                ),
+                html_message=render_transactional_email(
+                    "users/emails/password_reset.html",
+                    {
+                        "headline": "Am primit cererea restaurantului",
+                        "title_html": "cerere<br />primită",
+                        "intro_text": f"Salut {application.contact_name}, am primit cererea pentru restaurantul tău.",
+                        "body": (
+                            f"Am înregistrat cererea pentru {application.restaurant_name}. "
+                            "Echipa Yumzy o verifică și te contactează dacă avem nevoie de clarificări."
+                        ),
+                        "button_label": "Deschide Yumzy",
+                        "button_url": settings.SITE_URL,
+                        "footnote": "După aprobare, vei primi un email separat cu linkul de activare al contului de restaurant.",
+                        "security_note": "Dacă nu ai trimis această cerere, contactează echipa Yumzy.",
+                    },
                 ),
                 recipient_list=[application.contact_email],
             )

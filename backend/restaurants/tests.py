@@ -435,6 +435,9 @@ class RestaurantApplicationFlowTests(TestCase):
         self.assertEqual(application.status, RestaurantApplication.Status.PENDING)
         self.assertEqual(application.restaurant_name, "Bistro Verde")
         self.assertEqual(mock_send_transactional_email.call_count, 2)
+        applicant_email_call = mock_send_transactional_email.call_args_list[1]
+        self.assertEqual(applicant_email_call.kwargs["recipient_list"], ["ana@bistro.test"])
+        self.assertIn("cerere", applicant_email_call.kwargs["html_message"].lower())
 
     @patch("users.serializers.send_transactional_email")
     def test_approving_application_creates_prefilled_restaurant_and_owner(self, mock_send_transactional_email):
