@@ -31,6 +31,47 @@ const setStatus = (message, tone = "") => {
   }
 };
 
+const modalContent = {
+  terms: {
+    title: "Termeni și condiții",
+    paragraphs: [
+      "Prin folosirea YUMZY, ești de acord să utilizezi aplicația responsabil și doar pentru comenzi, descoperirea restaurantelor și interacțiuni legitime cu serviciul.",
+      "Informațiile despre restaurante, produse, prețuri și disponibilitate pot fi actualizate periodic. Comenzile, plățile și livrările sunt procesate conform condițiilor afișate în aplicație la momentul folosirii.",
+      "Ne rezervăm dreptul de a actualiza acești termeni pentru a reflecta schimbări ale serviciului, cerințe legale sau îmbunătățiri operaționale.",
+    ],
+  },
+  contact: {
+    title: "Contact",
+    paragraphs: [
+      "Pentru întrebări despre cont, comenzi, plăți, restaurante sau suport tehnic, ne poți scrie la support@yumzy.ro.",
+      "Revenim cât mai rapid cu un răspuns și detalii despre pașii următori.",
+    ],
+  },
+};
+
+const infoModal = document.querySelector("#info-modal");
+const modalTitle = document.querySelector("#modal-title");
+const modalBody = document.querySelector("#modal-body");
+const modalClose = document.querySelector(".modal-close");
+const modalButtons = document.querySelectorAll("[data-modal-topic]");
+const footer = document.querySelector(".site-footer");
+
+const openInfoModal = (topic) => {
+  const content = modalContent[topic];
+  if (!content || !infoModal || !modalTitle || !modalBody) return;
+
+  modalTitle.textContent = content.title;
+  modalBody.replaceChildren();
+
+  content.paragraphs.forEach((text) => {
+    const paragraph = document.createElement("p");
+    paragraph.textContent = text;
+    modalBody.append(paragraph);
+  });
+
+  infoModal.showModal();
+};
+
 const formatCoordinate = (value) => Number(value).toFixed(6);
 
 const inferCityFromPlace = (place) => {
@@ -166,5 +207,21 @@ form?.addEventListener("submit", async (event) => {
     setStatus("Nu am putut trimite cererea. Încearcă din nou în câteva minute.", "is-error");
   }
 });
+
+modalButtons.forEach((button) => {
+  button.addEventListener("click", () => openInfoModal(button.dataset.modalTopic));
+});
+
+modalClose?.addEventListener("click", () => infoModal?.close());
+
+infoModal?.addEventListener("click", (event) => {
+  if (event.target === infoModal) {
+    infoModal.close();
+  }
+});
+
+if (footer) {
+  footer.classList.add("is-visible");
+}
 
 bindGoogleAddressAutocomplete();
