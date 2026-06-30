@@ -82,6 +82,17 @@ class PasswordResetFlowTests(TestCase):
         self.assertContains(response, "Actualizează parola")
         self.assertContains(response, "Confirmă parola")
 
+    def test_restaurant_activation_page_uses_restaurant_copy(self):
+        response = self.client.get(
+            "/restaurant-account/activate/",
+            {"uid": self.uid, "token": self.token, "flow": "restaurant_onboarding"},
+            HTTP_USER_AGENT="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Activează contul restaurantului")
+        self.assertContains(response, "dashboardul restaurantului")
+
     def test_public_reset_page_handles_invalid_link(self):
         response = self.client.get("/reset-password/confirm/", {"uid": self.uid, "token": "invalid-token"})
 
@@ -110,6 +121,23 @@ class PasswordResetFlowTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], f"/reset-password/confirm/?uid={self.uid}&token={self.token}")
+
+    def test_restaurant_activation_post_redirects_to_dashboard_copy(self):
+        response = self.client.post(
+            "/restaurant-account/activate/",
+            {
+                "uid": self.uid,
+                "token": self.token,
+                "flow": "restaurant_onboarding",
+                "new_password": "NewStrongPass123!",
+                "confirm_password": "NewStrongPass123!",
+            },
+            HTTP_USER_AGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Cont activat")
+        self.assertContains(response, "Intră în dashboard")
 
     def test_api_reset_post_returns_json_and_changes_password(self):
         response = self.client.post(

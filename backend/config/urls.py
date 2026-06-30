@@ -85,6 +85,7 @@ urlpatterns = [
     path("links/products/<int:product_id>/", ProductSharePageView.as_view(), name="product-share-page"),
     path("verify-email/confirm/", EmailVerificationConfirmPageView.as_view(), name="email-verify-confirm-page"),
     path("reset-password/confirm/", PasswordResetConfirmPageView.as_view(), name="password-reset-confirm-page"),
+    path("restaurant-account/activate/", PasswordResetConfirmPageView.as_view(), name="restaurant-account-activate-page"),
     path("api/auth/register/", RegisterView.as_view(), name="auth-register"),
     path("api/auth/login/", LoginView.as_view(), name="auth-login"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="auth-refresh"),

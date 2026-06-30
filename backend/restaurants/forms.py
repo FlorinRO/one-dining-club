@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 
 from core.email import EmailDeliveryError
 from restaurants.models import Restaurant
@@ -85,6 +86,8 @@ class RestaurantAdminForm(forms.ModelForm):
             try:
                 send_password_reset_email(
                     owner,
+                    flow="restaurant_onboarding",
+                    confirm_url=f"{settings.BACKEND_URL.rstrip('/')}/restaurant-account/activate/?uid={{uid}}&token={{token}}",
                     subject="Activează contul restaurantului în Yumzy",
                     headline="Activează contul restaurantului",
                     title_html="activează<br />contul",

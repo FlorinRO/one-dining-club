@@ -262,6 +262,8 @@ class RestaurantApplication(models.Model):
 
         send_password_reset_email(
             owner,
+            flow="restaurant_onboarding",
+            confirm_url=f"{settings.BACKEND_URL.rstrip('/')}/restaurant-account/activate/?uid={{uid}}&token={{token}}",
             subject="Activează contul restaurantului în Yumzy",
             headline="Activează contul restaurantului",
             title_html="cont restaurant<br />aprobat",

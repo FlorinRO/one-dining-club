@@ -390,6 +390,8 @@ class RestaurantAdminProvisioningTests(TestCase):
         self.assertEqual(restaurant.email, owner.email)
         mock_send_password_reset_email.assert_called_once_with(
             owner,
+            flow="restaurant_onboarding",
+            confirm_url="https://yumzy.ro/restaurant-account/activate/?uid={uid}&token={token}",
             subject="Activează contul restaurantului în Yumzy",
             headline="Activează contul restaurantului",
             title_html="activează<br />contul",

@@ -68,22 +68,56 @@ def build_email_verification_page_context(success, detail):
     }
 
 
-def build_password_reset_result_context(success, detail):
+def is_mobile_request(request):
+    user_agent = (request.META.get("HTTP_USER_AGENT") or "").lower()
+    return any(marker in user_agent for marker in ("iphone", "android", "ipad", "mobile", "ipod"))
+
+
+def build_password_reset_result_context(success, detail, *, flow="password_reset", is_mobile=False):
+    if flow == "restaurant_onboarding":
+        return {
+            "success": success,
+            "title": "Cont activat" if success else "Link invalid sau expirat",
+            "message": detail,
+            "primary_action_url": settings.RESTAURANT_DASHBOARD_URL,
+            "primary_action_label": "Deschide dashboardul" if is_mobile else "Intră în dashboard",
+            "secondary_action_url": settings.SITE_URL if success else f"mailto:{settings.SUPPORT_EMAIL}",
+            "secondary_action_label": "Mergi la Yumzy" if success else "Contactează suportul",
+            "support_email": settings.SUPPORT_EMAIL,
+        }
     return {
         "success": success,
         "title": "Parolă resetată" if success else "Link invalid sau expirat",
         "message": detail,
-        "app_url": settings.EMAIL_VERIFICATION_APP_URL,
+        "primary_action_url": settings.EMAIL_VERIFICATION_APP_URL if is_mobile else settings.FRONTEND_URL,
+        "primary_action_label": "Deschide aplicația" if is_mobile else "Deschide Yumzy",
+        "secondary_action_url": settings.FRONTEND_URL if success else f"mailto:{settings.SUPPORT_EMAIL}",
+        "secondary_action_label": "Intră în cont" if success else "Contactează suportul",
         "support_email": settings.SUPPORT_EMAIL,
     }
 
 
-def build_password_reset_form_context(*, uid, token, password_error="", confirm_password_error=""):
+def build_password_reset_form_context(
+    *, uid, token, flow="password_reset", is_mobile=False, password_error="", confirm_password_error=""
+):
+    if flow == "restaurant_onboarding":
+        return {
+            "title": "Activează contul restaurantului",
+            "message": "Setează parola pentru a intra în dashboardul restaurantului tău.",
+            "uid": uid,
+            "token": token,
+            "flow": flow,
+            "is_mobile": is_mobile,
+            "password_error": password_error,
+            "confirm_password_error": confirm_password_error,
+        }
     return {
         "title": "Setează parola nouă",
         "message": "Alege o parolă nouă pentru contul tău Yumzy.",
         "uid": uid,
         "token": token,
+        "flow": flow,
+        "is_mobile": is_mobile,
         "password_error": password_error,
         "confirm_password_error": confirm_password_error,
     }
@@ -169,20 +203,28 @@ class PasswordResetConfirmPageView(APIView):
     def get(self, request):
         uid = request.query_params.get("uid", "")
         token = request.query_params.get("token", "")
+        flow = request.query_params.get("flow", "password_reset")
+        is_mobile = is_mobile_request(request)
         try:
             validate_password_reset_user(uid, token)
         except ValidationError as exc:
             context = build_password_reset_result_context(
                 success=False,
                 detail=extract_error_message(exc.detail),
+                flow=flow,
+                is_mobile=is_mobile,
             )
             return render(request, "users/password_reset_result.html", context, status=status.HTTP_400_BAD_REQUEST)
 
-        context = build_password_reset_form_context(uid=uid, token=token)
+        context = build_password_reset_form_context(uid=uid, token=token, flow=flow, is_mobile=is_mobile)
         return render(request, "users/password_reset_form.html", context, status=status.HTTP_200_OK)
 
     def post(self, request):
-        serializer = PasswordResetConfirmSerializer(data=request.data)
+        flow = request.data.get("flow", "password_reset")
+        is_mobile = is_mobile_request(request)
+        payload = request.data.copy()
+        payload.pop("flow", None)
+        serializer = PasswordResetConfirmSerializer(data=payload)
         try:
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -192,6 +234,8 @@ class PasswordResetConfirmPageView(APIView):
                 context = build_password_reset_result_context(
                     success=False,
                     detail=extract_error_message(detail),
+                    flow=flow,
+                    is_mobile=is_mobile,
                 )
                 return render(
                     request,
@@ -203,6 +247,8 @@ class PasswordResetConfirmPageView(APIView):
             context = build_password_reset_form_context(
                 uid=request.data.get("uid", ""),
                 token=request.data.get("token", ""),
+                flow=flow,
+                is_mobile=is_mobile,
                 password_error=extract_error_message(detail.get("new_password", "")),
                 confirm_password_error=extract_error_message(detail.get("confirm_password", "")),
             )
@@ -210,7 +256,13 @@ class PasswordResetConfirmPageView(APIView):
 
         context = build_password_reset_result_context(
             success=True,
-            detail="Parola ta a fost actualizată. Poți reveni în aplicație și te poți autentifica.",
+            detail=(
+                "Parola a fost setată. Poți intra acum în dashboardul restaurantului."
+                if flow == "restaurant_onboarding"
+                else "Parola ta a fost actualizată. Poți reveni în aplicație și te poți autentifica."
+            ),
+            flow=flow,
+            is_mobile=is_mobile,
         )
         return render(request, "users/password_reset_result.html", context, status=status.HTTP_200_OK)
 
@@ -220,20 +272,35 @@ class PasswordResetPreviewPageView(APIView):
 
     def get(self, request):
         mode = request.query_params.get("mode", "form").strip().lower()
+        flow = request.query_params.get("flow", "password_reset")
+        is_mobile = is_mobile_request(request)
         if mode == "success":
             context = build_password_reset_result_context(
                 success=True,
-                detail="Parola ta a fost actualizată. Poți reveni în aplicație și te poți autentifica.",
+                detail=(
+                    "Parola a fost setată. Poți intra acum în dashboardul restaurantului."
+                    if flow == "restaurant_onboarding"
+                    else "Parola ta a fost actualizată. Poți reveni în aplicație și te poți autentifica."
+                ),
+                flow=flow,
+                is_mobile=is_mobile,
             )
             return render(request, "users/password_reset_result.html", context, status=status.HTTP_200_OK)
         if mode == "invalid":
             context = build_password_reset_result_context(
                 success=False,
-                detail="Linkul pentru resetarea parolei este invalid sau a expirat. Cere un link nou din aplicație.",
+                detail="Linkul este invalid sau a expirat. Cere un link nou din emailul primit.",
+                flow=flow,
+                is_mobile=is_mobile,
             )
             return render(request, "users/password_reset_result.html", context, status=status.HTTP_400_BAD_REQUEST)
 
-        context = build_password_reset_form_context(uid="preview-uid", token="preview-token")
+        context = build_password_reset_form_context(
+            uid="preview-uid",
+            token="preview-token",
+            flow=flow,
+            is_mobile=is_mobile,
+        )
         return render(request, "users/password_reset_form.html", context, status=status.HTTP_200_OK)
 
 

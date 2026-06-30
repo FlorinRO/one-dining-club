@@ -1,7 +1,7 @@
 import json
 import logging
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
 from urllib.request import Request, urlopen
 
 from django.conf import settings
@@ -213,10 +213,16 @@ def send_welcome_email(user):
     )
 
 
-def build_password_reset(user):
+def build_password_reset(user, *, flow=None, confirm_url=None):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
-    url = settings.PASSWORD_RESET_CONFIRM_URL.format(uid=uid, token=token)
+    base_url = confirm_url or settings.PASSWORD_RESET_CONFIRM_URL
+    url = base_url.format(uid=uid, token=token)
+    if flow:
+        parsed = urlsplit(url)
+        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        query["flow"] = flow
+        url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
     return {"uid": uid, "token": token, "url": url}
 
 
@@ -234,6 +240,8 @@ def render_transactional_email(template_name, context):
 def send_password_reset_email(
     user,
     *,
+    flow=None,
+    confirm_url=None,
     subject="Resetare parola Yumzy",
     headline="Resetează parola",
     title_html="resetare<br />parolă",
@@ -244,7 +252,7 @@ def send_password_reset_email(
     intro_text="Am primit o cerere de resetare a parolei pentru contul tău Yumzy.",
     security_note="Dacă nu ai cerut schimbarea parolei, nu este nevoie să faci nimic. Contul tău rămâne în siguranță.",
 ):
-    reset = build_password_reset(user)
+    reset = build_password_reset(user, flow=flow, confirm_url=confirm_url)
     send_transactional_email(
         subject=subject,
         message=(
