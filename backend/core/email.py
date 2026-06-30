@@ -54,7 +54,7 @@ def _send_via_sendgrid(*, subject, message, recipient_list, html_message, from_e
 
 def send_transactional_email(*, subject, message, recipient_list, html_message=None, from_email=None, provider=None):
     sender = from_email or settings.DEFAULT_FROM_EMAIL
-    delivery_provider = (provider or settings.EMAIL_DELIVERY_PROVIDER).strip().lower()
+    delivery_provider = (provider or settings.EMAIL_DELIVERY_PROVIDER or "django").strip().lower()
     try:
         if delivery_provider == "sendgrid":
             if not settings.SENDGRID_API_KEY:

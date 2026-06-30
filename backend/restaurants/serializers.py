@@ -1,3 +1,4 @@
+import logging
 import math
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
@@ -16,6 +17,7 @@ MIN_DELIVERY_TIME_MINUTES = 10
 MAX_DELIVERY_TIME_MINUTES = 180
 IDENTITY_LOCKED_ERROR = "Numele și orașul pot fi completate o singură dată. Pentru modificări, contactează support@yumzy.ro."
 COORDINATE_PRECISION = Decimal("0.000001")
+logger = logging.getLogger(__name__)
 
 
 class RestaurantCategorySerializer(serializers.ModelSerializer):
@@ -52,6 +54,7 @@ class RestaurantApplicationCreateSerializer(serializers.ModelSerializer):
         return application
 
     def _notify_support(self, application):
+        support_email = self.context["support_email"]
         try:
             send_transactional_email(
                 subject=f"Cerere nouă restaurant Yumzy: {application.restaurant_name}",
@@ -68,12 +71,25 @@ class RestaurantApplicationCreateSerializer(serializers.ModelSerializer):
                     f"Cuisine: {application.cuisine_summary or '-'}\n"
                     f"Descriere: {application.description or '-'}\n"
                 ),
-                from_email=self.context["support_email"],
-                provider="django",
-                recipient_list=[self.context["support_email"]],
+                recipient_list=[support_email],
+            )
+            logger.info(
+                "Restaurant application support email sent.",
+                extra={
+                    "restaurant_application_id": application.id,
+                    "restaurant_name": application.restaurant_name,
+                    "recipient": support_email,
+                },
             )
         except EmailDeliveryError:
-            pass
+            logger.exception(
+                "Restaurant application support email failed.",
+                extra={
+                    "restaurant_application_id": application.id,
+                    "restaurant_name": application.restaurant_name,
+                    "recipient": support_email,
+                },
+            )
 
     def _notify_applicant(self, application):
         try:
