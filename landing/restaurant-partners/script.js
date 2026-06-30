@@ -55,6 +55,14 @@ const modalBody = document.querySelector("#modal-body");
 const modalClose = document.querySelector(".modal-close");
 const modalButtons = document.querySelectorAll("[data-modal-topic]");
 const footer = document.querySelector(".site-footer");
+const mobileRevealButton = document.querySelector("#partner-mobile-cta");
+const mobileViewport = window.matchMedia("(max-width: 560px)");
+const mobileProgress = document.querySelector("#partner-mobile-progress");
+const mobileBackButton = document.querySelector("#partner-step-back");
+const mobileNextButton = document.querySelector("#partner-step-next");
+const mobileSubmitButton = document.querySelector(".partner-submit");
+const mobileStepFields = Array.from(document.querySelectorAll(".partner-step"));
+let currentMobileStep = 0;
 
 const openInfoModal = (topic) => {
   const content = modalContent[topic];
@@ -157,6 +165,56 @@ const bindGoogleAddressAutocomplete = () => {
     });
 };
 
+const isMobileWizardActive = () =>
+  mobileViewport.matches &&
+  document.body.classList.contains("mobile-gate") &&
+  document.body.classList.contains("is-expanded");
+
+const updateMobileWizard = () => {
+  if (!form) return;
+
+  const wizardActive = isMobileWizardActive();
+  const totalSteps = mobileStepFields.length;
+
+  mobileStepFields.forEach((field, index) => {
+    const isActive = wizardActive && index === currentMobileStep;
+    field.classList.toggle("is-active", isActive);
+    field.toggleAttribute("hidden", wizardActive && !isActive);
+  });
+
+  if (mobileProgress) {
+    mobileProgress.textContent =
+      wizardActive ? `Pasul ${currentMobileStep + 1} din ${totalSteps}` : "";
+  }
+
+  if (mobileBackButton) {
+    mobileBackButton.hidden = !wizardActive || currentMobileStep === 0;
+  }
+
+  if (mobileNextButton) {
+    mobileNextButton.hidden = !wizardActive || currentMobileStep === totalSteps - 1;
+  }
+
+  if (mobileSubmitButton) {
+    mobileSubmitButton.classList.toggle("is-active", wizardActive && currentMobileStep === totalSteps - 1);
+  }
+};
+
+const focusCurrentMobileStep = () => {
+  if (!isMobileWizardActive()) return;
+  mobileStepFields[currentMobileStep]?.querySelector("input, textarea, select")?.focus();
+};
+
+const validateCurrentMobileStep = () => {
+  const input = mobileStepFields[currentMobileStep]?.querySelector("input, textarea, select");
+  if (!input) return true;
+  if (!input.checkValidity()) {
+    input.reportValidity();
+    return false;
+  }
+  return true;
+};
+
 form?.addEventListener("submit", async (event) => {
   event.preventDefault();
   setStatus("Trimitem cererea...");
@@ -199,6 +257,8 @@ form?.addEventListener("submit", async (event) => {
     }
 
     form.reset();
+    currentMobileStep = 0;
+    updateMobileWizard();
     setStatus(
       data.detail || "Cererea a fost trimisă. Vei primi pe email confirmarea de primire.",
       "is-success",
@@ -224,4 +284,50 @@ if (footer) {
   footer.classList.add("is-visible");
 }
 
+const syncMobileGate = () => {
+  if (!document.body.classList.contains("partner-page")) return;
+
+  if (mobileViewport.matches) {
+    document.body.classList.add("mobile-gate");
+  } else {
+    document.body.classList.remove("mobile-gate", "is-expanded");
+  }
+
+  updateMobileWizard();
+};
+
+mobileRevealButton?.addEventListener("click", () => {
+  if (!mobileViewport.matches) return;
+  currentMobileStep = 0;
+  document.body.classList.add("mobile-gate", "is-expanded");
+  updateMobileWizard();
+  requestAnimationFrame(() => {
+    document.querySelector(".partner-form-wrap")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    focusCurrentMobileStep();
+  });
+});
+
+mobileBackButton?.addEventListener("click", () => {
+  if (!isMobileWizardActive() || currentMobileStep === 0) return;
+  currentMobileStep -= 1;
+  updateMobileWizard();
+  focusCurrentMobileStep();
+});
+
+mobileNextButton?.addEventListener("click", () => {
+  if (!isMobileWizardActive()) return;
+  if (!validateCurrentMobileStep()) return;
+  currentMobileStep = Math.min(currentMobileStep + 1, mobileStepFields.length - 1);
+  updateMobileWizard();
+  focusCurrentMobileStep();
+});
+
+syncMobileGate();
+if (typeof mobileViewport.addEventListener === "function") {
+  mobileViewport.addEventListener("change", syncMobileGate);
+} else if (typeof mobileViewport.addListener === "function") {
+  mobileViewport.addListener(syncMobileGate);
+}
+
 bindGoogleAddressAutocomplete();
+updateMobileWizard();

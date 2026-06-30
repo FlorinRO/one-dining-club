@@ -133,6 +133,19 @@
         color: var(--green);
       }
 
+      .partner-mobile-cta {
+        display: none;
+      }
+
+      .partner-mobile-brand {
+        display: none;
+      }
+
+      .partner-mobile-progress,
+      .partner-mobile-actions {
+        display: none;
+      }
+
       .partner-lead {
         color: var(--muted);
         max-width: 44ch;
@@ -242,6 +255,44 @@
         color: rgba(255, 255, 255, 0.4);
       }
 
+      .pac-container {
+        z-index: 10000 !important;
+        margin-top: 8px;
+        border: 1px solid rgba(103, 212, 138, 0.16);
+        border-radius: 18px;
+        background: rgba(10, 12, 10, 0.96);
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
+        backdrop-filter: blur(18px);
+        overflow: hidden;
+      }
+
+      .pac-item {
+        padding: 12px 14px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.82);
+        background: transparent;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .pac-item:first-child {
+        border-top: 0;
+      }
+
+      .pac-item:hover,
+      .pac-item-selected {
+        background: rgba(103, 212, 138, 0.12);
+      }
+
+      .pac-item-query {
+        color: #fff;
+        font-size: 14px;
+      }
+
+      .pac-matched {
+        color: var(--green);
+      }
+
       .partner-field textarea {
         min-height: 126px;
         resize: vertical;
@@ -280,6 +331,29 @@
         width: 18px;
         height: 18px;
         display: inline-block;
+      }
+
+      .partner-step-back,
+      .partner-step-next {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0 18px;
+        border-radius: 16px;
+        font-weight: 600;
+      }
+
+      .partner-step-back {
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: transparent;
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .partner-step-next {
+        border: 2px solid var(--green);
+        background: rgba(103, 212, 138, 0.08);
+        color: var(--green);
       }
 
       .partner-status {
@@ -358,6 +432,12 @@
       }
 
       @media (max-width: 560px) {
+        .site-shell {
+          display: flex;
+          flex-direction: column;
+          min-height: 100dvh;
+        }
+
         .partner-shell {
           width: min(100% - 20px, 430px);
           padding-top: 22px;
@@ -373,26 +453,56 @@
           max-width: 100%;
         }
 
-        .partner-intro {
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 22px;
-          background: rgba(10, 12, 10, 0.34);
-          backdrop-filter: blur(16px);
-          padding: 18px 16px;
+        .partner-mobile-cta {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          min-height: 52px;
+          margin-top: 18px;
+          padding: 0 22px;
+          border: 2px solid var(--green);
+          border-radius: 18px;
+          background: rgba(103, 212, 138, 0.08);
+          color: var(--green);
+          font-size: 15px;
+          font-weight: 600;
+        }
+
+        .partner-mobile-brand {
+          display: none;
         }
 
         .partner-form-wrap {
-          border: 1px solid rgba(103, 212, 138, 0.14);
-          border-radius: 24px;
-          background:
-            linear-gradient(180deg, rgba(14, 17, 14, 0.92), rgba(10, 12, 10, 0.88));
-          box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
-          backdrop-filter: blur(18px);
-          padding: 20px 16px 18px;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          box-shadow: none;
+          backdrop-filter: none;
+          padding: 0;
+          transition:
+            opacity 260ms ease,
+            transform 260ms ease,
+            max-height 320ms ease,
+            margin-top 260ms ease,
+            padding 260ms ease,
+            border-color 260ms ease;
+        }
+
+        .partner-intro {
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          backdrop-filter: none;
+          padding: 0;
         }
 
         .partner-form {
           gap: 12px;
+        }
+
+        .partner-form-header {
+          margin-bottom: 6px;
         }
 
         .partner-form h2 {
@@ -416,16 +526,20 @@
           color: rgba(255, 255, 255, 0.78);
         }
 
+        .partner-mobile-progress {
+          display: block;
+          margin: 0 0 4px;
+          color: rgba(255, 255, 255, 0.58);
+          font-size: 12px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
         .partner-point {
           grid-template-columns: auto 1fr;
           gap: 12px;
           border-radius: 18px;
           padding: 14px 14px;
-        }
-
-        .partner-form-grid:first-of-type {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 10px;
         }
 
         .partner-point-icon {
@@ -467,6 +581,130 @@
           margin-top: 4px;
           font-size: 13px;
         }
+
+        .partner-mobile-actions {
+          display: none;
+          gap: 10px;
+          margin-top: 8px;
+        }
+
+        .partner-mobile-actions > * {
+          flex: 1 1 0;
+        }
+
+        body.partner-page.mobile-gate .partner-shell {
+          display: flex !important;
+          flex-direction: column;
+          justify-content: center;
+          min-height: calc(100dvh - 300px) !important;
+          flex: 1 0 auto;
+        }
+
+        body.partner-page.mobile-gate .partner-grid {
+          display: block;
+        }
+
+        body.partner-page.mobile-gate .partner-intro {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          min-height: auto;
+          padding-top: 0;
+          padding-bottom: 0;
+        }
+
+        body.partner-page.mobile-gate .partner-title {
+          max-width: 10ch;
+          margin: 0 auto;
+        }
+
+        body.partner-page.mobile-gate .partner-points {
+          display: none;
+        }
+
+        body.partner-page.mobile-gate .partner-form-wrap {
+          opacity: 0;
+          transform: translateY(20px);
+          max-height: 0;
+          overflow: hidden !important;
+          pointer-events: none;
+          margin-top: 0;
+          padding-top: 0;
+          padding-bottom: 0;
+          border-color: transparent;
+        }
+
+        body.partner-page.mobile-gate.is-expanded .partner-shell {
+          display: block !important;
+          min-height: auto !important;
+          flex: 1 0 auto;
+        }
+
+        body.partner-page.mobile-gate.is-expanded .partner-intro {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: auto;
+          text-align: center;
+          margin-bottom: 36px;
+          padding-top: 10px;
+        }
+
+        body.partner-page.mobile-gate.is-expanded .partner-mobile-cta {
+          display: none;
+        }
+
+        body.partner-page.mobile-gate.is-expanded .partner-title,
+        body.partner-page.mobile-gate.is-expanded .partner-points {
+          display: none;
+        }
+
+        body.partner-page.mobile-gate.is-expanded .partner-mobile-brand {
+          display: inline-flex;
+        }
+
+        body.partner-page.mobile-gate.is-expanded .partner-form-wrap {
+          opacity: 1;
+          transform: translateY(0);
+          max-height: 1200px;
+          overflow: visible !important;
+          pointer-events: auto;
+          margin-top: 132px;
+          padding-top: 0;
+          padding-bottom: 0;
+          border-color: transparent;
+        }
+
+        body.partner-page.mobile-gate.is-expanded .partner-form-grid {
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+
+        body.partner-page.mobile-gate.is-expanded .partner-step {
+          display: none;
+        }
+
+        body.partner-page.mobile-gate.is-expanded .partner-step.is-active {
+          display: grid;
+        }
+
+        body.partner-page.mobile-gate.is-expanded .partner-mobile-actions {
+          display: flex;
+        }
+
+        body.partner-page.mobile-gate.is-expanded .partner-submit {
+          display: none;
+        }
+
+        body.partner-page.mobile-gate.is-expanded .partner-submit.is-active {
+          display: inline-flex;
+        }
+
+        .site-footer {
+          margin-top: auto;
+        }
       }
     </style>
   </head>
@@ -482,6 +720,13 @@
           <h1 class="partner-title">
             Aplică pentru listarea restaurantului tău<span class="partner-title-dot">.</span>
           </h1>
+          <a class="partner-mobile-brand brand brand-large" href="/" aria-label="YUMZY home">
+            <span class="logo-word">YUMZ<span>Y</span></span>
+            <span class="logo-line" aria-hidden="true"><i></i><b></b></span>
+          </a>
+          <button class="partner-mobile-cta" id="partner-mobile-cta" type="button">
+            <span>Completează formularul aici</span>
+          </button>
 
           <div class="partner-points">
             <div class="partner-point">
@@ -524,32 +769,35 @@
 
         <article class="partner-form-wrap">
           <form class="partner-form" id="restaurant-application-form">
-            <h2>Înscriere restaurant</h2>
-            <p>Datele aprobate vor apărea deja precompletate în dashboardul restaurantului.</p>
+            <div class="partner-form-header">
+              <h2>Înscriere restaurant</h2>
+              <p>Datele aprobate vor apărea deja precompletate în dashboardul restaurantului.</p>
+            </div>
+            <p class="partner-mobile-progress" id="partner-mobile-progress" aria-live="polite"></p>
 
             <div class="partner-form-grid">
-              <div class="partner-field">
+              <div class="partner-field partner-step" data-step="0">
                 <label for="contact_name">Persoană de contact</label>
                 <input id="contact_name" name="contact_name" required />
               </div>
-              <div class="partner-field">
+              <div class="partner-field partner-step" data-step="1">
                 <label for="contact_phone">Telefon</label>
                 <input id="contact_phone" name="contact_phone" required />
               </div>
             </div>
 
             <div class="partner-form-grid">
-              <div class="partner-field">
+              <div class="partner-field partner-step" data-step="2">
                 <label for="contact_email">Email</label>
                 <input id="contact_email" name="contact_email" type="email" required />
               </div>
-              <div class="partner-field">
+              <div class="partner-field partner-step" data-step="3">
                 <label for="restaurant_name">Nume restaurant</label>
                 <input id="restaurant_name" name="restaurant_name" required />
               </div>
             </div>
 
-            <div class="partner-field">
+            <div class="partner-field partner-step" data-step="4">
               <label for="location_address">Adresă restaurant</label>
               <input
                 id="location_address"
@@ -566,9 +814,14 @@
             <input id="latitude" name="latitude" type="hidden" />
             <input id="longitude" name="longitude" type="hidden" />
 
-            <div class="partner-field">
+            <div class="partner-field partner-step" data-step="5">
               <label for="cuisine_summary">Tip bucătărie</label>
               <input id="cuisine_summary" name="cuisine_summary" placeholder="ex: pizza, burgeri, sushi, brunch" />
+            </div>
+
+            <div class="partner-mobile-actions">
+              <button class="partner-step-back" id="partner-step-back" type="button">Înapoi</button>
+              <button class="partner-step-next" id="partner-step-next" type="button">Next</button>
             </div>
 
             <button class="button button-primary partner-submit" type="submit">
@@ -587,6 +840,7 @@
       <footer class="site-footer" aria-label="Linkuri legale și contact">
         <div class="footer-mobile-spacer footer-desktop">
           <nav class="footer-links" aria-label="Footer">
+            <a href="/">Acasă</a>
             <a href="/dashboard/">Restaurant dashboard</a>
             <a href="/restaurant-partners/">Înscrie restaurant</a>
             <button type="button" data-modal-topic="terms">Termeni și condiții</button>
@@ -599,6 +853,7 @@
             <div class="d-flex align-items-start justify-content-between gap-4 pb-4 border-bottom border-light border-opacity-10">
               <div class="footer-bootstrap-links">
                 <div class="d-grid gap-2 footer-bootstrap-link-stack">
+                  <a href="/">Acasă</a>
                   <a href="/dashboard/">Restaurant dashboard</a>
                   <a href="/restaurant-partners/">Înscrie restaurant</a>
                   <button type="button" data-modal-topic="terms">Termeni și condiții</button>
@@ -606,7 +861,7 @@
                   <button type="button" data-modal-topic="contact">Contact</button>
                 </div>
               </div>
-              <a class="footer-bootstrap-icon" href="#top" aria-label="YUMZY home">
+              <a class="footer-bootstrap-icon" href="/" aria-label="YUMZY home">
                 <img src="../assets/ios-icon-yumzy.png" alt="YUMZY icon" />
               </a>
             </div>
