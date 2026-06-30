@@ -142,7 +142,7 @@ class RestaurantApplicationCreateView(generics.CreateAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["support_email"] = settings.SUPPORT_EMAIL
+        context["support_email"] = settings.SUPPORT_NOTIFICATIONS_EMAIL
         return context
 
     def create(self, request, *args, **kwargs):
