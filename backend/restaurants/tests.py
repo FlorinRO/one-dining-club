@@ -392,6 +392,7 @@ class RestaurantAdminProvisioningTests(TestCase):
             owner,
             subject="Activează contul restaurantului în Yumzy",
             headline="Activează contul restaurantului",
+            title_html="activează<br />contul",
             body=(
                 f"Contul pentru {restaurant.name} este pregătit. "
                 "Apasă pe butonul de mai jos pentru a seta parola și a intra în dashboard."
@@ -399,6 +400,8 @@ class RestaurantAdminProvisioningTests(TestCase):
             button_label="Activează contul",
             footnote="Dacă nu te așteptai la acest mesaj, contactează echipa Yumzy.",
             intro_message=f"Contul restaurantului {restaurant.name} a fost creat în Yumzy.",
+            intro_text="Contul restaurantului tău este pregătit. Setează parola și intră în dashboard.",
+            security_note="Dacă nu te așteptai la acest mesaj, contactează echipa Yumzy.",
         )
 
 

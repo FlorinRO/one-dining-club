@@ -236,10 +236,13 @@ def send_password_reset_email(
     *,
     subject="Resetare parola Yumzy",
     headline="Resetează parola",
+    title_html="resetare<br />parolă",
     body="Apasă pe butonul de mai jos pentru a seta o parolă nouă pentru contul tău Yumzy.",
     button_label="Setează parola nouă",
     footnote="Dacă nu ai cerut resetarea parolei, poți ignora acest mesaj.",
     intro_message="Ai cerut resetarea parolei pentru contul Yumzy.",
+    intro_text="Am primit o cerere de resetare a parolei pentru contul tău Yumzy.",
+    security_note="Dacă nu ai cerut schimbarea parolei, nu este nevoie să faci nimic. Contul tău rămâne în siguranță.",
 ):
     reset = build_password_reset(user)
     send_transactional_email(
@@ -253,10 +256,13 @@ def send_password_reset_email(
             "users/emails/password_reset.html",
             {
                 "headline": headline,
+                "title_html": title_html,
+                "intro_text": intro_text,
                 "body": body,
                 "button_label": button_label,
                 "button_url": reset["url"],
                 "footnote": footnote,
+                "security_note": security_note,
             },
         ),
         recipient_list=[user.email],
