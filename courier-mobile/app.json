@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "owner": "connectionpoint",
+    "name": "YUMZY Courier",
+    "slug": "one-dining-club-courier",
+    "scheme": "onediningcourier",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0A0A0A"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "club.onedining.courier",
+      "associatedDomains": [
+        "applinks:api.yumzy.ro"
+      ],
+      "icon": "./assets/ios-icon-yumzy.png",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "YUMZY Courier uses your location while you work to send live courier location updates and help you navigate active deliveries.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "club.onedining.courier",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-video",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "YUMZY Courier uses your location while you work to send live courier location updates and help you navigate active deliveries."
+        }
+      ]
+    ],
+    "extra": {
+      "productionApiUrl": "https://api.yumzy.ro/api",
+      "eas": {
+        "projectId": "d84264ea-fb7b-4d5e-8d1c-9d7cfb237cdf"
+      }
+    }
+  }
+}

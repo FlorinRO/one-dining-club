@@ -93,6 +93,18 @@ class PasswordResetFlowTests(TestCase):
         self.assertContains(response, "Activează contul restaurantului")
         self.assertContains(response, "dashboardul restaurantului")
 
+    def test_courier_reset_page_uses_courier_copy(self):
+        response = self.client.get(
+            "/reset-password/confirm/",
+            {"uid": self.uid, "token": self.token, "flow": "courier"},
+            HTTP_USER_AGENT="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Reset your courier password")
+        self.assertContains(response, "Choose a new password for your YUMZY Courier account.")
+        self.assertContains(response, "Update password")
+
     def test_public_reset_page_handles_invalid_link(self):
         response = self.client.get("/reset-password/confirm/", {"uid": self.uid, "token": "invalid-token"})
 
@@ -156,6 +168,28 @@ class PasswordResetFlowTests(TestCase):
 
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("NewStrongPass123!"))
+
+    @patch("users.serializers.send_password_reset_email")
+    def test_password_reset_request_uses_courier_flow_for_courier_accounts(self, mock_send_password_reset_email):
+        courier = User.objects.create_user(
+            email="courier-reset@example.com",
+            password="StrongPass123!",
+            role=UserRole.COURIER,
+            is_active=True,
+        )
+
+        response = self.client.post(
+            "/api/auth/password-reset/",
+            {"email": courier.email, "flow": "courier"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        mock_send_password_reset_email.assert_called_once()
+        args, kwargs = mock_send_password_reset_email.call_args
+        self.assertEqual(args[0], courier)
+        self.assertEqual(kwargs["flow"], "courier")
+        self.assertEqual(kwargs["subject"], "Reset your YUMZY Courier password")
 
     def test_public_reset_post_rejects_mismatched_confirmation(self):
         response = self.client.post(

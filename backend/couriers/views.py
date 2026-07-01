@@ -3,7 +3,7 @@ from rest_framework import decorators, response, status, views, viewsets
 
 from core.permissions import IsCourier
 from couriers.models import CourierProfile, Delivery, DeliveryStatus
-from couriers.serializers import CourierLocationSerializer, CourierProfileSerializer
+from couriers.serializers import CourierProfileSerializer, CourierProfileUpdateSerializer
 from orders.history import log_order_courier_assigned, log_order_status_changed
 from orders.models import Order, OrderStatus
 from orders.notifications import queue_order_status_push
@@ -34,21 +34,20 @@ class CourierOrderViewSet(viewsets.ReadOnlyModelViewSet):
         if order.order_status != OrderStatus.READY_FOR_PICKUP:
             return response.Response({"detail": "Order is not ready for pickup."}, status=status.HTTP_400_BAD_REQUEST)
 
-        previous_status = order.order_status
         order.courier = request.user
-        order.order_status = OrderStatus.PICKED_UP
-        order.save(update_fields=("courier", "order_status", "updated_at"))
+        order.save(update_fields=("courier", "updated_at"))
         log_order_courier_assigned(order, courier=request.user, actor=request.user, source="courier")
-        log_order_status_changed(order, previous_status=previous_status, actor=request.user, source="courier")
-        queue_order_status_push(order, previous_status=previous_status, source="courier")
-        Delivery.objects.get_or_create(
+        delivery, created = Delivery.objects.get_or_create(
             order=order,
             defaults={
                 "courier": request.user,
-                "pickup_time": timezone.now(),
-                "status": DeliveryStatus.PICKED_UP,
+                "status": DeliveryStatus.ASSIGNED,
             },
         )
+        if not created:
+            delivery.courier = request.user
+            delivery.status = DeliveryStatus.ASSIGNED
+            delivery.save(update_fields=("courier", "status"))
         order.refresh_from_db()
         return response.Response(OrderSerializer(order, context={"request": request}).data)
 
@@ -86,13 +85,20 @@ class CourierOrderViewSet(viewsets.ReadOnlyModelViewSet):
 class CourierProfileView(views.APIView):
     permission_classes = (IsCourier,)
 
-    def patch(self, request):
-        serializer = CourierLocationSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        profile, _ = CourierProfile.objects.get_or_create(
+    def get_profile(self, request):
+        return CourierProfile.objects.get_or_create(
             user=request.user,
             defaults={"phone": request.user.phone or ""},
-        )
+        )[0]
+
+    def get(self, request):
+        profile = self.get_profile(request)
+        return response.Response(CourierProfileSerializer(profile).data)
+
+    def patch(self, request):
+        serializer = CourierProfileUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        profile = self.get_profile(request)
         for field, value in serializer.validated_data.items():
             setattr(profile, field, value)
         profile.save()

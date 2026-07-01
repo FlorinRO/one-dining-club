@@ -79,21 +79,41 @@ def build_password_reset_result_context(success, detail, *, flow="password_reset
             "success": success,
             "title": "Cont activat" if success else "Link invalid sau expirat",
             "message": detail,
+            "flow": flow,
             "primary_action_url": settings.RESTAURANT_DASHBOARD_URL,
             "primary_action_label": "Deschide dashboardul" if is_mobile else "Intră în dashboard",
             "secondary_action_url": settings.SITE_URL if success else f"mailto:{settings.SUPPORT_EMAIL}",
             "secondary_action_label": "Mergi la Yumzy" if success else "Contactează suportul",
             "support_email": settings.SUPPORT_EMAIL,
+            "app_url": settings.RESTAURANT_DASHBOARD_URL,
+            "app_name": "Yumzy",
+        }
+    if flow == "courier":
+        return {
+            "success": success,
+            "title": "Password updated" if success else "Link invalid or expired",
+            "message": detail,
+            "flow": flow,
+            "primary_action_url": settings.COURIER_APP_URL if is_mobile else settings.SITE_URL,
+            "primary_action_label": "Open courier app" if is_mobile else "Open YUMZY Courier",
+            "secondary_action_url": settings.SITE_URL if success else f"mailto:{settings.SUPPORT_EMAIL}",
+            "secondary_action_label": "Go to Yumzy" if success else "Contact support",
+            "support_email": settings.SUPPORT_EMAIL,
+            "app_url": settings.COURIER_APP_URL,
+            "app_name": "YUMZY Courier",
         }
     return {
         "success": success,
         "title": "Parolă resetată" if success else "Link invalid sau expirat",
         "message": detail,
+        "flow": flow,
         "primary_action_url": settings.EMAIL_VERIFICATION_APP_URL if is_mobile else settings.FRONTEND_URL,
         "primary_action_label": "Deschide aplicația" if is_mobile else "Deschide Yumzy",
         "secondary_action_url": settings.FRONTEND_URL if success else f"mailto:{settings.SUPPORT_EMAIL}",
         "secondary_action_label": "Intră în cont" if success else "Contactează suportul",
         "support_email": settings.SUPPORT_EMAIL,
+        "app_url": settings.EMAIL_VERIFICATION_APP_URL,
+        "app_name": "Yumzy",
     }
 
 
@@ -110,6 +130,19 @@ def build_password_reset_form_context(
             "is_mobile": is_mobile,
             "password_error": password_error,
             "confirm_password_error": confirm_password_error,
+            "app_name": "Yumzy",
+        }
+    if flow == "courier":
+        return {
+            "title": "Reset your courier password",
+            "message": "Choose a new password for your YUMZY Courier account.",
+            "uid": uid,
+            "token": token,
+            "flow": flow,
+            "is_mobile": is_mobile,
+            "password_error": password_error,
+            "confirm_password_error": confirm_password_error,
+            "app_name": "YUMZY Courier",
         }
     return {
         "title": "Setează parola nouă",
@@ -120,6 +153,7 @@ def build_password_reset_form_context(
         "is_mobile": is_mobile,
         "password_error": password_error,
         "confirm_password_error": confirm_password_error,
+        "app_name": "Yumzy",
     }
 
 
@@ -259,6 +293,8 @@ class PasswordResetConfirmPageView(APIView):
             detail=(
                 "Parola a fost setată. Poți intra acum în dashboardul restaurantului."
                 if flow == "restaurant_onboarding"
+                else "Your courier password was updated. Return to the courier app and sign in."
+                if flow == "courier"
                 else "Parola ta a fost actualizată. Poți reveni în aplicație și te poți autentifica."
             ),
             flow=flow,
@@ -280,6 +316,8 @@ class PasswordResetPreviewPageView(APIView):
                 detail=(
                     "Parola a fost setată. Poți intra acum în dashboardul restaurantului."
                     if flow == "restaurant_onboarding"
+                    else "Your courier password was updated. Return to the courier app and sign in."
+                    if flow == "courier"
                     else "Parola ta a fost actualizată. Poți reveni în aplicație și te poți autentifica."
                 ),
                 flow=flow,
@@ -333,6 +371,16 @@ class PasswordResetEmailTemplatePreviewView(APIView):
             "support_email": settings.SUPPORT_EMAIL,
             "site_url": settings.SITE_URL,
         }
+        if request.query_params.get("flow") == "courier":
+            context.update(
+                {
+                    "headline": "Reset your password",
+                    "body": "Tap the button below to set a new password for your YUMZY Courier account.",
+                    "button_label": "Set new password",
+                    "button_url": "https://api.yumzy.ro/reset-password/confirm/?uid=preview&token=preview&flow=courier",
+                    "footnote": "If you did not request a password reset, you can safely ignore this email.",
+                }
+            )
         return render(request, "users/emails/password_reset.html", context, status=status.HTTP_200_OK)
 
 

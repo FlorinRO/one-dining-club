@@ -39,9 +39,9 @@ class Command(BaseCommand):
                     INSERT INTO products_product (
                         name, description, image, price, discount_price, is_available, is_popular,
                         preparation_time, allergens, created_at, updated_at, category_id, restaurant_id,
-                        calories, ingredients, audio_url, has_audio, video_url
+                        calories, ingredients, audio_url, has_audio, video_url, product_type, ingredient_details
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     [
@@ -63,6 +63,8 @@ class Command(BaseCommand):
                         None,
                         False,
                         None,
+                        "other",
+                        "[]",
                     ],
                 )
                 return cursor.fetchone()[0]
@@ -585,6 +587,121 @@ class Command(BaseCommand):
                 }
             )
 
+        restaurants_payload.extend(
+            [
+                {
+                    "slug": "coca-cola",
+                    "name": "Coca-Cola",
+                    "description": "Brand iconic de băuturi răcoritoare, promovat în feed cu produse disponibile pentru comandă directă din aplicație.",
+                    "phone": "+40729990016",
+                    "email": "hello@coca-cola.test",
+                    "address": "Calea Dorobanți 55",
+                    "city": "Bucuresti",
+                    "latitude": Decimal("44.451000"),
+                    "longitude": Decimal("26.098000"),
+                    "delivery_fee": Decimal("0.00"),
+                    "minimum_order": Decimal("35.00"),
+                    "estimated_delivery_time_min": 18,
+                    "estimated_delivery_time_max": 30,
+                    "rating": Decimal("4.90"),
+                    "categories": ["Brand"],
+                    "entity_type": Restaurant.EntityType.BRAND,
+                    "is_sponsored": True,
+                    "sponsored_mode": Restaurant.SponsoredMode.NATIVE,
+                    "website_url": "https://www.coca-cola.com/ro/ro",
+                    "products": [
+                        ("Featured drops", "Coca-Cola Gust Original", "Reclamă sponsorizată cu o sticlă de Coca-Cola proaspăt deschisă, construită pentru un moment instant recognoscibil.", Decimal("12.00"), Decimal("9.00"), 2, ""),
+                        ("Featured drops", "Coca-Cola Fără Zahăr", "Variantă Coca-Cola pentru campanii promo din feed, păstrată în același univers vizual al brandului.", Decimal("12.00"), None, 2, ""),
+                    ],
+                    "product_video_map": {
+                        "Coca-Cola Gust Original": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/YUMZY-ADS/internal-ads/Coke%20ad.mp4",
+                        "Coca-Cola Fără Zahăr": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/YUMZY-ADS/internal-ads/Coke%20ad.mp4",
+                    },
+                },
+                {
+                    "slug": "lumaskin",
+                    "name": "LumaSkin",
+                    "description": "Brand de skincare tech promovat cu reclame video care trimit utilizatorul direct către site-ul oficial.",
+                    "phone": "+40729990017",
+                    "email": "hello@lumaskin.test",
+                    "address": "Strada George Enescu 21",
+                    "city": "Bucuresti",
+                    "latitude": Decimal("44.445000"),
+                    "longitude": Decimal("26.097000"),
+                    "delivery_fee": Decimal("0.00"),
+                    "minimum_order": Decimal("0.00"),
+                    "estimated_delivery_time_min": 0,
+                    "estimated_delivery_time_max": 0,
+                    "rating": Decimal("4.80"),
+                    "categories": ["Brand"],
+                    "entity_type": Restaurant.EntityType.BRAND,
+                    "is_sponsored": True,
+                    "sponsored_mode": Restaurant.SponsoredMode.EXTERNAL,
+                    "website_url": "https://lumaskin.example.com",
+                    "products": [
+                        ("Launch drop", "Dispozitiv de Regenerare Facială", "Clip sponsorizat cu un device facial de skincare, gândit să trimită utilizatorul direct pe site-ul brandului.", Decimal("0.00"), None, 0, ""),
+                    ],
+                    "product_video_map": {
+                        "Dispozitiv de Regenerare Facială": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/YUMZY-ADS/external-ads/skincare-tool.mp4",
+                    },
+                },
+                {
+                    "slug": "eye-therapy-lab",
+                    "name": "Eye Therapy Lab",
+                    "description": "Brand de îngrijire facială promovat în feed cu tratamente pentru zona ochilor disponibile pentru checkout intern.",
+                    "phone": "+40729990039",
+                    "email": "hello@eyetherapylab.test",
+                    "address": "Strada Frumoasa 14",
+                    "city": "Bucuresti",
+                    "latitude": Decimal("44.443000"),
+                    "longitude": Decimal("26.093000"),
+                    "delivery_fee": Decimal("0.00"),
+                    "minimum_order": Decimal("29.00"),
+                    "estimated_delivery_time_min": 14,
+                    "estimated_delivery_time_max": 24,
+                    "rating": Decimal("4.80"),
+                    "categories": ["Brand"],
+                    "entity_type": Restaurant.EntityType.BRAND,
+                    "is_sponsored": True,
+                    "sponsored_mode": Restaurant.SponsoredMode.NATIVE,
+                    "website_url": "https://www.nivea.ro",
+                    "products": [
+                        ("Wellness drop", "Pad-uri pentru Revitalizarea Zonei Ochiilor", "Reclamă sponsorizată cu o rutină de tratament facial sub ochi, adaptată pentru cumpărare directă din aplicație.", Decimal("49.00"), Decimal("39.00"), 3, ""),
+                    ],
+                    "product_video_map": {
+                        "Pad-uri pentru Revitalizarea Zonei Ochiilor": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/YUMZY-ADS/internal-ads/facial-treatment.mp4",
+                    },
+                },
+                {
+                    "slug": "campari",
+                    "name": "Campari",
+                    "description": "Brand premium de aperitive promovat prin clipuri video care deschid direct pagina oficială a campaniei.",
+                    "phone": "+40729990040",
+                    "email": "hello@campari.test",
+                    "address": "Calea Victoriei 102",
+                    "city": "Bucuresti",
+                    "latitude": Decimal("44.441000"),
+                    "longitude": Decimal("26.095000"),
+                    "delivery_fee": Decimal("0.00"),
+                    "minimum_order": Decimal("0.00"),
+                    "estimated_delivery_time_min": 0,
+                    "estimated_delivery_time_max": 0,
+                    "rating": Decimal("4.70"),
+                    "categories": ["Brand"],
+                    "entity_type": Restaurant.EntityType.BRAND,
+                    "is_sponsored": True,
+                    "sponsored_mode": Restaurant.SponsoredMode.EXTERNAL,
+                    "website_url": "https://www.campari.com",
+                    "products": [
+                        ("Sneaker drop", "Moment Aperitivo Campari", "Clip sponsorizat în care o fată ține în mână un cocktail Campari, cu deschidere directă spre site-ul brandului.", Decimal("0.00"), None, 0, ""),
+                    ],
+                    "product_video_map": {
+                        "Moment Aperitivo Campari": "https://pub-315b5aea2f0c435798a36c40bb0eb6e5.r2.dev/YUMZY-ADS/external-ads/Campari.mp4",
+                    },
+                },
+            ]
+        )
+
         demo_product_styles = ["Classic", "Spicy", "Smoky", "Crispy", "House", "Loaded", "Fresh", "Fire", "Signature", "Street"]
         demo_product_bases = [
             "Burger",
@@ -626,6 +743,8 @@ class Command(BaseCommand):
         ]
         for restaurant_index, payload in enumerate(restaurants_payload, start=1):
             product_rows = payload["products"]
+            if payload.get("entity_type") == Restaurant.EntityType.BRAND:
+                continue
             existing_product_names = {row[1] for row in product_rows}
             fallback_category = product_rows[0][0] if product_rows else "Chef Picks"
             while len(product_rows) < 10:
@@ -675,6 +794,7 @@ class Command(BaseCommand):
 
         pizza = None
         for payload in restaurants_payload:
+            product_video_map = payload.pop("product_video_map", {})
             product_rows = payload.pop("products")
             category_names = payload.pop("categories")
             restaurant, _ = Restaurant.objects.get_or_create(
@@ -692,6 +812,11 @@ class Command(BaseCommand):
             restaurant.owner = get_or_create_restaurant_owner(payload["slug"], payload["name"], payload["phone"])
             restaurant.entity_type = payload.get("entity_type", Restaurant.EntityType.RESTAURANT)
             restaurant.is_sponsored = payload.get("is_sponsored", False)
+            restaurant.sponsored_mode = payload.get("sponsored_mode", Restaurant.SponsoredMode.NATIVE)
+            restaurant.website_url = payload.get("website_url", "")
+            restaurant.promo_video_url = payload.get("promo_video_url", "")
+            restaurant.instagram_url = payload.get("instagram_url", "")
+            restaurant.tiktok_url = payload.get("tiktok_url", "")
             restaurant.supports_pickup = True
             restaurant.is_open = True
             restaurant.is_active = True
@@ -710,6 +835,9 @@ class Command(BaseCommand):
             restaurant.rating = payload["rating"]
             restaurant.save()
             restaurant.categories.set([category_map[name] for name in category_names])
+            desired_product_names = [row[1] for row in product_rows]
+            if payload.get("entity_type") == Restaurant.EntityType.BRAND:
+                Product.objects.filter(restaurant=restaurant).exclude(name__in=desired_product_names).delete()
 
             existing_products = list(
                 Product.objects.filter(restaurant=restaurant).select_related("category").order_by("id")
@@ -745,7 +873,11 @@ class Command(BaseCommand):
                         calories=calories,
                     )
                     product = Product.objects.get(pk=product_id)
-                    product.video_url = override["product_videos"].get(name) if override else None
+                    product.video_url = (
+                        override["product_videos"].get(name)
+                        if override
+                        else product_video_map.get(name)
+                    )
                     if not should_keep_available:
                         product.is_available = False
                         product.is_popular = False
@@ -766,7 +898,11 @@ class Command(BaseCommand):
                 product.allergens = allergens
                 product.ingredients = ingredients
                 product.calories = calories
-                product.video_url = override["product_videos"].get(name) if override else None
+                product.video_url = (
+                    override["product_videos"].get(name)
+                    if override
+                    else product_video_map.get(name)
+                )
                 product.is_available = should_keep_available
                 product.is_popular = should_keep_available
                 product.save()

@@ -1,4 +1,3 @@
-import { mockRestaurants } from "../data/mockData";
 import { Restaurant } from "../types/models";
 
 const MAX_SPONSORED_PLACEMENTS = 4;
@@ -13,11 +12,9 @@ export const isNativeSponsoredPlacement = (restaurant: Restaurant) =>
   isSponsoredFeedPlacement(restaurant) && restaurant.sponsored_mode !== "external";
 
 const pickSponsoredPlacements = (items: Restaurant[]) => {
-  const mockSponsoredRestaurants = mockRestaurants.filter(isSponsoredFeedPlacement);
-  const merged = [...items.filter(isSponsoredFeedPlacement), ...mockSponsoredRestaurants];
   const seen = new Set<number>();
 
-  return merged.filter((restaurant) => {
+  return items.filter(isSponsoredFeedPlacement).filter((restaurant) => {
     if (seen.has(restaurant.id)) return false;
     seen.add(restaurant.id);
     return true;

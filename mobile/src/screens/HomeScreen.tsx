@@ -43,9 +43,7 @@ import { productsApi } from "../api/productsApi";
 import { restaurantsApi } from "../api/restaurantsApi";
 import { ProductCommentsSheet } from "../components/ProductCommentsSheet";
 import { RestaurantAvatarImage } from "../components/RestaurantAvatarImage";
-import { ENABLE_DEV_MOCK_FALLBACK } from "../config/api";
 import { getDemoProductAudioSource } from "../data/demoAudio";
-import { mockProducts } from "../data/mockData";
 import { useI18n } from "../i18n/useI18n";
 import { compactCount, productKey, statsFor } from "../lib/feedSocial";
 import { money } from "../lib/format";
@@ -152,15 +150,7 @@ export function HomeScreen({ navigation }: Props) {
     const productEntries = await Promise.all(
       visibleRestaurants.map(async (restaurant) => {
         const apiProducts = await restaurantsApi.products(restaurant.id).catch(() => [] as Product[]);
-        const sponsoredMockProducts = ENABLE_DEV_MOCK_FALLBACK
-          ? mockProducts.filter((product) => Number(product.restaurant) === restaurant.id)
-          : [];
-        const products =
-          isSponsoredFeedPlacement(restaurant) && sponsoredMockProducts.length > 0
-            ? sponsoredMockProducts
-            : apiProducts.length > 0
-              ? apiProducts
-              : sponsoredMockProducts;
+        const products = apiProducts;
         return [restaurant.id, products] as const;
       }),
     );

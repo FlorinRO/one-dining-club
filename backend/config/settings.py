@@ -229,6 +229,7 @@ EMAIL_VERIFICATION_CONFIRM_URL = os.getenv(
     join_url(BACKEND_URL, "/verify-email/confirm/") + "?uid={uid}&token={token}",
 )
 EMAIL_VERIFICATION_APP_URL = os.getenv("EMAIL_VERIFICATION_APP_URL", "onediningclub://")
+COURIER_APP_URL = os.getenv("COURIER_APP_URL", "onediningcourier://")
 RESTAURANT_DASHBOARD_URL = os.getenv("RESTAURANT_DASHBOARD_URL", join_url(SITE_URL, "/dashboard/"))
 IOS_APP_STORE_URL = os.getenv("IOS_APP_STORE_URL", "").strip()
 APPLE_DEVELOPER_TEAM_ID = os.getenv("APPLE_DEVELOPER_TEAM_ID", "").strip()

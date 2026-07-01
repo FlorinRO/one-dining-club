@@ -22,7 +22,11 @@ class RestaurantViewSet(ModelViewSet):
     icon = "home"
     list_display = (
         "name",
+        "entity_type",
+        "is_sponsored",
+        "sponsored_mode",
         "owner",
+        "website_url",
         "city",
         "is_active",
         "is_open",
@@ -42,6 +46,38 @@ class RestaurantViewSet(ModelViewSet):
     search_backend_name = None
     ordering = ("name",)
     inspect_view_enabled = True
+    form_fields = (
+        "owner",
+        "owner_email",
+        "send_setup_email",
+        "categories",
+        "name",
+        "slug",
+        "entity_type",
+        "is_sponsored",
+        "sponsored_mode",
+        "website_url",
+        "promo_video_url",
+        "instagram_url",
+        "tiktok_url",
+        "description",
+        "logo",
+        "cover_image",
+        "phone",
+        "email",
+        "address",
+        "city",
+        "latitude",
+        "longitude",
+        "delivery_fee",
+        "minimum_order",
+        "estimated_delivery_time_min",
+        "estimated_delivery_time_max",
+        "rating",
+        "supports_pickup",
+        "is_open",
+        "is_active",
+    )
 
     def get_form_class(self, for_update=False):
         return RestaurantAdminForm
@@ -83,6 +119,7 @@ class ProductViewSet(ModelViewSet):
         "name",
         "restaurant",
         "category",
+        "video_url",
         "price",
         "discount_price",
         "is_available",

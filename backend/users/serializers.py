@@ -464,15 +464,32 @@ class SocialLoginSerializer(serializers.Serializer):
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
+    flow = serializers.CharField(required=False, allow_blank=True)
 
     def save(self):
         email = User.objects.normalize_email(self.validated_data["email"])
+        requested_flow = (self.validated_data.get("flow") or "").strip().lower()
         user = User.objects.filter(email__iexact=email, is_active=True).first()
         if not user:
             return None
 
         try:
-            reset = send_password_reset_email(user)
+            if requested_flow == "courier" and user.role == UserRole.COURIER:
+                reset = send_password_reset_email(
+                    user,
+                    flow="courier",
+                    subject="Reset your YUMZY Courier password",
+                    headline="Reset your password",
+                    title_html="reset your<br />password",
+                    body="Tap the button below to set a new password for your YUMZY Courier account.",
+                    button_label="Set new password",
+                    footnote="If you did not request a password reset, you can safely ignore this email.",
+                    intro_message="You requested a password reset for your YUMZY Courier account.",
+                    intro_text="We received a request to reset the password for your YUMZY Courier account.",
+                    security_note="If you did not request this change, no action is needed. Your courier account remains secure.",
+                )
+            else:
+                reset = send_password_reset_email(user)
         except EmailDeliveryError:
             return None
         return reset if settings.DEBUG else None
