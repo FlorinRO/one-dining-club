@@ -64,29 +64,52 @@ export function OperationsScreen() {
       refreshControl={<RefreshControl tintColor={colors.lime} refreshing={ordersLoading} onRefresh={refreshAll} />}
       showsVerticalScrollIndicator={false}
     >
-      <SectionHeader eyebrow="Operations" title="Panou live" subtitle="Metrici și starea operațională a turei tale curente." />
+      <View style={styles.hero}>
+        <SectionHeader eyebrow="Operations" title="Panou live" subtitle="Metrici și starea operațională a turei tale curente." />
+        <View style={styles.heroStatRow}>
+          <View style={styles.heroStat}>
+            <Text style={styles.heroStatValue}>{completedToday}</Text>
+            <Text style={styles.heroStatLabel}>completed today</Text>
+          </View>
+          <View style={styles.heroDivider} />
+          <View style={styles.heroStat}>
+            <Text style={styles.heroStatValue}>{totalDistanceToday.toFixed(1)} km</Text>
+            <Text style={styles.heroStatLabel}>distance today</Text>
+          </View>
+        </View>
+      </View>
 
-      <View style={styles.metricsGrid}>
-        <MetricCard label="Completed today" value={String(completedToday)} hint="Livrări finalizate astăzi" />
-        <MetricCard label="Distance today" value={`${totalDistanceToday.toFixed(1)} km`} hint="Distanță estimată procesată" />
-        <MetricCard label="Avg ETA" value={averageEta ? formatMinutes(averageEta) : "N/A"} hint="Medie pe curse urmărite" />
-        <MetricCard label="Vehicle" value={profile ? titleCaseVehicle(profile.vehicle_type) : "N/A"} hint="Vehicul folosit în tură" />
+      <View style={styles.metricsList}>
+        <MetricRow label="Completed today" value={String(completedToday)} hint="Livrări finalizate astăzi" />
+        <MetricRow label="Distance today" value={`${totalDistanceToday.toFixed(1)} km`} hint="Distanță estimată procesată" />
+        <MetricRow label="Avg ETA" value={averageEta ? formatMinutes(averageEta) : "N/A"} hint="Medie pe curse urmărite" />
+        <MetricRow label="Vehicle" value={profile ? titleCaseVehicle(profile.vehicle_type) : "N/A"} hint="Vehicul folosit în tură" />
       </View>
 
       <View style={styles.section}>
         <AlertBanner title={activeAlert.title} description={activeAlert.description} />
-        <View style={styles.operationGrid}>
-          <InsightCard
-            icon={<ShieldCheck color={colors.lime} size={18} />}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Operational details</Text>
+        <View style={styles.detailList}>
+          <InsightRow
+            icon={<ShieldCheck color={colors.lime} size={17} />}
             title="Verification"
             value={profile?.is_verified ? "Verified" : "Pending"}
             description="Contul de curier și documentele operaționale."
           />
-          <InsightCard
-            icon={<Clock3 color={colors.lime} size={18} />}
+          <InsightRow
+            icon={<Clock3 color={colors.lime} size={17} />}
             title="Last profile sync"
             value={profile?.updated_at ? formatRelativeDate(profile.updated_at) : "Pending"}
             description="Ultimul update primit din backend pentru profil și locație."
+          />
+          <InsightRow
+            icon={<PackageCheck color={colors.lime} size={17} />}
+            title="Active run"
+            value={activeOrder ? `#${activeOrder.id}` : "None"}
+            description={activeOrder ? "Există o cursă activă în fluxul curent." : "Nu există nicio cursă activă în acest moment."}
           />
         </View>
       </View>
@@ -94,17 +117,19 @@ export function OperationsScreen() {
   );
 }
 
-function MetricCard({ label, value, hint }: { label: string; value: string; hint: string }) {
+function MetricRow({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <View style={styles.metricCard}>
-      <Text style={styles.metricLabel}>{label}</Text>
+    <View style={styles.metricRow}>
+      <View style={styles.metricCopy}>
+        <Text style={styles.metricLabel}>{label}</Text>
+        <Text style={styles.metricHint}>{hint}</Text>
+      </View>
       <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricHint}>{hint}</Text>
     </View>
   );
 }
 
-function InsightCard({
+function InsightRow({
   icon,
   title,
   value,
@@ -116,11 +141,15 @@ function InsightCard({
   description: string;
 }) {
   return (
-    <View style={styles.insightCard}>
-      <View style={styles.insightIconWrap}>{icon}</View>
-      <Text style={styles.insightTitle}>{title}</Text>
+    <View style={styles.insightRow}>
+      <View style={styles.insightLead}>
+        <View style={styles.insightIconWrap}>{icon}</View>
+        <View style={styles.insightTextWrap}>
+          <Text style={styles.insightTitle}>{title}</Text>
+          <Text style={styles.insightDescription}>{description}</Text>
+        </View>
+      </View>
       <Text style={styles.insightValue}>{value}</Text>
-      <Text style={styles.insightDescription}>{description}</Text>
     </View>
   );
 }
@@ -128,7 +157,9 @@ function InsightCard({
 function AlertBanner({ title, description }: { title: string; description: string }) {
   return (
     <View style={styles.alertBanner}>
-      <MapPinned color={colors.lime} size={18} />
+      <View style={styles.alertIconWrap}>
+        <MapPinned color={colors.lime} size={18} />
+      </View>
       <View style={styles.alertTextWrap}>
         <Text style={styles.alertTitle}>{title}</Text>
         <Text style={styles.alertDescription}>{description}</Text>
@@ -180,36 +211,72 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    gap: 16,
+    gap: 26,
     paddingVertical: 18,
-    paddingBottom: 120,
+    paddingBottom: 260,
   },
-  metricsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+  hero: {
     paddingHorizontal: 18,
+    gap: 18,
   },
-  metricCard: {
-    width: "47%",
-    padding: 14,
-    borderRadius: 0,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: "rgba(17,17,17,0.38)",
-    gap: 6,
+  heroStatRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 16,
+    paddingBottom: 6,
+  },
+  heroStat: {
+    flex: 1,
+    gap: 2,
+  },
+  heroStatValue: {
+    color: colors.text,
+    fontSize: 34,
+    fontWeight: "900",
+    letterSpacing: -1,
+  },
+  heroStatLabel: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  heroDivider: {
+    width: 1,
+    backgroundColor: "rgba(17,17,17,0.12)",
+  },
+  metricsList: {
+    paddingHorizontal: 18,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "rgba(17,17,17,0.1)",
+  },
+  metricRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(17,17,17,0.08)",
+  },
+  metricCopy: {
+    flex: 1,
+    gap: 4,
   },
   metricLabel: {
     color: colors.muted,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "800",
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   metricValue: {
     color: colors.text,
     fontSize: 24,
     fontWeight: "900",
+    letterSpacing: -0.5,
   },
   metricHint: {
     color: colors.muted,
@@ -217,69 +284,84 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   section: {
-    gap: 14,
+    gap: 16,
     paddingHorizontal: 18,
+  },
+  sectionLabel: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textTransform: "uppercase",
   },
   alertBanner: {
     flexDirection: "row",
-    gap: 12,
+    gap: 14,
     alignItems: "flex-start",
-    borderRadius: 0,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: "rgba(17,17,17,0.38)",
-    padding: 16,
+    paddingVertical: 2,
+  },
+  alertIconWrap: {
+    width: 28,
+    alignItems: "center",
+    paddingTop: 2,
   },
   alertTextWrap: {
     flex: 1,
-    gap: 4,
+    gap: 6,
   },
   alertTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  alertDescription: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  detailList: {
+    borderTopWidth: 1,
+    borderTopColor: "rgba(17,17,17,0.1)",
+  },
+  insightRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(17,17,17,0.08)",
+  },
+  insightLead: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  insightIconWrap: {
+    width: 24,
+    alignItems: "center",
+    paddingTop: 2,
+  },
+  insightTextWrap: {
+    flex: 1,
+    gap: 4,
+  },
+  insightTitle: {
     color: colors.text,
     fontSize: 15,
     fontWeight: "800",
   },
-  alertDescription: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  operationGrid: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  insightCard: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 0,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: "rgba(17,17,17,0.38)",
-    gap: 10,
-  },
-  insightIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(184,242,109,0.12)",
-  },
-  insightTitle: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
   insightValue: {
     color: colors.text,
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: "900",
+    textAlign: "right",
   },
   insightDescription: {
     color: colors.muted,
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 19,
   },
 });

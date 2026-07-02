@@ -2,9 +2,16 @@ import * as Location from "expo-location";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import courierMapStyle from "../../mapbox/yumzy-courier-style.json";
 import { getMapboxAccessToken } from "../config/mapbox";
 import { getMapboxModule } from "../lib/mapboxRuntime";
 import { colors } from "../theme/colors";
+
+type MapCoordinate = {
+  latitude: number;
+  longitude: number;
+  heading?: number | null;
+};
 
 type Props = {
   currentLatitude?: string | number | null;
@@ -18,7 +25,8 @@ const BUCHAREST_COORDINATE = {
   longitude: 26.096306,
 };
 
-const MAPBOX_STYLE_URL = "mapbox://styles/mapbox/navigation-day-v1";
+const MAPBOX_STYLE_JSON = JSON.stringify(courierMapStyle);
+const MAPBOX_STYLE_KEY = `${courierMapStyle.name}-${courierMapStyle.layers.length}`;
 const MAPBOX_TOKEN = getMapboxAccessToken();
 const MAPBOX_MODULE = getMapboxModule();
 
@@ -28,7 +36,7 @@ export function CourierLiveMap({
   targetLatitude,
   targetLongitude,
 }: Props) {
-  const [deviceCoordinate, setDeviceCoordinate] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [deviceCoordinate, setDeviceCoordinate] = useState<MapCoordinate | null>(null);
   const current = deviceCoordinate ?? normalizeCoordinate(currentLatitude, currentLongitude);
   const target = normalizeCoordinate(targetLatitude, targetLongitude);
   const cameraConfig = useMemo(() => buildCameraConfig(current, target), [current, target]);
@@ -52,6 +60,7 @@ export function CourierLiveMap({
           setDeviceCoordinate({
             latitude: initial.coords.latitude,
             longitude: initial.coords.longitude,
+            heading: normalizeHeading(initial.coords.heading),
           });
         }
 
@@ -69,6 +78,7 @@ export function CourierLiveMap({
             setDeviceCoordinate({
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
+              heading: normalizeHeading(position.coords.heading),
             });
           },
         );
@@ -103,24 +113,21 @@ export function CourierLiveMap({
     );
   }
 
-  const { Camera, LineLayer, LocationPuck, MarkerView, ShapeSource } = MAPBOX_MODULE;
+  const { Camera, LineLayer, MarkerView, ShapeSource } = MAPBOX_MODULE;
 
   return (
     <View style={styles.container}>
       <MAPBOX_MODULE.MapView
+        key={MAPBOX_STYLE_KEY}
         style={styles.map}
-        styleURL={MAPBOX_STYLE_URL}
-        compassEnabled
+        styleJSON={MAPBOX_STYLE_JSON}
         pitchEnabled
         rotateEnabled
+        attributionEnabled={false}
+        logoEnabled={false}
         scaleBarEnabled={false}
       >
         <Camera animationMode="easeTo" animationDuration={900} defaultSettings={cameraConfig} {...cameraConfig} />
-        <LocationPuck
-          puckBearing="course"
-          puckBearingEnabled
-          pulsing={{ isEnabled: true, color: "rgba(184,242,109,0.22)", radius: 42 }}
-        />
 
         {routeShape ? (
           <ShapeSource id="courier-route" shape={routeShape} lineMetrics>
@@ -139,8 +146,14 @@ export function CourierLiveMap({
 
         {current ? (
           <MarkerView coordinate={[current.longitude, current.latitude]} anchor={{ x: 0.5, y: 0.5 }}>
-            <View style={styles.liveMarker}>
-              <View style={styles.liveMarkerCore} />
+            <View style={styles.liveMarkerContainer}>
+              <View style={[styles.liveMarkerDirection, { transform: [{ rotate: `${current.heading ?? 0}deg` }] }]}>
+                <View style={styles.liveMarkerArrowOutline} />
+                <View style={styles.liveMarkerArrowFill} />
+                <View style={styles.liveMarkerBase}>
+                  <View style={styles.liveMarkerBaseDot} />
+                </View>
+              </View>
             </View>
           </MarkerView>
         ) : null}
@@ -157,7 +170,7 @@ export function CourierLiveMap({
   );
 }
 
-function normalizeCoordinate(latitude?: string | number | null, longitude?: string | number | null) {
+function normalizeCoordinate(latitude?: string | number | null, longitude?: string | number | null): MapCoordinate | null {
   const lat = Number(latitude);
   const lng = Number(longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
@@ -175,9 +188,18 @@ function normalizeCoordinate(latitude?: string | number | null, longitude?: stri
   return { latitude: lat, longitude: lng };
 }
 
+function normalizeHeading(value?: number | null) {
+  const heading = Number(value);
+  if (!Number.isFinite(heading) || heading < 0) {
+    return null;
+  }
+
+  return heading % 360;
+}
+
 function buildCameraConfig(
-  current: { latitude: number; longitude: number } | null,
-  target: { latitude: number; longitude: number } | null,
+  current: MapCoordinate | null,
+  target: MapCoordinate | null,
 ) {
   if (current && target) {
     return {
@@ -191,7 +213,7 @@ function buildCameraConfig(
         paddingBottom: 160,
         paddingLeft: 48,
       },
-      pitch: 38,
+      pitch: 0,
     };
   }
 
@@ -199,7 +221,7 @@ function buildCameraConfig(
     return {
       centerCoordinate: [current.longitude, current.latitude],
       zoomLevel: 15.2,
-      pitch: 42,
+      pitch: 0,
     };
   }
 
@@ -207,7 +229,7 @@ function buildCameraConfig(
     return {
       centerCoordinate: [target.longitude, target.latitude],
       zoomLevel: 14.2,
-      pitch: 28,
+      pitch: 0,
     };
   }
 
@@ -219,8 +241,8 @@ function buildCameraConfig(
 }
 
 function buildRouteShape(
-  current: { latitude: number; longitude: number } | null,
-  target: { latitude: number; longitude: number } | null,
+  current: MapCoordinate | null,
+  target: MapCoordinate | null,
 ): GeoJSON.Feature<GeoJSON.LineString> | null {
   if (!current || !target) {
     return null;
@@ -277,23 +299,62 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  liveMarker: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "rgba(184,242,109,0.28)",
+  liveMarkerContainer: {
+    width: 56,
+    height: 56,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(17,17,17,0.16)",
   },
-  liveMarkerCore: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.lime,
-    borderWidth: 2,
-    borderColor: colors.text,
+  liveMarkerDirection: {
+    width: 32,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "flex-start",
+  },
+  liveMarkerArrowOutline: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 12,
+    borderRightWidth: 12,
+    borderBottomWidth: 22,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: colors.white,
+  },
+  liveMarkerArrowFill: {
+    position: "absolute",
+    top: 4,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 16,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: colors.text,
+  },
+  liveMarkerBase: {
+    position: "absolute",
+    bottom: 0,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 3,
+    borderColor: colors.white,
+    backgroundColor: colors.text,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#111111",
+    shadowOpacity: 0.22,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  liveMarkerBaseDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.white,
   },
   dropoffMarker: {
     width: 28,
