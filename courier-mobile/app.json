@@ -33,7 +33,12 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
       ]
     },
     "plugins": [
@@ -53,7 +58,7 @@
     "extra": {
       "productionApiUrl": "https://api.yumzy.ro/api",
       "eas": {
-        "projectId": "d84264ea-fb7b-4d5e-8d1c-9d7cfb237cdf"
+        "projectId": "ce226e2e-314c-4725-93c4-a7de77903947"
       }
     }
   }
