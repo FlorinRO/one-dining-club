@@ -9,6 +9,7 @@ import { CourierOrderDetailsScreen } from "../screens/CourierOrderDetailsScreen"
 import { useAuthStore } from "../store/authStore";
 import { useCourierStore } from "../store/courierStore";
 import { colors } from "../theme/colors";
+import { flushPendingNotificationNavigation, navigationRef } from "./navigationRef";
 import { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -17,10 +18,10 @@ const theme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: "#090909",
-    card: "#090909",
-    text: colors.white,
-    border: "rgba(255,255,255,0.08)",
+    background: colors.background,
+    card: colors.background,
+    text: colors.text,
+    border: "rgba(17,17,17,0.14)",
     primary: colors.lime,
   },
 };
@@ -75,7 +76,13 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer theme={theme}>
+    <NavigationContainer
+      ref={navigationRef}
+      theme={theme}
+      onReady={() => {
+        flushPendingNotificationNavigation();
+      }}
+    >
       <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
         {accessToken ? (
           <>
@@ -93,13 +100,13 @@ export function RootNavigator() {
 const styles = StyleSheet.create({
   splash: {
     flex: 1,
-    backgroundColor: "#090909",
+    backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
     gap: 18,
   },
   splashLabel: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },

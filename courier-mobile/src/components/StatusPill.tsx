@@ -37,10 +37,14 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   positive: {
-    backgroundColor: "rgba(184, 242, 109, 0.14)",
+    backgroundColor: "rgba(184, 242, 109, 0.28)",
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.14)",
   },
   negative: {
-    backgroundColor: "rgba(245, 158, 11, 0.18)",
+    backgroundColor: "rgba(245, 158, 11, 0.24)",
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.14)",
   },
   text: {
     fontSize: 12,
@@ -51,6 +55,6 @@ const styles = StyleSheet.create({
     color: colors.lime,
   },
   negativeText: {
-    color: "#FFD48A",
+    color: "#7A4B00",
   },
 });

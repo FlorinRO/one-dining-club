@@ -1,21 +1,25 @@
 import { useState } from "react";
 import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { authApi } from "../api/authApi";
 import { EmptyState } from "../components/EmptyState";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { SectionHeader } from "../components/SectionHeader";
+import { unregisterCurrentPushDevice } from "../lib/notifications";
 import { useAuthStore } from "../store/authStore";
 import { useCourierStore } from "../store/courierStore";
 import { colors } from "../theme/colors";
 import { titleCaseVehicle } from "../lib/format";
 
 export function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const refreshToken = useAuthStore((state) => state.refreshToken);
   const logout = useAuthStore((state) => state.logout);
   const resetCourierState = useCourierStore((state) => state.reset);
   const profile = useCourierStore((state) => state.profile);
+  const trackingActive = useCourierStore((state) => state.trackingActive);
   const refreshProfile = useCourierStore((state) => state.refreshProfile);
   const setAvailability = useCourierStore((state) => state.setAvailability);
   const syncCurrentLocation = useCourierStore((state) => state.syncCurrentLocation);
@@ -45,16 +49,17 @@ export function ProfileScreen() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (refreshToken) {
       void authApi.logout(refreshToken).catch(() => undefined);
     }
+    await unregisterCurrentPushDevice();
     resetCourierState();
     logout();
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.screen} contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 18) }]}>
       <SectionHeader eyebrow="Courier" title={user?.full_name || user?.email || "Courier profile"} subtitle="Operational profile linked to the existing Yumzy backend courier account." />
 
       {!profile ? (
@@ -67,6 +72,7 @@ export function ProfileScreen() {
             <ProfileRow label="Email" value={user?.email || "-"} />
             <ProfileRow label="Vehicle" value={titleCaseVehicle(profile.vehicle_type)} />
             <ProfileRow label="Verification" value={profile.is_verified ? "Verified" : "Pending"} />
+            <ProfileRow label="Background tracking" value={trackingActive ? "Active" : "Inactive"} />
           </View>
 
           <View style={styles.card}>
@@ -87,7 +93,7 @@ export function ProfileScreen() {
             <PrimaryButton title={syncingLocation ? "Updating location..." : "Sync live location"} onPress={handleLocationSync} variant="ghost" disabled={syncingLocation} />
           </View>
 
-          <PrimaryButton title="Log out" onPress={handleLogout} />
+          <PrimaryButton title="Log out" onPress={() => void handleLogout()} />
         </>
       )}
     </ScrollView>
@@ -106,7 +112,7 @@ function ProfileRow({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#090909",
+    backgroundColor: colors.background,
   },
   content: {
     padding: 18,
@@ -115,9 +121,9 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(17,17,17,0.20)",
     padding: 18,
     gap: 18,
   },
@@ -125,14 +131,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   label: {
-    color: "rgba(255,255,255,0.5)",
+    color: colors.muted,
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 1,
     textTransform: "uppercase",
   },
   value: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 17,
     lineHeight: 24,
     fontWeight: "700",

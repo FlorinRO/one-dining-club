@@ -1,12 +1,14 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ArrowLeft, MapPin, Package2, Phone, Store } from "lucide-react-native";
+import { ArrowLeft, MapPin, Navigation, Package2, Phone, Store } from "lucide-react-native";
 import { ReactNode, useMemo, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CourierLiveMap } from "../components/CourierLiveMap";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { SectionHeader } from "../components/SectionHeader";
 import { StatusPill } from "../components/StatusPill";
-import { formatMoney, formatRelativeDate } from "../lib/format";
+import { formatDistanceKm, formatMinutes, formatMoney, formatRelativeDate } from "../lib/format";
 import { useCourierStore } from "../store/courierStore";
 import { colors } from "../theme/colors";
 import { RootStackParamList } from "../navigation/types";
@@ -30,8 +32,10 @@ function nextAction(orderStatus: string, hasCourier: boolean) {
 }
 
 export function CourierOrderDetailsScreen({ navigation, route }: Props) {
+  const insets = useSafeAreaInsets();
   const orderId = route.params.orderId;
   const orders = useCourierStore((state) => state.orders);
+  const profile = useCourierStore((state) => state.profile);
   const acceptOrder = useCourierStore((state) => state.acceptOrder);
   const advanceOrderStatus = useCourierStore((state) => state.advanceOrderStatus);
   const [loading, setLoading] = useState(false);
@@ -69,12 +73,24 @@ export function CourierOrderDetailsScreen({ navigation, route }: Props) {
     void Linking.openURL(`tel:${order.customer_phone}`);
   };
 
+  const openDirections = () => {
+    const latitude = Number(order.address_details?.latitude);
+    const longitude = Number(order.address_details?.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return;
+    }
+
+    void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`);
+  };
+
   const addressLabel = order.address_summary || "Pickup at restaurant";
+  const hasDropoffCoordinates =
+    Number.isFinite(Number(order.address_details?.latitude)) && Number.isFinite(Number(order.address_details?.longitude));
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.screen} contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 18) }]}>
       <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-        <ArrowLeft color={colors.white} size={20} />
+        <ArrowLeft color={colors.text} size={20} />
         <Text style={styles.backLabel}>Back</Text>
       </Pressable>
 
@@ -84,6 +100,19 @@ export function CourierOrderDetailsScreen({ navigation, route }: Props) {
         <StatusPill status={order.delivery_status || order.order_status} />
         <Text style={styles.heroTitle}>{order.restaurant_name}</Text>
         <Text style={styles.heroBody}>Deliver to {order.customer_name}. Keep the flow moving with clear status updates from pickup to drop-off.</Text>
+        <View style={styles.heroMetaRow}>
+          <HeroMeta label="Distance" value={formatDistanceKm(order.estimated_distance_km)} />
+          <HeroMeta label="ETA" value={formatMinutes(order.estimated_arrival_minutes)} />
+        </View>
+      </View>
+
+      <View style={styles.mapCard}>
+        <CourierLiveMap
+          currentLatitude={profile?.current_latitude}
+          currentLongitude={profile?.current_longitude}
+          targetLatitude={order.address_details?.latitude}
+          targetLongitude={order.address_details?.longitude}
+        />
       </View>
 
       <View style={styles.card}>
@@ -91,6 +120,14 @@ export function CourierOrderDetailsScreen({ navigation, route }: Props) {
         <InfoRow icon={<MapPin color={colors.lime} size={16} />} label="Dropoff" value={addressLabel} />
         <InfoRow icon={<Phone color={colors.lime} size={16} />} label="Customer" value={`${order.customer_name} · ${order.customer_phone}`} actionLabel="Call" onAction={openPhone} />
         <InfoRow icon={<Package2 color={colors.lime} size={16} />} label="Payment" value={order.payment_method_label || order.payment_method} />
+        {hasDropoffCoordinates ? (
+          <PrimaryButton
+            title="Open in Maps"
+            onPress={openDirections}
+            variant="ghost"
+            icon={<Navigation color={colors.text} size={18} />}
+          />
+        ) : null}
       </View>
 
       <View style={styles.card}>
@@ -132,6 +169,15 @@ export function CourierOrderDetailsScreen({ navigation, route }: Props) {
 
       {action ? <PrimaryButton title={loading ? "Updating..." : action.label} onPress={handleAdvance} disabled={loading} /> : null}
     </ScrollView>
+  );
+}
+
+function HeroMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.heroMetaCard}>
+      <Text style={styles.heroMetaLabel}>{label}</Text>
+      <Text style={styles.heroMetaValue}>{value}</Text>
+    </View>
   );
 }
 
@@ -187,7 +233,7 @@ function SummaryRow({ label, value, highlight = false }: { label: string; value:
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#090909",
+    backgroundColor: colors.background,
   },
   content: {
     padding: 18,
@@ -202,38 +248,74 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.18)",
   },
   backLabel: {
-    color: colors.white,
+    color: colors.text,
     fontWeight: "700",
   },
   heroCard: {
     padding: 20,
     borderRadius: 28,
-    backgroundColor: "rgba(184,242,109,0.14)",
+    backgroundColor: "rgba(184,242,109,0.32)",
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.18)",
     gap: 12,
   },
   heroTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 26,
     fontWeight: "900",
   },
   heroBody: {
-    color: "rgba(255,255,255,0.72)",
+    color: colors.text,
     fontSize: 15,
     lineHeight: 22,
   },
+  heroMetaRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  heroMetaCard: {
+    flex: 1,
+    borderRadius: 18,
+    padding: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.16)",
+    gap: 5,
+  },
+  heroMetaLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  heroMetaValue: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  mapCard: {
+    height: 240,
+    borderRadius: 28,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.18)",
+  },
   card: {
     borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(17,17,17,0.18)",
     padding: 18,
     gap: 14,
   },
   cardTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 18,
     fontWeight: "800",
   },
@@ -254,26 +336,28 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   infoLabel: {
-    color: "rgba(255,255,255,0.52)",
+    color: colors.muted,
     fontSize: 12,
     fontWeight: "800",
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
   infoValue: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     lineHeight: 21,
     fontWeight: "700",
   },
   inlineAction: {
     borderRadius: 999,
-    backgroundColor: "rgba(184,242,109,0.16)",
+    backgroundColor: colors.cardSoft,
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.16)",
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   inlineActionLabel: {
-    color: "#E7FFC2",
+    color: colors.text,
     fontWeight: "800",
     fontSize: 12,
   },
@@ -286,7 +370,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "rgba(17,17,17,0.18)",
   },
   timelineDotComplete: {
     backgroundColor: colors.greenDark,
@@ -296,12 +380,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.lime,
   },
   timelineLabel: {
-    color: "rgba(255,255,255,0.66)",
+    color: colors.muted,
     fontSize: 15,
     fontWeight: "700",
   },
   timelineLabelActive: {
-    color: colors.white,
+    color: colors.text,
   },
   itemRow: {
     flexDirection: "row",
@@ -313,22 +397,22 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   itemName: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: "700",
   },
   itemNotes: {
-    color: "rgba(255,255,255,0.56)",
+    color: colors.muted,
     fontSize: 13,
     lineHeight: 18,
   },
   itemPrice: {
-    color: "#E7FFC2",
+    color: colors.greenDark,
     fontSize: 14,
     fontWeight: "800",
   },
   noteText: {
-    color: "rgba(255,255,255,0.72)",
+    color: colors.muted,
     fontSize: 14,
     lineHeight: 21,
   },
@@ -338,33 +422,33 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   summaryLabel: {
-    color: "rgba(255,255,255,0.58)",
+    color: colors.muted,
     fontSize: 14,
   },
   summaryValue: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: "700",
   },
   summaryValueHighlight: {
-    color: "#E7FFC2",
+    color: colors.greenDark,
     fontSize: 17,
   },
   missingScreen: {
     flex: 1,
-    backgroundColor: "#090909",
+    backgroundColor: colors.background,
     padding: 24,
     alignItems: "center",
     justifyContent: "center",
     gap: 14,
   },
   missingTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 24,
     fontWeight: "900",
   },
   missingBody: {
-    color: "rgba(255,255,255,0.66)",
+    color: colors.muted,
     fontSize: 15,
     lineHeight: 22,
     textAlign: "center",

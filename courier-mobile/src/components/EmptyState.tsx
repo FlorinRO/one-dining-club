@@ -25,18 +25,18 @@ const styles = StyleSheet.create({
   card: {
     padding: 24,
     borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(17,17,17,0.18)",
     gap: 10,
   },
   title: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 20,
     fontWeight: "800",
   },
   description: {
-    color: "rgba(255,255,255,0.65)",
+    color: colors.muted,
     fontSize: 15,
     lineHeight: 22,
   },

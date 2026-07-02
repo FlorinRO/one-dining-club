@@ -1,7 +1,7 @@
 import { MapPin, Phone, Store } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { formatMoney, formatRelativeDate } from "../lib/format";
+import { formatDistanceKm, formatMinutes, formatMoney, formatRelativeDate } from "../lib/format";
 import { colors } from "../theme/colors";
 import { CourierOrder } from "../types/models";
 import { PrimaryButton } from "./PrimaryButton";
@@ -47,14 +47,16 @@ export function OrderCard({ order, actionLabel, onAction, onPress, disabled }: P
 
       <View style={styles.metrics}>
         <View style={styles.metricCard}>
-          <Text style={styles.metricLabel}>Order total</Text>
+          <Text style={styles.metricLabel}>Customer total</Text>
           <Text style={styles.metricValue}>{formatMoney(order.total)}</Text>
         </View>
         <View style={styles.metricCard}>
           <Text style={styles.metricLabel}>Distance</Text>
-          <Text style={styles.metricValue}>
-            {order.estimated_distance_km ? `${order.estimated_distance_km.toFixed(1)} km` : "Updating"}
-          </Text>
+          <Text style={styles.metricValue}>{formatDistanceKm(order.estimated_distance_km)}</Text>
+        </View>
+        <View style={styles.metricCard}>
+          <Text style={styles.metricLabel}>ETA</Text>
+          <Text style={styles.metricValue}>{formatMinutes(order.estimated_arrival_minutes)}</Text>
         </View>
       </View>
 
@@ -69,9 +71,9 @@ const styles = StyleSheet.create({
   card: {
     padding: 18,
     borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(17,17,17,0.18)",
     gap: 14,
   },
   pressed: {
@@ -84,17 +86,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   orderCode: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 18,
     fontWeight: "900",
   },
   orderDate: {
-    color: "rgba(255,255,255,0.56)",
+    color: colors.muted,
     fontSize: 13,
     marginTop: 4,
   },
   restaurant: {
-    color: "#F8FFE8",
+    color: colors.black,
     fontSize: 24,
     fontWeight: "900",
   },
@@ -105,7 +107,7 @@ const styles = StyleSheet.create({
   },
   rowText: {
     flex: 1,
-    color: "rgba(255,255,255,0.78)",
+    color: colors.text,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -115,20 +117,22 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: colors.cardSoft,
     borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.12)",
     padding: 14,
     gap: 6,
   },
   metricLabel: {
-    color: "rgba(255,255,255,0.56)",
+    color: colors.muted,
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.6,
   },
   metricValue: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 16,
     fontWeight: "800",
   },

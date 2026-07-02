@@ -33,3 +33,19 @@ export function titleCaseVehicle(vehicleType: string) {
     walk: "Walk",
   }[vehicleType] ?? vehicleType;
 }
+
+export function formatDistanceKm(value?: number | null) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "Updating";
+  }
+
+  return `${value.toFixed(1)} km`;
+}
+
+export function formatMinutes(value?: number | null) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "Updating";
+  }
+
+  return `${value} min`;
+}

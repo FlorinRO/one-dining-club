@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   ghost: {
-    backgroundColor: colors.cardSoft,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -60,14 +60,14 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   text: {
-    color: colors.background,
+    color: colors.black,
     fontSize: 17,
     fontWeight: "800",
   },
   ghostText: {
-    color: colors.white,
+    color: colors.text,
   },
   limeText: {
-    color: colors.background,
+    color: colors.black,
   },
 });

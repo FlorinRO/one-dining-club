@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmptyState } from "../components/EmptyState";
 import { OrderCard } from "../components/OrderCard";
@@ -9,8 +10,10 @@ import { useCourierStore } from "../store/courierStore";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/types";
+import { colors } from "../theme/colors";
 
 export function DeliveriesScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const orders = useCourierStore((state) => state.orders);
@@ -30,7 +33,7 @@ export function DeliveriesScreen() {
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 18) }]}
       refreshControl={<RefreshControl tintColor="#B8F26D" refreshing={ordersLoading} onRefresh={refreshOrders} />}
     >
       <View style={styles.section}>
@@ -62,7 +65,7 @@ export function DeliveriesScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#090909",
+    backgroundColor: colors.background,
   },
   content: {
     padding: 18,

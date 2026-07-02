@@ -22,6 +22,7 @@
       "icon": "./assets/ios-icon-yumzy.png",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "YUMZY Courier uses your location while you work to send live courier location updates and help you navigate active deliveries.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "YUMZY Courier uses your location in the background while you are online to keep active deliveries updated.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -29,17 +30,25 @@
       "package": "club.onedining.courier",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "POST_NOTIFICATIONS"
       ]
     },
     "plugins": [
       "expo-video",
+      "expo-notifications",
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "YUMZY Courier uses your location while you work to send live courier location updates and help you navigate active deliveries."
+          "locationWhenInUsePermission": "YUMZY Courier uses your location while you work to send live courier location updates and help you navigate active deliveries.",
+          "locationAlwaysAndWhenInUsePermission": "YUMZY Courier uses your location in the background while you are online to keep active deliveries updated.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
         }
-      ]
+      ],
+      "@rnmapbox/maps"
     ],
     "extra": {
       "productionApiUrl": "https://api.yumzy.ro/api",

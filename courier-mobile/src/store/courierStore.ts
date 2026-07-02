@@ -4,6 +4,11 @@ import { create } from "zustand";
 import { authApi } from "../api/authApi";
 import { courierApi } from "../api/courierApi";
 import { getErrorMessage } from "../lib/errors";
+import {
+  isCourierBackgroundTrackingActive,
+  startCourierBackgroundTracking,
+  stopCourierBackgroundTracking,
+} from "../lib/locationTracking";
 import { CourierOrder, CourierProfile } from "../types/models";
 import { useAuthStore } from "./authStore";
 
@@ -13,10 +18,12 @@ type CourierStore = {
   bootstrapping: boolean;
   ordersLoading: boolean;
   profileLoading: boolean;
+  trackingActive: boolean;
   error: string | null;
   hydrateCourierSession: () => Promise<void>;
   refreshOrders: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshTrackingStatus: () => Promise<void>;
   refreshAll: () => Promise<void>;
   acceptOrder: (orderId: number) => Promise<void>;
   advanceOrderStatus: (orderId: number, orderStatus: "picked_up" | "on_the_way" | "delivered") => Promise<void>;
@@ -45,6 +52,7 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
   bootstrapping: false,
   ordersLoading: false,
   profileLoading: false,
+  trackingActive: false,
   error: null,
   async hydrateCourierSession() {
     set({ bootstrapping: true, error: null });
@@ -55,9 +63,21 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
       }
       useAuthStore.getState().setUser(user);
       const [profile, orders] = await Promise.all([courierApi.getProfile(), courierApi.listOrders()]);
+      const trackingActive = await isCourierBackgroundTrackingActive();
+      if (profile.is_available && !trackingActive) {
+        void startCourierBackgroundTracking()
+          .then(() => get().refreshTrackingStatus())
+          .catch(() => undefined);
+      }
+      if (!profile.is_available && trackingActive) {
+        void stopCourierBackgroundTracking()
+          .then(() => get().refreshTrackingStatus())
+          .catch(() => undefined);
+      }
       set({
         profile,
         orders: sortOrders(orders),
+        trackingActive,
         bootstrapping: false,
         error: null,
       });
@@ -67,6 +87,7 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
         profile: null,
         orders: [],
         bootstrapping: false,
+        trackingActive: false,
         error: getErrorMessage(error, error instanceof Error ? error.message : "Could not load courier session."),
       });
       throw error;
@@ -92,8 +113,12 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
       throw error;
     }
   },
+  async refreshTrackingStatus() {
+    const trackingActive = await isCourierBackgroundTrackingActive();
+    set({ trackingActive });
+  },
   async refreshAll() {
-    await Promise.all([get().refreshProfile(), get().refreshOrders()]);
+    await Promise.all([get().refreshProfile(), get().refreshOrders(), get().refreshTrackingStatus()]);
   },
   async acceptOrder(orderId) {
     const order = await courierApi.acceptOrder(orderId);
@@ -106,6 +131,28 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
   async setAvailability(isAvailable) {
     const profile = await courierApi.updateProfile({ is_available: isAvailable });
     set({ profile });
+
+    if (isAvailable) {
+      try {
+        await get().syncCurrentLocation();
+      } catch {
+        // Keep availability responsive even if foreground location sync fails.
+      }
+
+      try {
+        await startCourierBackgroundTracking();
+      } catch {
+        // The app remains usable even if background tracking permission is denied.
+      }
+    } else {
+      try {
+        await stopCourierBackgroundTracking();
+      } catch {
+        // Ignore background tracking stop failures and keep session responsive.
+      }
+    }
+
+    await get().refreshTrackingStatus();
   },
   async syncCurrentLocation() {
     const permission = await Location.requestForegroundPermissionsAsync();
@@ -120,7 +167,7 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
     const profile = await courierApi.updateProfile({
       current_latitude: currentPosition.coords.latitude.toFixed(6),
       current_longitude: currentPosition.coords.longitude.toFixed(6),
-      is_available: existingProfile?.is_available ?? false,
+      is_available: existingProfile?.is_available,
     });
     set({ profile });
     return { ok: true, message: "Live location updated." };
@@ -132,7 +179,9 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
       bootstrapping: false,
       ordersLoading: false,
       profileLoading: false,
+      trackingActive: false,
       error: null,
     });
+    void stopCourierBackgroundTracking().catch(() => undefined);
   },
 }));

@@ -24,12 +24,12 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   title: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 28,
     fontWeight: "900",
   },
   subtitle: {
-    color: "rgba(255,255,255,0.62)",
+    color: colors.muted,
     fontSize: 15,
     lineHeight: 22,
   },
