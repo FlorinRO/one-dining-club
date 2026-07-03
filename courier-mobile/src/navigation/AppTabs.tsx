@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { LinearGradient } from "expo-linear-gradient";
 import { Activity, Bike, ClipboardList, UserCircle2 } from "lucide-react-native";
-import { Easing, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 
 import { AvailableOrdersScreen } from "../screens/AvailableOrdersScreen";
 import { DeliveriesScreen } from "../screens/DeliveriesScreen";
@@ -17,57 +17,14 @@ export function AppTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        transitionSpec: {
-          animation: "timing",
-          config: {
-            duration: 340,
-            easing: Easing.out(Easing.cubic),
-          },
-        },
-        sceneStyleInterpolator: ({ current }) => ({
-          sceneStyle: {
-            opacity: current.progress.interpolate({
-              inputRange: [-1, -0.2, 0, 0.2, 1],
-              outputRange: [0.95, 0.988, 1, 0.988, 0.95],
-            }),
-            borderRadius: current.progress.interpolate({
-              inputRange: [-1, 0, 1],
-              outputRange: [28, 0, 28],
-            }),
-            shadowColor: "#000000",
-            shadowOpacity: current.progress.interpolate({
-              inputRange: [-1, 0, 1],
-              outputRange: [0.26, 0, 0.26],
-            }),
-            shadowRadius: current.progress.interpolate({
-              inputRange: [-1, 0, 1],
-              outputRange: [28, 0, 28],
-            }),
-            shadowOffset: {
-              width: 0,
-              height: 10,
-            },
-            elevation: current.progress.interpolate({
-              inputRange: [-1, 0, 1],
-              outputRange: [24, 0, 24],
-            }),
-            overflow: "hidden",
-            transform: [
-              {
-                scale: current.progress.interpolate({
-                  inputRange: [-1, 0, 1],
-                  outputRange: [0.6, 1, 0.6],
-                }),
-              },
-            ],
-          },
-        }),
+        animation: "shift",
         tabBarStyle: {
           position: "absolute",
           backgroundColor: "transparent",
           borderTopWidth: 0,
           elevation: 0,
           shadowOpacity: 0,
+          zIndex: 1,
           height: 84,
           paddingTop: 8,
           paddingBottom: 12,

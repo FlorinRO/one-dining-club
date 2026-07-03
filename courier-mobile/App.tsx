@@ -1,6 +1,7 @@
 import "react-native-gesture-handler";
 import "./src/lib/locationTracking";
 
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Appearance } from "react-native";
@@ -32,8 +33,10 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar style="dark" />
-        <RootNavigator />
+        <BottomSheetModalProvider>
+          <StatusBar style="dark" />
+          <RootNavigator />
+        </BottomSheetModalProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

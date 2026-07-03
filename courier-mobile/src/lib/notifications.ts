@@ -121,6 +121,7 @@ async function setupAndroidNotificationChannels() {
   await Notifications.setNotificationChannelAsync("orders", {
     name: "Orders",
     importance: Notifications.AndroidImportance.HIGH,
+    sound: "default",
     vibrationPattern: [0, 250, 250, 250],
   });
 
