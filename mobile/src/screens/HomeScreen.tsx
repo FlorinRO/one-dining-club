@@ -107,6 +107,14 @@ const buildFallbackProduct = (restaurant: Restaurant): Product => ({
   option_groups: [],
 });
 
+const feedProductsForRestaurant = (restaurant: Restaurant, products: Product[]) => {
+  if (isSponsoredFeedPlacement(restaurant) && isBrandAccount(restaurant)) {
+    return products.slice(0, 1);
+  }
+
+  return products;
+};
+
 const hasServerSocial = (product: Product) =>
   typeof product.likes_count === "number" ||
   typeof product.comments_count === "number" ||
@@ -191,7 +199,10 @@ export function HomeScreen({ navigation }: Props) {
     const resolvedRestaurantIds = new Set(resolvedRestaurantProductIds);
 
     return restaurants.flatMap((restaurant) => {
-      const products = (productsByRestaurant[restaurant.id] ?? []).filter((product) => Number(product.restaurant) === restaurant.id);
+      const products = feedProductsForRestaurant(
+        restaurant,
+        (productsByRestaurant[restaurant.id] ?? []).filter((product) => Number(product.restaurant) === restaurant.id),
+      );
       if (!products.length && !resolvedRestaurantIds.has(restaurant.id)) {
         return [];
       }
