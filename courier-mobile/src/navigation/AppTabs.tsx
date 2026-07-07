@@ -1,7 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { LinearGradient } from "expo-linear-gradient";
 import { Activity, Bike, ClipboardList, UserCircle2 } from "lucide-react-native";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { AvailableOrdersScreen } from "../screens/AvailableOrdersScreen";
 import { DeliveriesScreen } from "../screens/DeliveriesScreen";
@@ -20,26 +19,21 @@ export function AppTabs() {
         animation: "shift",
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: "transparent",
-          borderTopWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0,
+          backgroundColor: colors.white,
+          borderTopWidth: 1,
+          borderTopColor: "rgba(17,17,17,0.08)",
+          elevation: 10,
+          shadowColor: "#111111",
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: -4 },
           zIndex: 1,
-          height: 84,
+          height: 88,
           paddingTop: 8,
-          paddingBottom: 12,
+          paddingBottom: 10,
         },
-        tabBarActiveTintColor: colors.lime,
-        tabBarInactiveTintColor: "rgba(255,255,255,0.72)",
-        tabBarBackground: () => (
-          <LinearGradient
-            colors={["rgba(17,17,17,0)", "rgba(17,17,17,0.09)", "rgba(17,17,17,0.22)", "rgba(17,17,17,0.46)", "rgba(17,17,17,0.9)"]}
-            locations={[0, 0.22, 0.5, 0.76, 1]}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={styles.tabBarBackground}
-          />
-        ),
+        tabBarActiveTintColor: colors.black,
+        tabBarInactiveTintColor: "rgba(17,17,17,0.5)",
         tabBarLabelStyle: styles.tabBarLabel,
       }}
     >
@@ -48,7 +42,11 @@ export function AppTabs() {
         component={AvailableOrdersScreen}
         options={{
           title: "Dashboard",
-          tabBarIcon: ({ color, size }) => <Bike color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={[styles.tabIconWrap, focused && styles.tabIconWrapFocused]}>
+              <Bike color={color} size={size} />
+            </View>
+          ),
         }}
       />
       <Tab.Screen
@@ -56,7 +54,11 @@ export function AppTabs() {
         component={OperationsScreen}
         options={{
           title: "Ops",
-          tabBarIcon: ({ color, size }) => <Activity color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={[styles.tabIconWrap, focused && styles.tabIconWrapFocused]}>
+              <Activity color={color} size={size} />
+            </View>
+          ),
         }}
       />
       <Tab.Screen
@@ -64,7 +66,11 @@ export function AppTabs() {
         component={DeliveriesScreen}
         options={{
           title: "My Runs",
-          tabBarIcon: ({ color, size }) => <ClipboardList color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={[styles.tabIconWrap, focused && styles.tabIconWrapFocused]}>
+              <ClipboardList color={color} size={size} />
+            </View>
+          ),
         }}
       />
       <Tab.Screen
@@ -72,7 +78,11 @@ export function AppTabs() {
         component={ProfileScreen}
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => <UserCircle2 color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={[styles.tabIconWrap, focused && styles.tabIconWrapFocused]}>
+              <UserCircle2 color={color} size={size} />
+            </View>
+          ),
         }}
       />
     </Tab.Navigator>
@@ -80,9 +90,15 @@ export function AppTabs() {
 }
 
 const styles = StyleSheet.create({
-  tabBarBackground: {
-    ...StyleSheet.absoluteFillObject,
-    top: -400,
+  tabIconWrap: {
+    minWidth: 44,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabIconWrapFocused: {
+    backgroundColor: colors.cardSoft,
   },
   tabBarLabel: {
     fontSize: 12,
