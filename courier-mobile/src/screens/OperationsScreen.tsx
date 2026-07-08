@@ -1,11 +1,12 @@
-import { useFocusEffect } from "@react-navigation/native";
-import { Clock3, MapPinned, PackageCheck, ShieldCheck } from "lucide-react-native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { ArrowLeft, CalendarClock, CarFront, MapPinned, Wallet } from "lucide-react-native";
 import { useCallback, useMemo } from "react";
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { SectionHeader } from "../components/SectionHeader";
-import { formatMinutes, formatRelativeDate, titleCaseVehicle } from "../lib/format";
+import { AppTabParamList } from "../navigation/types";
+import { formatMinutes, formatMoney, titleCaseVehicle } from "../lib/format";
 import { useAuthStore } from "../store/authStore";
 import { useCourierStore } from "../store/courierStore";
 import { colors } from "../theme/colors";
@@ -13,6 +14,7 @@ import { CourierOrder, CourierProfile } from "../types/models";
 
 export function OperationsScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const profile = useCourierStore((state) => state.profile);
   const orders = useCourierStore((state) => state.orders);
@@ -49,6 +51,39 @@ export function OperationsScreen() {
       trackedOrders.reduce((sum, order) => sum + Number(order.estimated_arrival_minutes ?? 0), 0) / trackedOrders.length,
     );
   }, [myOrders]);
+  const earningsToday = useMemo(
+    () =>
+      myOrders.reduce((sum, order) => {
+        if (order.order_status !== "delivered" || !isToday(order.updated_at)) {
+          return sum;
+        }
+        const deliveryFee = Number(order.delivery_fee ?? 0);
+        return sum + (Number.isNaN(deliveryFee) ? 0 : deliveryFee);
+      }, 0),
+    [myOrders],
+  );
+  const earningsThisWeek = useMemo(
+    () =>
+      myOrders.reduce((sum, order) => {
+        if (order.order_status !== "delivered" || !isThisWeek(order.updated_at)) {
+          return sum;
+        }
+        const deliveryFee = Number(order.delivery_fee ?? 0);
+        return sum + (Number.isNaN(deliveryFee) ? 0 : deliveryFee);
+      }, 0),
+    [myOrders],
+  );
+  const earningsThisMonth = useMemo(
+    () =>
+      myOrders.reduce((sum, order) => {
+        if (order.order_status !== "delivered" || !isThisMonth(order.updated_at)) {
+          return sum;
+        }
+        const deliveryFee = Number(order.delivery_fee ?? 0);
+        return sum + (Number.isNaN(deliveryFee) ? 0 : deliveryFee);
+      }, 0),
+    [myOrders],
+  );
   const activeAlert = useMemo(() => buildActiveAlert(profile, activeOrder, trackingActive), [activeOrder, profile, trackingActive]);
 
   useFocusEffect(
@@ -60,105 +95,139 @@ export function OperationsScreen() {
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 18) }]}
-      refreshControl={<RefreshControl tintColor={colors.lime} refreshing={ordersLoading} onRefresh={refreshAll} />}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingTop: Math.max(insets.top + 8, 18),
+          paddingBottom: Math.max(insets.bottom + 120, 120),
+        },
+      ]}
+      refreshControl={<RefreshControl tintColor={colors.greenDark} refreshing={ordersLoading} onRefresh={refreshAll} />}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.hero}>
-        <SectionHeader eyebrow="Operations" title="Panou live" subtitle="Metrici și starea operațională a turei tale curente." />
-        <View style={styles.heroStatRow}>
-          <View style={styles.heroStat}>
-            <Text style={styles.heroStatValue}>{completedToday}</Text>
-            <Text style={styles.heroStatLabel}>completed today</Text>
-          </View>
-          <View style={styles.heroDivider} />
-          <View style={styles.heroStat}>
-            <Text style={styles.heroStatValue}>{totalDistanceToday.toFixed(1)} km</Text>
-            <Text style={styles.heroStatLabel}>distance today</Text>
-          </View>
+      <View style={styles.header}>
+        <Pressable hitSlop={12} onPress={() => navigation.navigate("Available")} style={styles.headerButtonGhost}>
+          <ArrowLeft color={colors.text} size={24} strokeWidth={2.25} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Operațiuni</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <View style={styles.statsCard}>
+        <View style={styles.statsGrid}>
+          <SummaryBlock value={String(completedToday)} label="Curse azi" />
+          <SummaryBlock value={`${totalDistanceToday.toFixed(1)} km`} label="Distanță azi" noRightBorder />
+          <SummaryBlock value={averageEta ? formatMinutes(averageEta) : "N/A"} label="ETA mediu azi" noBottomBorder />
+          <SummaryBlock value={formatMoney(earningsToday)} label="Câștig azi" accent noRightBorder noBottomBorder />
         </View>
       </View>
 
       <View style={styles.metricsList}>
-        <MetricRow label="Completed today" value={String(completedToday)} hint="Livrări finalizate astăzi" />
-        <MetricRow label="Distance today" value={`${totalDistanceToday.toFixed(1)} km`} hint="Distanță estimată procesată" />
-        <MetricRow label="Avg ETA" value={averageEta ? formatMinutes(averageEta) : "N/A"} hint="Medie pe curse urmărite" />
-        <MetricRow label="Vehicle" value={profile ? titleCaseVehicle(profile.vehicle_type) : "N/A"} hint="Vehicul folosit în tură" />
+        <MetricRow
+          icon={<CarFront color={colors.black} size={18} />}
+          label="Vehicul"
+          value={profile ? titleCaseVehicle(profile.vehicle_type) : "N/A"}
+          hint="Vehiculul activ al curierului"
+          valuePlacement="right"
+        />
+        <MetricRow
+          icon={<CalendarClock color={colors.black} size={18} />}
+          label="Timp online azi"
+          value="N/A"
+          hint="Durata turei returnată de backend"
+          valuePlacement="right"
+        />
+        <MetricRow
+          icon={<Wallet color={colors.black} size={18} />}
+          label="Câștiguri săptămâna asta"
+          value={formatMoney(earningsThisWeek)}
+          hint="Taxele de livrare încasate săptămâna aceasta"
+          valueTone="success"
+        />
+        <MetricRow
+          icon={<Wallet color={colors.black} size={18} />}
+          label="Câștiguri luna asta"
+          value={formatMoney(earningsThisMonth)}
+          hint="Taxele de livrare încasate luna aceasta"
+          valueTone="success"
+        />
       </View>
 
-      <View style={styles.section}>
-        <AlertBanner title={activeAlert.title} description={activeAlert.description} />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Operational details</Text>
-        <View style={styles.detailList}>
-          <InsightRow
-            icon={<ShieldCheck color={colors.lime} size={17} />}
-            title="Verification"
-            value={profile?.is_verified ? "Verified" : "Pending"}
-            description="Contul de curier și documentele operaționale."
-          />
-          <InsightRow
-            icon={<Clock3 color={colors.lime} size={17} />}
-            title="Last profile sync"
-            value={profile?.updated_at ? formatRelativeDate(profile.updated_at) : "Pending"}
-            description="Ultimul update primit din backend pentru profil și locație."
-          />
-          <InsightRow
-            icon={<PackageCheck color={colors.lime} size={17} />}
-            title="Active run"
-            value={activeOrder ? `#${activeOrder.id}` : "None"}
-            description={activeOrder ? "Există o cursă activă în fluxul curent." : "Nu există nicio cursă activă în acest moment."}
-          />
+      {activeAlert ? (
+        <View style={styles.section}>
+          <AlertBanner title={activeAlert.title} description={activeAlert.description} />
         </View>
-      </View>
+      ) : null}
     </ScrollView>
   );
 }
 
-function MetricRow({ label, value, hint }: { label: string; value: string; hint: string }) {
+function SummaryBlock({
+  value,
+  label,
+  accent = false,
+  noRightBorder = false,
+  noBottomBorder = false,
+}: {
+  value: string;
+  label: string;
+  accent?: boolean;
+  noRightBorder?: boolean;
+  noBottomBorder?: boolean;
+}) {
   return (
-    <View style={styles.metricRow}>
-      <View style={styles.metricCopy}>
-        <Text style={styles.metricLabel}>{label}</Text>
-        <Text style={styles.metricHint}>{hint}</Text>
-      </View>
-      <Text style={styles.metricValue}>{value}</Text>
+    <View
+      style={[
+        styles.summaryBlock,
+        noRightBorder && styles.summaryBlockNoRightBorder,
+        noBottomBorder && styles.summaryBlockNoBottomBorder,
+      ]}
+    >
+      <Text style={[styles.summaryValue, accent && styles.summaryValueAccent]} numberOfLines={1}>
+        {value}
+      </Text>
+      <Text style={styles.summaryLabel}>{label}</Text>
     </View>
   );
 }
 
-function InsightRow({
+function MetricRow({
   icon,
-  title,
+  label,
   value,
-  description,
+  hint,
+  valuePlacement = "below",
+  valueTone = "default",
 }: {
   icon: React.ReactNode;
-  title: string;
+  label: string;
   value: string;
-  description: string;
+  hint?: string;
+  valuePlacement?: "below" | "right";
+  valueTone?: "default" | "success";
 }) {
   return (
-    <View style={styles.insightRow}>
-      <View style={styles.insightLead}>
-        <View style={styles.insightIconWrap}>{icon}</View>
-        <View style={styles.insightTextWrap}>
-          <Text style={styles.insightTitle}>{title}</Text>
-          <Text style={styles.insightDescription}>{description}</Text>
+    <View style={styles.metricRow}>
+      <View style={styles.metricLead}>
+        <View style={styles.metricIconWrap}>{icon}</View>
+        <View style={styles.metricCopy}>
+          <Text style={styles.metricLabel}>{label}</Text>
+          {valuePlacement === "below" ? <Text style={[styles.metricValue, valueTone === "success" && styles.metricValueSuccess]}>{value}</Text> : null}
+          {hint ? <Text style={styles.metricHint}>{hint}</Text> : null}
         </View>
       </View>
-      <Text style={styles.insightValue}>{value}</Text>
+      {valuePlacement === "right" ? (
+        <Text style={[styles.metricValueRight, valueTone === "success" && styles.metricValueSuccess]}>{value}</Text>
+      ) : null}
     </View>
   );
 }
 
 function AlertBanner({ title, description }: { title: string; description: string }) {
   return (
-    <View style={styles.alertBanner}>
+      <View style={styles.alertBanner}>
       <View style={styles.alertIconWrap}>
-        <MapPinned color={colors.lime} size={18} />
+        <MapPinned color={colors.black} size={18} />
       </View>
       <View style={styles.alertTextWrap}>
         <Text style={styles.alertTitle}>{title}</Text>
@@ -171,32 +240,23 @@ function AlertBanner({ title, description }: { title: string; description: strin
 function buildActiveAlert(profile: CourierProfile | null, activeOrder: CourierOrder | null, trackingActive: boolean) {
   if (!profile?.is_verified) {
     return {
-      title: "Verificare incompletă",
-      description: "Contul de curier este funcțional, dar verificarea rămâne vizibilă ca prioritate operațională.",
+      title: "Verification incomplete",
+      description: "Courier account verification still needs attention.",
     };
   }
   if (profile?.is_available && !trackingActive) {
     return {
-      title: "Tracking inactiv",
-      description: "Ești online, dar tracking-ul de fundal nu rulează încă. Actualizează locația și acordă permisiunile necesare.",
+      title: "Tracking inactive",
+      description: "Background tracking is not running yet.",
     };
   }
   if (activeOrder?.customer_note) {
     return {
-      title: "Instrucțiuni client",
+      title: "Customer instructions",
       description: activeOrder.customer_note,
     };
   }
-  if (!profile?.current_latitude || !profile?.current_longitude) {
-    return {
-      title: "Lipsă poziție live",
-      description: "Trimite prima poziție din dashboard pentru ETA-uri și routing mai bune.",
-    };
-  }
-  return {
-    title: "Flux stabil",
-    description: "Dashboardul este sincronizat, iar aplicația poate primi și procesa următoarea cursă.",
-  };
+  return null;
 }
 
 function isToday(value: string) {
@@ -205,162 +265,211 @@ function isToday(value: string) {
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
 }
 
+function isThisWeek(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  const day = startOfWeek.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  startOfWeek.setDate(startOfWeek.getDate() + diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+  return date >= startOfWeek && date <= now;
+}
+
+function isThisMonth(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   content: {
-    gap: 26,
-    paddingVertical: 18,
-    paddingBottom: 260,
-  },
-  hero: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 12,
     gap: 18,
   },
-  heroStatRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    gap: 16,
-    paddingBottom: 6,
-  },
-  heroStat: {
-    flex: 1,
-    gap: 2,
-  },
-  heroStatValue: {
-    color: colors.text,
-    fontSize: 34,
-    fontWeight: "900",
-    letterSpacing: -1,
-  },
-  heroStatLabel: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-  },
-  heroDivider: {
-    width: 1,
-    backgroundColor: "rgba(17,17,17,0.12)",
-  },
-  metricsList: {
-    paddingHorizontal: 18,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: "rgba(17,17,17,0.1)",
-  },
-  metricRow: {
+  header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    minHeight: 44,
+  },
+  headerButtonGhost: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    color: "#121826",
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: -0.6,
+  },
+  headerSpacer: {
+    width: 36,
+    height: 36,
+  },
+  statsCard: {
+    borderRadius: 22,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.08)",
+    shadowColor: "#000000",
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  summaryBlock: {
+    width: "50%",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 14,
+    borderColor: "rgba(17,17,17,0.08)",
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+  },
+  summaryBlockNoRightBorder: {
+    borderRightWidth: 0,
+  },
+  summaryBlockNoBottomBorder: {
+    borderBottomWidth: 0,
+  },
+  summaryValue: {
+    color: "#1B2233",
+    fontSize: 17,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  summaryValueAccent: {
+    color: "#27B457",
+  },
+  summaryLabel: {
+    color: "#374151",
+    fontSize: 11,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  metricsList: {
+    gap: 12,
+  },
+  metricRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 16,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(17,17,17,0.08)",
+    paddingHorizontal: 16,
+    borderRadius: 22,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.08)",
+    shadowColor: "#000000",
+    shadowOpacity: 0.055,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
+  metricLead: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    minWidth: 0,
+  },
+  metricIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ECF8EF",
   },
   metricCopy: {
     flex: 1,
     gap: 4,
+    minWidth: 0,
   },
   metricLabel: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
+    color: "#161E2C",
+    fontSize: 15,
+    fontWeight: "700",
   },
   metricValue: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: "900",
-    letterSpacing: -0.5,
+    color: "#161E2C",
+    fontSize: 17,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+    paddingTop: 1,
+  },
+  metricValueRight: {
+    color: "#161E2C",
+    fontSize: 17,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+    textAlign: "right",
+    paddingTop: 2,
+    flexShrink: 1,
+    maxWidth: "42%",
+  },
+  metricValueSuccess: {
+    color: "#27B457",
   },
   metricHint: {
-    color: colors.muted,
-    fontSize: 12,
+    color: "#6B7280",
+    fontSize: 13,
     lineHeight: 18,
   },
   section: {
     gap: 16,
-    paddingHorizontal: 18,
-  },
-  sectionLabel: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 1,
-    textTransform: "uppercase",
   },
   alertBanner: {
     flexDirection: "row",
     gap: 14,
     alignItems: "flex-start",
-    paddingVertical: 2,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 22,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.08)",
+    shadowColor: "#000000",
+    shadowOpacity: 0.055,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
   },
   alertIconWrap: {
-    width: 28,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
-    paddingTop: 2,
+    justifyContent: "center",
+    backgroundColor: "#ECF8EF",
   },
   alertTextWrap: {
     flex: 1,
     gap: 6,
   },
   alertTitle: {
-    color: colors.text,
-    fontSize: 18,
+    color: "#161E2C",
+    fontSize: 17,
     fontWeight: "800",
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
   alertDescription: {
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  detailList: {
-    borderTopWidth: 1,
-    borderTopColor: "rgba(17,17,17,0.1)",
-  },
-  insightRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 12,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(17,17,17,0.08)",
-  },
-  insightLead: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  insightIconWrap: {
-    width: 24,
-    alignItems: "center",
-    paddingTop: 2,
-  },
-  insightTextWrap: {
-    flex: 1,
-    gap: 4,
-  },
-  insightTitle: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  insightValue: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "900",
-    textAlign: "right",
-  },
-  insightDescription: {
-    color: colors.muted,
+    color: "#6B7280",
     fontSize: 13,
     lineHeight: 19,
   },

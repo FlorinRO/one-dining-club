@@ -101,9 +101,25 @@ const MAPBOX_STYLE_JSON = JSON.stringify(courierMapStyle);
 const MAPBOX_STYLE_KEY = `${courierMapStyle.name}-${courierMapStyle.layers.length}`;
 const MAPBOX_TOKEN = getMapboxAccessToken();
 const MAPBOX_MODULE = getMapboxModule();
-const NAVIGATION_CAMERA_PITCH = 48;
-const NAVIGATION_CAMERA_ZOOM = 16.4;
+const NAVIGATION_CAMERA_PITCH = 52;
+const NAVIGATION_CAMERA_ZOOM = 16.1;
 const NAVIGATION_CAMERA_ANIMATION_MS = 900;
+const NAVIGATION_CAMERA_PADDING = {
+  paddingTop: 96,
+  paddingRight: 28,
+  paddingBottom: 392,
+  paddingLeft: 28,
+};
+const OFFER_PREVIEW_CAMERA_PADDING = {
+  paddingTop: 112,
+  paddingRight: 28,
+  paddingBottom: 356,
+  paddingLeft: 28,
+};
+const NAVIGATION_CAMERA_LEAD_MIN_KM = 0.08;
+const NAVIGATION_CAMERA_LEAD_MAX_KM = 0.28;
+const STATIONARY_POSITION_JITTER_KM = 0.012;
+const MIN_SPEED_FOR_COURSE_HEADING_MPS = 1.2;
 const ROUTE_LINE_COLOR = "#8B5CF6";
 const PICKUP_AUTO_OPEN_DISTANCE_KM = 0.01;
 const QQ_ENABLE_HAPTIC_DURATION = 12;
@@ -275,7 +291,10 @@ export function CourierLiveMap({
   const [queueFeedbackMessage, setQueueFeedbackMessage] = useState<string | null>(null);
   const [routeShape, setRouteShape] = useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
   const [routeMetrics, setRouteMetrics] = useState<RouteMetrics | null>(null);
+  const lastRouteStopsKeyRef = useRef<string | null>(null);
   const bottomSheetModalRef = useRef<BottomSheetModal | null>(null);
+  const pendingSheetOpenFrameRef = useRef<number | null>(null);
+  const ignoreNextSheetDismissRef = useRef(false);
   const hapticTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const simulatedOfferTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queuedMarkerPulse = useRef(new Animated.Value(0)).current;
@@ -363,7 +382,7 @@ export function CourierLiveMap({
           setDeviceCoordinate({
             latitude: initial.coords.latitude,
             longitude: initial.coords.longitude,
-            heading: normalizeHeading(initial.coords.heading),
+            heading: pickCourseHeading(initial.coords.heading, initial.coords.speed),
           });
         }
 
@@ -378,11 +397,38 @@ export function CourierLiveMap({
               return;
             }
 
-            setDeviceCoordinate((currentCoordinate) => ({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              heading: normalizeHeading(position.coords.heading) ?? currentCoordinate?.heading ?? null,
-            }));
+            setDeviceCoordinate((currentCoordinate) => {
+              const nextHeading =
+                pickCourseHeading(position.coords.heading, position.coords.speed) ?? currentCoordinate?.heading ?? null;
+
+              if (!currentCoordinate) {
+                return {
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                  heading: nextHeading,
+                };
+              }
+
+              const nextCoordinate = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                heading: nextHeading,
+              };
+              const speed = Number(position.coords.speed);
+              const movedDistanceKm = calculateDistanceKm(currentCoordinate, nextCoordinate);
+              const isProbablyStationary =
+                (!Number.isFinite(speed) || speed < MIN_SPEED_FOR_COURSE_HEADING_MPS) &&
+                movedDistanceKm < STATIONARY_POSITION_JITTER_KM;
+
+              if (isProbablyStationary) {
+                return {
+                  ...currentCoordinate,
+                  heading: nextHeading,
+                };
+              }
+
+              return nextCoordinate;
+            });
           },
         );
 
@@ -411,6 +457,10 @@ export function CourierLiveMap({
 
     return () => {
       mounted = false;
+      if (pendingSheetOpenFrameRef.current !== null) {
+        cancelAnimationFrame(pendingSheetOpenFrameRef.current);
+        pendingSheetOpenFrameRef.current = null;
+      }
       positionSubscription?.remove();
       headingSubscription?.remove();
       hapticTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
@@ -449,16 +499,30 @@ export function CourierLiveMap({
     if (!current || activeRouteStops.length === 0) {
       setRouteShape(null);
       setRouteMetrics(null);
+      lastRouteStopsKeyRef.current = null;
       return;
     }
 
+    const routeStopsKey = activeRouteStops
+      .map((stop) => `${stop.latitude.toFixed(6)},${stop.longitude.toFixed(6)}`)
+      .join("|");
+    const destinationChanged = lastRouteStopsKeyRef.current !== routeStopsKey;
+    lastRouteStopsKeyRef.current = routeStopsKey;
     const fallbackMetrics = buildFallbackRouteMetrics(current, activeRouteStops);
-    setRouteMetrics(fallbackMetrics);
 
     if (!MAPBOX_TOKEN) {
+      setRouteMetrics(fallbackMetrics);
       setRouteShape(null);
       return;
     }
+
+    setRouteMetrics((currentMetrics) => {
+      if (destinationChanged || !currentMetrics) {
+        return fallbackMetrics;
+      }
+
+      return currentMetrics;
+    });
 
     const abortController = new AbortController();
 
@@ -492,10 +556,7 @@ export function CourierLiveMap({
     }
 
     cameraRef.current?.setCamera({
-      centerCoordinate: [current.longitude, current.latitude],
-      zoomLevel: NAVIGATION_CAMERA_ZOOM,
-      pitch: NAVIGATION_CAMERA_PITCH,
-      heading: current.heading ?? 0,
+      ...buildNavigationCameraSettings(current, effectiveTarget),
       animationMode: "easeTo",
       animationDuration: NAVIGATION_CAMERA_ANIMATION_MS,
     });
@@ -521,6 +582,29 @@ export function CourierLiveMap({
     clearPendingHaptics();
     Vibration.vibrate(QQ_DISABLE_HAPTIC_DURATION);
   }, [clearPendingHaptics]);
+
+  const presentBottomSheet = useCallback(() => {
+    if (pendingSheetOpenFrameRef.current !== null) {
+      cancelAnimationFrame(pendingSheetOpenFrameRef.current);
+    }
+
+    pendingSheetOpenFrameRef.current = requestAnimationFrame(() => {
+      pendingSheetOpenFrameRef.current = null;
+      const sheet = bottomSheetModalRef.current;
+      if (!sheet) {
+        return;
+      }
+
+      sheet.present();
+      requestAnimationFrame(() => {
+        try {
+          sheet.snapToIndex(0);
+        } catch {
+          // Dacă sheet-ul se închide între cadre, ignorăm apelul redundant.
+        }
+      });
+    });
+  }, []);
 
   const stopOfferAlert = useCallback(() => {
     clearPendingHaptics();
@@ -564,18 +648,16 @@ export function CourierLiveMap({
     setRemainingOfferSeconds(OFFER_RESPONSE_WINDOW_SECONDS);
     setSelectedRestaurantId(null);
     startOfferAlert();
-    requestAnimationFrame(() => {
-      const sheet = bottomSheetModalRef.current;
-      if (!sheet) {
-        return;
-      }
+    presentBottomSheet();
+  }, [pendingOffer, presentBottomSheet, startOfferAlert, stopOfferAlert]);
 
-      sheet.present();
-      requestAnimationFrame(() => {
-        sheet.snapToIndex(0);
-      });
-    });
-  }, [pendingOffer, startOfferAlert, stopOfferAlert]);
+  useEffect(() => {
+    if (!selectedRestaurantId || pendingOffer || target || acceptedOfferTarget) {
+      return;
+    }
+
+    presentBottomSheet();
+  }, [acceptedOfferTarget, pendingOffer, presentBottomSheet, selectedRestaurantId, target]);
 
   useEffect(() => {
     if (queuedRestaurantIds.length === 0) {
@@ -607,26 +689,20 @@ export function CourierLiveMap({
     };
   }, [queuedMarkerPulse, queuedRestaurantIds.length]);
 
-  const handleRestaurantPress = (restaurantId: string) => {
+  const handleRestaurantPress = useCallback((restaurantId: string) => {
     setSelectedRestaurantId(restaurantId);
-    requestAnimationFrame(() => {
-      const sheet = bottomSheetModalRef.current;
-      if (!sheet) {
-        return;
-      }
-
-      sheet.present();
-      requestAnimationFrame(() => {
-        sheet.snapToIndex(0);
-      });
-    });
-  };
+  }, []);
 
   const handleCloseQueueSheet = () => {
     bottomSheetModalRef.current?.dismiss();
   };
 
   const handleSheetDismiss = useCallback(() => {
+    if (ignoreNextSheetDismissRef.current) {
+      ignoreNextSheetDismissRef.current = false;
+      return;
+    }
+
     if (pendingOffer) {
       stopOfferAlert();
       setPendingOffer(null);
@@ -639,6 +715,11 @@ export function CourierLiveMap({
 
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
+      if (ignoreNextSheetDismissRef.current) {
+        ignoreNextSheetDismissRef.current = false;
+        return;
+      }
+
       if (pendingOffer) {
         stopOfferAlert();
         setPendingOffer(null);
@@ -732,6 +813,10 @@ export function CourierLiveMap({
     // Dacă un curier este deja în QQ la restaurant, pentru simulare îl tratăm ca fiind prezent acolo,
     // chiar dacă locația live nu a fost încă actualizată exact în aplicație.
     const courierReferenceCoordinate = current ?? selectedRestaurant.coordinate;
+    if (!SIMULATED_CUSTOMER_STOPS[selectedRestaurant.id]) {
+      setQueueFeedbackMessage("Restaurantul selectat nu are încă date locale pentru simularea QQ.");
+      return;
+    }
     const offer = buildSimulatedOffer(selectedRestaurant, courierReferenceCoordinate);
     setQueueFeedbackMessage("Simularea a pornit. Oferta va apărea în 4 secunde.");
     simulatedOfferTimeoutRef.current = setTimeout(() => {
@@ -787,7 +872,6 @@ export function CourierLiveMap({
     bottomSheetModalRef.current?.dismiss();
     setPendingOffer(null);
     setQueueFeedbackMessage("Comanda simulată a fost acceptată. Traseul către restaurant este afișat pe hartă.");
-    bottomSheetModalRef.current?.dismiss();
     setSelectedRestaurantId(null);
   }, [pendingOffer, stopOfferAlert]);
 
@@ -819,25 +903,52 @@ export function CourierLiveMap({
   }, [acceptedOffer]);
 
   const handleClearAcceptedOffer = useCallback(() => {
+    if (pendingSheetOpenFrameRef.current !== null) {
+      cancelAnimationFrame(pendingSheetOpenFrameRef.current);
+      pendingSheetOpenFrameRef.current = null;
+    }
+
+    setSelectedRestaurantId(null);
     setAcceptedOffer(null);
     setAcceptedOfferStage("pickup");
     setQueueFeedbackMessage("Simularea traseului a fost închisă.");
-  }, []);
+
+    if (current) {
+      requestAnimationFrame(() => {
+        cameraRef.current?.setCamera({
+          centerCoordinate: [current.longitude, current.latitude],
+          zoomLevel: 15.2,
+          pitch: 0,
+          heading: 0,
+          animationMode: "easeTo",
+          animationDuration: 700,
+        });
+      });
+    }
+  }, [current]);
 
   const handleRecenterPress = useCallback(() => {
     if (!current) {
       return;
     }
 
-    cameraRef.current?.setCamera({
-      centerCoordinate: [current.longitude, current.latitude],
-      zoomLevel: isNavigationActive ? NAVIGATION_CAMERA_ZOOM : 15.2,
-      pitch: isNavigationActive ? NAVIGATION_CAMERA_PITCH : 0,
-      heading: isNavigationActive ? current.heading ?? 0 : 0,
-      animationMode: "easeTo",
-      animationDuration: 700,
-    });
-  }, [current, isNavigationActive]);
+    cameraRef.current?.setCamera(
+      isNavigationActive && effectiveTarget
+        ? {
+            ...buildNavigationCameraSettings(current, effectiveTarget),
+            animationMode: "easeTo",
+            animationDuration: 700,
+          }
+        : {
+            centerCoordinate: [current.longitude, current.latitude],
+            zoomLevel: 15.2,
+            pitch: 0,
+            heading: 0,
+            animationMode: "easeTo",
+            animationDuration: 700,
+          },
+    );
+  }, [current, effectiveTarget, isNavigationActive]);
 
   const animatedQueuedMarkerHaloStyle = {
     opacity: queuedMarkerPulse.interpolate({
@@ -915,6 +1026,7 @@ export function CourierLiveMap({
                 key={restaurant.id}
                 coordinate={[restaurant.coordinate.longitude, restaurant.coordinate.latitude]}
                 anchor={{ x: 0.5, y: 1 }}
+                allowOverlap
               >
                 <Pressable onPress={() => handleRestaurantPress(restaurant.id)} style={styles.restaurantMarkerPressable}>
                   <View style={styles.restaurantMarkerWrap}>
@@ -955,7 +1067,6 @@ export function CourierLiveMap({
 
         {current ? (
           <MarkerView
-            key={`courier-live-${current.latitude.toFixed(6)}-${current.longitude.toFixed(6)}-${Math.round(current.heading ?? 0)}`}
             coordinate={[current.longitude, current.latitude]}
             anchor={{ x: 0.5, y: 0.5 }}
           >
@@ -975,6 +1086,7 @@ export function CourierLiveMap({
           <MarkerView
             coordinate={[customerMarkerCoordinate.longitude, customerMarkerCoordinate.latitude]}
             anchor={{ x: 0.5, y: 1 }}
+            allowOverlap
           >
             <View style={styles.dropoffMarkerWrap}>
               <View style={styles.dropoffMarker}>
@@ -1265,6 +1377,21 @@ function normalizeHeading(value?: number | null) {
   return heading % 360;
 }
 
+function pickCourseHeading(heading?: number | null, speed?: number | null) {
+  const normalizedHeading = normalizeHeading(heading);
+  const normalizedSpeed = Number(speed);
+
+  if (normalizedHeading === null) {
+    return null;
+  }
+
+  if (!Number.isFinite(normalizedSpeed) || normalizedSpeed < MIN_SPEED_FOR_COURSE_HEADING_MPS) {
+    return null;
+  }
+
+  return normalizedHeading;
+}
+
 function buildCameraConfig(
   current: MapCoordinate | null,
   target: MapCoordinate | null,
@@ -1273,32 +1400,11 @@ function buildCameraConfig(
   shouldFitRoute = false,
 ) {
   if (current && shouldFitRoute && routeStops.length > 0) {
-    const routePoints = [current, ...routeStops];
-    const latitudes = routePoints.map((point) => point.latitude);
-    const longitudes = routePoints.map((point) => point.longitude);
-
-    return {
-      bounds: {
-        ne: [Math.max(...longitudes) + 0.004, Math.max(...latitudes) + 0.004],
-        sw: [Math.min(...longitudes) - 0.004, Math.min(...latitudes) - 0.004],
-      },
-      padding: {
-        paddingTop: 140,
-        paddingRight: 40,
-        paddingBottom: 220,
-        paddingLeft: 40,
-      },
-      pitch: 0,
-    };
+    return buildOfferPreviewCameraSettings(current, routeStops);
   }
 
   if (current && target) {
-    return {
-      centerCoordinate: [current.longitude, current.latitude],
-      zoomLevel: NAVIGATION_CAMERA_ZOOM,
-      pitch: NAVIGATION_CAMERA_PITCH,
-      heading: current.heading ?? 0,
-    };
+    return buildNavigationCameraSettings(current, target);
   }
 
   if (!target && restaurants.length) {
@@ -1340,6 +1446,48 @@ function buildCameraConfig(
     centerCoordinate: [28.8004, 45.1798],
     zoomLevel: 13.2,
     pitch: 0,
+  };
+}
+
+function buildOfferPreviewCameraSettings(current: MapCoordinate, routeStops: MapCoordinate[]) {
+  const routePoints = [current, ...routeStops];
+  const latitudes = routePoints.map((point) => point.latitude);
+  const longitudes = routePoints.map((point) => point.longitude);
+  const minLatitude = Math.min(...latitudes);
+  const maxLatitude = Math.max(...latitudes);
+  const minLongitude = Math.min(...longitudes);
+  const maxLongitude = Math.max(...longitudes);
+  const latitudeSpan = maxLatitude - minLatitude;
+  const longitudeSpan = maxLongitude - minLongitude;
+  const latitudeBuffer = Math.min(0.0018, Math.max(0.0006, latitudeSpan * 0.35));
+  const longitudeBuffer = Math.min(0.0018, Math.max(0.0006, longitudeSpan * 0.35));
+
+  return {
+    bounds: {
+      ne: [maxLongitude + longitudeBuffer, maxLatitude + latitudeBuffer],
+      sw: [minLongitude - longitudeBuffer, minLatitude - latitudeBuffer],
+    },
+    padding: OFFER_PREVIEW_CAMERA_PADDING,
+    pitch: 0,
+    heading: 0,
+  };
+}
+
+function buildNavigationCameraSettings(current: MapCoordinate, target: MapCoordinate) {
+  const distanceToTargetKm = calculateDistanceKm(current, target);
+  const forwardHeading = current.heading ?? calculateBearing(current, target);
+  const leadDistanceKm = Math.min(
+    NAVIGATION_CAMERA_LEAD_MAX_KM,
+    Math.max(NAVIGATION_CAMERA_LEAD_MIN_KM, distanceToTargetKm * 0.35),
+  );
+  const focusCoordinate = projectCoordinate(current, forwardHeading, leadDistanceKm);
+
+  return {
+    centerCoordinate: [focusCoordinate.longitude, focusCoordinate.latitude] as [number, number],
+    zoomLevel: NAVIGATION_CAMERA_ZOOM,
+    pitch: NAVIGATION_CAMERA_PITCH,
+    heading: forwardHeading,
+    padding: NAVIGATION_CAMERA_PADDING,
   };
 }
 
@@ -1453,8 +1601,47 @@ function calculateDistanceKm(from: MapCoordinate, to: MapCoordinate) {
   return earthRadiusKm * arc;
 }
 
+function calculateBearing(from: MapCoordinate, to: MapCoordinate) {
+  const fromLatitude = toRadians(from.latitude);
+  const toLatitude = toRadians(to.latitude);
+  const longitudeDelta = toRadians(to.longitude - from.longitude);
+  const y = Math.sin(longitudeDelta) * Math.cos(toLatitude);
+  const x =
+    Math.cos(fromLatitude) * Math.sin(toLatitude) -
+    Math.sin(fromLatitude) * Math.cos(toLatitude) * Math.cos(longitudeDelta);
+  return (toDegrees(Math.atan2(y, x)) + 360) % 360;
+}
+
+function projectCoordinate(from: MapCoordinate, heading: number, distanceKm: number): MapCoordinate {
+  const angularDistance = distanceKm / 6371;
+  const bearing = toRadians(heading);
+  const latitude = toRadians(from.latitude);
+  const longitude = toRadians(from.longitude);
+
+  const projectedLatitude = Math.asin(
+    Math.sin(latitude) * Math.cos(angularDistance) +
+      Math.cos(latitude) * Math.sin(angularDistance) * Math.cos(bearing),
+  );
+  const projectedLongitude =
+    longitude +
+    Math.atan2(
+      Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(latitude),
+      Math.cos(angularDistance) - Math.sin(latitude) * Math.sin(projectedLatitude),
+    );
+
+  return {
+    latitude: toDegrees(projectedLatitude),
+    longitude: toDegrees(projectedLongitude),
+    heading: from.heading ?? heading,
+  };
+}
+
 function toRadians(value: number) {
   return (value * Math.PI) / 180;
+}
+
+function toDegrees(value: number) {
+  return (value * 180) / Math.PI;
 }
 
 function buildSimulatedOffer(restaurant: RestaurantMapPin, current: MapCoordinate): SimulatedOffer {
