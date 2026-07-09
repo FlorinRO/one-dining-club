@@ -9,19 +9,22 @@ import {
   startCourierBackgroundTracking,
   stopCourierBackgroundTracking,
 } from "../lib/locationTracking";
-import { CourierOrder, CourierProfile } from "../types/models";
+import { CourierOperationsSummary, CourierOrder, CourierProfile } from "../types/models";
 import { useAuthStore } from "./authStore";
 
 type CourierStore = {
   profile: CourierProfile | null;
+  operationsSummary: CourierOperationsSummary | null;
   orders: CourierOrder[];
   bootstrapping: boolean;
   ordersLoading: boolean;
+  operationsLoading: boolean;
   profileLoading: boolean;
   trackingActive: boolean;
   error: string | null;
   hydrateCourierSession: () => Promise<void>;
   refreshOrders: () => Promise<void>;
+  refreshOperationsSummary: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   refreshTrackingStatus: () => Promise<void>;
   refreshAll: () => Promise<void>;
@@ -48,9 +51,11 @@ function replaceOrder(orders: CourierOrder[], order: CourierOrder) {
 
 export const useCourierStore = create<CourierStore>((set, get) => ({
   profile: null,
+  operationsSummary: null,
   orders: [],
   bootstrapping: false,
   ordersLoading: false,
+  operationsLoading: false,
   profileLoading: false,
   trackingActive: false,
   error: null,
@@ -62,7 +67,11 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
         throw new Error("This account is not allowed in YUMZY Courier.");
       }
       useAuthStore.getState().setUser(user);
-      const [profile, orders] = await Promise.all([courierApi.getProfile(), courierApi.listOrders()]);
+      const [profile, orders, operationsSummary] = await Promise.all([
+        courierApi.getProfile(),
+        courierApi.listOrders(),
+        courierApi.getOperationsSummary(),
+      ]);
       const trackingActive = await isCourierBackgroundTrackingActive();
       if (profile.is_available && !trackingActive) {
         void startCourierBackgroundTracking()
@@ -76,6 +85,7 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
       }
       set({
         profile,
+        operationsSummary,
         orders: sortOrders(orders),
         trackingActive,
         bootstrapping: false,
@@ -85,6 +95,7 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
       useAuthStore.getState().logout();
       set({
         profile: null,
+        operationsSummary: null,
         orders: [],
         bootstrapping: false,
         trackingActive: false,
@@ -103,6 +114,16 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
       throw error;
     }
   },
+  async refreshOperationsSummary() {
+    set({ operationsLoading: true, error: null });
+    try {
+      const operationsSummary = await courierApi.getOperationsSummary();
+      set({ operationsSummary, operationsLoading: false });
+    } catch (error) {
+      set({ operationsLoading: false, error: getErrorMessage(error, "Could not refresh courier operations.") });
+      throw error;
+    }
+  },
   async refreshProfile() {
     set({ profileLoading: true, error: null });
     try {
@@ -118,15 +139,17 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
     set({ trackingActive });
   },
   async refreshAll() {
-    await Promise.all([get().refreshProfile(), get().refreshOrders(), get().refreshTrackingStatus()]);
+    await Promise.all([get().refreshProfile(), get().refreshOrders(), get().refreshOperationsSummary(), get().refreshTrackingStatus()]);
   },
   async acceptOrder(orderId) {
     const order = await courierApi.acceptOrder(orderId);
     set((state) => ({ orders: replaceOrder(state.orders, order) }));
+    void get().refreshOperationsSummary().catch(() => undefined);
   },
   async advanceOrderStatus(orderId, orderStatus) {
     const order = await courierApi.updateOrderStatus(orderId, orderStatus);
     set((state) => ({ orders: replaceOrder(state.orders, order) }));
+    void get().refreshOperationsSummary().catch(() => undefined);
   },
   async setAvailability(isAvailable) {
     const profile = await courierApi.updateProfile({ is_available: isAvailable });
@@ -153,6 +176,7 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
     }
 
     await get().refreshTrackingStatus();
+    void get().refreshOperationsSummary().catch(() => undefined);
   },
   async syncCurrentLocation() {
     const permission = await Location.requestForegroundPermissionsAsync();
@@ -175,9 +199,11 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
   reset() {
     set({
       profile: null,
+      operationsSummary: null,
       orders: [],
       bootstrapping: false,
       ordersLoading: false,
+      operationsLoading: false,
       profileLoading: false,
       trackingActive: false,
       error: null,

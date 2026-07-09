@@ -9,159 +9,155 @@ import {
   ShoppingBag,
 } from "lucide-react-native";
 import { useCallback, useMemo } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { RootStackParamList } from "../navigation/types";
-import { useAuthStore } from "../store/authStore";
 import { useCourierStore } from "../store/courierStore";
 import { colors } from "../theme/colors";
-import { CourierOrder } from "../types/models";
+import { CourierCompletedDelivery } from "../types/models";
 
-const COMPLETED_ORDER_STATUSES = ["delivered", "cancelled", "rejected"] as const;
-const PERIOD_DAYS = 7;
+const EMPTY_DELIVERIES: CourierCompletedDelivery[] = [];
 
 export function DeliveriesScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const currentUserId = useAuthStore((state) => state.user?.id);
-  const orders = useCourierStore((state) => state.orders);
   const ordersLoading = useCourierStore((state) => state.ordersLoading);
-  const refreshOrders = useCourierStore((state) => state.refreshOrders);
+  const operationsLoading = useCourierStore((state) => state.operationsLoading);
+  const operationsSummary = useCourierStore((state) => state.operationsSummary);
+  const refreshAll = useCourierStore((state) => state.refreshAll);
 
   useFocusEffect(
     useCallback(() => {
-      void refreshOrders().catch(() => undefined);
-    }, [refreshOrders]),
+      void refreshAll().catch(() => undefined);
+    }, [refreshAll]),
   );
 
-  const completedOrders = useMemo(
-    () =>
-      orders.filter(
-        (order) => order.courier === currentUserId && (COMPLETED_ORDER_STATUSES as readonly string[]).includes(order.order_status),
-      ),
-    [currentUserId, orders],
-  );
-
-  const recentCompletedOrders = useMemo(
-    () => completedOrders.filter((order) => isWithinLastDays(order.updated_at, PERIOD_DAYS)),
-    [completedOrders],
-  );
+  const recentCompletedDeliveries = operationsSummary?.recent_deliveries ?? EMPTY_DELIVERIES;
+  const isInitialLoading = !operationsSummary && (ordersLoading || operationsLoading);
 
   const summary = useMemo(() => {
-    const deliveredOrders = recentCompletedOrders.filter((order) => order.order_status === "delivered");
-    const totalEarnings = deliveredOrders.reduce((sum, order) => {
-      const deliveryFee = Number(order.delivery_fee ?? 0);
+    const totalEarnings = recentCompletedDeliveries.reduce((sum, delivery) => {
+      const deliveryFee = Number(delivery.delivery_fee ?? 0);
       return sum + (Number.isNaN(deliveryFee) ? 0 : deliveryFee);
     }, 0);
-    const totalDistance = recentCompletedOrders.reduce(
-      (sum, order) => sum + (typeof order.estimated_distance_km === "number" ? order.estimated_distance_km : 0),
+    const totalDistance = recentCompletedDeliveries.reduce(
+      (sum, delivery) => sum + (typeof delivery.distance_km === "number" ? delivery.distance_km : 0),
       0,
     );
-    const totalActiveMinutes = recentCompletedOrders.reduce(
-      (sum, order) => sum + (typeof order.estimated_arrival_minutes === "number" ? order.estimated_arrival_minutes : 0),
+    const totalActiveMinutes = recentCompletedDeliveries.reduce(
+      (sum, delivery) => sum + (typeof delivery.duration_minutes === "number" ? delivery.duration_minutes : 0),
       0,
     );
 
     return {
-      deliveries: recentCompletedOrders.length,
+      deliveries: recentCompletedDeliveries.length,
       earnings: formatCurrencyValue(totalEarnings),
       distance: formatDistanceValue(totalDistance),
       activeTime: formatDurationValue(totalActiveMinutes),
     };
-  }, [recentCompletedOrders]);
+  }, [recentCompletedDeliveries]);
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[
-        styles.content,
-        {
-          paddingTop: Math.max(insets.top + 8, 18),
-          paddingBottom: Math.max(insets.bottom + 120, 120),
-        },
-      ]}
-      refreshControl={<RefreshControl tintColor={colors.greenDark} refreshing={ordersLoading} onRefresh={refreshOrders} />}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.header}>
-        <Pressable
-          hitSlop={12}
-          onPress={() => {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            }
-          }}
-          style={styles.headerButtonGhost}
-        >
-          <ArrowLeft color={colors.text} size={28} strokeWidth={2.25} />
-        </Pressable>
-
-        <Text style={styles.headerTitle}>Curse completate</Text>
-
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <View style={styles.statsCard}>
-        <View style={styles.statsGrid}>
-          <StatBlock value={String(summary.deliveries)} label="Curse" accent />
-          <StatBlock value={summary.earnings} label="Câștiguri" accent noRightBorder />
-          <StatBlock value={summary.distance} label="Distanță" noBottomBorder />
-          <StatBlock value={summary.activeTime} label="Timp activ" noRightBorder noBottomBorder />
-        </View>
-      </View>
-
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Istoric curse</Text>
-      </View>
-
-      <View style={styles.list}>
-        {recentCompletedOrders.map((order) => (
+    <View style={styles.root}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: Math.max(insets.top + 8, 18),
+            paddingBottom: Math.max(insets.bottom + 120, 120),
+          },
+        ]}
+        refreshControl={<RefreshControl tintColor={colors.greenDark} refreshing={ordersLoading || operationsLoading} onRefresh={refreshAll} />}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
           <Pressable
-            key={order.id}
-            onPress={() => navigation.navigate("OrderDetails", { orderId: order.id })}
-            style={styles.deliveryCard}
+            hitSlop={12}
+            onPress={() => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              }
+            }}
+            style={styles.headerButtonGhost}
           >
-            <View style={styles.deliveryCardLeft}>
-              <View style={styles.deliveryIconWrap}>
-                <View style={styles.deliveryIconCircle}>
-                  <ShoppingBag color={colors.greenDark} size={28} strokeWidth={2.1} />
-                </View>
-                <View style={styles.deliveryCheckBadge}>
-                  <Check color={colors.white} size={13} strokeWidth={3} />
-                </View>
-              </View>
-
-              <View style={styles.deliveryContent}>
-                <Text style={styles.deliveryCode}>#{order.id}</Text>
-                <Text style={styles.deliveryMeta}>{formatOrderDate(order.updated_at)}</Text>
-
-                <AddressRow dotColor="#2FC56C" text={order.restaurant_name} />
-                <AddressRow dotColor="#FF5A36" text={buildDropoffAddress(order)} />
-              </View>
-            </View>
-
-            <View style={styles.deliveryCardRight}>
-              <Text style={styles.deliveryAmount}>{formatCurrencyValue(Number(order.delivery_fee ?? 0))}</Text>
-
-              <View style={styles.deliveryInfoList}>
-                <InfoPill icon={<Clock3 color={stylesConfig.infoIcon} size={18} strokeWidth={2.1} />} text={formatOrderMinutes(order)} />
-                <InfoPill icon={<MapPin color={stylesConfig.infoIcon} size={18} strokeWidth={2.1} />} text={formatOrderDistance(order)} />
-              </View>
-            </View>
-
-            <ChevronRight color={stylesConfig.chevron} size={24} strokeWidth={2.2} />
+            <ArrowLeft color={colors.text} size={28} strokeWidth={2.25} />
           </Pressable>
-        ))}
 
-        {!recentCompletedOrders.length ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Nu există curse finalizate în ultimele 7 zile.</Text>
-            <Text style={styles.emptyText}>Istoricul va apărea aici imediat ce backend-ul întoarce livrări completate pentru curierul curent.</Text>
+          <Text style={styles.headerTitle}>Curse completate</Text>
+
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <View style={styles.statsCard}>
+          <View style={styles.statsGrid}>
+            <StatBlock value={String(summary.deliveries)} label="Curse" />
+            <StatBlock value={summary.earnings} label="Câștiguri" accent noRightBorder />
+            <StatBlock value={summary.distance} label="Distanță" noBottomBorder />
+            <StatBlock value={summary.activeTime} label="Timp activ" noRightBorder noBottomBorder />
           </View>
-        ) : null}
-      </View>
-    </ScrollView>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Istoric curse</Text>
+        </View>
+
+        <View style={styles.list}>
+          {recentCompletedDeliveries.map((delivery) => (
+            <Pressable
+              key={delivery.id}
+              onPress={() => navigation.navigate("CompletedDeliveryDetails", { deliveryId: delivery.id })}
+              style={styles.deliveryCard}
+            >
+              <View style={styles.deliveryCardLeft}>
+                <View style={styles.deliveryIconWrap}>
+                  <View style={styles.deliveryIconCircle}>
+                    <ShoppingBag color={colors.greenDark} size={28} strokeWidth={2.1} />
+                  </View>
+                  <View style={styles.deliveryCheckBadge}>
+                    <Check color={colors.white} size={13} strokeWidth={3} />
+                  </View>
+                </View>
+
+                <View style={styles.deliveryContent}>
+                  <Text style={styles.deliveryCode}>{formatDeliveryCode(delivery)}</Text>
+                  <Text style={styles.deliveryMeta}>{formatOrderDate(delivery.completed_at)}</Text>
+
+                  <AddressRow dotColor="#2FC56C" text={delivery.restaurant_name} />
+                  <AddressRow dotColor="#FF5A36" text={delivery.dropoff_address || "Adresă indisponibilă"} />
+                </View>
+              </View>
+
+              <View style={styles.deliveryCardRight}>
+                <Text style={styles.deliveryAmount}>{formatCurrencyValue(Number(delivery.delivery_fee ?? 0))}</Text>
+
+                <View style={styles.deliveryInfoList}>
+                  <InfoPill icon={<Clock3 color={stylesConfig.infoIcon} size={18} strokeWidth={2.1} />} text={formatDeliveryMinutes(delivery)} />
+                  <InfoPill icon={<MapPin color={stylesConfig.infoIcon} size={18} strokeWidth={2.1} />} text={formatDeliveryDistance(delivery)} />
+                </View>
+              </View>
+
+              <ChevronRight color={stylesConfig.chevron} size={24} strokeWidth={2.2} />
+            </Pressable>
+          ))}
+
+          {isInitialLoading ? (
+            <View style={styles.loadingCard}>
+              <ActivityIndicator color={colors.greenDark} />
+              <Text style={styles.loadingText}>Se încarcă istoricul curselor...</Text>
+            </View>
+          ) : null}
+
+          {!isInitialLoading && !recentCompletedDeliveries.length ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>Nu există curse finalizate în ultimele 7 zile.</Text>
+              <Text style={styles.emptyText}>Istoricul va apărea aici imediat ce backend-ul întoarce livrări completate pentru curierul curent.</Text>
+            </View>
+          ) : null}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -214,13 +210,12 @@ function InfoPill({ icon, text }: { icon: React.ReactNode; text: string }) {
   );
 }
 
-function buildDropoffAddress(order: CourierOrder) {
-  if (order.address_details) {
-    const { address_line_1, address_line_2 } = order.address_details;
-    return [address_line_1, address_line_2].filter(Boolean).join(", ");
+function formatDeliveryCode(delivery: CourierCompletedDelivery) {
+  if (delivery.order_id) {
+    return `#${delivery.order_id}`;
   }
 
-  return order.address_summary || "Adresă indisponibilă";
+  return delivery.reference_id ? `#${delivery.reference_id}` : `#${delivery.operation_entry_id}`;
 }
 
 function formatCurrencyValue(value: number) {
@@ -273,34 +268,20 @@ function formatOrderDate(value: string) {
     .replace(",", " •");
 }
 
-function formatOrderMinutes(order: CourierOrder) {
-  if (typeof order.estimated_arrival_minutes !== "number" || Number.isNaN(order.estimated_arrival_minutes)) {
+function formatDeliveryMinutes(delivery: CourierCompletedDelivery) {
+  if (typeof delivery.duration_minutes !== "number" || Number.isNaN(delivery.duration_minutes)) {
     return "0 min";
   }
 
-  return `${order.estimated_arrival_minutes} min`;
+  return `${delivery.duration_minutes} min`;
 }
 
-function formatOrderDistance(order: CourierOrder) {
-  if (typeof order.estimated_distance_km !== "number" || Number.isNaN(order.estimated_distance_km)) {
+function formatDeliveryDistance(delivery: CourierCompletedDelivery) {
+  if (typeof delivery.distance_km !== "number" || Number.isNaN(delivery.distance_km)) {
     return "0,0 km";
   }
 
-  return formatDistanceValue(order.estimated_distance_km);
-}
-
-function isWithinLastDays(value: string, days: number) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return false;
-  }
-
-  const now = new Date();
-  const threshold = new Date(now);
-  threshold.setHours(0, 0, 0, 0);
-  threshold.setDate(threshold.getDate() - (days - 1));
-
-  return date >= threshold;
+  return formatDistanceValue(delivery.distance_km);
 }
 
 const stylesConfig = {
@@ -314,11 +295,17 @@ const stylesConfig = {
 };
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.white,
   },
   content: {
+    flexGrow: 1,
+    backgroundColor: colors.white,
     paddingHorizontal: 12,
     gap: 22,
   },
@@ -337,9 +324,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: "#121826",
-    fontSize: 21,
+    fontSize: 19,
     fontWeight: "800",
-    letterSpacing: -0.6,
   },
   headerSpacer: {
     width: 36,
@@ -381,16 +367,15 @@ const styles = StyleSheet.create({
   },
   statValue: {
     color: "#1B2233",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "800",
-    letterSpacing: -0.3,
   },
   statValueAccent: {
     color: stylesConfig.accent,
   },
   statLabel: {
     color: "#374151",
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "500",
     textAlign: "center",
   },
@@ -408,10 +393,10 @@ const styles = StyleSheet.create({
   deliveryCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingVertical: 22,
-    paddingLeft: 18,
-    paddingRight: 16,
+    gap: 8,
+    paddingVertical: 18,
+    paddingLeft: 14,
+    paddingRight: 12,
     borderRadius: 22,
     backgroundColor: colors.white,
     borderWidth: 1,
@@ -426,7 +411,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 14,
+    gap: 10,
   },
   deliveryIconWrap: {
     position: "relative",
@@ -456,24 +441,23 @@ const styles = StyleSheet.create({
   },
   deliveryContent: {
     flex: 1,
-    gap: 8,
+    gap: 7,
   },
   deliveryCode: {
     color: "#161E2C",
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "800",
-    letterSpacing: -0.4,
   },
   deliveryMeta: {
     color: "#6B7280",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "500",
     marginTop: -2,
   },
   addressRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
   addressDot: {
     width: 8,
@@ -483,33 +467,49 @@ const styles = StyleSheet.create({
   addressText: {
     flex: 1,
     color: "#30394C",
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "500",
   },
   deliveryCardRight: {
     alignItems: "flex-end",
-    gap: 26,
-    minWidth: 98,
+    gap: 22,
+    minWidth: 82,
   },
   deliveryAmount: {
     color: stylesConfig.accent,
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: "800",
     textAlign: "right",
   },
   deliveryInfoList: {
-    gap: 10,
+    gap: 8,
   },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
-    gap: 8,
+    gap: 6,
   },
   infoText: {
     color: stylesConfig.infoText,
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "500",
+  },
+  loadingCard: {
+    minHeight: 112,
+    borderRadius: 22,
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FAFBFC",
+    borderWidth: 1,
+    borderColor: stylesConfig.border,
+    gap: 10,
+  },
+  loadingText: {
+    color: "#6B7280",
+    fontSize: 12,
+    fontWeight: "600",
   },
   emptyCard: {
     borderRadius: 22,

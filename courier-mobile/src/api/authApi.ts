@@ -22,6 +22,11 @@ export const authApi = {
     return data;
   },
 
+  async updateMe(payload: Partial<Pick<User, "first_name" | "last_name" | "phone">>) {
+    const { data } = await apiClient.patch<User>("/auth/me/", payload);
+    return data;
+  },
+
   async logout(refresh: string) {
     await apiClient.post("/auth/logout/", { refresh });
   },

@@ -5,7 +5,18 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { AuthNavigator } from "./AuthNavigator";
 import { AppTabs } from "./AppTabs";
+import { CompletedDeliveryDetailsScreen } from "../screens/CompletedDeliveryDetailsScreen";
 import { CourierOrderDetailsScreen } from "../screens/CourierOrderDetailsScreen";
+import {
+  ProfileDocumentsScreen,
+  ProfileEarningsScreen,
+  ProfileHelpCenterScreen,
+  ProfilePersonalScreen,
+  ProfileSecurityScreen,
+  ProfileSettingsScreen,
+  ProfileSupportScreen,
+  ProfileVehicleScreen,
+} from "../screens/ProfileOptionScreens";
 import { useAuthStore } from "../store/authStore";
 import { useCourierStore } from "../store/courierStore";
 import { colors } from "../theme/colors";
@@ -88,6 +99,15 @@ export function RootNavigator() {
           <>
             <Stack.Screen name="AppTabs" component={AppTabs} />
             <Stack.Screen name="OrderDetails" component={CourierOrderDetailsScreen} />
+            <Stack.Screen name="CompletedDeliveryDetails" component={CompletedDeliveryDetailsScreen} />
+            <Stack.Screen name="ProfilePersonal" component={ProfilePersonalScreen} />
+            <Stack.Screen name="ProfileEarnings" component={ProfileEarningsScreen} />
+            <Stack.Screen name="ProfileVehicle" component={ProfileVehicleScreen} />
+            <Stack.Screen name="ProfileDocuments" component={ProfileDocumentsScreen} />
+            <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />
+            <Stack.Screen name="ProfileSecurity" component={ProfileSecurityScreen} />
+            <Stack.Screen name="ProfileHelpCenter" component={ProfileHelpCenterScreen} />
+            <Stack.Screen name="ProfileSupport" component={ProfileSupportScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthNavigator} />

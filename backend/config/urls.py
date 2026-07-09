@@ -8,7 +8,14 @@ from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.documents import urls as wagtaildocs_urls
 
 from addresses.views import AddressViewSet
-from couriers.views import CourierOrderViewSet, CourierProfileView
+from couriers.views import (
+    CourierDocumentView,
+    CourierHelpCenterView,
+    CourierOperationsView,
+    CourierOrderViewSet,
+    CourierProfileView,
+    CourierSupportTicketView,
+)
 from menus.views import RestaurantOwnerProductCategoryViewSet
 from orders.views import OrderViewSet, RestaurantOwnerOrderViewSet
 from payments.views import CheckoutView, StripeWebhookView
@@ -101,6 +108,10 @@ urlpatterns = [
         name="auth-password-reset-confirm",
     ),
     path("api/courier/location/", CourierProfileView.as_view(), name="courier-location"),
+    path("api/courier/operations/", CourierOperationsView.as_view(), name="courier-operations"),
+    path("api/courier/documents/", CourierDocumentView.as_view(), name="courier-documents"),
+    path("api/courier/help/", CourierHelpCenterView.as_view(), name="courier-help"),
+    path("api/courier/support/", CourierSupportTicketView.as_view(), name="courier-support"),
     path("api/restaurant-applications/", RestaurantApplicationCreateView.as_view(), name="restaurant-application-create"),
     path("api/push/devices/", PushDeviceView.as_view(), name="push-devices"),
     path("api/payments/checkout/", CheckoutView.as_view(), name="payments-checkout"),

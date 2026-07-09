@@ -8,19 +8,112 @@ export type User = {
   last_name?: string;
   full_name?: string;
   role: UserRole;
+  is_active?: boolean;
+  last_login?: string | null;
+  date_joined?: string;
 };
 
 export type CourierProfile = {
   id: number;
   full_name?: string;
   email?: string;
+  member_since?: string;
   phone: string;
   vehicle_type: "bike" | "scooter" | "car" | "walk";
   current_latitude?: string | number | null;
   current_longitude?: string | number | null;
   is_available: boolean;
   is_verified: boolean;
+  app_notifications_enabled: boolean;
+  route_alerts_enabled: boolean;
+  preferred_navigation_app: "google_maps" | "apple_maps" | "waze";
+  app_language: "ro" | "en";
+  rating_average?: string | number | null;
+  rating_count: number;
+  completed_deliveries_total: number;
   updated_at: string;
+};
+
+export type CourierOperationsSummary = {
+  completed_today: number;
+  completed_total: number;
+  distance_today_km: number;
+  distance_total_km: number;
+  average_eta_minutes: number | null;
+  earnings_today: string | number;
+  available_balance: string | number;
+  earnings_this_week: string | number;
+  earnings_this_month: string | number;
+  online_minutes_today: number;
+  recent_deliveries: CourierCompletedDelivery[];
+  generated_at: string;
+};
+
+export type CourierOperationEntry = {
+  id: number;
+  source: "simulation";
+  reference_id: string;
+  completed_at: string;
+  delivery_fee: string | number;
+  distance_km: string | number;
+  duration_minutes?: number | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type CourierDocument = {
+  id: number | null;
+  document_type: "id_card" | "driving_license" | "vehicle_registration" | "insurance";
+  document_type_label: string;
+  status: "missing" | "pending" | "approved" | "rejected";
+  status_label: string;
+  file_name: string;
+  review_note: string;
+  expires_at?: string | null;
+  submitted_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type CourierHelpArticle = {
+  id: string;
+  title: string;
+  body: string;
+};
+
+export type CourierHelpCenter = {
+  support_email: string;
+  articles: CourierHelpArticle[];
+};
+
+export type CourierSupportTicket = {
+  id: number;
+  subject: string;
+  message: string;
+  status: "open" | "in_progress" | "closed";
+  status_label: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CourierCompletedDelivery = {
+  id: string;
+  source: "order" | "simulation";
+  order_id?: number | null;
+  operation_entry_id?: number | null;
+  reference_id: string;
+  completed_at: string;
+  delivery_fee: string | number;
+  distance_km: number;
+  duration_minutes?: number | null;
+  restaurant_name: string;
+  dropoff_address: string;
+  customer_name: string;
+  payment_method_label: string;
+  total: string | number;
+  status: OrderStatus;
+  status_label: string;
+  items: OrderItem[];
+  metadata?: Record<string, unknown>;
+  order?: CourierOrder | null;
 };
 
 export type OrderStatus =

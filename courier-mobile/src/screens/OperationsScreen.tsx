@@ -17,9 +17,11 @@ export function OperationsScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const profile = useCourierStore((state) => state.profile);
+  const operationsSummary = useCourierStore((state) => state.operationsSummary);
   const orders = useCourierStore((state) => state.orders);
   const trackingActive = useCourierStore((state) => state.trackingActive);
   const ordersLoading = useCourierStore((state) => state.ordersLoading);
+  const operationsLoading = useCourierStore((state) => state.operationsLoading);
   const refreshAll = useCourierStore((state) => state.refreshAll);
 
   const myOrders = useMemo(() => orders.filter((order) => order.courier === currentUserId), [currentUserId, orders]);
@@ -27,64 +29,9 @@ export function OperationsScreen() {
     () => myOrders.find((order) => !["delivered", "cancelled", "rejected"].includes(order.order_status)) ?? null,
     [myOrders],
   );
-  const completedOrders = useMemo(
-    () => myOrders.filter((order) => ["delivered", "cancelled", "rejected"].includes(order.order_status)),
-    [myOrders],
-  );
-  const completedToday = useMemo(() => completedOrders.filter((order) => isToday(order.updated_at)).length, [completedOrders]);
-  const totalDistanceToday = useMemo(
-    () =>
-      myOrders.reduce((sum, order) => {
-        if (!isToday(order.updated_at)) {
-          return sum;
-        }
-        return sum + (typeof order.estimated_distance_km === "number" ? order.estimated_distance_km : 0);
-      }, 0),
-    [myOrders],
-  );
-  const averageEta = useMemo(() => {
-    const trackedOrders = myOrders.filter((order) => typeof order.estimated_arrival_minutes === "number");
-    if (!trackedOrders.length) {
-      return null;
-    }
-    return Math.round(
-      trackedOrders.reduce((sum, order) => sum + Number(order.estimated_arrival_minutes ?? 0), 0) / trackedOrders.length,
-    );
-  }, [myOrders]);
-  const earningsToday = useMemo(
-    () =>
-      myOrders.reduce((sum, order) => {
-        if (order.order_status !== "delivered" || !isToday(order.updated_at)) {
-          return sum;
-        }
-        const deliveryFee = Number(order.delivery_fee ?? 0);
-        return sum + (Number.isNaN(deliveryFee) ? 0 : deliveryFee);
-      }, 0),
-    [myOrders],
-  );
-  const earningsThisWeek = useMemo(
-    () =>
-      myOrders.reduce((sum, order) => {
-        if (order.order_status !== "delivered" || !isThisWeek(order.updated_at)) {
-          return sum;
-        }
-        const deliveryFee = Number(order.delivery_fee ?? 0);
-        return sum + (Number.isNaN(deliveryFee) ? 0 : deliveryFee);
-      }, 0),
-    [myOrders],
-  );
-  const earningsThisMonth = useMemo(
-    () =>
-      myOrders.reduce((sum, order) => {
-        if (order.order_status !== "delivered" || !isThisMonth(order.updated_at)) {
-          return sum;
-        }
-        const deliveryFee = Number(order.delivery_fee ?? 0);
-        return sum + (Number.isNaN(deliveryFee) ? 0 : deliveryFee);
-      }, 0),
-    [myOrders],
-  );
   const activeAlert = useMemo(() => buildActiveAlert(profile, activeOrder, trackingActive), [activeOrder, profile, trackingActive]);
+  const totalDistanceToday = toNumber(operationsSummary?.distance_today_km);
+  const averageEta = operationsSummary?.average_eta_minutes ?? null;
 
   useFocusEffect(
     useCallback(() => {
@@ -102,7 +49,9 @@ export function OperationsScreen() {
           paddingBottom: Math.max(insets.bottom + 120, 120),
         },
       ]}
-      refreshControl={<RefreshControl tintColor={colors.greenDark} refreshing={ordersLoading} onRefresh={refreshAll} />}
+      refreshControl={
+        <RefreshControl tintColor={colors.greenDark} refreshing={ordersLoading || operationsLoading} onRefresh={refreshAll} />
+      }
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
@@ -115,10 +64,10 @@ export function OperationsScreen() {
 
       <View style={styles.statsCard}>
         <View style={styles.statsGrid}>
-          <SummaryBlock value={String(completedToday)} label="Curse azi" />
+          <SummaryBlock value={String(operationsSummary?.completed_today ?? 0)} label="Curse azi" />
           <SummaryBlock value={`${totalDistanceToday.toFixed(1)} km`} label="Distanță azi" noRightBorder />
           <SummaryBlock value={averageEta ? formatMinutes(averageEta) : "N/A"} label="ETA mediu azi" noBottomBorder />
-          <SummaryBlock value={formatMoney(earningsToday)} label="Câștig azi" accent noRightBorder noBottomBorder />
+          <SummaryBlock value={formatMoney(operationsSummary?.earnings_today ?? 0)} label="Câștig azi" accent noRightBorder noBottomBorder />
         </View>
       </View>
 
@@ -133,21 +82,21 @@ export function OperationsScreen() {
         <MetricRow
           icon={<CalendarClock color={colors.black} size={18} />}
           label="Timp online azi"
-          value="N/A"
-          hint="Durata turei returnată de backend"
+          value={formatMinutes(operationsSummary?.online_minutes_today ?? 0)}
+          hint="Durata turelor contorizate de backend"
           valuePlacement="right"
         />
         <MetricRow
           icon={<Wallet color={colors.black} size={18} />}
           label="Câștiguri săptămâna asta"
-          value={formatMoney(earningsThisWeek)}
+          value={formatMoney(operationsSummary?.earnings_this_week ?? 0)}
           hint="Taxele de livrare încasate săptămâna aceasta"
           valueTone="success"
         />
         <MetricRow
           icon={<Wallet color={colors.black} size={18} />}
           label="Câștiguri luna asta"
-          value={formatMoney(earningsThisMonth)}
+          value={formatMoney(operationsSummary?.earnings_this_month ?? 0)}
           hint="Taxele de livrare încasate luna aceasta"
           valueTone="success"
         />
@@ -259,27 +208,9 @@ function buildActiveAlert(profile: CourierProfile | null, activeOrder: CourierOr
   return null;
 }
 
-function isToday(value: string) {
-  const date = new Date(value);
-  const now = new Date();
-  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
-}
-
-function isThisWeek(value: string) {
-  const date = new Date(value);
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  const day = startOfWeek.getDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  startOfWeek.setDate(startOfWeek.getDate() + diffToMonday);
-  startOfWeek.setHours(0, 0, 0, 0);
-  return date >= startOfWeek && date <= now;
-}
-
-function isThisMonth(value: string) {
-  const date = new Date(value);
-  const now = new Date();
-  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+function toNumber(value: unknown) {
+  const numericValue = Number(value ?? 0);
+  return Number.isNaN(numericValue) ? 0 : numericValue;
 }
 
 const styles = StyleSheet.create({

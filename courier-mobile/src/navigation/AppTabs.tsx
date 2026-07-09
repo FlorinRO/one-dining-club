@@ -17,6 +17,10 @@ export function AppTabs() {
       screenOptions={{
         headerShown: false,
         animation: "shift",
+        lazy: false,
+        sceneStyle: {
+          backgroundColor: colors.white,
+        },
         tabBarStyle: {
           position: "absolute",
           backgroundColor: colors.white,

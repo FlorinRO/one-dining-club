@@ -11,11 +11,14 @@ import { Banknote, Bell, House, LocateFixed, MessageCircleMore, Phone, ShoppingB
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, Vibration, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Polygon } from "react-native-svg";
 
 import courierMapStyle from "../../mapbox/yumzy-courier-style.json";
+import { courierApi } from "../api/courierApi";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { getMapboxAccessToken } from "../config/mapbox";
 import { getMapboxModule } from "../lib/mapboxRuntime";
+import { useCourierStore } from "../store/courierStore";
 import { colors } from "../theme/colors";
 
 type MapCoordinate = {
@@ -120,6 +123,12 @@ const NAVIGATION_CAMERA_LEAD_MIN_KM = 0.08;
 const NAVIGATION_CAMERA_LEAD_MAX_KM = 0.28;
 const STATIONARY_POSITION_JITTER_KM = 0.012;
 const MIN_SPEED_FOR_COURSE_HEADING_MPS = 1.2;
+const MARKER_ANIMATION_FRAME_INTERVAL_MS = 33;
+const ROUTE_REFRESH_DISTANCE_KM = 0.03;
+const NAVIGATION_CAMERA_MIN_UPDATE_MS = 900;
+const NAVIGATION_CAMERA_MIN_MOVE_KM = 0.006;
+const NAVIGATION_CAMERA_MIN_HEADING_DELTA = 7;
+const HEADING_UPDATE_MIN_DELTA = 4;
 const ROUTE_LINE_COLOR = "#8B5CF6";
 const PICKUP_AUTO_OPEN_DISTANCE_KM = 0.01;
 const QQ_ENABLE_HAPTIC_DURATION = 12;
@@ -280,8 +289,10 @@ export function CourierLiveMap({
   targetLongitude,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const refreshOperationsSummary = useCourierStore((state) => state.refreshOperationsSummary);
   const cameraRef = useRef<any>(null);
   const [deviceCoordinate, setDeviceCoordinate] = useState<MapCoordinate | null>(null);
+  const [displayCoordinate, setDisplayCoordinate] = useState<MapCoordinate | null>(null);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
   const [queuedRestaurantIds, setQueuedRestaurantIds] = useState<string[]>([]);
   const [pendingOffer, setPendingOffer] = useState<SimulatedOffer | null>(null);
@@ -297,15 +308,29 @@ export function CourierLiveMap({
   const ignoreNextSheetDismissRef = useRef(false);
   const hapticTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const simulatedOfferTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const markerAnimationFrameRef = useRef<number | null>(null);
+  const displayCoordinateRef = useRef<MapCoordinate | null>(null);
+  const suppressFollowUntilRef = useRef(0);
+  const lastRouteRequestRef = useRef<{ origin: MapCoordinate; stopsKey: string } | null>(null);
+  const routeRequestSequenceRef = useRef(0);
+  const lastNavigationCameraRef = useRef<{ coordinate: MapCoordinate; targetKey: string; updatedAt: number } | null>(null);
+  const lastOfferPreviewCameraKeyRef = useRef<string | null>(null);
   const queuedMarkerPulse = useRef(new Animated.Value(0)).current;
   const alertPlayer = useVideoPlayer(QQ_ORDER_ALERT_SOUND, (player) => {
     player.muted = false;
     player.volume = 1;
     player.loop = true;
   });
-  const profileCoordinate = normalizeCoordinate(currentLatitude, currentLongitude);
+  const profileCoordinate = useMemo(
+    () => normalizeCoordinate(currentLatitude, currentLongitude),
+    [currentLatitude, currentLongitude],
+  );
   const current = deviceCoordinate ?? profileCoordinate;
-  const target = normalizeCoordinate(targetLatitude, targetLongitude);
+  const displayedCurrent = displayCoordinate ?? current;
+  const target = useMemo(
+    () => normalizeCoordinate(targetLatitude, targetLongitude),
+    [targetLatitude, targetLongitude],
+  );
   const previewRouteStops = useMemo(() => (pendingOffer ? [pendingOffer.restaurantCoordinate] : []), [pendingOffer]);
   const acceptedOfferTarget = useMemo(() => {
     if (!acceptedOffer) {
@@ -328,7 +353,7 @@ export function CourierLiveMap({
   const effectiveTarget = activeRouteStops[activeRouteStops.length - 1] ?? null;
   const shouldFitActiveRoute = Boolean(pendingOffer);
   const customerMarkerCoordinate = target ?? (acceptedOfferStage === "dropoff" ? acceptedOffer?.customerCoordinate : null);
-  const isNavigationActive = Boolean(current && activeRouteStops.length > 0);
+  const isNavigationActive = Boolean(displayedCurrent && activeRouteStops.length > 0);
   const restaurantPins = useMemo(() => TULCEA_RESTAURANT_PINS, []);
   const cameraConfig = useMemo(
     () => buildCameraConfig(current, effectiveTarget, restaurantPins, activeRouteStops, shouldFitActiveRoute),
@@ -421,6 +446,10 @@ export function CourierLiveMap({
                 movedDistanceKm < STATIONARY_POSITION_JITTER_KM;
 
               if (isProbablyStationary) {
+                if (areHeadingsClose(currentCoordinate.heading, nextHeading)) {
+                  return currentCoordinate;
+                }
+
                 return {
                   ...currentCoordinate,
                   heading: nextHeading,
@@ -442,9 +471,14 @@ export function CourierLiveMap({
               return currentCoordinate;
             }
 
+            const nextHeading = normalizeHeading(heading.trueHeading) ?? normalizeHeading(heading.magHeading);
+            if (nextHeading === null || areHeadingsClose(currentCoordinate.heading, nextHeading)) {
+              return currentCoordinate;
+            }
+
             return {
               ...currentCoordinate,
-              heading: normalizeHeading(heading.trueHeading) ?? normalizeHeading(heading.magHeading) ?? currentCoordinate.heading ?? null,
+              heading: nextHeading,
             };
           });
         });
@@ -461,6 +495,10 @@ export function CourierLiveMap({
         cancelAnimationFrame(pendingSheetOpenFrameRef.current);
         pendingSheetOpenFrameRef.current = null;
       }
+      if (markerAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(markerAnimationFrameRef.current);
+        markerAnimationFrameRef.current = null;
+      }
       positionSubscription?.remove();
       headingSubscription?.remove();
       hapticTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
@@ -471,6 +509,61 @@ export function CourierLiveMap({
       }
     };
   }, []);
+
+  useEffect(() => {
+    displayCoordinateRef.current = displayCoordinate;
+  }, [displayCoordinate]);
+
+  useEffect(() => {
+    if (!current) {
+      setDisplayCoordinate(null);
+      displayCoordinateRef.current = null;
+      if (markerAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(markerAnimationFrameRef.current);
+        markerAnimationFrameRef.current = null;
+      }
+      return;
+    }
+
+    const from = displayCoordinateRef.current;
+    if (!from) {
+      setDisplayCoordinate(current);
+      displayCoordinateRef.current = current;
+      return;
+    }
+
+    if (markerAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(markerAnimationFrameRef.current);
+      markerAnimationFrameRef.current = null;
+    }
+
+    const animationStart = Date.now();
+    const animationDurationMs = 850;
+    let lastFrameUpdateMs = 0;
+
+    const animateMarker = () => {
+      const now = Date.now();
+      const elapsedMs = now - animationStart;
+      const progress = Math.min(1, elapsedMs / animationDurationMs);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+      if (progress === 1 || now - lastFrameUpdateMs >= MARKER_ANIMATION_FRAME_INTERVAL_MS) {
+        lastFrameUpdateMs = now;
+        const nextDisplayCoordinate = interpolateCoordinate(from, current, easedProgress);
+        displayCoordinateRef.current = nextDisplayCoordinate;
+        setDisplayCoordinate(nextDisplayCoordinate);
+      }
+
+      if (progress < 1) {
+        markerAnimationFrameRef.current = requestAnimationFrame(animateMarker);
+        return;
+      }
+
+      markerAnimationFrameRef.current = null;
+    };
+
+    markerAnimationFrameRef.current = requestAnimationFrame(animateMarker);
+  }, [current]);
 
   useEffect(() => {
     if (!profileCoordinate) {
@@ -500,6 +593,7 @@ export function CourierLiveMap({
       setRouteShape(null);
       setRouteMetrics(null);
       lastRouteStopsKeyRef.current = null;
+      lastRouteRequestRef.current = null;
       return;
     }
 
@@ -508,16 +602,31 @@ export function CourierLiveMap({
       .join("|");
     const destinationChanged = lastRouteStopsKeyRef.current !== routeStopsKey;
     lastRouteStopsKeyRef.current = routeStopsKey;
+    const previousRouteRequest = lastRouteRequestRef.current;
+    const shouldRefreshRoute =
+      destinationChanged ||
+      !previousRouteRequest ||
+      previousRouteRequest.stopsKey !== routeStopsKey ||
+      calculateDistanceKm(previousRouteRequest.origin, current) >= ROUTE_REFRESH_DISTANCE_KM;
+
+    if (!shouldRefreshRoute) {
+      return;
+    }
+
+    lastRouteRequestRef.current = {
+      origin: current,
+      stopsKey: routeStopsKey,
+    };
     const fallbackMetrics = buildFallbackRouteMetrics(current, activeRouteStops);
 
     if (!MAPBOX_TOKEN) {
-      setRouteMetrics(fallbackMetrics);
-      setRouteShape(null);
+      setRouteMetrics((currentMetrics) => (areRouteMetricsEqual(currentMetrics, fallbackMetrics) ? currentMetrics : fallbackMetrics));
+      setRouteShape((currentShape) => (currentShape === null ? currentShape : null));
       return;
     }
 
     setRouteMetrics((currentMetrics) => {
-      if (destinationChanged || !currentMetrics) {
+      if ((destinationChanged || !currentMetrics) && !areRouteMetricsEqual(currentMetrics, fallbackMetrics)) {
         return fallbackMetrics;
       }
 
@@ -525,10 +634,16 @@ export function CourierLiveMap({
     });
 
     const abortController = new AbortController();
+    const requestSequence = routeRequestSequenceRef.current + 1;
+    routeRequestSequenceRef.current = requestSequence;
 
     const loadRoute = async () => {
       try {
         const route = await fetchMapboxRoute(current, activeRouteStops, MAPBOX_TOKEN, abortController.signal);
+        if (abortController.signal.aborted || routeRequestSequenceRef.current !== requestSequence) {
+          return;
+        }
+
         setRouteShape(buildRouteShape(route.coordinates));
         setRouteMetrics({
           distanceKm: route.distanceMeters / 1000,
@@ -539,7 +654,7 @@ export function CourierLiveMap({
           return;
         }
 
-        setRouteMetrics(fallbackMetrics);
+        setRouteMetrics((currentMetrics) => (areRouteMetricsEqual(currentMetrics, fallbackMetrics) ? currentMetrics : fallbackMetrics));
       }
     };
 
@@ -555,12 +670,63 @@ export function CourierLiveMap({
       return;
     }
 
+    if (Date.now() < suppressFollowUntilRef.current) {
+      return;
+    }
+
+    const now = Date.now();
+    const targetKey = `${effectiveTarget.latitude.toFixed(5)},${effectiveTarget.longitude.toFixed(5)}`;
+    const lastCamera = lastNavigationCameraRef.current;
+    if (
+      lastCamera &&
+      lastCamera.targetKey === targetKey &&
+      now - lastCamera.updatedAt < NAVIGATION_CAMERA_MIN_UPDATE_MS &&
+      calculateDistanceKm(lastCamera.coordinate, current) < NAVIGATION_CAMERA_MIN_MOVE_KM &&
+      areHeadingsClose(lastCamera.coordinate.heading, current.heading, NAVIGATION_CAMERA_MIN_HEADING_DELTA)
+    ) {
+      return;
+    }
+
+    lastNavigationCameraRef.current = {
+      coordinate: current,
+      targetKey,
+      updatedAt: now,
+    };
+
     cameraRef.current?.setCamera({
       ...buildNavigationCameraSettings(current, effectiveTarget),
       animationMode: "easeTo",
       animationDuration: NAVIGATION_CAMERA_ANIMATION_MS,
     });
   }, [current, effectiveTarget, shouldFitActiveRoute]);
+
+  useEffect(() => {
+    if (!current || !shouldFitActiveRoute || activeRouteStops.length === 0) {
+      lastOfferPreviewCameraKeyRef.current = null;
+      return;
+    }
+
+    if (Date.now() < suppressFollowUntilRef.current) {
+      return;
+    }
+
+    const cameraKey = [
+      current.latitude.toFixed(5),
+      current.longitude.toFixed(5),
+      ...activeRouteStops.map((stop) => `${stop.latitude.toFixed(5)},${stop.longitude.toFixed(5)}`),
+    ].join("|");
+    if (lastOfferPreviewCameraKeyRef.current === cameraKey) {
+      return;
+    }
+
+    lastOfferPreviewCameraKeyRef.current = cameraKey;
+
+    cameraRef.current?.setCamera({
+      ...buildOfferPreviewCameraSettings(current, activeRouteStops),
+      animationMode: "easeTo",
+      animationDuration: 700,
+    });
+  }, [activeRouteStops, current, shouldFitActiveRoute]);
 
   const clearPendingHaptics = useCallback(() => {
     hapticTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
@@ -908,12 +1074,33 @@ export function CourierLiveMap({
       pendingSheetOpenFrameRef.current = null;
     }
 
+    if (acceptedOffer && acceptedOfferStage === "dropoff") {
+      void courierApi
+        .recordSimulatedDelivery({
+          reference_id: `${acceptedOffer.id}-${Date.now()}`,
+          delivery_fee: parsePayoutValue(acceptedOffer.payoutLabel),
+          distance_km: acceptedOffer.totalDistanceKm.toFixed(2),
+          duration_minutes: acceptedOffer.totalEtaMinutes,
+          metadata: {
+            order_code: acceptedOffer.orderCode,
+            restaurant_name: acceptedOffer.restaurantName,
+            restaurant_address: acceptedOffer.restaurantAddress,
+            customer_name: acceptedOffer.customerName,
+            dropoff_address: acceptedOffer.customerAddress,
+            items_summary: acceptedOffer.itemsSummary,
+          },
+        })
+        .then(() => refreshOperationsSummary())
+        .catch(() => undefined);
+    }
+
     setSelectedRestaurantId(null);
     setAcceptedOffer(null);
     setAcceptedOfferStage("pickup");
     setQueueFeedbackMessage("Simularea traseului a fost închisă.");
 
     if (current) {
+      suppressFollowUntilRef.current = 0;
       requestAnimationFrame(() => {
         cameraRef.current?.setCamera({
           centerCoordinate: [current.longitude, current.latitude],
@@ -925,17 +1112,18 @@ export function CourierLiveMap({
         });
       });
     }
-  }, [current]);
+  }, [acceptedOffer, acceptedOfferStage, current, refreshOperationsSummary]);
 
   const handleRecenterPress = useCallback(() => {
     if (!current) {
       return;
     }
 
+    suppressFollowUntilRef.current = 0;
     cameraRef.current?.setCamera(
-      isNavigationActive && effectiveTarget
+      isNavigationActive && effectiveTarget && displayedCurrent
         ? {
-            ...buildNavigationCameraSettings(current, effectiveTarget),
+            ...buildNavigationCameraSettings(displayedCurrent, effectiveTarget),
             animationMode: "easeTo",
             animationDuration: 700,
           }
@@ -948,7 +1136,7 @@ export function CourierLiveMap({
             animationDuration: 700,
           },
     );
-  }, [current, effectiveTarget, isNavigationActive]);
+  }, [current, displayedCurrent, effectiveTarget, isNavigationActive]);
 
   const animatedQueuedMarkerHaloStyle = {
     opacity: queuedMarkerPulse.interpolate({
@@ -996,13 +1184,17 @@ export function CourierLiveMap({
         attributionEnabled={false}
         logoEnabled={false}
         scaleBarEnabled={false}
+        onCameraChanged={(state) => {
+          if (state.gestures.isGestureActive) {
+            suppressFollowUntilRef.current = Date.now() + 6000;
+          }
+        }}
       >
         <Camera
           ref={cameraRef}
           animationMode="easeTo"
           animationDuration={NAVIGATION_CAMERA_ANIMATION_MS}
           defaultSettings={cameraConfig}
-          {...cameraConfig}
         />
 
         {routeShape ? (
@@ -1065,18 +1257,16 @@ export function CourierLiveMap({
             ))
           : null}
 
-        {current ? (
+        {displayedCurrent ? (
           <MarkerView
-            coordinate={[current.longitude, current.latitude]}
+            coordinate={[displayedCurrent.longitude, displayedCurrent.latitude]}
             anchor={{ x: 0.5, y: 0.5 }}
           >
             <View style={styles.liveMarkerContainer}>
-              <View style={[styles.liveMarkerDirection, { transform: [{ rotate: `${current.heading ?? 0}deg` }] }]}>
-                <View style={styles.liveMarkerArrowOutline} />
-                <View style={styles.liveMarkerArrowFill} />
-                <View style={styles.liveMarkerBase}>
-                  <View style={styles.liveMarkerBaseDot} />
-                </View>
+              <View style={[styles.liveMarkerDirection, { transform: [{ rotate: `${displayedCurrent.heading ?? 0}deg` }] }]}>
+                <Svg width={22} height={24} viewBox="0 0 22 24" style={styles.liveMarkerArrow}>
+                  <Polygon points="11,1 21,23 11,18 1,23" fill={colors.white} />
+                </Svg>
               </View>
             </View>
           </MarkerView>
@@ -1375,6 +1565,60 @@ function normalizeHeading(value?: number | null) {
   }
 
   return heading % 360;
+}
+
+function areHeadingsClose(first?: number | null, second?: number | null, tolerance = HEADING_UPDATE_MIN_DELTA) {
+  const normalizedFirst = normalizeHeading(first);
+  const normalizedSecond = normalizeHeading(second);
+
+  if (normalizedFirst === null || normalizedSecond === null) {
+    return normalizedFirst === normalizedSecond;
+  }
+
+  return getHeadingDeltaDegrees(normalizedFirst, normalizedSecond) < tolerance;
+}
+
+function getHeadingDeltaDegrees(first: number, second: number) {
+  return Math.abs(((((second - first) % 360) + 540) % 360) - 180);
+}
+
+function areRouteMetricsEqual(first: RouteMetrics | null, second: RouteMetrics | null) {
+  if (!first || !second) {
+    return first === second;
+  }
+
+  return first.durationMinutes === second.durationMinutes && Math.abs(first.distanceKm - second.distanceKm) < 0.01;
+}
+
+function interpolateCoordinate(from: MapCoordinate, to: MapCoordinate, progress: number): MapCoordinate {
+  const normalizedProgress = Math.min(1, Math.max(0, progress));
+  const startHeading = normalizeHeading(from.heading);
+  const endHeading = normalizeHeading(to.heading);
+
+  return {
+    latitude: from.latitude + (to.latitude - from.latitude) * normalizedProgress,
+    longitude: from.longitude + (to.longitude - from.longitude) * normalizedProgress,
+    heading: interpolateHeading(startHeading, endHeading, normalizedProgress),
+  };
+}
+
+function interpolateHeading(from?: number | null, to?: number | null, progress = 1) {
+  if (from === null || from === undefined) {
+    return to ?? null;
+  }
+
+  if (to === null || to === undefined) {
+    return from;
+  }
+
+  const normalizedFrom = normalizeHeading(from);
+  const normalizedTo = normalizeHeading(to);
+  if (normalizedFrom === null || normalizedTo === null) {
+    return normalizedTo ?? normalizedFrom ?? null;
+  }
+
+  const delta = ((((normalizedTo - normalizedFrom) % 360) + 540) % 360) - 180;
+  return (normalizedFrom + delta * progress + 360) % 360;
 }
 
 function pickCourseHeading(heading?: number | null, speed?: number | null) {
@@ -1691,6 +1935,12 @@ function formatCurrency(value: number) {
   return `${value.toFixed(2).replace(".", ",")} RON`;
 }
 
+function parsePayoutValue(value: string) {
+  const normalizedValue = value.replace(",", ".").replace(/[^\d.]/g, "");
+  const amount = Number(normalizedValue);
+  return Number.isNaN(amount) ? "0.00" : amount.toFixed(2);
+}
+
 function getFirstName(value: string) {
   return value.trim().split(/\s+/)[0] ?? value;
 }
@@ -1765,55 +2015,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   liveMarkerDirection: {
-    width: 32,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "flex-start",
-  },
-  liveMarkerArrowOutline: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 12,
-    borderRightWidth: 12,
-    borderBottomWidth: 22,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderBottomColor: colors.white,
-  },
-  liveMarkerArrowFill: {
-    position: "absolute",
-    top: 4,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderBottomWidth: 16,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderBottomColor: colors.text,
-  },
-  liveMarkerBase: {
-    position: "absolute",
-    bottom: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     borderWidth: 4,
     borderColor: colors.white,
-    backgroundColor: colors.text,
+    backgroundColor: colors.black,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#111111",
-    shadowOpacity: 0.22,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 7,
   },
-  liveMarkerBaseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.white,
+  liveMarkerArrow: {
+    marginTop: -2,
   },
   dropoffMarkerWrap: {
     alignItems: "center",
