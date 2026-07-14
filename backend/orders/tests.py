@@ -3,7 +3,8 @@ from rest_framework.test import APIClient
 from unittest.mock import patch
 
 from addresses.models import Address
-from couriers.models import CourierProfile
+from couriers.models import CourierDispatchOffer, CourierProfile, DispatchOfferStatus
+from orders.history import log_order_courier_assigned
 from orders.models import FulfillmentType, Order, OrderStatus, PaymentMethod, PaymentStatus
 from payments.models import Payment
 from payments.services import sync_payment_from_intent
@@ -423,7 +424,7 @@ class OrderCreateApiTests(TestCase):
         self.assertEqual(len(orders), 1)
         self.assertEqual(orders[0]["id"], visible_order.id)
 
-    def test_restaurant_owner_can_assign_courier_and_event_is_recorded(self):
+    def test_restaurant_ready_status_ignores_manual_assignment_and_dispatches_nearest_courier(self):
         order = Order.objects.create(
             customer=self.customer,
             restaurant=self.restaurant,
@@ -436,28 +437,63 @@ class OrderCreateApiTests(TestCase):
         )
         self.client.force_authenticate(user=self.owner)
 
-        response = self.client.patch(
-            f"/api/restaurant-owner/orders/{order.id}/status/",
-            {"order_status": OrderStatus.PREPARING, "courier_id": self.courier.id},
-            format="json",
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.patch(
+                f"/api/restaurant-owner/orders/{order.id}/status/",
+                {"order_status": OrderStatus.READY_FOR_PICKUP, "courier_id": self.courier.id},
+                format="json",
+            )
 
         self.assertEqual(response.status_code, 200)
         order.refresh_from_db()
-        self.assertEqual(order.courier_id, self.courier.id)
+        self.assertIsNone(order.courier_id)
         payload = response.json()
-        self.assertEqual(payload["courier_name"], "Curier Rapid")
-        self.assertEqual(payload["courier_phone"], "0722222222")
+        self.assertEqual(payload["courier_name"], "")
         self.assertEqual(payload["events"][0]["event_type"], "status_changed")
-        self.assertEqual(payload["events"][1]["event_type"], "courier_assigned")
+        self.assertTrue(
+            CourierDispatchOffer.objects.filter(
+                order=order,
+                courier=self.courier,
+                status=DispatchOfferStatus.OFFERED,
+            ).exists()
+        )
 
-    def test_restaurant_owner_couriers_endpoint_returns_verified_couriers(self):
+    def test_restaurant_owner_courier_assignment_endpoint_is_removed(self):
         self.client.force_authenticate(user=self.owner)
 
         response = self.client.get("/api/restaurant-owner/orders/couriers/")
 
+        self.assertEqual(response.status_code, 404)
+
+    def test_restaurant_update_releases_legacy_manual_assignment_into_dispatch(self):
+        order = Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            address=self.address,
+            courier=self.courier,
+            subtotal="35.00",
+            delivery_fee="12.00",
+            total="47.00",
+            fulfillment_type=FulfillmentType.DELIVERY,
+            order_status=OrderStatus.READY_FOR_PICKUP,
+        )
+        log_order_courier_assigned(order, courier=self.courier, actor=self.owner, source="restaurant")
+        self.client.force_authenticate(user=self.owner)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.patch(
+                f"/api/restaurant-owner/orders/{order.id}/status/",
+                {"order_status": OrderStatus.READY_FOR_PICKUP},
+                format="json",
+            )
+
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertEqual(len(payload), 1)
-        self.assertEqual(payload[0]["courier_id"], self.courier.id)
-        self.assertEqual(payload[0]["full_name"], "Curier Rapid")
+        order.refresh_from_db()
+        self.assertIsNone(order.courier_id)
+        self.assertTrue(
+            CourierDispatchOffer.objects.filter(
+                order=order,
+                courier=self.courier,
+                status=DispatchOfferStatus.OFFERED,
+            ).exists()
+        )

@@ -23,6 +23,14 @@ class DeliveryStatus(models.TextChoices):
     CANCELLED = "cancelled", "Cancelled"
 
 
+class DispatchOfferStatus(models.TextChoices):
+    OFFERED = "offered", "Offered"
+    ACCEPTED = "accepted", "Accepted"
+    DECLINED = "declined", "Declined"
+    EXPIRED = "expired", "Expired"
+    CANCELLED = "cancelled", "Cancelled"
+
+
 class CourierDocumentType(models.TextChoices):
     ID_CARD = "id_card", "Identity card"
     DRIVING_LICENSE = "driving_license", "Driving license"
@@ -45,6 +53,7 @@ class CourierSupportTicketStatus(models.TextChoices):
 
 class CourierProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="courier_profile")
+    avatar = models.ImageField(upload_to="couriers/avatars/", blank=True, null=True)
     phone = models.CharField(max_length=32)
     vehicle_type = models.CharField(max_length=24, choices=VehicleType.choices, default=VehicleType.BIKE)
     current_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
@@ -81,6 +90,29 @@ class Delivery(models.Model):
 
     def __str__(self):
         return f"Delivery for order #{self.order_id}"
+
+
+class CourierDispatchOffer(models.Model):
+    order = models.ForeignKey("orders.Order", on_delete=models.CASCADE, related_name="dispatch_offers")
+    courier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="dispatch_offers")
+    status = models.CharField(max_length=24, choices=DispatchOfferStatus.choices, default=DispatchOfferStatus.OFFERED)
+    distance_km = models.DecimalField(max_digits=7, decimal_places=2)
+    offered_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-offered_at", "-id")
+        indexes = [
+            models.Index(fields=("order", "status", "expires_at")),
+            models.Index(fields=("courier", "status", "expires_at")),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=("order", "courier"), name="unique_dispatch_offer_per_order_courier"),
+        ]
+
+    def __str__(self):
+        return f"Dispatch offer for order #{self.order_id} to courier {self.courier_id}"
 
 
 class CourierAvailabilitySession(models.Model):

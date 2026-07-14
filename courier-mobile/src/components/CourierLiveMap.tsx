@@ -9,7 +9,7 @@ import * as Notifications from "expo-notifications";
 import { useVideoPlayer } from "expo-video";
 import { Banknote, Bell, House, LocateFixed, MessageCircleMore, Phone, ShoppingBag, Store, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, Vibration, View } from "react-native";
+import { Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, Vibration, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Polygon } from "react-native-svg";
 
@@ -315,7 +315,6 @@ export function CourierLiveMap({
   const routeRequestSequenceRef = useRef(0);
   const lastNavigationCameraRef = useRef<{ coordinate: MapCoordinate; targetKey: string; updatedAt: number } | null>(null);
   const lastOfferPreviewCameraKeyRef = useRef<string | null>(null);
-  const queuedMarkerPulse = useRef(new Animated.Value(0)).current;
   const alertPlayer = useVideoPlayer(QQ_ORDER_ALERT_SOUND, (player) => {
     player.muted = false;
     player.volume = 1;
@@ -356,8 +355,8 @@ export function CourierLiveMap({
   const isNavigationActive = Boolean(displayedCurrent && activeRouteStops.length > 0);
   const restaurantPins = useMemo(() => TULCEA_RESTAURANT_PINS, []);
   const cameraConfig = useMemo(
-    () => buildCameraConfig(current, effectiveTarget, restaurantPins, activeRouteStops, shouldFitActiveRoute),
-    [activeRouteStops, current, effectiveTarget, restaurantPins, shouldFitActiveRoute],
+    () => buildCameraConfig(current, effectiveTarget, activeRouteStops, shouldFitActiveRoute),
+    [activeRouteStops, current, effectiveTarget, shouldFitActiveRoute],
   );
   const selectedRestaurant = useMemo(
     () => restaurantPins.find((restaurant) => restaurant.id === selectedRestaurantId) ?? null,
@@ -825,40 +824,6 @@ export function CourierLiveMap({
     presentBottomSheet();
   }, [acceptedOfferTarget, pendingOffer, presentBottomSheet, selectedRestaurantId, target]);
 
-  useEffect(() => {
-    if (queuedRestaurantIds.length === 0) {
-      queuedMarkerPulse.stopAnimation();
-      queuedMarkerPulse.setValue(0);
-      return;
-    }
-
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(queuedMarkerPulse, {
-          toValue: 1,
-          duration: 1100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(queuedMarkerPulse, {
-          toValue: 0,
-          duration: 1100,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    pulseLoop.start();
-
-    return () => {
-      pulseLoop.stop();
-      queuedMarkerPulse.stopAnimation();
-    };
-  }, [queuedMarkerPulse, queuedRestaurantIds.length]);
-
-  const handleRestaurantPress = useCallback((restaurantId: string) => {
-    setSelectedRestaurantId(restaurantId);
-  }, []);
-
   const handleCloseQueueSheet = () => {
     bottomSheetModalRef.current?.dismiss();
   };
@@ -915,27 +880,37 @@ export function CourierLiveMap({
       return;
     }
 
+    const restaurantId = selectedRestaurant.id;
+    const isAlreadyQueued = queuedRestaurantIds.includes(restaurantId);
+
     setQueueFeedbackMessage(null);
-    setQueuedRestaurantIds((currentQueue) => {
-      if (currentQueue.includes(selectedRestaurant.id)) {
-        triggerQueueDisabledHaptic();
-        if (simulatedOfferTimeoutRef.current) {
-          clearTimeout(simulatedOfferTimeoutRef.current);
-          simulatedOfferTimeoutRef.current = null;
-        }
-        if (acceptedOffer?.restaurantId === selectedRestaurant.id) {
-          setAcceptedOffer(null);
-        }
-        if (pendingOffer?.restaurantId === selectedRestaurant.id) {
-          setPendingOffer(null);
-        }
-        return currentQueue.filter((restaurantId) => restaurantId !== selectedRestaurant.id);
+
+    if (isAlreadyQueued) {
+      triggerQueueDisabledHaptic();
+      if (simulatedOfferTimeoutRef.current) {
+        clearTimeout(simulatedOfferTimeoutRef.current);
+        simulatedOfferTimeoutRef.current = null;
       }
-      if (currentQueue.length >= MAX_QQ_RESTAURANTS) {
+      if (acceptedOffer?.restaurantId === restaurantId) {
+        setAcceptedOffer(null);
+      }
+      if (pendingOffer?.restaurantId === restaurantId) {
+        setPendingOffer(null);
+      }
+      setQueuedRestaurantIds((currentQueue) => currentQueue.filter((queuedId) => queuedId !== restaurantId));
+      return;
+    }
+
+    if (queuedRestaurantIds.length >= MAX_QQ_RESTAURANTS) {
+      return;
+    }
+
+    triggerQueueEnabledHaptic();
+    setQueuedRestaurantIds((currentQueue) => {
+      if (currentQueue.includes(restaurantId) || currentQueue.length >= MAX_QQ_RESTAURANTS) {
         return currentQueue;
       }
-      triggerQueueEnabledHaptic();
-      return [...currentQueue, selectedRestaurant.id];
+      return [...currentQueue, restaurantId];
     });
   };
 
@@ -1138,21 +1113,6 @@ export function CourierLiveMap({
     );
   }, [current, displayedCurrent, effectiveTarget, isNavigationActive]);
 
-  const animatedQueuedMarkerHaloStyle = {
-    opacity: queuedMarkerPulse.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.34, 0],
-    }),
-    transform: [
-      {
-        scale: queuedMarkerPulse.interpolate({
-          inputRange: [0, 1],
-          outputRange: [1, 1.9],
-        }),
-      },
-    ],
-  };
-
   if (!MAPBOX_TOKEN || !MAPBOX_MODULE) {
     return (
       <View style={styles.fallback}>
@@ -1211,51 +1171,6 @@ export function CourierLiveMap({
             />
           </ShapeSource>
         ) : null}
-
-        {!target
-          ? restaurantPins.map((restaurant) => (
-              <MarkerView
-                key={restaurant.id}
-                coordinate={[restaurant.coordinate.longitude, restaurant.coordinate.latitude]}
-                anchor={{ x: 0.5, y: 1 }}
-                allowOverlap
-              >
-                <Pressable onPress={() => handleRestaurantPress(restaurant.id)} style={styles.restaurantMarkerPressable}>
-                  <View style={styles.restaurantMarkerWrap}>
-                    <View
-                      style={[
-                        styles.restaurantMarkerLabel,
-                        selectedRestaurantId === restaurant.id && styles.restaurantMarkerLabelSelected,
-                      ]}
-                    >
-                      <Text style={styles.restaurantMarkerLabelText}>{restaurant.name}</Text>
-                    </View>
-                    <View style={styles.restaurantMarkerPinStack}>
-                      <View style={styles.restaurantMarkerStem} />
-                      <View
-                        style={[
-                          styles.restaurantMarkerPin,
-                          queuedRestaurantIds.includes(restaurant.id) && styles.restaurantMarkerPinQueued,
-                          selectedRestaurantId === restaurant.id && styles.restaurantMarkerPinSelected,
-                        ]}
-                      >
-                        {queuedRestaurantIds.includes(restaurant.id) ? (
-                          <Animated.View style={[styles.restaurantMarkerPulseHalo, animatedQueuedMarkerHaloStyle]} />
-                        ) : null}
-                        <View style={styles.restaurantMarkerPinCore}>
-                          <Store
-                            color={queuedRestaurantIds.includes(restaurant.id) ? colors.black : colors.white}
-                            size={14}
-                            strokeWidth={2.4}
-                          />
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                </Pressable>
-              </MarkerView>
-            ))
-          : null}
 
         {displayedCurrent ? (
           <MarkerView
@@ -1639,7 +1554,6 @@ function pickCourseHeading(heading?: number | null, speed?: number | null) {
 function buildCameraConfig(
   current: MapCoordinate | null,
   target: MapCoordinate | null,
-  restaurants: RestaurantMapPin[],
   routeStops: MapCoordinate[] = [],
   shouldFitRoute = false,
 ) {
@@ -1649,25 +1563,6 @@ function buildCameraConfig(
 
   if (current && target) {
     return buildNavigationCameraSettings(current, target);
-  }
-
-  if (!target && restaurants.length) {
-    const latitudes = restaurants.map((restaurant) => restaurant.coordinate.latitude);
-    const longitudes = restaurants.map((restaurant) => restaurant.coordinate.longitude);
-
-    return {
-      bounds: {
-        ne: [Math.max(...longitudes) + 0.006, Math.max(...latitudes) + 0.004],
-        sw: [Math.min(...longitudes) - 0.006, Math.min(...latitudes) - 0.004],
-      },
-      padding: {
-        paddingTop: 120,
-        paddingRight: 36,
-        paddingBottom: 120,
-        paddingLeft: 36,
-      },
-      pitch: 0,
-    };
   }
 
   if (current) {
@@ -2124,13 +2019,6 @@ const styles = StyleSheet.create({
   },
   restaurantMarkerPinQueued: {
     backgroundColor: colors.lime,
-  },
-  restaurantMarkerPulseHalo: {
-    position: "absolute",
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "rgba(184,242,109,0.55)",
   },
   restaurantMarkerPinCore: {
     width: 22,

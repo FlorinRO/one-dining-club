@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from couriers.models import CourierDocument, CourierOperationEntry, CourierProfile, CourierSupportTicket, Delivery
+from couriers.models import CourierDispatchOffer, CourierDocument, CourierOperationEntry, CourierProfile, CourierSupportTicket, Delivery
 
 
 @admin.register(CourierProfile)
@@ -15,6 +15,14 @@ class CourierProfileAdmin(admin.ModelAdmin):
 class DeliveryAdmin(admin.ModelAdmin):
     list_display = ("order", "courier", "status", "pickup_time", "delivered_time", "distance_km")
     list_filter = ("status", "pickup_time", "delivered_time")
+    search_fields = ("order__id", "courier__email")
+    autocomplete_fields = ("order", "courier")
+
+
+@admin.register(CourierDispatchOffer)
+class CourierDispatchOfferAdmin(admin.ModelAdmin):
+    list_display = ("order", "courier", "status", "distance_km", "offered_at", "expires_at", "responded_at")
+    list_filter = ("status", "offered_at")
     search_fields = ("order__id", "courier__email")
     autocomplete_fields = ("order", "courier")
 

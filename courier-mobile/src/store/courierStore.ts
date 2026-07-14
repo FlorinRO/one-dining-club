@@ -29,6 +29,7 @@ type CourierStore = {
   refreshTrackingStatus: () => Promise<void>;
   refreshAll: () => Promise<void>;
   acceptOrder: (orderId: number) => Promise<void>;
+  declineOrder: (orderId: number) => Promise<void>;
   advanceOrderStatus: (orderId: number, orderStatus: "picked_up" | "on_the_way" | "delivered") => Promise<void>;
   setAvailability: (isAvailable: boolean) => Promise<void>;
   syncCurrentLocation: () => Promise<{ ok: boolean; message: string }>;
@@ -145,6 +146,11 @@ export const useCourierStore = create<CourierStore>((set, get) => ({
     const order = await courierApi.acceptOrder(orderId);
     set((state) => ({ orders: replaceOrder(state.orders, order) }));
     void get().refreshOperationsSummary().catch(() => undefined);
+  },
+  async declineOrder(orderId) {
+    await courierApi.declineOrder(orderId);
+    set((state) => ({ orders: state.orders.filter((order) => order.id !== orderId) }));
+    void get().refreshOrders().catch(() => undefined);
   },
   async advanceOrderStatus(orderId, orderStatus) {
     const order = await courierApi.updateOrderStatus(orderId, orderStatus);

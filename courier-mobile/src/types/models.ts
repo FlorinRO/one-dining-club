@@ -18,6 +18,7 @@ export type CourierProfile = {
   full_name?: string;
   email?: string;
   member_since?: string;
+  avatar_url?: string;
   phone: string;
   vehicle_type: "bike" | "scooter" | "car" | "walk";
   current_latitude?: string | number | null;
@@ -163,6 +164,9 @@ export type CourierOrder = {
   customer_email?: string;
   restaurant: number;
   restaurant_name: string;
+  restaurant_address?: string;
+  restaurant_latitude?: string | number | null;
+  restaurant_longitude?: string | number | null;
   courier?: number | null;
   courier_name?: string;
   courier_phone?: string;
@@ -189,6 +193,8 @@ export type CourierOrder = {
   estimated_arrival_minutes?: number | null;
   delivery_status: CourierDeliveryStatus;
   pickup_time?: string | null;
+  dispatch_offer_expires_at?: string | null;
+  dispatch_distance_km?: string | number | null;
   items: OrderItem[];
   created_at: string;
   updated_at: string;

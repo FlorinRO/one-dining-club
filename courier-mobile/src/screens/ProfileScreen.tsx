@@ -1,26 +1,24 @@
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as ImagePicker from "expo-image-picker";
 import type { ComponentType, ReactNode } from "react";
-import { useCallback } from "react";
-import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  Camera,
   CarFront,
   ChevronRight,
   CircleHelp,
-  FileText,
   Headphones,
   LogOut,
   Phone,
-  Settings,
-  Shield,
   Star,
   User,
-  Wallet,
 } from "lucide-react-native";
 
 import { authApi } from "../api/authApi";
-import { formatMoney } from "../lib/format";
+import { courierApi } from "../api/courierApi";
 import { unregisterCurrentPushDevice } from "../lib/notifications";
 import { RootStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
@@ -37,21 +35,13 @@ type ProfileIcon = ComponentType<{
 
 type ProfileRouteName =
   | "ProfilePersonal"
-  | "ProfileEarnings"
   | "ProfileVehicle"
-  | "ProfileDocuments"
-  | "ProfileSettings"
-  | "ProfileSecurity"
   | "ProfileHelpCenter"
   | "ProfileSupport";
 
 const accountItems: Array<{ label: string; icon: ProfileIcon; route: ProfileRouteName }> = [
   { label: "Date personale", icon: User, route: "ProfilePersonal" },
-  { label: "Plăți și încasări", icon: Wallet, route: "ProfileEarnings" },
   { label: "Vehicul", icon: CarFront, route: "ProfileVehicle" },
-  { label: "Documente", icon: FileText, route: "ProfileDocuments" },
-  { label: "Setări aplicație", icon: Settings, route: "ProfileSettings" },
-  { label: "Securitate", icon: Shield, route: "ProfileSecurity" },
 ];
 
 const supportItems: Array<{ label: string; icon: ProfileIcon; route: ProfileRouteName }> = [
@@ -62,6 +52,8 @@ const supportItems: Array<{ label: string; icon: ProfileIcon; route: ProfileRout
 export function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [avatarPreviewUri, setAvatarPreviewUri] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const user = useAuthStore((state) => state.user);
   const refreshToken = useAuthStore((state) => state.refreshToken);
   const logout = useAuthStore((state) => state.logout);
@@ -71,9 +63,11 @@ export function ProfileScreen() {
   const profileLoading = useCourierStore((state) => state.profileLoading);
   const operationsLoading = useCourierStore((state) => state.operationsLoading);
   const refreshAll = useCourierStore((state) => state.refreshAll);
+  const refreshProfile = useCourierStore((state) => state.refreshProfile);
 
   const displayName = user?.full_name || profile?.full_name || user?.email || profile?.email || "Curier YUMZY";
   const displayPhone = profile?.phone || user?.phone || "Telefon neconfigurat";
+  const avatarImageSource = avatarPreviewUri ? { uri: avatarPreviewUri } : profile?.avatar_url ? { uri: profile.avatar_url } : avatarSource;
   const completedTotal = operationsSummary?.completed_total ?? profile?.completed_deliveries_total ?? 0;
   const ratingCount = profile?.rating_count ?? 0;
   const ratingAverage = Number(profile?.rating_average ?? 0);
@@ -95,6 +89,48 @@ export function ProfileScreen() {
     logout();
   };
 
+  const handleChangeAvatar = async () => {
+    if (avatarUploading) {
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Permisiune necesară", "Permite accesul la galerie pentru a schimba avatarul.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.82,
+      });
+
+      const asset = result.canceled ? null : result.assets?.[0];
+      if (!asset?.uri) {
+        return;
+      }
+
+      setAvatarPreviewUri(asset.uri);
+      await courierApi.uploadProfileAvatar({
+        uri: asset.uri,
+        fileName: asset.fileName,
+        mimeType: asset.mimeType,
+      });
+      await refreshProfile();
+      Alert.alert("Avatar actualizat", "Poza de profil a fost salvată.");
+    } catch (error) {
+      console.warn("Could not update courier avatar", error);
+      setAvatarPreviewUri(null);
+      Alert.alert("Eroare", "Nu am putut actualiza avatarul.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   return (
     <View style={styles.root}>
       <ScrollView
@@ -112,9 +148,24 @@ export function ProfileScreen() {
           </View>
         ) : null}
 
-        <Pressable style={styles.identityRow} onPress={() => navigation.navigate("ProfilePersonal")}>
-          <Image source={avatarSource} style={styles.avatar} />
-          <View style={styles.identityText}>
+        <View style={styles.identityRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Schimbă avatarul"
+            style={styles.avatarButton}
+            onPress={handleChangeAvatar}
+            disabled={avatarUploading}
+          >
+            <Image source={avatarImageSource} style={styles.avatar} />
+            <View style={styles.avatarAction}>
+              {avatarUploading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Camera color="#FFFFFF" size={17} strokeWidth={2.6} />
+              )}
+            </View>
+          </Pressable>
+          <Pressable style={styles.identityText} onPress={() => navigation.navigate("ProfilePersonal")}>
             <Text style={styles.name}>{displayName}</Text>
             <View style={styles.metaRow}>
               <Phone color={palette.muted} size={14} strokeWidth={2.4} />
@@ -132,18 +183,9 @@ export function ProfileScreen() {
                 <Text style={styles.metaText}>{completedTotal} curse finalizate</Text>
               )}
             </View>
-          </View>
-          <ChevronRight color={palette.ink} size={22} strokeWidth={2.4} />
-        </Pressable>
-
-        <View style={styles.balanceCard}>
-          <View>
-            <Text style={styles.balanceLabel}>Sold disponibil</Text>
-            <Text style={styles.balanceValue}>{formatMoney(operationsSummary?.available_balance ?? 0)}</Text>
-          </View>
-          <Pressable style={styles.detailsButton} onPress={() => navigation.navigate("ProfileEarnings")}>
-            <Wallet color={palette.green} size={16} strokeWidth={2.4} />
-            <Text style={styles.detailsText}>Vezi detalii</Text>
+          </Pressable>
+          <Pressable hitSlop={10} onPress={() => navigation.navigate("ProfilePersonal")}>
+            <ChevronRight color={palette.ink} size={22} strokeWidth={2.4} />
           </Pressable>
         </View>
 
@@ -257,6 +299,24 @@ const styles = StyleSheet.create({
     height: 92,
     borderRadius: 46,
   },
+  avatarButton: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+  },
+  avatarAction: {
+    position: "absolute",
+    right: 0,
+    bottom: 3,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: palette.background,
+    backgroundColor: palette.green,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   identityText: {
     flex: 1,
     gap: 6,
@@ -299,50 +359,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     fontWeight: "600",
-  },
-  balanceCard: {
-    minHeight: 78,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: palette.greenLine,
-    backgroundColor: palette.greenSoft,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  balanceLabel: {
-    color: palette.ink,
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: "500",
-  },
-  balanceValue: {
-    color: palette.green,
-    fontSize: 20,
-    lineHeight: 25,
-    fontWeight: "800",
-  },
-  detailsButton: {
-    minHeight: 40,
-    borderRadius: 9,
-    backgroundColor: palette.background,
-    paddingHorizontal: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    shadowColor: "#101828",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  detailsText: {
-    color: palette.green,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "800",
   },
   card: {
     borderRadius: 16,

@@ -1,19 +1,24 @@
 from datetime import datetime, time, timedelta
+import tempfile
 
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from addresses.models import Address
 from couriers.models import (
     CourierAvailabilitySession,
+    CourierDispatchOffer,
     CourierDocument,
     CourierOperationEntry,
     CourierProfile,
     CourierSupportTicket,
     Delivery,
     DeliveryStatus,
+    DispatchOfferStatus,
 )
+from couriers.dispatch import dispatch_next_courier, process_expired_offers
 from orders.models import FulfillmentType, Order, OrderStatus
 from restaurants.models import Restaurant
 from users.models import User, UserRole
@@ -89,6 +94,30 @@ class CourierApiTests(TestCase):
         self.assertEqual(payload["preferred_navigation_app"], "google_maps")
         self.assertEqual(payload["app_language"], "ro")
         self.assertEqual(payload["completed_deliveries_total"], 0)
+        self.assertEqual(payload["avatar_url"], "")
+
+    def test_courier_profile_patch_uploads_avatar(self):
+        avatar = SimpleUploadedFile(
+            "avatar.gif",
+            b"GIF87a\x01\x00\x01\x00\x80\x01\x00\x00\x00\x00\xff\xff\xff,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;",
+            content_type="image/gif",
+        )
+
+        with tempfile.TemporaryDirectory() as media_root, override_settings(
+            MEDIA_ROOT=media_root,
+            MEDIA_URL="/test-media/",
+            STORAGES={
+                "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+                "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+            },
+        ):
+            response = self.client.patch("/api/courier/location/", {"avatar": avatar}, format="multipart")
+
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            profile = CourierProfile.objects.get(user=self.courier)
+            self.assertTrue(profile.avatar.name.startswith("couriers/avatars/avatar"))
+            self.assertIn("/test-media/couriers/avatars/avatar", payload["avatar_url"])
 
     def test_courier_profile_patch_updates_profile_fields(self):
         response = self.client.patch(
@@ -128,6 +157,12 @@ class CourierApiTests(TestCase):
         self.assertFalse(CourierAvailabilitySession.objects.filter(courier=self.courier, ended_at__isnull=True).exists())
 
     def test_courier_accept_assigns_order_without_advancing_delivery_status_flow(self):
+        CourierDispatchOffer.objects.create(
+            order=self.order,
+            courier=self.courier,
+            distance_km="1.20",
+            expires_at=timezone.now() + timedelta(seconds=30),
+        )
         response = self.client.patch(f"/api/courier/orders/{self.order.id}/accept/")
 
         self.assertEqual(response.status_code, 200)
@@ -137,6 +172,80 @@ class CourierApiTests(TestCase):
         self.assertEqual(self.order.order_status, OrderStatus.READY_FOR_PICKUP)
         self.assertEqual(delivery.status, DeliveryStatus.ASSIGNED)
         self.assertIsNone(delivery.pickup_time)
+
+    def test_dispatch_offers_order_to_nearest_available_courier_then_next_on_decline(self):
+        nearest = self.courier
+        next_courier = User.objects.create_user(
+            email="courier-next@example.com",
+            password="StrongPass123!",
+            role=UserRole.COURIER,
+        )
+        CourierProfile.objects.create(
+            user=nearest,
+            phone="0711111111",
+            is_available=True,
+            is_verified=False,
+            current_latitude="44.427000",
+            current_longitude="26.102500",
+        )
+        CourierProfile.objects.create(
+            user=next_courier,
+            phone="0733333333",
+            is_available=True,
+            is_verified=True,
+            current_latitude="44.450000",
+            current_longitude="26.102500",
+        )
+
+        first_offer = dispatch_next_courier(self.order.id)
+
+        self.assertEqual(first_offer.courier_id, nearest.id)
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.patch(f"/api/courier/orders/{self.order.id}/decline/")
+
+        self.assertEqual(response.status_code, 204)
+        first_offer.refresh_from_db()
+        self.assertEqual(first_offer.status, DispatchOfferStatus.DECLINED)
+        second_offer = CourierDispatchOffer.objects.get(order=self.order, courier=next_courier)
+        self.assertEqual(second_offer.status, DispatchOfferStatus.OFFERED)
+
+    def test_expired_dispatch_offer_advances_to_next_nearest_courier(self):
+        next_courier = User.objects.create_user(
+            email="courier-timeout@example.com",
+            password="StrongPass123!",
+            role=UserRole.COURIER,
+        )
+        CourierProfile.objects.create(
+            user=self.courier,
+            phone="0711111111",
+            is_available=True,
+            is_verified=True,
+            current_latitude="44.427000",
+            current_longitude="26.102500",
+        )
+        CourierProfile.objects.create(
+            user=next_courier,
+            phone="0744444444",
+            is_available=True,
+            is_verified=True,
+            current_latitude="44.450000",
+            current_longitude="26.102500",
+        )
+        first_offer = dispatch_next_courier(self.order.id)
+        first_offer.expires_at = timezone.now() - timedelta(seconds=1)
+        first_offer.save(update_fields=("expires_at",))
+
+        process_expired_offers()
+
+        first_offer.refresh_from_db()
+        self.assertEqual(first_offer.status, DispatchOfferStatus.EXPIRED)
+        self.assertTrue(
+            CourierDispatchOffer.objects.filter(
+                order=self.order,
+                courier=next_courier,
+                status=DispatchOfferStatus.OFFERED,
+            ).exists()
+        )
 
     def test_courier_operations_summary_uses_backend_delivery_data(self):
         now = timezone.now()

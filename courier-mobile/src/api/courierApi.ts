@@ -32,6 +32,23 @@ export const courierApi = {
     return data;
   },
 
+  async uploadProfileAvatar(payload: { uri: string; fileName?: string | null; mimeType?: string | null }) {
+    const formData = new FormData();
+    const fileName = payload.fileName || payload.uri.split("/").pop() || `courier-avatar-${Date.now()}.jpg`;
+    formData.append("avatar", {
+      uri: payload.uri,
+      name: fileName,
+      type: payload.mimeType || "image/jpeg",
+    } as unknown as Blob);
+
+    const { data } = await apiClient.patch<CourierProfile>("/courier/location/", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return data;
+  },
+
   async listOrders() {
     const { data } = await apiClient.get<OrderListResponse>("/courier/orders/");
     return normalizeOrderList(data);
@@ -90,6 +107,10 @@ export const courierApi = {
   async acceptOrder(orderId: number) {
     const { data } = await apiClient.patch<CourierOrder>(`/courier/orders/${orderId}/accept/`);
     return data;
+  },
+
+  async declineOrder(orderId: number) {
+    await apiClient.patch(`/courier/orders/${orderId}/decline/`);
   },
 
   async updateOrderStatus(orderId: number, orderStatus: Extract<OrderStatus, "picked_up" | "on_the_way" | "delivered">) {

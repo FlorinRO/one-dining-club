@@ -59,6 +59,8 @@
     <string>Allow $(PRODUCT_NAME) to access your location</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>YUMZY Courier uses your location while you work to send live courier location updates and help you navigate active deliveries.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>YUMZY Courier accesses your photo library only when you choose a profile avatar.</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UIBackgroundModes</key>

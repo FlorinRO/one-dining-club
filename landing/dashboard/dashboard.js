@@ -593,7 +593,6 @@ const state = {
   restaurantCategories: [],
   products: [],
   orders: [],
-  availableCouriers: [],
   selectedRestaurantId: null,
   editingProductId: null,
   avatarPreviewUrls: {},
@@ -718,7 +717,7 @@ async function pollOrdersInBackground() {
   if (ordersPollInFlight || !state.user || !state.selectedRestaurantId) return;
   ordersPollInFlight = true;
   try {
-    await Promise.all([reloadOrders({ shouldNotify: true }), reloadCouriers()]);
+    await reloadOrders({ shouldNotify: true });
     if (state.currentView === "orders" && !isEditingOrderForm()) render();
   } catch {}
   ordersPollInFlight = false;
@@ -1353,12 +1352,11 @@ async function fetchOwnerData() {
     syncSelectedRestaurant();
 
     if (state.selectedRestaurantId) {
-      await Promise.all([reloadProducts(), reloadOrders({ shouldNotify: false }), reloadCategories(), reloadCouriers()]);
+      await Promise.all([reloadProducts(), reloadOrders({ shouldNotify: false }), reloadCategories()]);
     } else {
       state.productCategories = [];
       state.products = [];
       state.orders = [];
-      state.availableCouriers = [];
       state.hasLoadedOrdersOnce = false;
       state.unseenOrderIds = [];
     }
@@ -1412,10 +1410,6 @@ async function reloadOrders(options = {}) {
       setNotice(message);
     }
   }
-}
-
-async function reloadCouriers() {
-  state.availableCouriers = await apiFetch("restaurant-owner/orders/couriers/");
 }
 
 async function reloadCategories() {
@@ -2395,17 +2389,6 @@ function renderOrdersView() {
                               ${OWNER_STATUS_OPTIONS.map((status) => `<option value="${status}" ${status === order.order_status ? "selected" : ""}>${ORDER_STATUS_LABELS[status]}</option>`).join("")}
                             </select>
                           </label>
-                          ${
-                            order.fulfillment_type === "delivery"
-                              ? `<label class="order-toolbar-field">
-                                  <span><i class="ri-user-star-line" aria-hidden="true"></i>Curier</span>
-                                  <select name="courier_id">
-                                    <option value="">${order.courier_id ? "Fără reasignare" : "Asignează curier"}</option>
-                                    ${state.availableCouriers.map((courier) => `<option value="${courier.courier_id}" ${Number(courier.courier_id) === Number(order.courier) ? "selected" : ""}>${escapeHtml(`${courier.full_name} · ${formatVehicleTypeLabel(courier.vehicle_type)}${courier.is_available ? "" : " · indisponibil"}`)}</option>`).join("")}
-                                  </select>
-                                </label>`
-                              : ""
-                          }
                           <label class="order-toolbar-field">
                             <span><i class="ri-sticky-note-line" aria-hidden="true"></i>Notă internă</span>
                             <input name="restaurant_note" value="${escapeHtml(order.restaurant_note || "")}" placeholder="Adaugă context pentru echipă" />
@@ -3449,20 +3432,16 @@ async function handleOrderUpdate(event) {
   const orderId = Number(formElement.dataset.orderForm);
   const form = new FormData(formElement);
   try {
-    const courierRawValue = String(form.get("courier_id") || "").trim();
     const payload = {
       order_status: form.get("order_status"),
       restaurant_note: form.get("restaurant_note"),
     };
-    if (event.currentTarget.querySelector('[name="courier_id"]')) {
-      payload.courier_id = courierRawValue ? Number(courierRawValue) : null;
-    }
     await apiFetch(`restaurant-owner/orders/${orderId}/status/`, {
       method: "PATCH",
       body: payload,
     });
     state.unseenOrderIds = state.unseenOrderIds.filter((id) => id !== orderId);
-    await Promise.all([reloadOrders({ shouldNotify: false }), reloadCouriers()]);
+    await reloadOrders({ shouldNotify: false });
     render();
     setNotice(`Comanda #${orderId} a fost actualizată.`);
   } catch (error) {

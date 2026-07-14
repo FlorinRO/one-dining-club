@@ -78,6 +78,9 @@ class OrderEventSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     restaurant_name = serializers.CharField(source="restaurant.name", read_only=True)
+    restaurant_address = serializers.CharField(source="restaurant.address", read_only=True)
+    restaurant_latitude = serializers.DecimalField(source="restaurant.latitude", max_digits=9, decimal_places=6, read_only=True)
+    restaurant_longitude = serializers.DecimalField(source="restaurant.longitude", max_digits=9, decimal_places=6, read_only=True)
     customer_email = serializers.EmailField(source="customer.email", read_only=True)
     courier_email = serializers.EmailField(source="courier.email", read_only=True)
     courier_name = serializers.SerializerMethodField()
@@ -99,9 +102,27 @@ class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     events = OrderEventSerializer(many=True, read_only=True)
     review = ReviewSerializer(read_only=True)
+    dispatch_offer_expires_at = serializers.SerializerMethodField()
+    dispatch_distance_km = serializers.SerializerMethodField()
 
     def get_customer_name(self, obj):
         return obj.address.full_name if obj.address and obj.address.full_name else obj.customer.full_name or ""
+
+    def _dispatch_offer(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated or obj.courier_id:
+            return None
+        from couriers.models import DispatchOfferStatus
+
+        return obj.dispatch_offers.filter(courier=request.user, status=DispatchOfferStatus.OFFERED).first()
+
+    def get_dispatch_offer_expires_at(self, obj):
+        offer = self._dispatch_offer(obj)
+        return offer.expires_at if offer else None
+
+    def get_dispatch_distance_km(self, obj):
+        offer = self._dispatch_offer(obj)
+        return offer.distance_km if offer else None
 
     def get_customer_phone(self, obj):
         return obj.address.phone if obj.address and obj.address.phone else obj.customer.phone or ""
@@ -211,6 +232,9 @@ class OrderSerializer(serializers.ModelSerializer):
             "customer_email",
             "restaurant",
             "restaurant_name",
+            "restaurant_address",
+            "restaurant_latitude",
+            "restaurant_longitude",
             "courier",
             "courier_email",
             "courier_name",
@@ -238,6 +262,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "estimated_arrival_minutes",
             "delivery_status",
             "pickup_time",
+            "dispatch_offer_expires_at",
+            "dispatch_distance_km",
             "items",
             "events",
             "review",
@@ -476,7 +502,6 @@ class RestaurantOwnerOrderStatusSerializer(serializers.Serializer):
         )
     )
     restaurant_note = serializers.CharField(required=False, allow_blank=True)
-    courier_id = serializers.IntegerField(required=False, allow_null=True)
 
 
 class CourierOrderStatusSerializer(serializers.Serializer):

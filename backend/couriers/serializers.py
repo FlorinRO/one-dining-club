@@ -42,6 +42,7 @@ class CourierProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source="user.full_name", read_only=True)
     email = serializers.EmailField(source="user.email", read_only=True)
     member_since = serializers.DateTimeField(source="user.date_joined", read_only=True)
+    avatar_url = serializers.SerializerMethodField()
     completed_deliveries_total = serializers.SerializerMethodField()
 
     class Meta:
@@ -51,6 +52,7 @@ class CourierProfileSerializer(serializers.ModelSerializer):
             "full_name",
             "email",
             "member_since",
+            "avatar_url",
             "phone",
             "vehicle_type",
             "current_latitude",
@@ -68,6 +70,15 @@ class CourierProfileSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "is_verified", "rating_average", "rating_count", "completed_deliveries_total", "updated_at")
 
+    def get_avatar_url(self, obj):
+        if not obj.avatar:
+            return ""
+        url = obj.avatar.url
+        request = self.context.get("request")
+        if request and url.startswith("/"):
+            return request.build_absolute_uri(url)
+        return url
+
     def get_completed_deliveries_total(self, obj):
         delivered_orders = Order.objects.filter(courier=obj.user, order_status=OrderStatus.DELIVERED).count()
         simulated_deliveries = CourierOperationEntry.objects.filter(courier=obj.user).count()
@@ -75,6 +86,7 @@ class CourierProfileSerializer(serializers.ModelSerializer):
 
 
 class CourierProfileUpdateSerializer(serializers.Serializer):
+    avatar = serializers.ImageField(required=False, allow_null=True)
     phone = serializers.CharField(required=False, allow_blank=True, max_length=32)
     vehicle_type = serializers.ChoiceField(choices=VehicleType.choices, required=False)
     current_latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False)

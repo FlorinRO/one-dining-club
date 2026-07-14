@@ -1,7 +1,9 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
+  AtSign,
   ArrowLeft,
+  BadgeCheck,
   Bell,
   CarFront,
   CheckCircle2,
@@ -9,10 +11,16 @@ import {
   CircleHelp,
   FileText,
   Headphones,
+  Languages,
   LockKeyhole,
   Mail,
+  MapPinCheck,
   MapPinned,
+  MessageCircle,
+  Navigation,
+  Send,
   Shield,
+  WalletCards,
 } from "lucide-react-native";
 import { ReactNode, useCallback, useEffect, useState } from "react";
 import {
@@ -106,22 +114,28 @@ export function ProfilePersonalScreen({ navigation }: BasicProps<"ProfilePersona
 
   return (
     <ProfileShell title="Date personale" onBack={navigation.goBack}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View style={styles.card}>
-          <DetailRow icon={<Mail color={palette.green} size={18} />} label="Email" value={user?.email || profile?.email || "N/A"} />
-          <DetailRow
-            icon={<Shield color={palette.green} size={18} />}
-            label="Status verificare"
-            value={profile?.is_verified ? "Verificat" : "În verificare"}
-          />
-        </View>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.stack}>
+        <SectionBlock title="Date personale">
+          <View style={styles.formCard}>
+            <FormField label="Prenume" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
+            <FormField label="Nume" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
+            <FormField label="Telefon" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+          </View>
+        </SectionBlock>
 
-        <View style={styles.formCard}>
-          <FormField label="Prenume" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
-          <FormField label="Nume" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
-          <FormField label="Telefon" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-          <ActionButton title={saving ? "Se salvează..." : "Salvează"} onPress={handleSave} disabled={saving} />
-        </View>
+        <SectionBlock title="Cont">
+          <View style={styles.card}>
+            <DetailRow icon={<AtSign color={palette.green} size={19} />} label="Email" value={user?.email || profile?.email || "N/A"} />
+            <View style={styles.cardDivider} />
+            <DetailRow
+              icon={<BadgeCheck color={palette.green} size={19} />}
+              label="Status verificare"
+              value={profile?.is_verified ? "Verificat" : "În verificare"}
+            />
+          </View>
+        </SectionBlock>
+
+        <ActionButton title={saving ? "Se salvează..." : "Salvează modificările"} onPress={handleSave} disabled={saving} />
       </KeyboardAvoidingView>
     </ProfileShell>
   );
@@ -147,10 +161,13 @@ export function ProfileEarningsScreen({ navigation }: BasicProps<"ProfileEarning
       refreshing={operationsLoading}
       onRefresh={refreshOperationsSummary}
     >
-      <View style={styles.balanceHero}>
-        <Text style={styles.balanceLabel}>Sold disponibil</Text>
+      <View style={styles.heroCard}>
+        <View style={styles.heroIcon}>
+          <WalletCards color={palette.green} size={34} strokeWidth={2.2} />
+        </View>
+        <Text style={styles.heroTitle}>Sold disponibil</Text>
         <Text style={styles.balanceAmount}>{formatMoney(operationsSummary?.available_balance ?? 0)}</Text>
-        <Text style={styles.balanceHint}>Actualizat din curse reale și simulări finalizate.</Text>
+        <Text style={styles.heroBody}>Actualizat din curse reale și simulări finalizate.</Text>
       </View>
 
       <View style={styles.statsGrid}>
@@ -160,26 +177,28 @@ export function ProfileEarningsScreen({ navigation }: BasicProps<"ProfileEarning
         <StatTile label="Curse totale" value={String(operationsSummary?.completed_total ?? 0)} />
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Ultimele încasări</Text>
-        {recentDeliveries.map((delivery) => (
-          <Pressable
-            key={delivery.id}
-            style={styles.compactRow}
-            onPress={() => navigation.navigate("CompletedDeliveryDetails", { deliveryId: delivery.id })}
-          >
-            <View style={styles.compactRowText}>
-              <Text style={styles.compactRowTitle}>{delivery.restaurant_name}</Text>
-              <Text style={styles.compactRowMeta}>{formatDate(delivery.completed_at)}</Text>
-            </View>
-            <View style={styles.compactRowRight}>
-              <Text style={styles.successValue}>{formatMoney(delivery.delivery_fee)}</Text>
-              <ChevronRight color={palette.ink} size={20} />
-            </View>
-          </Pressable>
-        ))}
-        {!recentDeliveries.length ? <EmptyText text="Nu există încă încasări în ultimele 7 zile." /> : null}
-      </View>
+      <SectionBlock title="Ultimele încasări">
+        <View style={styles.card}>
+          {recentDeliveries.map((delivery, index) => (
+            <Pressable
+              key={delivery.id}
+              style={styles.compactRow}
+              onPress={() => navigation.navigate("CompletedDeliveryDetails", { deliveryId: delivery.id })}
+            >
+              <View style={styles.compactRowText}>
+                <Text style={styles.compactRowTitle}>{delivery.restaurant_name}</Text>
+                <Text style={styles.compactRowMeta}>{formatDate(delivery.completed_at)}</Text>
+              </View>
+              <View style={styles.compactRowRight}>
+                <Text style={styles.successValue}>{formatMoney(delivery.delivery_fee)}</Text>
+                <ChevronRight color={palette.softText} size={22} strokeWidth={2.2} />
+              </View>
+              {index < recentDeliveries.length - 1 ? <View style={styles.rowSeparator} /> : null}
+            </Pressable>
+          ))}
+          {!recentDeliveries.length ? <EmptyText text="Nu există încă încasări în ultimele 7 zile." /> : null}
+        </View>
+      </SectionBlock>
     </ProfileShell>
   );
 }
@@ -211,26 +230,35 @@ export function ProfileVehicleScreen({ navigation }: BasicProps<"ProfileVehicle"
 
   return (
     <ProfileShell title="Vehicul" onBack={navigation.goBack}>
-      <View style={styles.card}>
-        <DetailRow icon={<CarFront color={palette.green} size={18} />} label="Vehicul backend" value={titleCaseVehicle(profile?.vehicle_type ?? vehicleType)} />
-        <DetailRow
-          icon={<MapPinned color={palette.green} size={18} />}
-          label="Locație live"
-          value={hasProfileLocation(profile) ? "Sincronizată" : "Nesincronizată"}
-        />
-      </View>
-
-      <View style={styles.optionList}>
-        {vehicleOptions.map((option) => (
-          <SelectableRow
-            key={option.value}
-            title={option.label}
-            description={option.description}
-            selected={vehicleType === option.value}
-            onPress={() => setVehicleType(option.value)}
+      <SectionBlock title="Status vehicul">
+        <View style={styles.card}>
+          <DetailRow
+            icon={<CarFront color={palette.green} size={19} />}
+            label="Vehicul backend"
+            value={titleCaseVehicle(profile?.vehicle_type ?? vehicleType)}
           />
-        ))}
-      </View>
+          <View style={styles.cardDivider} />
+          <DetailRow
+            icon={<MapPinCheck color={palette.green} size={19} />}
+            label="Locație live"
+            value={hasProfileLocation(profile) ? "Sincronizată" : "Nesincronizată"}
+          />
+        </View>
+      </SectionBlock>
+
+      <SectionBlock title="Alege vehiculul">
+        <View style={styles.optionList}>
+          {vehicleOptions.map((option) => (
+            <SelectableRow
+              key={option.value}
+              title={option.label}
+              description={option.description}
+              selected={vehicleType === option.value}
+              onPress={() => setVehicleType(option.value)}
+            />
+          ))}
+        </View>
+      </SectionBlock>
       <ActionButton title={saving ? "Se salvează..." : "Salvează vehicul"} onPress={handleSave} disabled={saving} />
     </ProfileShell>
   );
@@ -277,31 +305,34 @@ export function ProfileDocumentsScreen({ navigation }: BasicProps<"ProfileDocume
   return (
     <ProfileShell title="Documente" onBack={navigation.goBack} refreshing={loading} onRefresh={loadDocuments}>
       {loading && !documents.length ? <LoadingCard text="Se încarcă documentele..." /> : null}
-      <View style={styles.optionList}>
-        {documents.map((document) => (
-          <View key={document.document_type} style={styles.documentCard}>
-            <View style={styles.documentHeader}>
-              <View style={styles.documentIconWrap}>
-                <FileText color={palette.green} size={22} />
+      <SectionBlock title="Documente curier">
+        <View style={styles.optionList}>
+          {documents.map((document) => (
+            <View key={document.document_type} style={styles.documentCard}>
+              <View style={styles.documentHeader}>
+                <View style={styles.documentIconWrap}>
+                  <FileText color={palette.green} size={22} />
+                </View>
+                <View style={styles.documentTitleWrap}>
+                  <Text style={styles.documentTitle}>{documentLabel(document)}</Text>
+                  <Text style={styles.documentMeta}>{document.file_name || "Fără fișier activ"}</Text>
+                </View>
+                <StatusBadge status={document.status} />
               </View>
-              <View style={styles.documentTitleWrap}>
-                <Text style={styles.documentTitle}>{documentLabel(document)}</Text>
-                <Text style={styles.documentMeta}>{document.file_name || "Fără fișier activ"}</Text>
-              </View>
-              <StatusBadge status={document.status} />
+              {document.review_note ? <Text style={styles.documentNote}>{document.review_note}</Text> : null}
+              {document.status !== "approved" ? (
+                <ActionButton
+                  title={submittingType === document.document_type ? "Se trimite..." : "Trimite spre verificare"}
+                  onPress={() => handleSubmitDocument(document)}
+                  disabled={Boolean(submittingType)}
+                  compact
+                  icon={<Send color="#FFFFFF" size={17} strokeWidth={2.4} />}
+                />
+              ) : null}
             </View>
-            {document.review_note ? <Text style={styles.documentNote}>{document.review_note}</Text> : null}
-            {document.status !== "approved" ? (
-              <ActionButton
-                title={submittingType === document.document_type ? "Se trimite..." : "Trimite spre verificare"}
-                onPress={() => handleSubmitDocument(document)}
-                disabled={Boolean(submittingType)}
-                compact
-              />
-            ) : null}
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      </SectionBlock>
     </ProfileShell>
   );
 }
@@ -345,30 +376,37 @@ export function ProfileSettingsScreen({ navigation }: BasicProps<"ProfileSetting
 
   return (
     <ProfileShell title="Setări aplicație" onBack={navigation.goBack}>
-      <View style={styles.card}>
-        <SwitchRow
-          icon={<Bell color={palette.green} size={18} />}
-          label="Notificări aplicație"
-          value={notificationsEnabled}
-          onValueChange={setNotificationsEnabled}
-        />
-        <SwitchRow
-          icon={<MapPinned color={palette.green} size={18} />}
-          label="Alerte traseu"
-          value={routeAlertsEnabled}
-          onValueChange={setRouteAlertsEnabled}
-        />
-      </View>
+      <SectionBlock title="Preferințe">
+        <View style={styles.card}>
+          <SwitchRow
+            icon={<Bell color={palette.green} size={19} />}
+            label="Notificări aplicație"
+            value={notificationsEnabled}
+            onValueChange={setNotificationsEnabled}
+          />
+          <View style={styles.cardDivider} />
+          <SwitchRow
+            icon={<MapPinned color={palette.green} size={19} />}
+            label="Alerte traseu"
+            value={routeAlertsEnabled}
+            onValueChange={setRouteAlertsEnabled}
+          />
+        </View>
+      </SectionBlock>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Navigație</Text>
-        <SegmentedOptions options={navigationOptions} value={navigationApp} onChange={setNavigationApp} />
-      </View>
+      <SectionBlock title="Navigație">
+        <View style={styles.card}>
+          <DetailRow icon={<Navigation color={palette.green} size={19} />} label="Aplicație preferată" value="Alege ruta implicită" />
+          <SegmentedOptions options={navigationOptions} value={navigationApp} onChange={setNavigationApp} />
+        </View>
+      </SectionBlock>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Limbă</Text>
-        <SegmentedOptions options={languageOptions} value={language} onChange={setLanguage} />
-      </View>
+      <SectionBlock title="Limbă">
+        <View style={styles.card}>
+          <DetailRow icon={<Languages color={palette.green} size={19} />} label="Limba aplicației" value="Interfață și notificări" />
+          <SegmentedOptions options={languageOptions} value={language} onChange={setLanguage} />
+        </View>
+      </SectionBlock>
 
       <ActionButton title={saving ? "Se salvează..." : "Salvează setări"} onPress={handleSave} disabled={saving} />
     </ProfileShell>
@@ -398,12 +436,45 @@ export function ProfileSecurityScreen({ navigation }: BasicProps<"ProfileSecurit
 
   return (
     <ProfileShell title="Securitate" onBack={navigation.goBack}>
-      <View style={styles.card}>
-        <DetailRow icon={<Mail color={palette.green} size={18} />} label="Email autentificare" value={user?.email || "N/A"} />
-        <DetailRow icon={<LockKeyhole color={palette.green} size={18} />} label="Ultima autentificare" value={formatDate(user?.last_login)} />
-        <DetailRow icon={<Shield color={palette.green} size={18} />} label="Cont activ" value={user?.is_active === false ? "Inactiv" : "Activ"} />
+      <View style={styles.emailHero}>
+        <View style={styles.emailIllustration}>
+          <View style={styles.emailEnvelope}>
+            <AtSign color={palette.green} size={38} strokeWidth={2.4} />
+          </View>
+        </View>
+        <Text style={styles.heroTitle}>Adresa ta de email</Text>
+        <Text style={styles.heroBody}>Aceasta este adresa folosită pentru autentificare și pentru notificări.</Text>
       </View>
-      <ActionButton title={sendingReset ? "Se trimite..." : "Resetează parola"} onPress={handlePasswordReset} disabled={sendingReset} />
+
+      <View style={styles.readOnlyField}>
+        <Text style={styles.readOnlyLabel}>Adresă de email</Text>
+        <Text style={styles.readOnlyValue}>{user?.email || "N/A"}</Text>
+      </View>
+
+      <View style={styles.verifiedPill}>
+        <CheckCircle2 color="#FFFFFF" fill={palette.green} size={18} strokeWidth={2.4} />
+        <Text style={styles.verifiedText}>Email verificat</Text>
+      </View>
+
+      <SectionBlock title="Securitate cont">
+        <View style={styles.card}>
+          <DetailRow icon={<LockKeyhole color={palette.green} size={19} />} label="Ultima autentificare" value={formatDate(user?.last_login)} />
+          <View style={styles.cardDivider} />
+          <DetailRow icon={<Shield color={palette.green} size={19} />} label="Cont activ" value={user?.is_active === false ? "Inactiv" : "Activ"} />
+        </View>
+      </SectionBlock>
+
+      <View style={styles.centerCopy}>
+        <Text style={styles.centerCopyTitle}>Vrei să schimbi parola?</Text>
+        <Text style={styles.centerCopyText}>Îți vom trimite instrucțiunile de resetare la adresa de email.</Text>
+      </View>
+      <ActionButton
+        title={sendingReset ? "Se trimite..." : "Resetează parola"}
+        onPress={handlePasswordReset}
+        disabled={sendingReset}
+        variant="secondary"
+        icon={<Mail color={palette.green} size={20} strokeWidth={2.3} />}
+      />
     </ProfileShell>
   );
 }
@@ -435,17 +506,19 @@ export function ProfileHelpCenterScreen({ navigation }: BasicProps<"ProfileHelpC
   return (
     <ProfileShell title="Centru de ajutor" onBack={navigation.goBack} refreshing={loading} onRefresh={loadHelp}>
       {loading && !articles.length ? <LoadingCard text="Se încarcă articolele..." /> : null}
-      <View style={styles.optionList}>
-        {articles.map((article) => (
-          <View key={article.id} style={styles.helpCard}>
-            <View style={styles.helpHeader}>
-              <CircleHelp color={palette.green} size={20} />
-              <Text style={styles.helpTitle}>{article.title}</Text>
+      <SectionBlock title="Întrebări frecvente">
+        <View style={styles.optionList}>
+          {articles.map((article) => (
+            <View key={article.id} style={styles.helpCard}>
+              <View style={styles.helpHeader}>
+                <CircleHelp color={palette.green} size={20} />
+                <Text style={styles.helpTitle}>{article.title}</Text>
+              </View>
+              <Text style={styles.helpBody}>{article.body}</Text>
             </View>
-            <Text style={styles.helpBody}>{article.body}</Text>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      </SectionBlock>
       <Pressable style={styles.contactCard} onPress={() => navigation.navigate("ProfileSupport")}>
         <View style={styles.contactIcon}>
           <Headphones color={palette.green} size={22} />
@@ -508,31 +581,50 @@ export function ProfileSupportScreen({ navigation }: BasicProps<"ProfileSupport"
 
   return (
     <ProfileShell title="Contact suport" onBack={navigation.goBack} refreshing={loading} onRefresh={loadTickets}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View style={styles.formCard}>
-          <FormField label="Subiect" value={subject} onChangeText={setSubject} />
-          <FormField label="Mesaj" value={message} onChangeText={setMessage} multiline minHeight={110} />
-          <ActionButton title={sending ? "Se trimite..." : "Trimite mesaj"} onPress={handleCreateTicket} disabled={sending} />
-        </View>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.stack}>
+        <SectionBlock title="Mesaj nou">
+          <View style={styles.formCard}>
+            <DetailRow icon={<MessageCircle color={palette.green} size={19} />} label="Suport YUMZY" value="Răspundem pe emailul contului tău" />
+            <FormField label="Subiect" value={subject} onChangeText={setSubject} />
+            <FormField label="Mesaj" value={message} onChangeText={setMessage} multiline minHeight={110} />
+            <ActionButton
+              title={sending ? "Se trimite..." : "Trimite mesaj"}
+              onPress={handleCreateTicket}
+              disabled={sending}
+              icon={<Send color="#FFFFFF" size={18} strokeWidth={2.4} />}
+            />
+          </View>
+        </SectionBlock>
       </KeyboardAvoidingView>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Tichete recente</Text>
-        {tickets.map((ticket) => (
-          <View key={ticket.id} style={styles.ticketRow}>
-            <View style={styles.ticketHeader}>
-              <Text style={styles.ticketSubject}>{ticket.subject}</Text>
-              <StatusBadge status={ticket.status} />
+      <SectionBlock title="Tichete recente">
+        <View style={styles.card}>
+          {tickets.map((ticket, index) => (
+            <View key={ticket.id} style={styles.ticketRow}>
+              <View style={styles.ticketHeader}>
+                <Text style={styles.ticketSubject}>{ticket.subject}</Text>
+                <StatusBadge status={ticket.status} />
+              </View>
+              <Text style={styles.ticketMessage} numberOfLines={2}>
+                {ticket.message}
+              </Text>
+              <Text style={styles.compactRowMeta}>{formatDate(ticket.created_at)}</Text>
+              {index < tickets.length - 1 ? <View style={styles.cardDivider} /> : null}
             </View>
-            <Text style={styles.ticketMessage} numberOfLines={2}>
-              {ticket.message}
-            </Text>
-            <Text style={styles.compactRowMeta}>{formatDate(ticket.created_at)}</Text>
-          </View>
-        ))}
-        {!tickets.length ? <EmptyText text="Nu există tichete deschise." /> : null}
-      </View>
+          ))}
+          {!tickets.length ? <EmptyText text="Nu există tichete deschise." /> : null}
+        </View>
+      </SectionBlock>
     </ProfileShell>
+  );
+}
+
+function SectionBlock({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <View style={styles.sectionBlock}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {children}
+    </View>
   );
 }
 
@@ -619,15 +711,29 @@ function ActionButton({
   onPress,
   disabled = false,
   compact = false,
+  variant = "primary",
+  icon,
 }: {
   title: string;
   onPress: () => void;
   disabled?: boolean;
   compact?: boolean;
+  variant?: "primary" | "secondary";
+  icon?: ReactNode;
 }) {
   return (
-    <Pressable style={[styles.actionButton, compact && styles.actionButtonCompact, disabled && styles.disabled]} onPress={onPress} disabled={disabled}>
-      <Text style={styles.actionButtonText}>{title}</Text>
+    <Pressable
+      style={[
+        styles.actionButton,
+        variant === "secondary" && styles.actionButtonSecondary,
+        compact && styles.actionButtonCompact,
+        disabled && styles.disabled,
+      ]}
+      onPress={onPress}
+      disabled={disabled}
+    >
+      {icon}
+      <Text style={[styles.actionButtonText, variant === "secondary" && styles.actionButtonTextSecondary]}>{title}</Text>
     </Pressable>
   );
 }
@@ -805,9 +911,11 @@ const palette = {
   muted: "#647084",
   softText: "#8A94A7",
   line: "#E8ECF2",
+  lineStrong: "#DDE3EC",
   green: "#17B65A",
   greenSoft: "#ECFBF3",
   greenLine: "#BDEFD4",
+  buttonSoft: "#F6F7F8",
   red: "#FF3B30",
 };
 
@@ -824,7 +932,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: palette.background,
     paddingHorizontal: 18,
-    gap: 14,
+    gap: 18,
   },
   header: {
     minHeight: 44,
@@ -846,25 +954,46 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
   },
+  sectionBlock: {
+    gap: 10,
+  },
+  stack: {
+    gap: 18,
+  },
   card: {
     borderRadius: 16,
     borderWidth: 1,
     borderColor: palette.line,
     backgroundColor: palette.background,
-    padding: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     gap: 14,
+    shadowColor: "#101828",
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
   },
   formCard: {
     borderRadius: 16,
     borderWidth: 1,
     borderColor: palette.line,
     backgroundColor: palette.background,
-    padding: 18,
+    padding: 14,
     gap: 14,
+    shadowColor: "#101828",
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: palette.line,
   },
   sectionTitle: {
     color: palette.ink,
-    fontSize: 17,
+    fontSize: 16,
     lineHeight: 22,
     fontWeight: "800",
   },
@@ -898,50 +1027,116 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   fieldWrap: {
-    gap: 7,
+    position: "relative",
+    minHeight: 60,
+    justifyContent: "center",
   },
   fieldLabel: {
+    position: "absolute",
+    top: -1,
+    left: 14,
+    zIndex: 1,
+    paddingHorizontal: 6,
+    backgroundColor: palette.background,
     color: palette.muted,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: "800",
   },
   input: {
-    minHeight: 48,
+    minHeight: 56,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: palette.line,
+    borderColor: palette.lineStrong,
     color: palette.ink,
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "700",
-    paddingHorizontal: 14,
-    backgroundColor: "#FAFBFC",
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "800",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    backgroundColor: palette.background,
   },
   inputMultiline: {
-    paddingTop: 13,
+    paddingTop: 18,
     paddingBottom: 13,
   },
   actionButton: {
-    minHeight: 52,
-    borderRadius: 12,
+    minHeight: 58,
+    borderRadius: 14,
     backgroundColor: palette.green,
     alignItems: "center",
     justifyContent: "center",
+    flexDirection: "row",
+    gap: 10,
     paddingHorizontal: 16,
+    shadowColor: palette.green,
+    shadowOpacity: 0.26,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 3,
+  },
+  actionButtonSecondary: {
+    backgroundColor: palette.buttonSoft,
+    shadowColor: "#101828",
+    shadowOpacity: 0.04,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
   },
   actionButtonCompact: {
     minHeight: 44,
     alignSelf: "flex-start",
+    borderRadius: 12,
+    paddingHorizontal: 14,
   },
   actionButtonText: {
     color: "#FFFFFF",
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 21,
     fontWeight: "800",
+  },
+  actionButtonTextSecondary: {
+    color: palette.ink,
   },
   disabled: {
     opacity: 0.48,
+  },
+  heroCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: palette.greenLine,
+    backgroundColor: palette.background,
+    paddingHorizontal: 22,
+    paddingVertical: 24,
+    alignItems: "center",
+    gap: 8,
+    shadowColor: "#101828",
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
+  },
+  heroIcon: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    backgroundColor: palette.greenSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  heroTitle: {
+    color: palette.ink,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  heroBody: {
+    color: palette.muted,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "600",
+    textAlign: "center",
   },
   balanceHero: {
     borderRadius: 16,
@@ -959,8 +1154,8 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     color: palette.green,
-    fontSize: 30,
-    lineHeight: 38,
+    fontSize: 32,
+    lineHeight: 40,
     fontWeight: "900",
   },
   balanceHint: {
@@ -1002,9 +1197,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: palette.line,
-    paddingTop: 12,
+    paddingVertical: 8,
+    position: "relative",
   },
   compactRowText: {
     flex: 1,
@@ -1027,6 +1221,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
+  rowSeparator: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 1,
+    backgroundColor: palette.line,
+  },
   successValue: {
     color: palette.green,
     fontSize: 14,
@@ -1046,6 +1248,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    shadowColor: "#101828",
+    shadowOpacity: 0.04,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 1,
   },
   selectableRowSelected: {
     borderColor: palette.greenLine,
@@ -1079,8 +1286,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: palette.line,
+    backgroundColor: palette.background,
     padding: 16,
     gap: 12,
+    shadowColor: "#101828",
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 2,
   },
   documentHeader: {
     flexDirection: "row",
@@ -1178,8 +1391,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: palette.line,
+    backgroundColor: palette.background,
     padding: 16,
     gap: 9,
+    shadowColor: "#101828",
+    shadowOpacity: 0.04,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 1,
   },
   helpHeader: {
     flexDirection: "row",
@@ -1209,6 +1428,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    shadowColor: "#101828",
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 2,
   },
   contactIcon: {
     width: 42,
@@ -1235,9 +1459,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   ticketRow: {
-    borderTopWidth: 1,
-    borderTopColor: palette.line,
-    paddingTop: 12,
     gap: 6,
   },
   ticketHeader: {
@@ -1280,5 +1501,95 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: "600",
     paddingTop: 8,
+  },
+  emailHero: {
+    alignItems: "center",
+    gap: 12,
+    paddingTop: 20,
+    paddingBottom: 8,
+  },
+  emailIllustration: {
+    width: 170,
+    height: 136,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emailEnvelope: {
+    width: 96,
+    height: 72,
+    borderRadius: 18,
+    backgroundColor: "#F3F5FA",
+    borderWidth: 1,
+    borderColor: palette.line,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#101828",
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
+  },
+  readOnlyField: {
+    minHeight: 62,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: palette.lineStrong,
+    backgroundColor: palette.background,
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    position: "relative",
+  },
+  readOnlyLabel: {
+    position: "absolute",
+    top: -10,
+    left: 16,
+    paddingHorizontal: 6,
+    backgroundColor: palette.background,
+    color: palette.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "800",
+  },
+  readOnlyValue: {
+    color: palette.ink,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "800",
+  },
+  verifiedPill: {
+    alignSelf: "center",
+    minHeight: 36,
+    borderRadius: 18,
+    paddingHorizontal: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: palette.greenSoft,
+  },
+  verifiedText: {
+    color: palette.green,
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "900",
+  },
+  centerCopy: {
+    alignItems: "center",
+    paddingHorizontal: 24,
+    gap: 5,
+    marginTop: 8,
+  },
+  centerCopyTitle: {
+    color: palette.green,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  centerCopyText: {
+    color: palette.muted,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });

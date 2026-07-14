@@ -3,12 +3,23 @@ from decimal import Decimal
 from math import asin, cos, radians, sin, sqrt
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Q, Sum
 from django.utils import timezone
-from rest_framework import decorators, response, status, views, viewsets
+from rest_framework import decorators, parsers, response, status, views, viewsets
 
 from core.permissions import IsCourier
-from couriers.models import CourierAvailabilitySession, CourierOperationEntry, CourierProfile, CourierSupportTicket, Delivery, DeliveryStatus
+from couriers.dispatch import dispatch_next_courier, dispatch_waiting_orders, process_expired_offers
+from couriers.models import (
+    CourierAvailabilitySession,
+    CourierDispatchOffer,
+    CourierOperationEntry,
+    CourierProfile,
+    CourierSupportTicket,
+    Delivery,
+    DeliveryStatus,
+    DispatchOfferStatus,
+)
 from couriers.serializers import (
     CourierDocumentSerializer,
     CourierOperationEntrySerializer,
@@ -244,10 +255,18 @@ class CourierOrderViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ("created_at", "total")
 
     def get_queryset(self):
+        process_expired_offers()
+        now = timezone.now()
         return (
             Order.objects.select_related("customer", "restaurant", "courier", "courier__courier_profile", "address", "delivery")
             .prefetch_related("items__options", "events__actor", "events__courier")
-            .filter(order_status=OrderStatus.READY_FOR_PICKUP, courier__isnull=True)
+            .filter(
+                order_status=OrderStatus.READY_FOR_PICKUP,
+                courier__isnull=True,
+                dispatch_offers__courier=self.request.user,
+                dispatch_offers__status=DispatchOfferStatus.OFFERED,
+                dispatch_offers__expires_at__gt=now,
+            )
             | Order.objects.select_related("customer", "restaurant", "courier", "courier__courier_profile", "address", "delivery")
             .prefetch_related("items__options", "events__actor", "events__courier")
             .filter(courier=self.request.user)
@@ -255,28 +274,66 @@ class CourierOrderViewSet(viewsets.ReadOnlyModelViewSet):
 
     @decorators.action(detail=True, methods=["patch"])
     def accept(self, request, pk=None):
-        order = self.get_object()
-        if order.courier_id and order.courier_id != request.user.id:
-            return response.Response({"detail": "Order already assigned."}, status=status.HTTP_400_BAD_REQUEST)
-        if order.order_status != OrderStatus.READY_FOR_PICKUP:
-            return response.Response({"detail": "Order is not ready for pickup."}, status=status.HTTP_400_BAD_REQUEST)
+        now = timezone.now()
+        with transaction.atomic():
+            order = Order.objects.select_for_update().filter(pk=pk).first()
+            if not order:
+                return response.Response({"detail": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+            offer = CourierDispatchOffer.objects.select_for_update().filter(
+                order=order,
+                courier=request.user,
+                status=DispatchOfferStatus.OFFERED,
+            ).first()
+            if not offer or offer.expires_at <= now:
+                if offer:
+                    offer.status = DispatchOfferStatus.EXPIRED
+                    offer.responded_at = now
+                    offer.save(update_fields=("status", "responded_at"))
+                    transaction.on_commit(lambda: dispatch_next_courier(order.id))
+                return response.Response({"detail": "Oferta a expirat."}, status=status.HTTP_409_CONFLICT)
+            if order.courier_id or order.order_status != OrderStatus.READY_FOR_PICKUP:
+                offer.status = DispatchOfferStatus.CANCELLED
+                offer.responded_at = now
+                offer.save(update_fields=("status", "responded_at"))
+                return response.Response({"detail": "Comanda nu mai este disponibilă."}, status=status.HTTP_409_CONFLICT)
 
-        order.courier = request.user
-        order.save(update_fields=("courier", "updated_at"))
-        log_order_courier_assigned(order, courier=request.user, actor=request.user, source="courier")
-        delivery, created = Delivery.objects.get_or_create(
-            order=order,
-            defaults={
-                "courier": request.user,
-                "status": DeliveryStatus.ASSIGNED,
-            },
-        )
-        if not created:
-            delivery.courier = request.user
-            delivery.status = DeliveryStatus.ASSIGNED
-            delivery.save(update_fields=("courier", "status"))
+            order.courier = request.user
+            order.save(update_fields=("courier", "updated_at"))
+            offer.status = DispatchOfferStatus.ACCEPTED
+            offer.responded_at = now
+            offer.save(update_fields=("status", "responded_at"))
+            order.dispatch_offers.filter(status=DispatchOfferStatus.OFFERED).exclude(pk=offer.pk).update(
+                status=DispatchOfferStatus.CANCELLED,
+                responded_at=now,
+            )
+            log_order_courier_assigned(order, courier=request.user, actor=request.user, source="dispatch")
+            delivery, created = Delivery.objects.get_or_create(
+                order=order,
+                defaults={"courier": request.user, "status": DeliveryStatus.ASSIGNED},
+            )
+            if not created:
+                delivery.courier = request.user
+                delivery.status = DeliveryStatus.ASSIGNED
+                delivery.save(update_fields=("courier", "status"))
         order.refresh_from_db()
         return response.Response(OrderSerializer(order, context={"request": request}).data)
+
+    @decorators.action(detail=True, methods=["patch"])
+    def decline(self, request, pk=None):
+        now = timezone.now()
+        with transaction.atomic():
+            offer = CourierDispatchOffer.objects.select_for_update().filter(
+                order_id=pk,
+                courier=request.user,
+                status=DispatchOfferStatus.OFFERED,
+            ).first()
+            if not offer:
+                return response.Response({"detail": "Oferta nu mai este activă."}, status=status.HTTP_409_CONFLICT)
+            offer.status = DispatchOfferStatus.DECLINED
+            offer.responded_at = now
+            offer.save(update_fields=("status", "responded_at"))
+            transaction.on_commit(lambda: dispatch_next_courier(offer.order_id))
+        return response.Response(status=status.HTTP_204_NO_CONTENT)
 
     @decorators.action(detail=True, methods=["patch"])
     def status(self, request, pk=None):
@@ -311,6 +368,7 @@ class CourierOrderViewSet(viewsets.ReadOnlyModelViewSet):
 
 class CourierProfileView(views.APIView):
     permission_classes = (IsCourier,)
+    parser_classes = (parsers.JSONParser, parsers.MultiPartParser, parsers.FormParser)
 
     def get_profile(self, request):
         return CourierProfile.objects.get_or_create(
@@ -320,7 +378,7 @@ class CourierProfileView(views.APIView):
 
     def get(self, request):
         profile = self.get_profile(request)
-        return response.Response(CourierProfileSerializer(profile).data)
+        return response.Response(CourierProfileSerializer(profile, context={"request": request}).data)
 
     def patch(self, request):
         serializer = CourierProfileUpdateSerializer(data=request.data)
@@ -335,7 +393,9 @@ class CourierProfileView(views.APIView):
             request.user.save(update_fields=("phone",))
         if "is_available" in serializer.validated_data:
             _sync_availability_session(request.user, previous_availability, profile.is_available)
-        return response.Response(CourierProfileSerializer(profile).data)
+        if profile.is_available and profile.is_verified and profile.current_latitude is not None and profile.current_longitude is not None:
+            transaction.on_commit(dispatch_waiting_orders)
+        return response.Response(CourierProfileSerializer(profile, context={"request": request}).data)
 
 
 class CourierOperationsView(views.APIView):

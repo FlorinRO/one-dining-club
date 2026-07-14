@@ -2,9 +2,8 @@ import logging
 
 from django.db import transaction
 
-from core.push import send_push_to_user, send_push_to_users
+from core.push import send_push_to_user
 from orders.models import FulfillmentType, Order, OrderStatus, PaymentStatus
-from users.models import User, UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -80,14 +79,13 @@ def send_order_status_push(order_id, *, source="system"):
             data=payload,
         )
 
-    if order.order_status == OrderStatus.READY_FOR_PICKUP and order.fulfillment_type == FulfillmentType.DELIVERY:
-        couriers = User.objects.filter(role=UserRole.COURIER, is_active=True)
-        send_push_to_users(
-            couriers,
-            title="Comanda gata de ridicare",
-            body=f"Comanda #{order.id} este gata la {order.restaurant.name}.",
-            data=payload,
-        )
+    if order.fulfillment_type == FulfillmentType.DELIVERY:
+        from couriers.dispatch import cancel_dispatch, dispatch_next_courier
+
+        if order.order_status == OrderStatus.READY_FOR_PICKUP:
+            dispatch_next_courier(order.id)
+        else:
+            cancel_dispatch(order.id)
 
     if source == "customer_cancel" and order.restaurant.owner_id:
         send_push_to_user(

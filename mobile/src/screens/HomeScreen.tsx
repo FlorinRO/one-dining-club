@@ -152,7 +152,7 @@ export function HomeScreen({ navigation }: Props) {
     setFeedError("");
     const restaurantItems = await restaurantsApi.list({ ordering: "-rating" });
     const openRestaurants = restaurantItems.filter((item) => item.is_open !== false);
-    const visibleRestaurants = buildSponsoredFeed(openRestaurants, 12);
+    const visibleRestaurants = buildSponsoredFeed(openRestaurants);
     setRestaurants(visibleRestaurants);
 
     const productEntries = await Promise.all(

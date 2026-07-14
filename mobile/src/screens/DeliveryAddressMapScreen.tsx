@@ -86,22 +86,28 @@ export function DeliveryAddressMapScreen({ navigation }: Props) {
         undefined,
         { tone: "warning" },
       );
+      await reverseGeocode(fallback);
       return;
     }
-    const current = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
-    const point = {
-      latitude: current.coords.latitude,
-      longitude: current.coords.longitude,
-    };
-    setCoordinate(point);
-    setRegion((prev) => ({
-      ...prev,
-      latitude: point.latitude,
-      longitude: point.longitude,
-    }));
-    await reverseGeocode(point);
+
+    try {
+      const current = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const point = {
+        latitude: current.coords.latitude,
+        longitude: current.coords.longitude,
+      };
+      setCoordinate(point);
+      setRegion((prev) => ({
+        ...prev,
+        latitude: point.latitude,
+        longitude: point.longitude,
+      }));
+      await reverseGeocode(point);
+    } catch {
+      await reverseGeocode(fallback);
+    }
   }, [reverseGeocode]);
 
   useEffect(() => {
@@ -210,13 +216,26 @@ export function DeliveryAddressMapScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <MapView style={styles.map} region={region} onRegionChangeComplete={onRegionChangeComplete} />
+      {locationReady ? (
+        <MapView
+          style={styles.map}
+          region={region}
+          onRegionChangeComplete={onRegionChangeComplete}
+          showsPointsOfInterest={false}
+          showsBuildings={false}
+          loadingEnabled
+        />
+      ) : (
+        <View style={styles.mapLoadingBackdrop} />
+      )}
 
-      <View pointerEvents="none" style={styles.centerPinWrap}>
-        <View style={styles.centerPin} />
-        <View style={styles.centerPinHole} />
-        <View style={styles.centerPinStem} />
-      </View>
+      {locationReady ? (
+        <View pointerEvents="none" style={styles.centerPinWrap}>
+          <View style={styles.centerPin} />
+          <View style={styles.centerPinHole} />
+          <View style={styles.centerPinStem} />
+        </View>
+      ) : null}
 
       <Pressable style={styles.closeButton} onPress={() => navigation.goBack()}>
         <X size={22} color={colors.text} />
@@ -260,6 +279,10 @@ const styles = StyleSheet.create({
   },
   map: {
     ...StyleSheet.absoluteFillObject,
+  },
+  mapLoadingBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.cardSoft,
   },
   closeButton: {
     width: 38,
