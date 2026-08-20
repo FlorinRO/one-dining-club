@@ -23,7 +23,7 @@
     <meta name="twitter:title" content="YUMZY | Ofertă pentru branduri partenere" />
     <meta
       name="twitter:description"
-      content="Lansăm pe 1 septembrie o nouă experiență comercială în care utilizatorii descoperă branduri prin video și le comandă direct din aplicație."
+      content="Pe 1 noiembrie lansăm în București YUMZY — aplicația video-first care aduce conținutul, brandurile și comerțul într-o singură experiență."
     />
     <meta name="twitter:image" content="../assets/seo/og-yumzy.png" />
     <link rel="canonical" href="https://yumzy.ro/premium-partners/" />
@@ -44,6 +44,56 @@
         text-transform: uppercase;
         letter-spacing: 0.18em;
         color: #111111;
+      }
+
+      .hero-copy h1.partner-headline {
+        max-width: 16ch;
+        font-size: clamp(48px, 4.35vw, 70px);
+        line-height: 1.04;
+      }
+
+      .partner-headline-accent {
+        display: block;
+        margin-top: 12px;
+        color: #2ea95f;
+      }
+
+      .hero-description.partner-description {
+        display: grid;
+        gap: 16px;
+        max-width: 53ch;
+        font-size: clamp(18px, 1.45vw, 22px);
+        line-height: 1.55;
+      }
+
+      .partner-description p:first-child {
+        padding-left: 18px;
+        border-left: 4px solid #67d48a;
+        font-weight: 600;
+        color: #111111;
+      }
+
+      .stat-card-partnership .stat-title {
+        min-height: 0;
+      }
+
+      .stat-card-partnership .stat-detail {
+        margin-top: 0;
+        color: #2f2f2f;
+        font-size: 14px;
+        line-height: 1.42;
+      }
+
+      .check-list .benefit-label {
+        display: block;
+        margin-bottom: 4px;
+        color: #111111;
+        font-weight: 700;
+      }
+
+      .check-list .benefit-description {
+        display: block;
+        color: #2f2f2f;
       }
 
       .hero-visual {
@@ -151,6 +201,29 @@
         .hero-props {
           display: none;
         }
+
+        .hero-copy h1.partner-headline {
+          max-width: 18ch;
+          font-size: clamp(32px, 9.6vw, 44px);
+          line-height: 1.08;
+        }
+
+        .partner-headline-accent {
+          margin-top: 10px;
+        }
+
+        .hero-description.partner-description {
+          gap: 14px;
+          max-width: 38ch;
+          font-size: 17px;
+          line-height: 1.55;
+          text-align: left;
+        }
+
+        .partner-description p:first-child {
+          padding-left: 14px;
+          border-left-width: 3px;
+        }
       }
     </style>
   </head>
@@ -171,21 +244,26 @@
             <span>Ofertă pentru branduri partenere</span>
           </div>
 
-          <h1>
-            Reclama ta în prima aplicație video de
-            <span class="headline-food">food</span>
-            delivery și cadouri rapide din
-            <span class="headline-europe">
-              <span>Europa</span>
-              <span class="headline-dot" aria-hidden="true">.</span>
-            </span>
+          <h1 class="partner-headline">
+            Descoperirea produselor și serviciilor.
+            <span class="partner-headline-accent">Începutul unei noi experiențe de cumpărare.</span>
           </h1>
 
-          <p class="hero-description">
-            Pe 1 septembrie, lansăm în București o nouă experiență comercială bazată pe feed video, unde
-            utilizatorii pot descoperi branduri, produse și oferte prin conținut video, pot comanda direct
-            din aplicație sau pot continua experiența pe site-urile partenerilor.
-          </p>
+          <div class="hero-description partner-description">
+            <p>
+              Pe 1 noiembrie lansăm în București YUMZY — aplicația video-first care aduce conținutul,
+              brandurile și comerțul într-o singură experiență.
+            </p>
+            <p>
+              Utilizatorii descoperă prin video produse, restaurante, servicii, branduri și experiențe, cu
+              posibilitatea de a trece direct la acțiune: comandă și livrare prin YUMZY, accesarea unei oferte,
+              rezervare sau cumpărare directă de la brand.
+            </p>
+            <p>
+              Pentru branduri, YUMZY creează o nouă experiență de promovare și vânzare, în care conținutul video
+              și creatorii generează descoperire, interes și conversii.
+            </p>
+          </div>
         </div>
 
         <div class="hero-visual" aria-label="Prezentare produs YUMZY">
@@ -226,7 +304,7 @@
           <p class="stat-title">Lansare</p>
           <span class="stat-divider"></span>
           <strong>1</strong>
-          <small>septembrie</small>
+          <small>NOIEMBRIE</small>
         </article>
 
         <article class="stat-card">
@@ -237,12 +315,12 @@
               />
             </svg>
           </div>
-          <p class="stat-title">Promovare în aplicație</p>
+          <p class="stat-title">Parteneriat de 12 luni</p>
           <span class="stat-divider"></span>
-          <strong>de la 2000€</strong>
+          <strong>2.000 €</strong>
         </article>
 
-        <article class="stat-card stat-card-credit">
+        <article class="stat-card stat-card-credit stat-card-partnership">
           <div class="stat-icon">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path
@@ -250,9 +328,12 @@
               />
             </svg>
           </div>
-          <p class="stat-title">Prețuri preferențiale pentru pachetele de parteneriat</p>
+          <p class="stat-title">Parteneriat de lansare</p>
           <span class="stat-divider"></span>
-          <strong>exclusive</strong>
+          <p class="stat-detail">
+            Poziționare prioritară și acces la beneficiile dedicate brandurilor care se alătură YUMZY de la
+            lansare.
+          </p>
         </article>
 
         <article class="stat-card">
@@ -265,7 +346,7 @@
           </div>
           <p class="stat-title">Beneficii preferențiale</p>
           <span class="stat-divider"></span>
-          <strong>6</strong>
+          <strong>12</strong>
           <small>luni</small>
         </article>
       </section>
@@ -273,18 +354,34 @@
       <section class="info-section">
         <div class="section-title">
           <span class="section-title-dash" aria-hidden="true"></span>
-          <h2>Ce primești ca brand partener YUMZY</h2>
+          <h2>Ce oferă YUMZY brandurilor partenere</h2>
         </div>
 
         <div class="benefits-box">
           <ul class="check-list">
-            <li>Prezență dedicată în aplicație și publicare de conținut video</li>
-            <li>Profil dedicat de brand cu catalog complet de produse și comandă directă în aplicație</li>
-            <li>Promovare pentru produse, colecții, oferte și lansări</li>
-            <li>Mai mult trafic direct pentru magazinul tău online</li>
-            <li>Formate comerciale interactive pentru descoperire și conversie</li>
-            <li>Campanii cu creatori de conținut și activări speciale</li>
-            <li>Acces prioritar la noile formate de promovare și vânzare YUMZY</li>
+            <li>
+              <strong class="benefit-label">Prezență</strong>
+              <span class="benefit-description">Profil de brand, conținut video și produse prezentate în aplicație.</span>
+            </li>
+            <li>
+              <strong class="benefit-label">Promovare</strong>
+              <span class="benefit-description">Produse, colecții, oferte și lansări promovate în format video.</span>
+            </li>
+            <li>
+              <strong class="benefit-label">Comerț</strong>
+              <span class="benefit-description">
+                Utilizatorii descoperă produsul în YUMZY și ajung direct în magazinul online al brandului pentru a
+                cumpăra.
+              </span>
+            </li>
+            <li>
+              <strong class="benefit-label">Creatori</strong>
+              <span class="benefit-description">Campanii cu creatori de conținut și activări speciale.</span>
+            </li>
+            <li>
+              <strong class="benefit-label">Inovație</strong>
+              <span class="benefit-description">Acces prioritar la noile formate YUMZY de promovare și vânzare.</span>
+            </li>
           </ul>
         </div>
       </section>
@@ -368,7 +465,7 @@
         <div class="cta-copy">
           <h2>Rezervă-ți locul în etapa de lansare</h2>
           <p>
-            Brandurile partenere beneficiază de promovare, poziționare prioritară în aplicație timp de 6 luni.
+            Brandurile partenere beneficiază de promovare și poziționare prioritară în aplicație timp de 12 luni.
           </p>
         </div>
         <a class="cta-site" href="https://yumzy.ro/">

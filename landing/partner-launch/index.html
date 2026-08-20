@@ -6,7 +6,7 @@
     <title>YUMZY | Ofertă pentru restaurante partenere</title>
     <meta
       name="description"
-      content="Prezentare YUMZY pentru restaurante partenere: food delivery video, produse prezentate în feed și comandă directă din aplicație."
+      content="Oferta de lansare YUMZY pentru restaurante: produse descoperite prin video și comandate direct din aplicație."
     />
     <meta name="robots" content="index,follow,max-image-preview:large" />
     <meta property="og:type" content="website" />
@@ -15,7 +15,7 @@
     <meta property="og:title" content="YUMZY | Ofertă pentru restaurante partenere" />
     <meta
       property="og:description"
-      content="O pagină compactă care arată cum produsele restaurantelor apar în feed video și pot fi comandate direct din aplicație."
+      content="Lasă produsele să vorbească pentru tine. Descoperire prin video și comandă directă din aplicația YUMZY."
     />
     <meta property="og:url" content="https://yumzy.ro/partner-launch/" />
     <meta property="og:image" content="../assets/seo/og-yumzy.png" />
@@ -23,7 +23,7 @@
     <meta name="twitter:title" content="YUMZY | Ofertă pentru restaurante partenere" />
     <meta
       name="twitter:description"
-      content="Produsele apar în video, utilizatorii descoperă mai repede, iar comenzile se fac direct din aplicație."
+      content="Pe 1 noiembrie, YUMZY aduce în București o nouă experiență de video-commerce pentru delivery."
     />
     <meta name="twitter:image" content="../assets/seo/og-yumzy.png" />
     <link rel="canonical" href="https://yumzy.ro/partner-launch/" />
@@ -31,6 +31,396 @@
     <link rel="icon" href="../assets/seo/favicon-32.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="../assets/seo/apple-touch-icon.png" />
     <link rel="stylesheet" href="./styles.css" />
+    <style>
+      .restaurant-eyebrow {
+        display: inline-flex;
+        margin-bottom: 24px;
+        padding: 9px 13px;
+        background: #050505;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .hero-copy h1.restaurant-headline {
+        max-width: 12ch;
+        margin-top: 0;
+        font-size: clamp(54px, 5vw, 80px);
+      }
+
+      .restaurant-headline span {
+        color: #2ea95f;
+      }
+
+      .hero-description.restaurant-description {
+        max-width: 43ch;
+        font-size: clamp(21px, 1.75vw, 26px);
+      }
+
+      .hero-description.restaurant-description strong {
+        color: #111111;
+        font-weight: 700;
+      }
+
+      .hero-mantra {
+        display: inline-flex;
+        gap: 10px;
+        margin-top: 24px;
+        color: #075515;
+        font-size: clamp(18px, 1.55vw, 23px);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .hero-mantra span:not(:last-child)::after {
+        content: "·";
+        margin-left: 10px;
+        color: #67d48a;
+      }
+
+      .restaurant-section {
+        margin: 88px 0;
+      }
+
+      .restaurant-section-heading {
+        max-width: 18ch;
+        font-size: clamp(36px, 4vw, 58px);
+        font-weight: 700;
+        line-height: 1.04;
+        letter-spacing: -0.05em;
+      }
+
+      .restaurant-section-heading span {
+        color: #2ea95f;
+      }
+
+      .story-panel {
+        display: grid;
+        grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+        gap: clamp(36px, 6vw, 96px);
+        align-items: start;
+        padding: clamp(34px, 5vw, 72px);
+        border-radius: 32px;
+        background: #050505;
+        color: #ffffff;
+      }
+
+      .story-panel .restaurant-section-heading {
+        color: #ffffff;
+      }
+
+      .story-copy {
+        display: grid;
+        gap: 22px;
+        color: rgba(255, 255, 255, 0.78);
+        font-size: clamp(19px, 1.65vw, 24px);
+        line-height: 1.55;
+      }
+
+      .story-copy strong {
+        color: #ffffff;
+      }
+
+      .story-highlight {
+        padding: 22px 24px;
+        border-left: 4px solid #67d48a;
+        background: rgba(103, 212, 138, 0.1);
+        color: #ffffff;
+        font-weight: 700;
+      }
+
+      .section-intro {
+        max-width: 58ch;
+        margin-top: 20px;
+        color: #333333;
+        font-size: clamp(18px, 1.6vw, 23px);
+        line-height: 1.55;
+      }
+
+      .partner-benefits-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 34px;
+      }
+
+      .partner-benefit-card {
+        min-height: 240px;
+        padding: 30px;
+        border: 1px solid rgba(17, 17, 17, 0.08);
+        border-radius: 24px;
+        background: #ffffff;
+        box-shadow: var(--shadow);
+      }
+
+      .partner-benefit-number {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--green-soft);
+        color: #168241;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .partner-benefit-card h3 {
+        margin-top: 24px;
+        font-size: clamp(20px, 1.7vw, 25px);
+        line-height: 1.15;
+      }
+
+      .partner-benefit-card p {
+        margin-top: 14px;
+        color: #3b3b3b;
+        font-size: 17px;
+        line-height: 1.55;
+      }
+
+      .steps-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 34px;
+      }
+
+      .step-card {
+        padding: 28px 24px 30px;
+        border-top: 5px solid #67d48a;
+        background: #ffffff;
+        box-shadow: var(--shadow);
+      }
+
+      .step-number {
+        color: #2ea95f;
+        font-size: 34px;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .step-card h3 {
+        margin-top: 22px;
+        font-size: 21px;
+        line-height: 1.2;
+      }
+
+      .step-card p {
+        margin-top: 12px;
+        color: #3a3a3a;
+        font-size: 16px;
+        line-height: 1.55;
+      }
+
+      .flow-strip {
+        margin-top: 24px;
+        padding: 22px 26px;
+        background: #050505;
+        color: #ffffff;
+        text-align: center;
+        font-size: clamp(19px, 2vw, 28px);
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+
+      .flow-strip span {
+        color: #67d48a;
+      }
+
+      .launch-package {
+        display: grid;
+        grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.1fr);
+        gap: 18px;
+        margin-top: 34px;
+      }
+
+      .package-price,
+      .package-included {
+        padding: clamp(30px, 4vw, 52px);
+        border-radius: 28px;
+      }
+
+      .package-price {
+        background: #050505;
+        color: #ffffff;
+      }
+
+      .package-kicker {
+        color: #67d48a;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .package-price h3 {
+        margin-top: 18px;
+        font-size: clamp(34px, 3.6vw, 52px);
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+      }
+
+      .price-row {
+        margin-top: 34px;
+        padding-top: 26px;
+        border-top: 1px solid rgba(255, 255, 255, 0.18);
+      }
+
+      .price-row span {
+        display: block;
+        color: rgba(255, 255, 255, 0.68);
+        font-size: 16px;
+      }
+
+      .price-row strong {
+        display: block;
+        margin-top: 7px;
+        color: #67d48a;
+        font-size: clamp(34px, 3.4vw, 48px);
+        line-height: 1;
+      }
+
+      .price-row + .price-row {
+        margin-top: 24px;
+      }
+
+      .package-included {
+        border: 1px solid rgba(17, 17, 17, 0.08);
+        background: #ffffff;
+        box-shadow: var(--shadow);
+      }
+
+      .package-included h3 {
+        font-size: clamp(28px, 2.8vw, 40px);
+        line-height: 1.1;
+      }
+
+      .package-list {
+        display: grid;
+        gap: 18px;
+        margin-top: 28px;
+        padding: 0;
+        list-style: none;
+      }
+
+      .package-list li {
+        position: relative;
+        padding-left: 34px;
+        color: #2f2f2f;
+        font-size: 18px;
+        line-height: 1.45;
+      }
+
+      .package-list li::before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        top: 0;
+        color: #2ea95f;
+        font-weight: 700;
+      }
+
+      .restaurant-cta {
+        margin-top: 88px;
+        padding: clamp(38px, 6vw, 78px);
+        border-radius: 32px;
+        background: linear-gradient(135deg, #e9f8e8 0%, #ffffff 72%);
+        text-align: center;
+      }
+
+      .restaurant-cta h2 {
+        max-width: 14ch;
+        margin: 0 auto;
+        font-size: clamp(42px, 5vw, 72px);
+        line-height: 1.02;
+        letter-spacing: -0.055em;
+      }
+
+      .restaurant-cta p {
+        max-width: 58ch;
+        margin: 24px auto 0;
+        color: #303030;
+        font-size: clamp(18px, 1.7vw, 24px);
+        line-height: 1.55;
+      }
+
+      .restaurant-cta strong {
+        color: #075515;
+      }
+
+      @media (max-width: 980px) {
+        .story-panel,
+        .launch-package {
+          grid-template-columns: 1fr;
+        }
+
+        .partner-benefits-grid,
+        .steps-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 560px) {
+        .restaurant-eyebrow {
+          margin-bottom: 18px;
+          font-size: 12px;
+        }
+
+        .hero-copy h1.restaurant-headline {
+          max-width: 11ch;
+          font-size: clamp(40px, 12vw, 54px);
+        }
+
+        .hero-description.restaurant-description {
+          font-size: 18px;
+        }
+
+        .hero-mantra {
+          justify-content: center;
+          font-size: 15px;
+        }
+
+        .restaurant-section {
+          margin: 58px 0;
+        }
+
+        .story-panel {
+          gap: 28px;
+          padding: 30px 22px;
+          border-radius: 24px;
+        }
+
+        .story-copy {
+          font-size: 18px;
+        }
+
+        .partner-benefits-grid,
+        .steps-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .partner-benefit-card {
+          min-height: 0;
+        }
+
+        .package-price,
+        .package-included {
+          padding: 30px 24px;
+          border-radius: 22px;
+        }
+
+        .restaurant-cta {
+          margin-top: 58px;
+          padding: 42px 22px;
+          border-radius: 24px;
+        }
+      }
+    </style>
   </head>
   <body>
     <header class="top-navbar">
@@ -45,20 +435,19 @@
     <main class="poster-page">
       <section class="hero-section">
         <div class="hero-copy">
-          <h1>
-            Prima aplicație video de
-            <span class="headline-food">food</span>
-            delivery și cadouri rapide din
-            <span class="headline-europe">
-              <span>Europa</span>
-              <span class="headline-dot" aria-hidden="true">.</span>
-            </span>
+          <span class="restaurant-eyebrow">Ofertă pentru restaurante partenere</span>
+          <h1 class="restaurant-headline">
+            Lasă produsele să <span>vorbească pentru tine.</span>
           </h1>
 
-          <p class="hero-description">
-            Pe 1 septembrie, lansăm în București o nouă experiență comercială bazată pe feed video, unde
-            utilizatorii pot descoperi branduri, produse și oferte prin conținut video, pot comanda direct
-            din aplicație sau pot continua experiența pe site-urile partenerilor.
+          <p class="hero-description restaurant-description">
+            Pe <strong>1 noiembrie</strong>, YUMZY lansează în București o nouă experiență de video-commerce
+            pentru delivery. Oamenii descoperă produse prin video, aleg ceea ce le atrage atenția și comandă
+            direct din aplicație.
+          </p>
+
+          <p class="hero-mantra" aria-label="Descoperă. Alege. Comandă.">
+            <span>Descoperă</span><span>Alege</span><span>Comandă</span>
           </p>
         </div>
 
@@ -83,181 +472,134 @@
         </div>
       </section>
 
-      <section class="stats-grid" aria-label="Detalii ofertă">
-        <article class="stat-card">
-          <div class="stat-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M7 2h2v2h6V2h2v2h3a2 2 0 0 1 2 2v13a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V6a2 2 0 0 1 2-2h3V2Zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9ZM5 8h14V6H5v2Z"
-              />
-            </svg>
-          </div>
-          <p class="stat-title">Lansare</p>
-          <span class="stat-divider"></span>
-          <strong>1</strong>
-          <small>septembrie</small>
-        </article>
-
-        <article class="stat-card">
-          <div class="stat-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M7 6a3 3 0 1 1 0 6a3 3 0 0 1 0-6Zm10 6a3 3 0 1 1 0 6a3 3 0 0 1 0-6ZM5 19L19 5l1.4 1.4L6.4 20.4L5 19Z"
-              />
-            </svg>
-          </div>
-          <p class="stat-title">Comision parteneri</p>
-          <span class="stat-divider"></span>
-          <strong>23%</strong>
-        </article>
-
-        <article class="stat-card">
-          <div class="stat-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M15 5a4 4 0 1 1 0 8H9a4 4 0 1 1 0-8h6Zm-9 4a2 2 0 0 0 2 2h6a2 2 0 1 0 0-4H8a2 2 0 0 0-2 2Zm5 6h2v5h-2v-5Z"
-              />
-            </svg>
-          </div>
-          <p class="stat-title">Cost de intrare în platformă</p>
-          <span class="stat-divider"></span>
-          <strong>250 €</strong>
-        </article>
-
-        <article class="stat-card stat-card-credit">
-          <div class="stat-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M3 11h8V3h2v8h8v2h-8v8h-2v-8H3v-2Zm16.5-5.5L18 7l-1.5-1.5L15 7l1.5 1.5L15 10l1.5 1.5L18 10l1.5 1.5L21 10l-1.5-1.5L21 7l-1.5-1.5Z"
-              />
-            </svg>
-          </div>
-          <p class="stat-title">Poziționare prioritară</p>
-          <span class="stat-divider"></span>
-          <strong>4.000€</strong>
-          <small>valoare comercială estimată</small>
-        </article>
-
-        <article class="stat-card">
-          <div class="stat-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="m12 17.27 6.18 3.73-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27Z"
-              />
-            </svg>
-          </div>
-          <p class="stat-title">Beneficii preferențiale</p>
-          <span class="stat-divider"></span>
-          <strong>6</strong>
-          <small>de luni</small>
-        </article>
-      </section>
-
-      <section class="info-section">
-        <div class="section-title">
-          <span class="section-title-dash" aria-hidden="true"></span>
-          <h2>Ce primești ca partener YUMZY</h2>
-        </div>
-
-        <div class="benefits-box">
-          <ul class="check-list">
-            <li>Prezență în aplicație și publicare de conținut video</li>
-            <li>Promovare pentru produse, oferte și lansări</li>
-            <li>Acces la campanii și activări cu branduri</li>
-            <li>Vizibilitate prioritară în noile formate comerciale YUMZY</li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="reasons-section">
-        <div class="section-title">
-          <span class="section-title-dash" aria-hidden="true"></span>
-          <h2>De ce YUMZY</h2>
-        </div>
-
-        <div class="reasons-grid">
-          <article class="reason-card">
-            <div class="reason-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4V5Zm4 2v6l5-3-5-3Zm8 0h2v2h-2V7Z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h3>Descoperire prin video</h3>
-              <p>Utilizatorii văd produsele în acțiune înainte să comande.</p>
-            </div>
-          </article>
-
-          <article class="reason-card">
-            <div class="reason-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M7 7V6a5 5 0 1 1 10 0v1h1a2 2 0 0 1 2 2v9a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V9a2 2 0 0 1 2-2h1Zm2 0h6V6a3 3 0 1 0-6 0v1Z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h3>Comandă directă din aplicație</h3>
-              <p>Comandă rapidă și sigură, fără pași în plus.</p>
-            </div>
-          </article>
-
-          <article class="reason-card">
-            <div class="reason-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M16 11a4 4 0 1 0-3.87-5h-.26A4 4 0 1 0 8 11a4 4 0 0 0 3.35 3.95A4.5 4.5 0 0 0 7 19.5V21h2v-1.5a2.5 2.5 0 0 1 5 0V21h2v-1.5a4.5 4.5 0 0 0-4.35-4.49A4 4 0 0 0 16 11Zm-8 0a2 2 0 1 1 0-4a2 2 0 0 1 0 4Zm8 0a2 2 0 1 1 0-4a2 2 0 0 1 0 4Z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h3>Experiență nouă pentru utilizatori</h3>
-              <p>Mai relevantă, mai captivantă, mai memorabilă.</p>
-            </div>
-          </article>
-
-          <article class="reason-card">
-            <div class="reason-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M4 19h16v2H2V3h2v16Zm3-4.5 3.5-3.5 2.5 2.5L18 8.5V12h2V5h-7v2h3.17l-3.17 3.17-2.5-2.5L5.59 12.6 7 14.5Z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h3>Poziționare prioritara în etapa de lansare</h3>
-              <p>Fii printre primii și câștigă vizibilitate pe termen lung.</p>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section class="launch-note">
-        <p>
-          Pentru lansarea aplicației, Restaurantul Partener se obligă să creeze minimum 3
-          produse speciale, unice sau în ediție limitată, disponibile în aplicația YUMZY.
-        </p>
-        <p>
-          Aceste produse vor fi folosite ca parte din strategia de lansare YUMZY, astfel încât
-          utilizatorii să descopere în aplicație produse diferite, create special de
-          restaurantele partenere.
-        </p>
-      </section>
-
-      <section class="cta-banner">
-        <div class="cta-copy">
-          <h2>Rezervă-ți locul în etapa de lansare</h2>
+      <section class="restaurant-section story-panel">
+        <h2 class="restaurant-section-heading">De ce contează pentru <span>restaurantul tău</span></h2>
+        <div class="story-copy">
           <p>
-            Locuri limitate pentru primii 100 de parteneri, cu beneficii pe termen lung și
-            <span>condiții preferențiale</span>
-            dupa perioada pilot de 6 luni.
+            Pe platformele clasice de delivery, restaurantul tău apare într-o listă alături de sute de alte
+            opțiuni. În YUMZY, <strong>produsul este în centrul atenției.</strong>
           </p>
+          <p>
+            Un preparat poate atrage un client prin video înainte ca acesta să știe de unde vrea să comande.
+            Restaurantul tău câștigă astfel o șansă nouă de a fi descoperit, exact în momentul în care apare pofta.
+          </p>
+          <p class="story-highlight">Comanda nu mai începe cu o listă de restaurante. Începe cu produsul tău.</p>
         </div>
-        <a class="cta-site" href="https://yumzy.ro/">
-          <span>Vezi yumzy.ro</span>
-        </a>
+      </section>
+
+      <section class="restaurant-section">
+        <h2 class="restaurant-section-heading">Ce câștigi ca <span>partener YUMZY</span></h2>
+        <p class="section-intro">
+          Mai mult decât o simplă listare: un canal nou prin care produsele tale pot crea interes, pot atrage
+          clienți și pot genera comenzi.
+        </p>
+
+        <div class="partner-benefits-grid">
+          <article class="partner-benefit-card">
+            <span class="partner-benefit-number">01</span>
+            <h3>Clienți noi</h3>
+            <p>Produsele tale pot fi descoperite de oameni care încă nu cunosc restaurantul tău.</p>
+          </article>
+          <article class="partner-benefit-card">
+            <span class="partner-benefit-number">02</span>
+            <h3>Produsul tău în prim-plan</h3>
+            <p>Preparatele sunt prezentate prin video, într-un format conceput să atragă atenția și să creeze poftă.</p>
+          </article>
+          <article class="partner-benefit-card">
+            <span class="partner-benefit-number">03</span>
+            <h3>O sursă nouă de comenzi</h3>
+            <p>De la descoperire la comandă, întreaga experiență se întâmplă direct în YUMZY.</p>
+          </article>
+          <article class="partner-benefit-card">
+            <span class="partner-benefit-number">04</span>
+            <h3>Promovezi ce vrei să vinzi</h3>
+            <p>Pui în prim-plan produsele speciale, ofertele, noutățile și preparatele cu cel mai mare potențial.</p>
+          </article>
+          <article class="partner-benefit-card">
+            <span class="partner-benefit-number">05</span>
+            <h3>Campanii și activări YUMZY</h3>
+            <p>Ai acces la proiecte speciale dezvoltate împreună cu YUMZY, creatorii și brandurile partenere.</p>
+          </article>
+          <article class="partner-benefit-card">
+            <span class="partner-benefit-number">06</span>
+            <h3>Vizibilitate prioritară la lansare</h3>
+            <p>Partenerii fondatori beneficiază de poziționare prioritară în etapa de lansare a aplicației.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="restaurant-section">
+        <h2 class="restaurant-section-heading">Cum <span>funcționează</span></h2>
+        <p class="section-intro">Un proces simplu, construit pentru a transforma atenția în comandă.</p>
+
+        <div class="steps-grid">
+          <article class="step-card">
+            <span class="step-number">01</span>
+            <h3>Creezi produsele</h3>
+            <p>Pregătești minimum 3 produse speciale, unice sau în ediție limitată, pentru lansarea YUMZY.</p>
+          </article>
+          <article class="step-card">
+            <span class="step-number">02</span>
+            <h3>Intră în experiența video</h3>
+            <p>Produsele sunt prezentate în feed-ul YUMZY într-un format creat pentru descoperire.</p>
+          </article>
+          <article class="step-card">
+            <span class="step-number">03</span>
+            <h3>Oamenii le descoperă</h3>
+            <p>Utilizatorii văd produsul, descoperă restaurantul și aleg ceea ce vor să comande.</p>
+          </article>
+          <article class="step-card">
+            <span class="step-number">04</span>
+            <h3>Comandă direct</h3>
+            <p>Produsul poate fi comandat imediat, fără ca utilizatorul să părăsească aplicația YUMZY.</p>
+          </article>
+        </div>
+
+        <p class="flow-strip">VIDEO <span>→</span> DESCOPERIRE <span>→</span> COMANDĂ</p>
+      </section>
+
+      <section class="restaurant-section">
+        <h2 class="restaurant-section-heading">Pachetul de <span>lansare</span></h2>
+        <p class="section-intro">
+          Un parteneriat construit pentru restaurantele care vor să intre devreme într-o nouă categorie de
+          delivery și să crească odată cu ea.
+        </p>
+
+        <div class="launch-package">
+          <article class="package-price">
+            <p class="package-kicker">Parteneriat YUMZY</p>
+            <h3>12 luni de vizibilitate și oportunități comerciale</h3>
+            <div class="price-row">
+              <span>Taxă unică de listare</span>
+              <strong>150 € + TVA</strong>
+            </div>
+            <div class="price-row">
+              <span>Comision YUMZY</span>
+              <strong>23% / comandă</strong>
+            </div>
+          </article>
+
+          <article class="package-included">
+            <h3>Inclus în parteneriat</h3>
+            <ul class="package-list">
+              <li>Prezență și profil dedicat în aplicația YUMZY</li>
+              <li>Promovare prin conținut video</li>
+              <li>Poziționare prioritară în etapa de lansare</li>
+              <li>Promovarea produselor speciale, ofertelor și noutăților</li>
+              <li>Acces la campanii și activări YUMZY</li>
+              <li>O nouă sursă de descoperire și comenzi pentru restaurantul tău</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="restaurant-cta">
+        <h2>Fii prezent la lansarea YUMZY</h2>
+        <p>
+          Pe <strong>1 noiembrie</strong>, lansăm în București prima selecție de restaurante partenere.
+          Construim o experiență în care produsele nu sunt doar listate — sunt descoperite, dorite și comandate.
+        </p>
+        <p><strong>Adu-ți produsele în YUMZY și transformă fiecare vizualizare într-o nouă oportunitate.</strong></p>
       </section>
     </main>
 
