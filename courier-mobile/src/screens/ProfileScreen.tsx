@@ -19,12 +19,15 @@ import {
 
 import { authApi } from "../api/authApi";
 import { courierApi } from "../api/courierApi";
+import { getErrorMessage } from "../lib/errors";
 import { unregisterCurrentPushDevice } from "../lib/notifications";
 import { RootStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useCourierStore } from "../store/courierStore";
 
 const avatarSource = require("../../assets/profile-avatar.png");
+const MAX_AVATAR_SIZE_BYTES = 10 * 1024 * 1024;
+const AVATAR_UPLOAD_TIMEOUT_MS = 30000;
 
 type ProfileIcon = ComponentType<{
   color?: string;
@@ -63,7 +66,6 @@ export function ProfileScreen() {
   const profileLoading = useCourierStore((state) => state.profileLoading);
   const operationsLoading = useCourierStore((state) => state.operationsLoading);
   const refreshAll = useCourierStore((state) => state.refreshAll);
-  const refreshProfile = useCourierStore((state) => state.refreshProfile);
 
   const displayName = user?.full_name || profile?.full_name || user?.email || profile?.email || "Curier YUMZY";
   const displayPhone = profile?.phone || user?.phone || "Telefon neconfigurat";
@@ -94,18 +96,10 @@ export function ProfileScreen() {
       return;
     }
 
-    setAvatarUploading(true);
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert("Permisiune necesară", "Permite accesul la galerie pentru a schimba avatarul.");
-        return;
-      }
-
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsEditing: false,
         quality: 0.82,
       });
 
@@ -114,18 +108,35 @@ export function ProfileScreen() {
         return;
       }
 
+      if (asset.fileSize && asset.fileSize > MAX_AVATAR_SIZE_BYTES) {
+        Alert.alert("Imagine prea mare", "Alege o imagine mai mică de 10 MB.");
+        return;
+      }
+
+      setAvatarUploading(true);
       setAvatarPreviewUri(asset.uri);
-      await courierApi.uploadProfileAvatar({
-        uri: asset.uri,
-        fileName: asset.fileName,
-        mimeType: asset.mimeType,
-      });
-      await refreshProfile();
-      Alert.alert("Avatar actualizat", "Poza de profil a fost salvată.");
+      const uploadController = new AbortController();
+      const uploadTimeout = setTimeout(() => uploadController.abort(), AVATAR_UPLOAD_TIMEOUT_MS);
+
+      try {
+        const updatedProfile = await courierApi.uploadProfileAvatar(
+          {
+            uri: asset.uri,
+            fileName: asset.fileName,
+            mimeType: asset.mimeType,
+          },
+          uploadController.signal,
+        );
+        useCourierStore.setState({ profile: updatedProfile });
+        setAvatarPreviewUri(null);
+        Alert.alert("Avatar actualizat", "Poza de profil a fost salvată.");
+      } finally {
+        clearTimeout(uploadTimeout);
+      }
     } catch (error) {
       console.warn("Could not update courier avatar", error);
       setAvatarPreviewUri(null);
-      Alert.alert("Eroare", "Nu am putut actualiza avatarul.");
+      Alert.alert("Eroare", getErrorMessage(error, "Nu am putut actualiza avatarul."));
     } finally {
       setAvatarUploading(false);
     }

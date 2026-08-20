@@ -119,6 +119,27 @@ class CourierApiTests(TestCase):
             self.assertTrue(profile.avatar.name.startswith("couriers/avatars/avatar"))
             self.assertIn("/test-media/couriers/avatars/avatar", payload["avatar_url"])
 
+    def test_courier_profile_patch_accepts_heic_avatar(self):
+        avatar = SimpleUploadedFile(
+            "avatar.heic",
+            b"\x00\x00\x00\x18ftypheic\x00\x00\x00\x00mif1heic",
+            content_type="image/heic",
+        )
+
+        with tempfile.TemporaryDirectory() as media_root, override_settings(
+            MEDIA_ROOT=media_root,
+            MEDIA_URL="/test-media/",
+            STORAGES={
+                "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+                "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+            },
+        ):
+            response = self.client.patch("/api/courier/location/", {"avatar": avatar}, format="multipart")
+
+            self.assertEqual(response.status_code, 200)
+            profile = CourierProfile.objects.get(user=self.courier)
+            self.assertTrue(profile.avatar.name.endswith(".heic"))
+
     def test_courier_profile_patch_updates_profile_fields(self):
         response = self.client.patch(
             "/api/courier/location/",

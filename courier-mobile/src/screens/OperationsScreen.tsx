@@ -187,12 +187,6 @@ function AlertBanner({ title, description }: { title: string; description: strin
 }
 
 function buildActiveAlert(profile: CourierProfile | null, activeOrder: CourierOrder | null, trackingActive: boolean) {
-  if (!profile?.is_verified) {
-    return {
-      title: "Verification incomplete",
-      description: "Courier account verification still needs attention.",
-    };
-  }
   if (profile?.is_available && !trackingActive) {
     return {
       title: "Tracking inactive",
