@@ -96,7 +96,13 @@ const TULCEA_RESTAURANT_PINS: RestaurantMapPin[] = [
   { id: "tulcea-riverside-burger", name: "Riverside Burger", address: "Str. Garii 6, Tulcea", imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=200&q=80", coordinate: { latitude: 45.1776, longitude: 28.7921 }, cuisine: "Burgers", queueOrders: 3, payoutRange: "21-33 lei" },
   { id: "tulcea-cezar-test-kitchen", name: "Cezar Test Kitchen", address: "Str. Cezar 1, Tulcea", imageUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=200&q=80", coordinate: { latitude: 45.173688, longitude: 28.80201 }, cuisine: "Test Orders", queueOrders: 1, payoutRange: "19-30 lei" },
   { id: "tulcea-qq-test-point", name: "QQ Test Point", address: "Str. Test 45, Tulcea", imageUrl: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=200&q=80", coordinate: { latitude: 45.17591130853162, longitude: 28.802164048085512 }, cuisine: "Test Orders", queueOrders: 1, payoutRange: "20-29 lei" },
+  { id: "yumzy-route-test-kitchen", name: "YUMZY Route Test Kitchen", address: "Punct test restaurant, Str. Isaccei, Tulcea", imageUrl: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=200&q=80", coordinate: { latitude: 45.173666327745664, longitude: 28.801972202388093 }, cuisine: "Test intern", queueOrders: 1, payoutRange: "25 lei" },
 ];
+
+const TEMPORARY_TEST_RESTAURANT = TULCEA_RESTAURANT_PINS.find(
+  (restaurant) => restaurant.id === "yumzy-route-test-kitchen",
+)!;
+const DEFAULT_TEST_COURIER_COORDINATE: MapCoordinate = { latitude: 45.1811, longitude: 28.7879 };
 
 const MAX_QQ_RESTAURANTS = 3;
 
@@ -106,7 +112,7 @@ const MAPBOX_TOKEN = getMapboxAccessToken();
 const MAPBOX_MODULE = getMapboxModule();
 const NAVIGATION_CAMERA_PITCH = 52;
 const NAVIGATION_CAMERA_ZOOM = 16.1;
-const NAVIGATION_CAMERA_ANIMATION_MS = 900;
+const NAVIGATION_CAMERA_ANIMATION_MS = 1050;
 const NAVIGATION_CAMERA_PADDING = {
   paddingTop: 96,
   paddingRight: 28,
@@ -124,7 +130,11 @@ const NAVIGATION_CAMERA_LEAD_MAX_KM = 0.28;
 const STATIONARY_POSITION_JITTER_KM = 0.012;
 const MIN_SPEED_FOR_COURSE_HEADING_MPS = 1.2;
 const MARKER_ANIMATION_FRAME_INTERVAL_MS = 33;
-const ROUTE_REFRESH_DISTANCE_KM = 0.03;
+const MARKER_ANIMATION_DURATION_MS = 1050;
+const ROUTE_PROGRESS_REFRESH_DISTANCE_KM = 0.075;
+const OFF_ROUTE_DEVIATION_KM = 0.03;
+const OFF_ROUTE_REQUIRED_SAMPLES = 2;
+const ROUTE_REROUTE_COOLDOWN_MS = 5000;
 const NAVIGATION_CAMERA_MIN_UPDATE_MS = 900;
 const NAVIGATION_CAMERA_MIN_MOVE_KM = 0.006;
 const NAVIGATION_CAMERA_MIN_HEADING_DELTA = 7;
@@ -280,6 +290,22 @@ const SIMULATED_CUSTOMER_STOPS: Record<
     restaurantPhone: "+40740111999",
     restaurantNote: "Comanda de test se ridică de la tejghea.",
   },
+  "yumzy-route-test-kitchen": {
+    customerName: "Client Test YUMZY",
+    customerPhone: "+40740000002",
+    customerAddress: "Punct test livrare, Str. Babadag, Tulcea",
+    coordinate: { latitude: 45.1822, longitude: 28.7867 },
+    itemsSummary: "1x burger test, 1x cartofi, 1x apă",
+    items: [
+      { id: "route-test-burger", name: "Burger test", quantity: 1, unitPrice: 29, accentColor: "#F97316", imageUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=160&q=80" },
+      { id: "route-test-fries", name: "Cartofi prăjiți", quantity: 1, unitPrice: 12, accentColor: "#FACC15", imageUrl: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=160&q=80" },
+      { id: "route-test-water", name: "Apă", quantity: 1, unitPrice: 6, accentColor: "#38BDF8", imageUrl: "https://images.unsplash.com/photo-1564419320461-6870880221ad?auto=format&fit=crop&w=160&q=80" },
+    ],
+    itemCount: 3,
+    payoutLabel: "25 lei",
+    restaurantPhone: "+40740000001",
+    restaurantNote: "Comandă de test. Confirmă ridicarea pentru a continua către clientul de test.",
+  },
 };
 
 export function CourierLiveMap({
@@ -311,7 +337,9 @@ export function CourierLiveMap({
   const markerAnimationFrameRef = useRef<number | null>(null);
   const displayCoordinateRef = useRef<MapCoordinate | null>(null);
   const suppressFollowUntilRef = useRef(0);
-  const lastRouteRequestRef = useRef<{ origin: MapCoordinate; stopsKey: string } | null>(null);
+  const lastRouteRequestRef = useRef<{ origin: MapCoordinate; stopsKey: string; requestedAt: number } | null>(null);
+  const offRouteSampleCountRef = useRef(0);
+  const routeAbortControllerRef = useRef<AbortController | null>(null);
   const routeRequestSequenceRef = useRef(0);
   const lastNavigationCameraRef = useRef<{ coordinate: MapCoordinate; targetKey: string; updatedAt: number } | null>(null);
   const lastOfferPreviewCameraKeyRef = useRef<string | null>(null);
@@ -352,6 +380,9 @@ export function CourierLiveMap({
   const effectiveTarget = activeRouteStops[activeRouteStops.length - 1] ?? null;
   const shouldFitActiveRoute = Boolean(pendingOffer);
   const customerMarkerCoordinate = target ?? (acceptedOfferStage === "dropoff" ? acceptedOffer?.customerCoordinate : null);
+  const pickupMarkerCoordinate =
+    pendingOffer?.restaurantCoordinate ??
+    (acceptedOffer && acceptedOfferStage === "pickup" ? acceptedOffer.restaurantCoordinate : null);
   const isNavigationActive = Boolean(displayedCurrent && activeRouteStops.length > 0);
   const restaurantPins = useMemo(() => TULCEA_RESTAURANT_PINS, []);
   const cameraConfig = useMemo(
@@ -390,7 +421,6 @@ export function CourierLiveMap({
   useEffect(() => {
     let mounted = true;
     let positionSubscription: Location.LocationSubscription | null = null;
-    let headingSubscription: Location.LocationSubscription | null = null;
 
     const startWatching = async () => {
       try {
@@ -422,8 +452,8 @@ export function CourierLiveMap({
             }
 
             setDeviceCoordinate((currentCoordinate) => {
-              const nextHeading =
-                pickCourseHeading(position.coords.heading, position.coords.speed) ?? currentCoordinate?.heading ?? null;
+              const courseHeading = pickCourseHeading(position.coords.heading, position.coords.speed);
+              const nextHeading = smoothCourseHeading(currentCoordinate?.heading, courseHeading);
 
               if (!currentCoordinate) {
                 return {
@@ -460,27 +490,6 @@ export function CourierLiveMap({
           },
         );
 
-        headingSubscription = await Location.watchHeadingAsync((heading) => {
-          if (!mounted) {
-            return;
-          }
-
-          setDeviceCoordinate((currentCoordinate) => {
-            if (!currentCoordinate) {
-              return currentCoordinate;
-            }
-
-            const nextHeading = normalizeHeading(heading.trueHeading) ?? normalizeHeading(heading.magHeading);
-            if (nextHeading === null || areHeadingsClose(currentCoordinate.heading, nextHeading)) {
-              return currentCoordinate;
-            }
-
-            return {
-              ...currentCoordinate,
-              heading: nextHeading,
-            };
-          });
-        });
       } catch {
         // Keep the map usable with backend coordinates if live GPS is unavailable.
       }
@@ -499,7 +508,6 @@ export function CourierLiveMap({
         markerAnimationFrameRef.current = null;
       }
       positionSubscription?.remove();
-      headingSubscription?.remove();
       hapticTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
       hapticTimeoutsRef.current = [];
       if (simulatedOfferTimeoutRef.current) {
@@ -537,18 +545,19 @@ export function CourierLiveMap({
     }
 
     const animationStart = Date.now();
-    const animationDurationMs = 850;
+    const animationDurationMs = MARKER_ANIMATION_DURATION_MS;
     let lastFrameUpdateMs = 0;
 
     const animateMarker = () => {
       const now = Date.now();
       const elapsedMs = now - animationStart;
       const progress = Math.min(1, elapsedMs / animationDurationMs);
-      const easedProgress = 1 - Math.pow(1 - progress, 3);
 
       if (progress === 1 || now - lastFrameUpdateMs >= MARKER_ANIMATION_FRAME_INTERVAL_MS) {
         lastFrameUpdateMs = now;
-        const nextDisplayCoordinate = interpolateCoordinate(from, current, easedProgress);
+        // GPS samples arrive roughly once per second. Linear interpolation over a
+        // slightly longer interval keeps the puck moving continuously between them.
+        const nextDisplayCoordinate = interpolateCoordinate(from, current, progress);
         displayCoordinateRef.current = nextDisplayCoordinate;
         setDisplayCoordinate(nextDisplayCoordinate);
       }
@@ -589,10 +598,13 @@ export function CourierLiveMap({
 
   useEffect(() => {
     if (!current || activeRouteStops.length === 0) {
+      routeAbortControllerRef.current?.abort();
+      routeAbortControllerRef.current = null;
       setRouteShape(null);
       setRouteMetrics(null);
       lastRouteStopsKeyRef.current = null;
       lastRouteRequestRef.current = null;
+      offRouteSampleCountRef.current = 0;
       return;
     }
 
@@ -602,11 +614,26 @@ export function CourierLiveMap({
     const destinationChanged = lastRouteStopsKeyRef.current !== routeStopsKey;
     lastRouteStopsKeyRef.current = routeStopsKey;
     const previousRouteRequest = lastRouteRequestRef.current;
+    const distanceToRouteKm = routeShape
+      ? calculateDistanceToRouteKm(current, routeShape.geometry.coordinates)
+      : null;
+    const isOffRoute = distanceToRouteKm !== null && distanceToRouteKm >= OFF_ROUTE_DEVIATION_KM;
+
+    if (destinationChanged || !routeShape || !isOffRoute) {
+      offRouteSampleCountRef.current = 0;
+    } else {
+      offRouteSampleCountRef.current += 1;
+    }
+
+    const now = Date.now();
+    const hasConfirmedDeviation = offRouteSampleCountRef.current >= OFF_ROUTE_REQUIRED_SAMPLES;
+    const canReroute = !previousRouteRequest || now - previousRouteRequest.requestedAt >= ROUTE_REROUTE_COOLDOWN_MS;
     const shouldRefreshRoute =
       destinationChanged ||
       !previousRouteRequest ||
       previousRouteRequest.stopsKey !== routeStopsKey ||
-      calculateDistanceKm(previousRouteRequest.origin, current) >= ROUTE_REFRESH_DISTANCE_KM;
+      (hasConfirmedDeviation && canReroute) ||
+      calculateDistanceKm(previousRouteRequest.origin, current) >= ROUTE_PROGRESS_REFRESH_DISTANCE_KM;
 
     if (!shouldRefreshRoute) {
       return;
@@ -615,7 +642,9 @@ export function CourierLiveMap({
     lastRouteRequestRef.current = {
       origin: current,
       stopsKey: routeStopsKey,
+      requestedAt: now,
     };
+    offRouteSampleCountRef.current = 0;
     const fallbackMetrics = buildFallbackRouteMetrics(current, activeRouteStops);
 
     if (!MAPBOX_TOKEN) {
@@ -632,7 +661,9 @@ export function CourierLiveMap({
       return currentMetrics;
     });
 
+    routeAbortControllerRef.current?.abort();
     const abortController = new AbortController();
+    routeAbortControllerRef.current = abortController;
     const requestSequence = routeRequestSequenceRef.current + 1;
     routeRequestSequenceRef.current = requestSequence;
 
@@ -654,15 +685,23 @@ export function CourierLiveMap({
         }
 
         setRouteMetrics((currentMetrics) => (areRouteMetricsEqual(currentMetrics, fallbackMetrics) ? currentMetrics : fallbackMetrics));
+      } finally {
+        if (routeAbortControllerRef.current === abortController) {
+          routeAbortControllerRef.current = null;
+        }
       }
     };
 
     void loadRoute();
+  }, [activeRouteStops, current, routeShape]);
 
-    return () => {
-      abortController.abort();
-    };
-  }, [activeRouteStops, current]);
+  useEffect(
+    () => () => {
+      routeAbortControllerRef.current?.abort();
+      routeAbortControllerRef.current = null;
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!current || !effectiveTarget || shouldFitActiveRoute) {
@@ -694,7 +733,7 @@ export function CourierLiveMap({
 
     cameraRef.current?.setCamera({
       ...buildNavigationCameraSettings(current, effectiveTarget),
-      animationMode: "easeTo",
+      animationMode: "linearTo",
       animationDuration: NAVIGATION_CAMERA_ANIMATION_MS,
     });
   }, [current, effectiveTarget, shouldFitActiveRoute]);
@@ -968,6 +1007,17 @@ export function CourierLiveMap({
     }, SIMULATED_OFFER_DELAY_MS);
   }, [current, queuedRestaurantIds, selectedRestaurant, target, triggerIncomingOfferAlert]);
 
+  const handleTriggerTemporaryTestOffer = useCallback(() => {
+    if (target || pendingOffer || acceptedOffer || simulatedOfferTimeoutRef.current) {
+      return;
+    }
+
+    const offer = buildSimulatedOffer(TEMPORARY_TEST_RESTAURANT, current ?? DEFAULT_TEST_COURIER_COORDINATE);
+    setQueueFeedbackMessage("Comanda de test a fost trimisă curierului.");
+    setPendingOffer(offer);
+    void triggerIncomingOfferAlert(offer);
+  }, [acceptedOffer, current, pendingOffer, target, triggerIncomingOfferAlert]);
+
   const handleDeclineOffer = useCallback(() => {
     if (simulatedOfferTimeoutRef.current) {
       clearTimeout(simulatedOfferTimeoutRef.current);
@@ -1172,13 +1222,41 @@ export function CourierLiveMap({
           </ShapeSource>
         ) : null}
 
+        {pickupMarkerCoordinate ? (
+          <MarkerView
+            coordinate={[pickupMarkerCoordinate.longitude, pickupMarkerCoordinate.latitude]}
+            anchor={{ x: 0.5, y: 1 }}
+            allowOverlap
+          >
+            <View style={styles.pickupMapMarkerWrap}>
+              <View style={styles.pickupMapMarkerLabel}>
+                <Text style={styles.pickupMapMarkerLabelText}>Restaurant test</Text>
+              </View>
+              <View style={styles.pickupMapMarker}>
+                <Store color={colors.black} size={17} strokeWidth={2.5} />
+              </View>
+              <View style={styles.pickupMapMarkerTail} />
+            </View>
+          </MarkerView>
+        ) : null}
+
         {displayedCurrent ? (
           <MarkerView
             coordinate={[displayedCurrent.longitude, displayedCurrent.latitude]}
             anchor={{ x: 0.5, y: 0.5 }}
           >
             <View style={styles.liveMarkerContainer}>
-              <View style={[styles.liveMarkerDirection, { transform: [{ rotate: `${displayedCurrent.heading ?? 0}deg` }] }]}>
+              <View
+                style={[
+                  styles.liveMarkerDirection,
+                  {
+                    // In heading-up navigation the map already carries the course
+                    // rotation, so applying the absolute heading again double-rotates
+                    // the courier puck. Keep it screen-up, like delivery navigation apps.
+                    transform: [{ rotate: `${isNavigationActive ? 0 : displayedCurrent.heading ?? 0}deg` }],
+                  },
+                ]}
+              >
                 <Svg width={22} height={24} viewBox="0 0 22 24" style={styles.liveMarkerArrow}>
                   <Polygon points="11,1 21,23 11,18 1,23" fill={colors.white} />
                 </Svg>
@@ -1216,6 +1294,21 @@ export function CourierLiveMap({
       >
         <LocateFixed color={colors.text} size={20} strokeWidth={2.4} />
       </Pressable>
+
+      {__DEV__ && !target && !pendingOffer && !acceptedOffer ? (
+        <Pressable
+          accessibilityLabel="Generează o comandă de test"
+          accessibilityRole="button"
+          onPress={handleTriggerTemporaryTestOffer}
+          style={({ pressed }) => [styles.temporaryTestOrderButton, pressed && styles.temporaryTestOrderButtonPressed]}
+        >
+          <Bell color={colors.black} size={17} strokeWidth={2.5} />
+          <View>
+            <Text style={styles.temporaryTestOrderEyebrow}>DOAR TEST</Text>
+            <Text style={styles.temporaryTestOrderText}>Comandă nouă</Text>
+          </View>
+        </Pressable>
+      ) : null}
 
       {pendingOffer ? (
         <Pressable
@@ -1448,6 +1541,16 @@ export function CourierLiveMap({
               ? `${routeMetrics.durationMinutes} min • ${routeMetrics.distanceKm.toFixed(1)} km`
               : "Se calculează traseul..."}
           </Text>
+
+          {acceptedOfferStage === "dropoff" ? (
+            <PrimaryButton
+              onPress={handleClearAcceptedOffer}
+              title="Confirmă livrarea"
+              flatEdges
+              variant="lime"
+              style={styles.activeSimulationCompleteButton}
+            />
+          ) : null}
         </View>
       ) : null}
 
@@ -1549,6 +1652,30 @@ function pickCourseHeading(heading?: number | null, speed?: number | null) {
   }
 
   return normalizedHeading;
+}
+
+function smoothCourseHeading(previous?: number | null, next?: number | null) {
+  const normalizedPrevious = normalizeHeading(previous);
+  const normalizedNext = normalizeHeading(next);
+
+  if (normalizedNext === null) {
+    // Do not carry a stale course into a newly started delivery while stopped.
+    // The navigation camera can face the destination until GPS reports movement.
+    return null;
+  }
+
+  if (normalizedPrevious === null) {
+    return normalizedNext;
+  }
+
+  const delta = getHeadingDeltaDegrees(normalizedPrevious, normalizedNext);
+  if (delta < HEADING_UPDATE_MIN_DELTA) {
+    return normalizedPrevious;
+  }
+
+  // Small GPS course variations are noisy; real turns need a quicker response.
+  const response = delta >= 45 ? 0.55 : 0.32;
+  return interpolateHeading(normalizedPrevious, normalizedNext, response);
 }
 
 function buildCameraConfig(
@@ -1740,6 +1867,47 @@ function calculateDistanceKm(from: MapCoordinate, to: MapCoordinate) {
   return earthRadiusKm * arc;
 }
 
+function calculateDistanceToRouteKm(point: MapCoordinate, routeCoordinates: number[][]) {
+  if (routeCoordinates.length === 0) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  if (routeCoordinates.length === 1) {
+    return calculateDistanceKm(point, {
+      longitude: routeCoordinates[0][0],
+      latitude: routeCoordinates[0][1],
+    });
+  }
+
+  // Project the small local area around the courier onto a plane. This is more
+  // than accurate enough for a 30 m off-route threshold and avoids costly
+  // geodesic calculations for every segment of the Mapbox polyline.
+  const latitudeKmPerDegree = 110.574;
+  const longitudeKmPerDegree = 111.32 * Math.cos(toRadians(point.latitude));
+  let minimumDistanceKm = Number.POSITIVE_INFINITY;
+
+  for (let index = 0; index < routeCoordinates.length - 1; index += 1) {
+    const start = routeCoordinates[index];
+    const end = routeCoordinates[index + 1];
+    const startX = (start[0] - point.longitude) * longitudeKmPerDegree;
+    const startY = (start[1] - point.latitude) * latitudeKmPerDegree;
+    const endX = (end[0] - point.longitude) * longitudeKmPerDegree;
+    const endY = (end[1] - point.latitude) * latitudeKmPerDegree;
+    const segmentX = endX - startX;
+    const segmentY = endY - startY;
+    const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY;
+    const projection =
+      segmentLengthSquared === 0
+        ? 0
+        : Math.min(1, Math.max(0, -(startX * segmentX + startY * segmentY) / segmentLengthSquared));
+    const closestX = startX + segmentX * projection;
+    const closestY = startY + segmentY * projection;
+    minimumDistanceKm = Math.min(minimumDistanceKm, Math.hypot(closestX, closestY));
+  }
+
+  return minimumDistanceKm;
+}
+
 function calculateBearing(from: MapCoordinate, to: MapCoordinate) {
   const fromLatitude = toRadians(from.latitude);
   const toLatitude = toRadians(to.latitude);
@@ -1873,6 +2041,41 @@ const styles = StyleSheet.create({
   recenterButtonPressed: {
     transform: [{ scale: 0.96 }],
   },
+  temporaryTestOrderButton: {
+    position: "absolute",
+    top: 68,
+    left: 14,
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: colors.lime,
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.18)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    shadowColor: "#111111",
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 7,
+    zIndex: 11,
+  },
+  temporaryTestOrderButtonPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.98 }],
+  },
+  temporaryTestOrderEyebrow: {
+    color: colors.black,
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
+  temporaryTestOrderText: {
+    color: colors.black,
+    fontSize: 13,
+    fontWeight: "900",
+  },
   fallback: {
     flex: 1,
     backgroundColor: "#DDE7CC",
@@ -1956,6 +2159,49 @@ const styles = StyleSheet.create({
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
     borderTopColor: "#F97316",
+  },
+  pickupMapMarkerWrap: {
+    alignItems: "center",
+  },
+  pickupMapMarkerLabel: {
+    marginBottom: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    borderWidth: 1,
+    borderColor: "rgba(17,17,17,0.12)",
+  },
+  pickupMapMarkerLabelText: {
+    color: colors.text,
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  pickupMapMarker: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.lime,
+    borderWidth: 3,
+    borderColor: colors.white,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#111111",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  pickupMapMarkerTail: {
+    marginTop: -2,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 12,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopColor: colors.lime,
   },
   restaurantMarkerPressable: {
     alignItems: "center",
@@ -2433,6 +2679,9 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: -0.3,
     lineHeight: 22,
+  },
+  activeSimulationCompleteButton: {
+    marginTop: 2,
   },
   activeSimulationPickupButton: {
     minHeight: 42,

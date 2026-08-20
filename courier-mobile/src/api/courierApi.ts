@@ -32,7 +32,10 @@ export const courierApi = {
     return data;
   },
 
-  async uploadProfileAvatar(payload: { uri: string; fileName?: string | null; mimeType?: string | null }) {
+  async uploadProfileAvatar(
+    payload: { uri: string; fileName?: string | null; mimeType?: string | null },
+    signal?: AbortSignal,
+  ) {
     const formData = new FormData();
     const fileName = payload.fileName || payload.uri.split("/").pop() || `courier-avatar-${Date.now()}.jpg`;
     formData.append("avatar", {
@@ -45,6 +48,8 @@ export const courierApi = {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      signal,
+      timeout: 30000,
     });
     return data;
   },

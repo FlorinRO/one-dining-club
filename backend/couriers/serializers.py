@@ -85,8 +85,42 @@ class CourierProfileSerializer(serializers.ModelSerializer):
         return delivered_orders + simulated_deliveries
 
 
+class CourierAvatarField(serializers.FileField):
+    default_error_messages = {
+        "invalid_image": "Upload a valid JPEG, PNG, GIF, WebP, HEIC, HEIF, or AVIF image.",
+        "image_too_large": "The avatar must be smaller than 10 MB.",
+    }
+
+    def to_internal_value(self, data):
+        uploaded_file = super().to_internal_value(data)
+        if uploaded_file.size > 10 * 1024 * 1024:
+            self.fail("image_too_large")
+
+        header = uploaded_file.read(32)
+        uploaded_file.seek(0)
+        is_jpeg = header.startswith(b"\xff\xd8\xff")
+        is_png = header.startswith(b"\x89PNG\r\n\x1a\n")
+        is_gif = header.startswith((b"GIF87a", b"GIF89a"))
+        is_webp = len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WEBP"
+        is_iso_image = len(header) >= 12 and header[4:8] == b"ftyp" and header[8:12] in {
+            b"heic",
+            b"heix",
+            b"hevc",
+            b"hevx",
+            b"heim",
+            b"heis",
+            b"mif1",
+            b"msf1",
+            b"avif",
+            b"avis",
+        }
+        if not any((is_jpeg, is_png, is_gif, is_webp, is_iso_image)):
+            self.fail("invalid_image")
+        return uploaded_file
+
+
 class CourierProfileUpdateSerializer(serializers.Serializer):
-    avatar = serializers.ImageField(required=False, allow_null=True)
+    avatar = CourierAvatarField(required=False, allow_null=True)
     phone = serializers.CharField(required=False, allow_blank=True, max_length=32)
     vehicle_type = serializers.ChoiceField(choices=VehicleType.choices, required=False)
     current_latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False)
